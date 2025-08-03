@@ -239,7 +239,9 @@ public class PhoneUtils {
             try {
                 ContentValues values = new ContentValues();
                 values.put("force_sms_default", 1);
-                context.getContentResolver().insert(Uri.parse("content://sms/force_default"), values);
+                context.getContentResolver().insert(
+                        Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "force_default"), 
+                        values);
                 Log.d(TAG, "Attempted force update via SMS provider");
             } catch (Exception e) {
                 Log.e(TAG, "Error with SMS provider approach", e);
@@ -262,7 +264,7 @@ public class PhoneUtils {
                     dummyValues.put("address", "0000000000");
                     dummyValues.put("body", "Default SMS app test");
                     dummyValues.put("type", 3); // Draft type
-                    Uri uri = context.getContentResolver().insert(Uri.parse("content://sms/draft"), dummyValues);
+                    Uri uri = context.getContentResolver().insert(Telephony.Sms.Draft.CONTENT_URI, dummyValues);
                     if (uri != null) {
                         context.getContentResolver().delete(uri, null, null);
                         Log.d(TAG, "Created and deleted dummy SMS draft");
