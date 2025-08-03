@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/pref_category_general">
+        <SwitchPreferenceCompat
+            android:key="auto_translate"
+            android:title="@string/pref_auto_translate"
+            android:summary="@string/pref_auto_translate_summary"
+            android:defaultValue="false" />
+            
+        <ListPreference
+            android:key="preferred_language"
+            android:title="@string/pref_preferred_incoming_language"
+            android:summary="@string/pref_preferred_incoming_language_summary"
+            android:entries="@array/language_names"
+            android:entryValues="@array/language_codes"
+            android:defaultValue="en" />
+            
+        <ListPreference
+            android:key="preferred_outgoing_language"
+            android:title="@string/pref_preferred_outgoing_language"
+            android:summary="@string/pref_preferred_outgoing_language_summary"
+            android:entries="@array/language_names"
+            android:entryValues="@array/language_codes"
+            android:defaultValue="en" />
+    </PreferenceCategory>
+    
+    <PreferenceCategory android:title="@string/pref_category_appearance">
+        <ListPreference
+            android:key="theme"
+            android:title="@string/pref_theme"
+            android:summary="@string/pref_theme_summary"
+            android:entries="@array/theme_names"
+            android:entryValues="@array/theme_values"
+            android:defaultValue="3" />
+    </PreferenceCategory>
+    
+    <PreferenceCategory android:title="@string/pref_category_api">
+        <EditTextPreference
+            android:key="api_key"
+            android:title="@string/pref_api_key"
+            android:summary="@string/pref_api_key_summary"
+            android:dialogTitle="@string/enter_api_key"
+            android:inputType="textPassword" />
+    </PreferenceCategory>
+    
+    <PreferenceCategory android:title="@string/pref_category_advanced">
+        <SwitchPreferenceCompat
+            android:key="debug_mode"
+            android:title="@string/pref_debug_mode"
+            android:summary="@string/pref_debug_mode_summary"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

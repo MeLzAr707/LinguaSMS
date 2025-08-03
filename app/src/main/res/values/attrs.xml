@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="GlassView">
+        <attr name="glassCornerRadius" format="dimension" />
+        <attr name="glassBorderWidth" format="dimension" />
+        <attr name="glassBorderColor" format="color" />
+        <attr name="glassBackgroundColor" format="color" />
+    </declare-styleable>
+    <attr name="colorBackground" format="color" />
+
+</resources>
