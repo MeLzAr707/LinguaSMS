@@ -1,6 +1,15 @@
 package com.translator.messagingapp;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,7 +18,14 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -123,6 +139,9 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             
             holder.contactNameTextView.setText(displayName);
             
+            // Set contact avatar
+            loadContactAvatar(holder.contactAvatarImageView, conversation, displayName);
+            
             // Set snippet
             String snippet = conversation.getSnippet();
             if (!TextUtils.isEmpty(snippet)) {
@@ -216,9 +235,162 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
+     * Loads the contact avatar for a conversation.
+     *
+     * @param avatarImageView The CircleImageView to load the avatar into
+     * @param conversation    The conversation
+     * @param displayName     The display name for the contact
+     */
+    private void loadContactAvatar(CircleImageView avatarImageView, Conversation conversation, String displayName) {
+        try {
+            String phoneNumber = conversation.getAddress();
+            
+            // Try to load contact photo from contacts
+            Uri contactPhotoUri = getContactPhotoUri(phoneNumber);
+            
+            if (contactPhotoUri != null) {
+                // Load actual contact photo using Glide
+                RequestOptions options = new RequestOptions()
+                        .placeholder(createInitialsDrawable(displayName))
+                        .error(createInitialsDrawable(displayName))
+                        .diskCacheStrategy(DiskCacheStrategy.ALL);
+                
+                Glide.with(context)
+                        .load(contactPhotoUri)
+                        .apply(options)
+                        .into(avatarImageView);
+            } else {
+                // No contact photo found, create initials drawable
+                avatarImageView.setImageDrawable(createInitialsDrawable(displayName));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading contact avatar", e);
+            // Fallback to initials drawable
+            avatarImageView.setImageDrawable(createInitialsDrawable(displayName));
+        }
+    }
+    
+    /**
+     * Gets the contact photo URI for a phone number.
+     *
+     * @param phoneNumber The phone number
+     * @return The contact photo URI, or null if not found
+     */
+    private Uri getContactPhotoUri(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return null;
+        }
+        
+        try {
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            android.database.Cursor cursor = context.getContentResolver().query(
+                    uri,
+                    new String[]{ContactsContract.PhoneLookup.PHOTO_URI},
+                    null,
+                    null,
+                    null);
+                    
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int photoIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+                        if (photoIndex >= 0) {
+                            String photoUriString = cursor.getString(photoIndex);
+                            if (!TextUtils.isEmpty(photoUriString)) {
+                                return Uri.parse(photoUriString);
+                            }
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting contact photo URI for " + phoneNumber, e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Creates a drawable with the contact's initials and background color.
+     *
+     * @param displayName The display name or phone number
+     * @return A drawable with initials
+     */
+    private Drawable createInitialsDrawable(String displayName) {
+        String initial = ContactUtils.getContactInitial(displayName);
+        int backgroundColor = ContactUtils.getContactColor(displayName);
+        
+        return new InitialsDrawable(initial, backgroundColor);
+    }
+    
+    /**
+     * Custom drawable for displaying contact initials with a colored background.
+     */
+    private static class InitialsDrawable extends Drawable {
+        private final String initials;
+        private final Paint backgroundPaint;
+        private final Paint textPaint;
+        private final int textColor = Color.WHITE;
+        
+        public InitialsDrawable(String initials, int backgroundColor) {
+            this.initials = initials != null ? initials : "#";
+            
+            backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            backgroundPaint.setColor(backgroundColor);
+            backgroundPaint.setStyle(Paint.Style.FILL);
+            
+            textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            textPaint.setColor(textColor);
+            textPaint.setTextAlign(Paint.Align.CENTER);
+            textPaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        }
+        
+        @Override
+        public void draw(@NonNull Canvas canvas) {
+            Rect bounds = getBounds();
+            
+            // Draw circular background
+            float centerX = bounds.exactCenterX();
+            float centerY = bounds.exactCenterY();
+            float radius = Math.min(bounds.width(), bounds.height()) / 2f;
+            canvas.drawCircle(centerX, centerY, radius, backgroundPaint);
+            
+            // Draw text
+            textPaint.setTextSize(radius * 0.8f); // Text size relative to circle size
+            
+            // Calculate text position to center it vertically
+            Rect textBounds = new Rect();
+            textPaint.getTextBounds(initials, 0, initials.length(), textBounds);
+            float textY = centerY + textBounds.height() / 2f;
+            
+            canvas.drawText(initials, centerX, textY, textPaint);
+        }
+        
+        @Override
+        public void setAlpha(int alpha) {
+            backgroundPaint.setAlpha(alpha);
+            textPaint.setAlpha(alpha);
+        }
+        
+        @Override
+        public void setColorFilter(@Nullable ColorFilter colorFilter) {
+            backgroundPaint.setColorFilter(colorFilter);
+            textPaint.setColorFilter(colorFilter);
+        }
+        
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    /**
      * ViewHolder for conversation items.
      */
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        CircleImageView contactAvatarImageView;
         TextView contactNameTextView;
         TextView snippetTextView;
         TextView dateTextView;
@@ -227,6 +399,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            contactAvatarImageView = itemView.findViewById(R.id.contact_avatar);
             contactNameTextView = itemView.findViewById(R.id.contact_name);
             snippetTextView = itemView.findViewById(R.id.snippet);
             dateTextView = itemView.findViewById(R.id.date);
