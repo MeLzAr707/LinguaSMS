@@ -66,6 +66,17 @@ public class SettingsActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
     
+    @Override
+    public void onBackPressed() {
+        try {
+            super.onBackPressed();
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling back press", e);
+            // Fallback: finish the activity safely
+            finish();
+        }
+    }
+    
     /**
      * Fragment for displaying preferences.
      */
@@ -189,7 +200,18 @@ public class SettingsActivity extends BaseActivity {
                         try {
                             int themeId = Integer.parseInt((String) newValue);
                             userPreferences.setThemeId(themeId);
-                            requireActivity().recreate();
+                            
+                            // Use a handler to delay the recreation slightly
+                            // This allows the preference change to complete first
+                            requireActivity().runOnUiThread(() -> {
+                                try {
+                                    requireActivity().recreate();
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error recreating activity", e);
+                                    // Fallback: just finish the activity and let the user reopen settings
+                                    requireActivity().finish();
+                                }
+                            });
                             return true;
                         } catch (Exception e) {
                             Log.e(TAG, "Error setting theme", e);

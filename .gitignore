@@ -13,6 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
-
-# Demo compiled files
-demo/*.class
+*.class
