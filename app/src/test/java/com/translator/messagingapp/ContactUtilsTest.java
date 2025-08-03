@@ -20,6 +20,9 @@ public class ContactUtilsTest {
         assertEquals("1", ContactUtils.getContactInitial("123-456-7890"));
         assertEquals("5", ContactUtils.getContactInitial("555-0123"));
         assertEquals("9", ContactUtils.getContactInitial("9876543210"));
+        assertEquals("1", ContactUtils.getContactInitial("+1234567890"));
+        assertEquals("9", ContactUtils.getContactInitial("+9876543210"));
+        assertEquals("4", ContactUtils.getContactInitial("+44 20 7946 0958"));
     }
 
     @Test

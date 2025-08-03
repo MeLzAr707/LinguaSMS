@@ -145,6 +145,17 @@ public class ContactUtils {
             return "#";
         }
 
+        // For phone numbers starting with +, skip the + and find first digit
+        if (cleanName.startsWith("+")) {
+            for (int i = 1; i < cleanName.length(); i++) {
+                char ch = cleanName.charAt(i);
+                if (Character.isDigit(ch)) {
+                    return String.valueOf(ch);
+                }
+            }
+            return "#"; // No digits found after +
+        }
+
         // Get the first character
         char firstChar = cleanName.charAt(0);
 
