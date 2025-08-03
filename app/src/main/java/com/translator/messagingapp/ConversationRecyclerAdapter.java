@@ -117,6 +117,10 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             if (conversations == null || position >= conversations.size()) {
                 Log.e(TAG, "Invalid position or null conversations: " + position);
                 holder.contactNameTextView.setText(R.string.error_loading_conversation);
+                // Set a default avatar for error cases
+                if (holder.contactAvatarImageView != null) {
+                    holder.contactAvatarImageView.setImageDrawable(createInitialsDrawable("?"));
+                }
                 return;
             }
             
@@ -124,6 +128,10 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             if (conversation == null) {
                 Log.e(TAG, "Conversation at position " + position + " is null");
                 holder.contactNameTextView.setText(R.string.error_loading_conversation);
+                // Set a default avatar for error cases
+                if (holder.contactAvatarImageView != null) {
+                    holder.contactAvatarImageView.setImageDrawable(createInitialsDrawable("?"));
+                }
                 return;
             }
             
@@ -140,7 +148,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             holder.contactNameTextView.setText(displayName);
             
             // Set contact avatar
-            loadContactAvatar(holder.contactAvatarImageView, conversation, displayName);
+            if (holder.contactAvatarImageView != null) {
+                loadContactAvatar(holder.contactAvatarImageView, conversation, displayName);
+            } else {
+                Log.w(TAG, "Contact avatar ImageView is null at position " + position);
+            }
             
             // Set snippet
             String snippet = conversation.getSnippet();
@@ -190,6 +202,10 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         } catch (Exception e) {
             Log.e(TAG, "Error binding conversation at position " + position, e);
             holder.contactNameTextView.setText(R.string.error_loading_conversation);
+            // Set a default error avatar
+            if (holder.contactAvatarImageView != null) {
+                holder.contactAvatarImageView.setImageDrawable(createInitialsDrawable("!"));
+            }
         }
     }
 
@@ -242,6 +258,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
      * @param displayName     The display name for the contact
      */
     private void loadContactAvatar(CircleImageView avatarImageView, Conversation conversation, String displayName) {
+        if (avatarImageView == null) {
+            Log.w(TAG, "Avatar ImageView is null, skipping avatar load");
+            return;
+        }
+        
         try {
             String phoneNumber = conversation.getAddress();
             
