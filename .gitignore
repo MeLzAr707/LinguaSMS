@@ -13,4 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
-*.class
+
+# Temporary files
+javac.*.args
+validate_fixes.sh
+test_fixes.md
