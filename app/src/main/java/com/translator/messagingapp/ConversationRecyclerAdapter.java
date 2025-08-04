@@ -111,17 +111,14 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
                 return;
             }
             
-            // Set contact name or phone number
-            String displayName = conversation.getContactName();
-            if (TextUtils.isEmpty(displayName)) {
-                displayName = conversation.getAddress();
-                if (TextUtils.isEmpty(displayName)) {
-                    displayName = context.getString(R.string.unknown_contact);
-                    Log.w(TAG, "No contact name or address for conversation at position " + position);
-                }
-            }
-            
+            // Set contact name or phone number with improved fallback logic
+            String displayName = getDisplayName(conversation);
             holder.contactNameTextView.setText(displayName);
+            
+            // Log for debugging
+            Log.d(TAG, "Displaying conversation: name='" + conversation.getContactName() + 
+                      "', address='" + conversation.getAddress() + 
+                      "', displayName='" + displayName + "'");
             
             // Set snippet
             String snippet = conversation.getSnippet();
@@ -177,6 +174,39 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     @Override
     public int getItemCount() {
         return conversations != null ? conversations.size() : 0;
+    }
+
+    /**
+     * Gets the display name for a conversation with proper fallback logic.
+     *
+     * @param conversation The conversation
+     * @return The display name to show
+     */
+    private String getDisplayName(Conversation conversation) {
+        if (conversation == null) {
+            return context.getString(R.string.unknown_contact);
+        }
+        
+        String contactName = conversation.getContactName();
+        String address = conversation.getAddress();
+        
+        // First priority: Non-empty contact name that's not just the phone number
+        if (!TextUtils.isEmpty(contactName) && !contactName.equals(address)) {
+            return contactName;
+        }
+        
+        // Second priority: Phone number/address
+        if (!TextUtils.isEmpty(address)) {
+            return address;
+        }
+        
+        // Third priority: Contact name even if it might be a phone number
+        if (!TextUtils.isEmpty(contactName)) {
+            return contactName;
+        }
+        
+        // Last resort: Unknown contact
+        return context.getString(R.string.unknown_contact);
     }
 
     /**
