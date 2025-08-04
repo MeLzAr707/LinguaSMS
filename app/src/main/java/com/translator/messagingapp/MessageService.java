@@ -111,7 +111,9 @@ public class MessageService {
 
         try {
             // Query the canonical addresses table
-            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+            Uri uri = Telephony.MmsSms.CONTENT_URI.buildUpon()
+                    .appendPath("canonical-addresses")
+                    .build();
             cursor = context.getContentResolver().query(
                     uri,
                     new String[]{"_id"},
@@ -124,7 +126,9 @@ public class MessageService {
                 cursor.close();
 
                 // Query the threads table
-                uri = Uri.parse("content://mms-sms/conversations?simple=true");
+                uri = Telephony.MmsSms.CONTENT_CONVERSATIONS_URI.buildUpon()
+                        .appendQueryParameter("simple", "true")
+                        .build();
                 cursor = context.getContentResolver().query(
                         uri,
                         new String[]{"_id"},
@@ -313,7 +317,7 @@ public class MessageService {
         try {
             // Query MMS address
             cursor = contentResolver.query(
-                    Uri.parse("content://mms/" + id + "/addr"),
+                    Uri.withAppendedPath(Uri.withAppendedPath(Telephony.Mms.CONTENT_URI, id), "addr"),
                     new String[]{"address"},
                     "type = ?",
                     new String[]{String.valueOf(type)},
@@ -347,7 +351,7 @@ public class MessageService {
         try {
             // Query MMS parts
             cursor = contentResolver.query(
-                    Uri.parse("content://mms/part"),
+                    Telephony.Mms.Part.CONTENT_URI,
                     new String[]{"_id", "text", "ct"},
                     "mid = ?",
                     new String[]{id},
@@ -396,7 +400,7 @@ public class MessageService {
 
         try {
             // Get part data
-            Uri partUri = Uri.parse("content://mms/part/" + partId);
+            Uri partUri = Uri.withAppendedPath(Telephony.Mms.Part.CONTENT_URI, partId);
             byte[] data = new byte[0];
 
             try (java.io.InputStream is = contentResolver.openInputStream(partUri)) {
@@ -430,7 +434,7 @@ public class MessageService {
         try {
             // Query MMS parts
             cursor = contentResolver.query(
-                    Uri.parse("content://mms/part"),
+                    Telephony.Mms.Part.CONTENT_URI,
                     new String[]{"_id", "ct", "_data", "text"},
                     "mid = ?",
                     new String[]{id},
@@ -450,7 +454,7 @@ public class MessageService {
                         attachment.setPartId(partId);
 
                         // Set URI
-                        Uri uri = Uri.parse("content://mms/part/" + partId);
+                        Uri uri = Uri.withAppendedPath(Telephony.Mms.Part.CONTENT_URI, partId);
                         attachment.setUri(uri);
 
                         // Add attachment to list
@@ -654,11 +658,11 @@ public class MessageService {
         }
 
         try {
-            Uri uri = Uri.parse("content://sms/conversations/" + threadId);
+            Uri uri = Uri.withAppendedPath(Telephony.Sms.Conversations.CONTENT_URI, threadId);
             int deleted = context.getContentResolver().delete(uri, null, null);
 
             // Also delete MMS messages
-            Uri mmsUri = Uri.parse("content://mms/conversations/" + threadId);
+            Uri mmsUri = Uri.withAppendedPath(Telephony.Mms.CONTENT_URI, "conversations/" + threadId);
             int mmsDeleted = context.getContentResolver().delete(mmsUri, null, null);
 
             // Clear cache for this thread
@@ -765,7 +769,9 @@ public class MessageService {
 
         try {
             // Query conversations
-            Uri uri = Uri.parse("content://mms-sms/conversations?simple=true");
+            Uri uri = Telephony.MmsSms.CONTENT_CONVERSATIONS_URI.buildUpon()
+                    .appendQueryParameter("simple", "true")
+                    .build();
             cursor = context.getContentResolver().query(
                     uri,
                     null,
@@ -826,7 +832,9 @@ public class MessageService {
 
         try {
             // Query the canonical addresses table
-            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+            Uri uri = Telephony.MmsSms.CONTENT_URI.buildUpon()
+                    .appendPath("canonical-addresses")
+                    .build();
 
             // First get the recipient ID for this thread
             String recipientId = null;
@@ -834,7 +842,9 @@ public class MessageService {
 
             try {
                 threadCursor = context.getContentResolver().query(
-                        Uri.parse("content://mms-sms/conversations?simple=true"),
+                        Telephony.MmsSms.CONTENT_CONVERSATIONS_URI.buildUpon()
+                                .appendQueryParameter("simple", "true")
+                                .build(),
                         new String[]{"recipient_ids"},
                         "_id = ?",
                         new String[]{threadId},
@@ -987,7 +997,7 @@ public class MessageService {
         try {
             // Query MMS parts
             cursor = context.getContentResolver().query(
-                    Uri.parse("content://mms/part"),
+                    Telephony.Mms.Part.CONTENT_URI,
                     new String[]{"mid"},
                     "text LIKE ?",
                     new String[]{"%" + query + "%"},
