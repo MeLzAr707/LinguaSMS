@@ -204,46 +204,88 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     /**
-     * Loads conversations.
+     * Loads conversations asynchronously.
      */
     private void loadConversations() {
         try {
             // Show loading state
-            emptyStateTextView.setVisibility(View.GONE);
-            conversationsRecyclerView.setVisibility(View.GONE);
+            showLoadingState();
 
-            // Load conversations using MessageService
-            if (messageService != null) {
-                List<Conversation> loadedConversations = messageService.loadConversations();
+            // Load conversations in background thread
+            new Thread(() -> {
+                try {
+                    if (messageService != null) {
+                        List<Conversation> loadedConversations = messageService.loadConversations();
 
-                // Update UI
-                conversations.clear();
-                if (loadedConversations != null) {
-                    conversations.addAll(loadedConversations);
+                        // Update UI on main thread
+                        runOnUiThread(() -> {
+                            try {
+                                conversations.clear();
+                                if (loadedConversations != null) {
+                                    conversations.addAll(loadedConversations);
+                                }
+
+                                conversationAdapter.notifyDataSetChanged();
+
+                                // Show appropriate state
+                                if (conversations.isEmpty()) {
+                                    showEmptyState();
+                                } else {
+                                    showConversationsState();
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error updating UI with conversations", e);
+                                showErrorState();
+                            }
+                        });
+                    } else {
+                        Log.e(TAG, "MessageService is null");
+                        runOnUiThread(this::showErrorState);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error loading conversations in background", e);
+                    runOnUiThread(this::showErrorState);
                 }
-
-                conversationAdapter.notifyDataSetChanged();
-
-                // Show empty state if needed
-                if (conversations.isEmpty()) {
-                    emptyStateTextView.setVisibility(View.VISIBLE);
-                    conversationsRecyclerView.setVisibility(View.GONE);
-                } else {
-                    emptyStateTextView.setVisibility(View.GONE);
-                    conversationsRecyclerView.setVisibility(View.VISIBLE);
-                }
-            } else {
-                Log.e(TAG, "MessageService is null");
-                emptyStateTextView.setText(R.string.error_loading_conversation);
-                emptyStateTextView.setVisibility(View.VISIBLE);
-                conversationsRecyclerView.setVisibility(View.GONE);
-            }
+            }).start();
         } catch (Exception e) {
-            Log.e(TAG, "Error loading conversations", e);
-            emptyStateTextView.setText(R.string.error_loading_conversation);
-            emptyStateTextView.setVisibility(View.VISIBLE);
-            conversationsRecyclerView.setVisibility(View.GONE);
+            Log.e(TAG, "Error starting conversation loading", e);
+            showErrorState();
         }
+    }
+
+    /**
+     * Shows loading state.
+     */
+    private void showLoadingState() {
+        emptyStateTextView.setVisibility(View.GONE);
+        conversationsRecyclerView.setVisibility(View.GONE);
+        // Note: Add progress bar if available in layout
+    }
+
+    /**
+     * Shows empty state.
+     */
+    private void showEmptyState() {
+        emptyStateTextView.setText(R.string.no_conversations);
+        emptyStateTextView.setVisibility(View.VISIBLE);
+        conversationsRecyclerView.setVisibility(View.GONE);
+    }
+
+    /**
+     * Shows conversations state.
+     */
+    private void showConversationsState() {
+        emptyStateTextView.setVisibility(View.GONE);
+        conversationsRecyclerView.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Shows error state.
+     */
+    private void showErrorState() {
+        emptyStateTextView.setText(R.string.error_loading_conversation);
+        emptyStateTextView.setVisibility(View.VISIBLE);
+        conversationsRecyclerView.setVisibility(View.GONE);
     }
 
     /**

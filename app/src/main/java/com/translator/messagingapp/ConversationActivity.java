@@ -182,7 +182,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Load messages with improved error handling
+     * Load messages with improved error handling and logging
      */
     private void loadMessages() {
         if (messageService == null) {
@@ -191,45 +191,77 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
+        if (isActivityDestroyed) {
+            Log.d(TAG, "Activity destroyed, skipping message loading");
+            return;
+        }
+
         showLoading(true);
 
         executorService.execute(() -> {
             try {
+                Log.d(TAG, "Loading messages - threadId: " + threadId + ", address: " + address);
+                
                 final List<Message> loadedMessages;
 
                 if (!TextUtils.isEmpty(threadId)) {
+                    Log.d(TAG, "Loading messages by thread ID: " + threadId);
                     loadedMessages = messageService.getMessagesByThreadId(threadId);
                 } else if (!TextUtils.isEmpty(address)) {
+                    Log.d(TAG, "Loading messages by address: " + address);
                     loadedMessages = messageService.getMessagesByAddress(address);
                 } else {
+                    Log.e(TAG, "Both threadId and address are empty");
                     loadedMessages = new ArrayList<>();
                 }
 
+                if (isActivityDestroyed) {
+                    Log.d(TAG, "Activity destroyed during loading, not updating UI");
+                    return;
+                }
+
                 runOnUiThread(() -> {
-                    showLoading(false);
+                    if (isActivityDestroyed) {
+                        Log.d(TAG, "Activity destroyed before UI update");
+                        return;
+                    }
 
-                    if (loadedMessages != null && !loadedMessages.isEmpty()) {
-                        messages.clear();
-                        messages.addAll(loadedMessages);
-                        adapter.notifyDataSetChanged();
-                        scrollToBottom();
-                        showEmptyState(false);
-                    } else {
-                        showEmptyState(true);
+                    try {
+                        showLoading(false);
 
-                        // Add a test message if no messages are found
-                        if (userPreferences.isDebugModeEnabled()) {
-                            addTestMessage();
+                        if (loadedMessages != null && !loadedMessages.isEmpty()) {
+                            Log.d(TAG, "Loaded " + loadedMessages.size() + " messages");
+                            messages.clear();
+                            messages.addAll(loadedMessages);
+                            adapter.notifyDataSetChanged();
+                            scrollToBottom();
+                            showEmptyState(false);
+                        } else {
+                            Log.d(TAG, "No messages found");
+                            showEmptyState(true);
+
+                            // Add a test message if no messages are found and debug is enabled
+                            if (userPreferences != null && userPreferences.isDebugModeEnabled()) {
+                                Log.d(TAG, "Adding test message for debugging");
+                                addTestMessage();
+                            }
                         }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error updating UI with loaded messages", e);
+                        showEmptyState("Error displaying messages");
                     }
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error loading messages: " + e.getMessage(), e);
-                runOnUiThread(() -> {
-                    showLoading(false);
-                    showEmptyState("Error loading messages");
-                    Toast.makeText(ConversationActivity.this, "Error loading messages", Toast.LENGTH_SHORT).show();
-                });
+                if (!isActivityDestroyed) {
+                    runOnUiThread(() -> {
+                        if (!isActivityDestroyed) {
+                            showLoading(false);
+                            showEmptyState("Error loading messages");
+                            Toast.makeText(ConversationActivity.this, "Error loading messages", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
             }
         });
     }
@@ -680,19 +712,52 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         isActivityDestroyed = true;
         hideProgressDialog();
 
-        if (executorService != null) {
+        // Cleanup executor service properly
+        if (executorService != null && !executorService.isShutdown()) {
             try {
+                Log.d(TAG, "Shutting down executor service");
                 executorService.shutdown();
+                
+                // Wait for tasks to complete or timeout
                 if (!executorService.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Executor service did not terminate, forcing shutdown");
                     executorService.shutdownNow();
+                    
+                    // Wait a bit more for forceful shutdown
+                    if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                        Log.e(TAG, "Executor service did not terminate after force shutdown");
+                    }
                 }
             } catch (InterruptedException e) {
+                Log.w(TAG, "Interrupted while shutting down executor service");
                 executorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }
         }
 
         super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        try {
+            // Cancel any ongoing operations
+            if (progressDialog != null && progressDialog.isShowing()) {
+                hideProgressDialog();
+            }
+            
+            // Finish activity safely
+            finish();
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling back press", e);
+            // Force finish even if there's an error
+            try {
+                super.onBackPressed();
+            } catch (Exception ex) {
+                Log.e(TAG, "Error in super.onBackPressed()", ex);
+                finish();
+            }
+        }
     }
 
     @Override

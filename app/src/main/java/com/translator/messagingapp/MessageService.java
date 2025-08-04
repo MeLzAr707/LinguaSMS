@@ -48,6 +48,11 @@ public class MessageService {
     public List<Message> getMessagesByThreadId(String threadId) {
         Log.d(TAG, "Getting messages for thread ID: " + threadId);
 
+        if (TextUtils.isEmpty(threadId)) {
+            Log.e(TAG, "Thread ID is empty");
+            return new ArrayList<>();
+        }
+
         // Check cache first
         List<Message> cachedMessages = messageCache.getMessages(threadId);
         if (cachedMessages != null && !cachedMessages.isEmpty()) {
@@ -57,19 +62,32 @@ public class MessageService {
 
         List<Message> messages = new ArrayList<>();
 
-        // Query SMS messages
-        messages.addAll(getSmsMessagesByThreadId(threadId));
+        try {
+            // Query SMS messages
+            List<Message> smsMessages = getSmsMessagesByThreadId(threadId);
+            if (smsMessages != null) {
+                messages.addAll(smsMessages);
+                Log.d(TAG, "Found " + smsMessages.size() + " SMS messages for thread " + threadId);
+            }
 
-        // Query MMS messages
-        messages.addAll(getMmsMessagesByThreadId(threadId));
+            // Query MMS messages
+            List<Message> mmsMessages = getMmsMessagesByThreadId(threadId);
+            if (mmsMessages != null) {
+                messages.addAll(mmsMessages);
+                Log.d(TAG, "Found " + mmsMessages.size() + " MMS messages for thread " + threadId);
+            }
 
-        // Sort messages by date
-        messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+            // Sort messages by date
+            messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
 
-        // Cache messages
-        messageCache.cacheMessages(threadId, messages);
+            // Cache messages
+            messageCache.cacheMessages(threadId, messages);
 
-        Log.d(TAG, "Returning " + messages.size() + " messages for thread ID: " + threadId);
+            Log.d(TAG, "Returning " + messages.size() + " total messages for thread ID: " + threadId);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting messages for thread ID: " + threadId, e);
+        }
+
         return messages;
     }
 
@@ -82,17 +100,208 @@ public class MessageService {
     public List<Message> getMessagesByAddress(String address) {
         Log.d(TAG, "Getting messages for address: " + address);
 
-        // Find thread ID for this address
-        String threadId = getThreadIdForAddress(address);
-
-        if (!TextUtils.isEmpty(threadId)) {
-            // If we found a thread ID, use it to get messages
-            return getMessagesByThreadId(threadId);
-        } else {
-            // If no thread ID found, return empty list
-            Log.d(TAG, "No thread ID found for address: " + address);
+        if (TextUtils.isEmpty(address)) {
+            Log.e(TAG, "Address is empty");
             return new ArrayList<>();
         }
+
+        try {
+            // Find thread ID for this address
+            String threadId = getThreadIdForAddress(address);
+
+            if (!TextUtils.isEmpty(threadId)) {
+                // If we found a thread ID, use it to get messages
+                Log.d(TAG, "Found thread ID " + threadId + " for address " + address);
+                return getMessagesByThreadId(threadId);
+            } else {
+                // If no thread ID found, try direct query by address
+                Log.d(TAG, "No thread ID found for address " + address + ", trying direct query");
+                return getMessagesByAddressDirect(address);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting messages for address: " + address, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Gets messages by address using direct query (fallback method).
+     *
+     * @param address The address
+     * @return The list of messages
+     */
+    private List<Message> getMessagesByAddressDirect(String address) {
+        List<Message> messages = new ArrayList<>();
+        
+        try {
+            // Query SMS messages directly by address
+            List<Message> smsMessages = getSmsMessagesByAddress(address);
+            if (smsMessages != null) {
+                messages.addAll(smsMessages);
+                Log.d(TAG, "Found " + smsMessages.size() + " SMS messages for address " + address);
+            }
+
+            // Query MMS messages directly by address
+            List<Message> mmsMessages = getMmsMessagesByAddress(address);
+            if (mmsMessages != null) {
+                messages.addAll(mmsMessages);
+                Log.d(TAG, "Found " + mmsMessages.size() + " MMS messages for address " + address);
+            }
+
+            // Sort messages by date
+            messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+
+            Log.d(TAG, "Returning " + messages.size() + " total messages for address: " + address);
+        } catch (Exception e) {
+            Log.e(TAG, "Error in direct query for address: " + address, e);
+        }
+
+        return messages;
+    }
+
+    /**
+     * Gets SMS messages by address directly.
+     *
+     * @param address The address
+     * @return The list of SMS messages
+     */
+    private List<Message> getSmsMessagesByAddress(String address) {
+        List<Message> messages = new ArrayList<>();
+        Cursor cursor = null;
+
+        try {
+            // Query SMS messages by address
+            cursor = context.getContentResolver().query(
+                    Telephony.Sms.CONTENT_URI,
+                    null,
+                    Telephony.Sms.ADDRESS + " = ?",
+                    new String[]{address},
+                    Telephony.Sms.DATE + " ASC");
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    SmsMessage message = new SmsMessage();
+
+                    // Get message data
+                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Sms._ID));
+                    String body = cursor.getString(cursor.getColumnIndex(Telephony.Sms.BODY));
+                    String messageAddress = cursor.getString(cursor.getColumnIndex(Telephony.Sms.ADDRESS));
+                    long date = cursor.getLong(cursor.getColumnIndex(Telephony.Sms.DATE));
+                    int type = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.TYPE));
+                    boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.READ)) == 1;
+                    String threadId = cursor.getString(cursor.getColumnIndex(Telephony.Sms.THREAD_ID));
+
+                    // Set message data
+                    message.setId(id);
+                    message.setBody(body);
+                    message.setAddress(messageAddress);
+                    message.setDate(date);
+                    message.setType(type);
+                    message.setRead(read);
+                    message.setThreadId(threadId);
+                    message.setMessageType(Message.MESSAGE_TYPE_SMS);
+
+                    // Add message to list
+                    messages.add(message);
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting SMS messages for address: " + address, e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return messages;
+    }
+
+    /**
+     * Gets MMS messages by address directly.
+     *
+     * @param address The address
+     * @return The list of MMS messages
+     */
+    private List<Message> getMmsMessagesByAddress(String address) {
+        List<Message> messages = new ArrayList<>();
+        Cursor cursor = null;
+
+        try {
+            // This is more complex for MMS as we need to join with the address table
+            // For now, we'll do a simplified approach
+            cursor = context.getContentResolver().query(
+                    Telephony.Mms.CONTENT_URI,
+                    null,
+                    null,
+                    null,
+                    Telephony.Mms.DATE + " ASC");
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Mms._ID));
+                    
+                    // Check if this MMS is to/from the specified address
+                    String mmsAddress = getMmsAddress(context.getContentResolver(), id);
+                    if (address.equals(mmsAddress)) {
+                        MmsMessage message = new MmsMessage();
+
+                        // Get message data
+                        long date = cursor.getLong(cursor.getColumnIndex(Telephony.Mms.DATE)) * 1000;
+                        int type = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX));
+                        boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.READ)) == 1;
+                        String threadId = cursor.getString(cursor.getColumnIndex(Telephony.Mms.THREAD_ID));
+
+                        // Convert MMS message box to SMS type
+                        int smsType;
+                        switch (type) {
+                            case Telephony.Mms.MESSAGE_BOX_INBOX:
+                                smsType = Message.TYPE_INBOX;
+                                break;
+                            case Telephony.Mms.MESSAGE_BOX_SENT:
+                                smsType = Message.TYPE_SENT;
+                                break;
+                            case Telephony.Mms.MESSAGE_BOX_DRAFTS:
+                                smsType = Message.TYPE_DRAFT;
+                                break;
+                            case Telephony.Mms.MESSAGE_BOX_OUTBOX:
+                                smsType = Message.TYPE_OUTBOX;
+                                break;
+                            default:
+                                smsType = Message.TYPE_ALL;
+                                break;
+                        }
+
+                        // Get MMS text
+                        String body = getMmsText(context.getContentResolver(), id);
+
+                        // Set message data
+                        message.setId(id);
+                        message.setBody(body);
+                        message.setDate(date);
+                        message.setType(smsType);
+                        message.setRead(read);
+                        message.setAddress(mmsAddress);
+                        message.setThreadId(threadId);
+                        message.setMessageType(Message.MESSAGE_TYPE_MMS);
+
+                        // Add attachments
+                        List<MmsMessage.Attachment> attachments = getMmsAttachments(context.getContentResolver(), id);
+                        message.setAttachmentObjects(attachments);
+
+                        // Add message to list
+                        messages.add(message);
+                    }
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMS messages for address: " + address, e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return messages;
     }
 
     /**
@@ -774,6 +983,9 @@ public class MessageService {
                     Telephony.Sms.DEFAULT_SORT_ORDER);
 
             if (cursor != null && cursor.moveToFirst()) {
+                // First pass: collect all conversation data without contact names
+                List<String> addresses = new ArrayList<>();
+                
                 do {
                     Conversation conversation = new Conversation();
 
@@ -794,14 +1006,38 @@ public class MessageService {
                     // Get recipient address
                     String address = getAddressForThreadId(threadId);
                     conversation.setAddress(address);
-
-                    // Get contact name
-                    String contactName = ContactUtils.getContactName(context, address);
-                    conversation.setContactName(contactName);
+                    
+                    // Collect addresses for batch contact lookup
+                    if (!TextUtils.isEmpty(address)) {
+                        addresses.add(address);
+                    }
 
                     // Add conversation to list
                     conversations.add(conversation);
                 } while (cursor.moveToNext());
+                
+                // Second pass: batch lookup contact names
+                Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
+                Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
+                
+                // Third pass: assign contact names with fallbacks
+                for (Conversation conversation : conversations) {
+                    String address = conversation.getAddress();
+                    String contactName = contactNames.get(address);
+                    
+                    if (!TextUtils.isEmpty(contactName)) {
+                        conversation.setContactName(contactName);
+                        Log.d(TAG, "Found contact name '" + contactName + "' for address " + address);
+                    } else if (!TextUtils.isEmpty(address)) {
+                        // Fallback to address/phone number
+                        conversation.setContactName(address);
+                        Log.d(TAG, "Using address as contact name for " + address);
+                    } else {
+                        // Last resort fallback
+                        conversation.setContactName("Unknown Contact");
+                        Log.w(TAG, "No address or contact name available for thread " + conversation.getThreadId());
+                    }
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading conversations: " + e.getMessage(), e);
@@ -811,6 +1047,7 @@ public class MessageService {
             }
         }
 
+        Log.d(TAG, "Loaded " + conversations.size() + " conversations");
         return conversations;
     }
 
