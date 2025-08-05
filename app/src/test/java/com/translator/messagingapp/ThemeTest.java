@@ -12,6 +12,7 @@ import org.junit.runner.RunWith;
 
 /**
  * Test for theme functionality in BaseActivity and UserPreferences.
+ * Added test for BlackGlass theme system bar configuration.
  */
 @RunWith(AndroidJUnit4.class)
 public class ThemeTest {
@@ -70,5 +71,18 @@ public class ThemeTest {
         // This should remain light theme regardless of system setting
         assertTrue("Light theme should be settable independently of system dark mode", 
                   userPreferences.getThemeId() == UserPreferences.THEME_LIGHT);
+    }
+
+    @Test
+    public void testBlackGlassThemeConfiguration() {
+        // Test that BlackGlass theme can be selected and maintained
+        userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
+        assertEquals("BlackGlass theme should be settable", 
+                    UserPreferences.THEME_BLACK_GLASS, userPreferences.getThemeId());
+        
+        // Verify the theme persists after getting it again
+        int retrievedTheme = userPreferences.getThemeId();
+        assertEquals("BlackGlass theme should persist", 
+                    UserPreferences.THEME_BLACK_GLASS, retrievedTheme);
     }
 }

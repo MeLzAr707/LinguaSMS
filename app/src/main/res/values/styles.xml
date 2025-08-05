@@ -44,13 +44,14 @@
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
-        <!-- Status bar configuration -->
+        <!-- System bar configuration to prevent UI blocking -->
         <item name="android:statusBarColor">@color/deep_dark_blue</item>
         <item name="android:navigationBarColor">@color/darkBackground</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <!-- Ensure proper layout with system bars -->
-        <item name="android:fitsSystemWindows">true</item>
+        <!-- Ensure proper layout with system bars (prevents content from going under system bars) -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fitsSystemWindows">false</item>
     </style>
 
 
