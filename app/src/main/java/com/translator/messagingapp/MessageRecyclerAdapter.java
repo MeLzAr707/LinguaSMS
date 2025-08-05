@@ -78,6 +78,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     public MessageRecyclerAdapter(Context context, List<Message> messages, OnMessageClickListener listener) {
         this(context, messages);
         this.clickListener = listener;
+        android.util.Log.d(TAG, "MessageRecyclerAdapter created with " + (messages != null ? messages.size() : 0) + " messages");
     }
 
     /**
@@ -118,11 +119,13 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (position < 0 || position >= messages.size()) {
+            Log.w(TAG, "Invalid position: " + position + ", messages size: " + messages.size());
             return; // Prevent index out of bounds
         }
 
         Message message = messages.get(position);
         if (message == null) {
+            Log.w(TAG, "Message is null at position: " + position);
             return; // Skip binding if message is null
         }
 
@@ -144,9 +147,12 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         bindOutgoingMediaMessage((OutgoingMediaMessageViewHolder) holder, (MmsMessage) message, position);
                     }
                     break;
+                default:
+                    Log.w(TAG, "Unknown view type: " + holder.getItemViewType());
+                    break;
             }
         } catch (Exception e) {
-            android.util.Log.e(TAG, "Error binding view holder: " + e.getMessage(), e);
+            Log.e(TAG, "Error binding view holder at position " + position + ": " + e.getMessage(), e);
         }
     }
 

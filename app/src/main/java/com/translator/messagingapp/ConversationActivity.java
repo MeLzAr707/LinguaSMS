@@ -196,6 +196,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
+        Log.d(TAG, "Starting to load messages - threadId: " + threadId + ", address: " + address);
         showLoading(true);
 
         executorService.execute(() -> {
@@ -215,6 +216,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     loadedMessages = new ArrayList<>();
                 }
 
+                Log.d(TAG, "MessageService returned " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
+
                 if (isActivityDestroyed) {
                     Log.d(TAG, "Activity destroyed during loading, not updating UI");
                     return;
@@ -233,15 +236,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             Log.d(TAG, "Loaded " + loadedMessages.size() + " messages");
                             messages.clear();
                             messages.addAll(loadedMessages);
-                            adapter.notifyDataSetChanged();
+                            
+                            if (adapter != null) {
+                                adapter.notifyDataSetChanged();
+                                Log.d(TAG, "Adapter notified, item count: " + adapter.getItemCount());
+                            } else {
+                                Log.e(TAG, "Adapter is null!");
+                            }
+                            
                             scrollToBottom();
                             showEmptyState(false);
+                            
+                            Log.d(TAG, "Messages successfully displayed, RecyclerView visible: " + 
+                                  (messagesRecyclerView != null ? (messagesRecyclerView.getVisibility() == View.VISIBLE) : "RecyclerView is null"));
                         } else {
                             Log.d(TAG, "No messages found");
                             showEmptyState(true);
 
                             // Add a test message if no messages are found and debug is enabled
-                            if (userPreferences != null && userPreferences.isDebugModeEnabled()) {
+                            // OR if this is a debug build
+                            if ((userPreferences != null && userPreferences.isDebugModeEnabled()) || BuildConfig.DEBUG) {
                                 Log.d(TAG, "Adding test message for debugging");
                                 addTestMessage();
                             }
@@ -424,6 +438,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private void showEmptyState(boolean show) {
         if (emptyStateTextView != null) {
             emptyStateTextView.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        
+        // Ensure RecyclerView visibility is properly managed
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(show ? View.GONE : View.VISIBLE);
         }
     }
 
