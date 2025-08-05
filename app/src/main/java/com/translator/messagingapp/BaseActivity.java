@@ -62,29 +62,33 @@ public class BaseActivity extends AppCompatActivity {
     }
 
     /**
-     * Configures status bar for Black Glass theme to prevent it from being behind pull-down menu.
+     * Configures status bar for Black Glass theme to prevent it from being blocked by system UI.
      */
     private void configureBlackGlassStatusBar() {
         try {
-            // Make status bar transparent and handle insets properly
-            getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-            );
+            // Set proper system bar colors without making them transparent
+            getWindow().setStatusBarColor(getResources().getColor(R.color.deep_dark_blue, getTheme()));
+            getWindow().setNavigationBarColor(getResources().getColor(R.color.darkBackground, getTheme()));
             
-            // Set status bar content to light (white icons/text)
+            // Set status bar content to light (white icons/text) for dark theme
             View decorView = getWindow().getDecorView();
             WindowInsetsControllerCompat windowInsetsController = 
                 new WindowInsetsControllerCompat(getWindow(), decorView);
             windowInsetsController.setAppearanceLightStatusBars(false);
+            windowInsetsController.setAppearanceLightNavigationBars(false);
+            
+            // Ensure window handles system windows properly
+            decorView.setSystemUiVisibility(0); // Clear any problematic flags
             
         } catch (Exception e) {
             // Fallback - just set status bar color
             try {
                 getWindow().setStatusBarColor(getResources().getColor(R.color.deep_dark_blue, getTheme()));
+                getWindow().setNavigationBarColor(getResources().getColor(R.color.darkBackground, getTheme()));
             } catch (Exception ex) {
-                // Ultimate fallback
-                getWindow().setStatusBarColor(0xFF0D1A2D);
+                // Ultimate fallback with hardcoded colors
+                getWindow().setStatusBarColor(0xFF0D1A2D); // deep_dark_blue
+                getWindow().setNavigationBarColor(0xFF000000); // black
             }
         }
     }
