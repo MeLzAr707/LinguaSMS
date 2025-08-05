@@ -8,10 +8,11 @@
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+        <item name="android:windowBackground">@color/background_light</item>
     </style>
 
     <!-- No Action Bar theme -->
-    <style name="AppTheme.NoActionBar">
+    <style name="AppTheme.NoActionBar" parent="AppTheme">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -42,16 +43,16 @@
         <item name="alertDialogTheme">@style/BlackGlassAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
-        <item name="android:windowTranslucentStatus">true</item>
-        <item name="android:windowTranslucentNavigation">true</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
+        <!-- Status bar configuration -->
+        <item name="android:statusBarColor">@color/deep_dark_blue</item>
+        <item name="android:navigationBarColor">@color/darkBackground</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <!-- Ensure proper layout with system bars -->
+        <item name="android:fitsSystemWindows">true</item>
     </style>
 
-    <!-- Black Glass No Action Bar theme - Adding this back -->
-    <style name="AppTheme.BlackGlass.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
 
     <!-- Button style -->
     <style name="AppButton" parent="Widget.MaterialComponents.Button">
@@ -153,7 +154,13 @@
     </style>
 
     <!-- Dark theme NoActionBar variant -->
-    <style name="AppTheme.Dark.NoActionBar">
+    <style name="AppTheme.Dark.NoActionBar" parent="AppTheme.Dark">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- Black Glass No Action Bar theme -->
+    <style name="AppTheme.BlackGlass.NoActionBar" parent="AppTheme.BlackGlass">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>

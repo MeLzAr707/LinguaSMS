@@ -66,17 +66,6 @@ public class SettingsActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
     
-    @Override
-    public void onBackPressed() {
-        try {
-            super.onBackPressed();
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling back press", e);
-            // Fallback: finish the activity safely
-            finish();
-        }
-    }
-    
     /**
      * Fragment for displaying preferences.
      */
@@ -201,17 +190,21 @@ public class SettingsActivity extends BaseActivity {
                             int themeId = Integer.parseInt((String) newValue);
                             userPreferences.setThemeId(themeId);
                             
-                            // Use a handler to delay the recreation slightly
-                            // This allows the preference change to complete first
+                            // Refresh the current activity and then recreate to apply new theme
                             requireActivity().runOnUiThread(() -> {
                                 try {
+                                    // First recreate the settings activity
                                     requireActivity().recreate();
+                                    
+                                    // Also request refresh of main activity if it exists
+                                    if (requireActivity().getParent() != null) {
+                                        requireActivity().getParent().recreate();
+                                    }
                                 } catch (Exception e) {
-                                    Log.e(TAG, "Error recreating activity", e);
-                                    // Fallback: just finish the activity and let the user reopen settings
-                                    requireActivity().finish();
+                                    Log.e(TAG, "Error recreating activities for theme change", e);
                                 }
                             });
+                            
                             return true;
                         } catch (Exception e) {
                             Log.e(TAG, "Error setting theme", e);
