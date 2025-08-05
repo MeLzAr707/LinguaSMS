@@ -189,6 +189,13 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         
         String contactName = conversation.getContactName();
         String address = conversation.getAddress();
+        String threadId = conversation.getThreadId();
+        
+        // Safety check: never display threadId as the contact name
+        if (!TextUtils.isEmpty(contactName) && contactName.equals(threadId)) {
+            Log.e(TAG, "WARNING: Contact name equals threadId (" + threadId + ") - this should not happen!");
+            contactName = null; // Force fallback logic
+        }
         
         // First priority: Non-empty contact name that's not just the phone number
         if (!TextUtils.isEmpty(contactName) && !contactName.equals(address)) {
@@ -197,6 +204,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         
         // Second priority: Phone number/address
         if (!TextUtils.isEmpty(address)) {
+            // Additional safety check: make sure address is not threadId
+            if (address.equals(threadId)) {
+                Log.e(TAG, "WARNING: Address equals threadId (" + threadId + ") - this should not happen!");
+                return context.getString(R.string.unknown_contact);
+            }
             return address;
         }
         
