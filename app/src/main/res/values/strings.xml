@@ -357,7 +357,9 @@
     <!-- Error and UI messages -->
     <string name="error">Error</string>
     <string name="settings_error">Settings Error</string>
+    <string name="settings_error_message">Unable to load settings. Please try again.</string>
     <string name="go_back">Go Back</string>
+    <string name="cancel">Cancel</string>
     <string name="unknown_contact">Unknown Contact</string>
     <string name="error_loading_conversation">Error loading conversation</string>
 

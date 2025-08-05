@@ -189,7 +189,22 @@ public class SettingsActivity extends BaseActivity {
                         try {
                             int themeId = Integer.parseInt((String) newValue);
                             userPreferences.setThemeId(themeId);
-                            requireActivity().recreate();
+                            
+                            // Refresh the current activity and then recreate to apply new theme
+                            requireActivity().runOnUiThread(() -> {
+                                try {
+                                    // First recreate the settings activity
+                                    requireActivity().recreate();
+                                    
+                                    // Also request refresh of main activity if it exists
+                                    if (requireActivity().getParent() != null) {
+                                        requireActivity().getParent().recreate();
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error recreating activities for theme change", e);
+                                }
+                            });
+                            
                             return true;
                         } catch (Exception e) {
                             Log.e(TAG, "Error setting theme", e);
