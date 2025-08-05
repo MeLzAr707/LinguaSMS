@@ -19,6 +19,10 @@ public class BaseActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         // Apply theme before calling super.onCreate()
         applyTheme();
+        
+        // Configure window for OpenGL compatibility
+        OpenGLCompatibilityHelper.configureWindowForOpenGL(this);
+        
         super.onCreate(savedInstanceState);
     }
 
@@ -66,25 +70,26 @@ public class BaseActivity extends AppCompatActivity {
      */
     private void configureBlackGlassStatusBar() {
         try {
-            // Make status bar transparent and handle insets properly
-            getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-            );
+            // Use the OpenGL-safe helper to configure system bars
+            int statusBarColor = getResources().getColor(R.color.deep_dark_blue, getTheme());
+            int navigationBarColor = getResources().getColor(R.color.darkBackground, getTheme());
             
-            // Set status bar content to light (white icons/text)
+            OpenGLCompatibilityHelper.safelyConfigureSystemBars(this, statusBarColor, navigationBarColor);
+            
+            // Set status bar content to light (white icons/text) without layout conflicts
             View decorView = getWindow().getDecorView();
             WindowInsetsControllerCompat windowInsetsController = 
                 new WindowInsetsControllerCompat(getWindow(), decorView);
             windowInsetsController.setAppearanceLightStatusBars(false);
+            windowInsetsController.setAppearanceLightNavigationBars(false);
             
         } catch (Exception e) {
-            // Fallback - just set status bar color
+            // Fallback with hardcoded colors using the safe helper
             try {
-                getWindow().setStatusBarColor(getResources().getColor(R.color.deep_dark_blue, getTheme()));
+                OpenGLCompatibilityHelper.safelyConfigureSystemBars(this, 0xFF0D1A2D, 0xFF0D1A2D);
             } catch (Exception ex) {
-                // Ultimate fallback
-                getWindow().setStatusBarColor(0xFF0D1A2D);
+                // Ultimate fallback - log the issue for debugging
+                android.util.Log.e("BaseActivity", "Failed to configure Black Glass status bar", ex);
             }
         }
     }
@@ -121,5 +126,15 @@ public class BaseActivity extends AppCompatActivity {
      */
     public void refreshTheme() {
         recreateWithFade();
+    }
+    
+    /**
+     * Debug method to log OpenGL configuration.
+     * Can be called when troubleshooting rendering issues.
+     */
+    public void debugOpenGLConfiguration() {
+        if (BuildConfig.DEBUG) {
+            OpenGLCompatibilityHelper.logWindowConfiguration(this);
+        }
     }
 }
