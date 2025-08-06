@@ -154,7 +154,7 @@ public class DebugActivity extends AppCompatActivity {
 
         for (String addr : addressFormats) {
             try (Cursor cursor = getContentResolver().query(
-                    Telephony.Sms.Conversations.CONTENT_URI,
+                    Uri.parse("content://sms/conversations"),
                     new String[]{"thread_id"},
                     null, null, null)) {
 
@@ -409,8 +409,8 @@ public class DebugActivity extends AppCompatActivity {
         StringBuilder result = new StringBuilder();
 
         try (Cursor cursor = getContentResolver().query(
-                Telephony.Sms.Conversations.CONTENT_URI,
-                new String[]{"thread_id", "recipient_ids", "message_count"},
+                Uri.parse("content://sms/conversations"),
+                new String[]{"thread_id", "message_count"},
                 null, null, null)) {
 
             if (cursor != null && cursor.moveToFirst()) {
