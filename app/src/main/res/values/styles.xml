@@ -9,6 +9,9 @@
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
         <item name="android:windowBackground">@color/background_light</item>
+        <!-- OpenGL compatibility settings -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
     </style>
 
     <!-- No Action Bar theme -->
@@ -29,6 +32,9 @@
         <item name="alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
         <item name="cardViewStyle">@style/DarkCardView</item>
+        <!-- OpenGL compatibility settings -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
     </style>
 
     <!-- Black Glass theme with Deep Dark Blue accents -->
@@ -44,14 +50,16 @@
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
-        <!-- System bar configuration to prevent UI blocking -->
+        <!-- Status bar configuration -->
         <item name="android:statusBarColor">@color/deep_dark_blue</item>
         <item name="android:navigationBarColor">@color/darkBackground</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <!-- Ensure proper layout with system bars (prevents content from going under system bars) -->
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:fitsSystemWindows">false</item>
+        <!-- Ensure proper layout with system bars without OpenGL conflicts -->
+        <item name="android:fitsSystemWindows">true</item>
+        <!-- OpenGL compatibility settings -->
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">false</item>
     </style>
 
 

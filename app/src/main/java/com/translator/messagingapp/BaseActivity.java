@@ -2,7 +2,6 @@ package com.translator.messagingapp;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -13,64 +12,18 @@ import androidx.core.view.WindowInsetsControllerCompat;
 /**
  * Base activity for all activities in the app.
  * Handles theme application and system UI configuration.
- * Includes defensive measures against reflection-based NullPointerExceptions.
  */
 public class BaseActivity extends AppCompatActivity {
-    private static final String TAG = "BaseActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply theme before calling super.onCreate()
         applyTheme();
         
-        // Add defensive GC control to prevent NPEs during activity creation
-        safeGcControl(true);
+        // Configure window for OpenGL compatibility
+        OpenGLCompatibilityHelper.configureWindowForOpenGL(this);
         
-        try {
-            super.onCreate(savedInstanceState);
-        } finally {
-            // Resume GC after onCreate completes
-            safeGcControl(false);
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        // Protect against NPEs during resume
-        safeGcControl(true);
-        
-        try {
-            super.onResume();
-        } finally {
-            safeGcControl(false);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        // Protect against NPEs during pause
-        safeGcControl(true);
-        
-        try {
-            super.onPause();
-        } finally {
-            safeGcControl(false);
-        }
-    }
-
-    /**
-     * Safely attempts to control garbage collection during critical operations.
-     * This prevents NullPointerExceptions in reflection-based GC suppression code.
-     * 
-     * @param suppress Whether to suppress GC
-     */
-    private void safeGcControl(boolean suppress) {
-        try {
-            ReflectionUtils.tryGcControl(suppress);
-        } catch (Exception e) {
-            Log.d(TAG, "GC control failed safely: " + e.getMessage());
-            // Ignore - this is defensive and should not affect app functionality
-        }
+        super.onCreate(savedInstanceState);
     }
 
     /**
@@ -113,33 +66,30 @@ public class BaseActivity extends AppCompatActivity {
     }
 
     /**
-     * Configures status bar for Black Glass theme to prevent it from being blocked by system UI.
+     * Configures status bar for Black Glass theme to prevent it from being behind pull-down menu.
      */
     private void configureBlackGlassStatusBar() {
         try {
-            // Set proper system bar colors without making them transparent
-            getWindow().setStatusBarColor(getResources().getColor(R.color.deep_dark_blue, getTheme()));
-            getWindow().setNavigationBarColor(getResources().getColor(R.color.darkBackground, getTheme()));
+            // Use the OpenGL-safe helper to configure system bars
+            int statusBarColor = getResources().getColor(R.color.deep_dark_blue, getTheme());
+            int navigationBarColor = getResources().getColor(R.color.darkBackground, getTheme());
             
-            // Set status bar content to light (white icons/text) for dark theme
+            OpenGLCompatibilityHelper.safelyConfigureSystemBars(this, statusBarColor, navigationBarColor);
+            
+            // Set status bar content to light (white icons/text) without layout conflicts
             View decorView = getWindow().getDecorView();
             WindowInsetsControllerCompat windowInsetsController = 
                 new WindowInsetsControllerCompat(getWindow(), decorView);
             windowInsetsController.setAppearanceLightStatusBars(false);
             windowInsetsController.setAppearanceLightNavigationBars(false);
             
-            // Ensure window handles system windows properly
-            decorView.setSystemUiVisibility(0); // Clear any problematic flags
-            
         } catch (Exception e) {
-            // Fallback - just set status bar color
+            // Fallback with hardcoded colors using the safe helper
             try {
-                getWindow().setStatusBarColor(getResources().getColor(R.color.deep_dark_blue, getTheme()));
-                getWindow().setNavigationBarColor(getResources().getColor(R.color.darkBackground, getTheme()));
+                OpenGLCompatibilityHelper.safelyConfigureSystemBars(this, 0xFF0D1A2D, 0xFF0D1A2D);
             } catch (Exception ex) {
-                // Ultimate fallback with hardcoded colors
-                getWindow().setStatusBarColor(0xFF0D1A2D); // deep_dark_blue
-                getWindow().setNavigationBarColor(0xFF000000); // black
+                // Ultimate fallback - log the issue for debugging
+                android.util.Log.e("BaseActivity", "Failed to configure Black Glass status bar", ex);
             }
         }
     }
@@ -159,40 +109,15 @@ public class BaseActivity extends AppCompatActivity {
 
     /**
      * Recreates the activity with fade animation.
-     * Protected against reflection-based NPEs during transitions.
      */
     protected void recreateWithFade() {
-        // Protect against NPEs during activity recreation
-        safeGcControl(true);
-        
         try {
-            // Apply transition animation with GC protection
+            // Apply transition animation
             recreate();
-            safeOverridePendingTransition();
-        } catch (Exception e) {
-            Log.w(TAG, "Recreation with fade failed, trying simple recreate", e);
-            // Fallback to simple recreate
-            try {
-                recreate();
-            } catch (Exception ex) {
-                Log.e(TAG, "Simple recreate also failed", ex);
-                // Final fallback - just refresh theme without recreating
-                applyTheme();
-            }
-        } finally {
-            safeGcControl(false);
-        }
-    }
-
-    /**
-     * Safely override pending transition to prevent reflection-based NPEs.
-     */
-    private void safeOverridePendingTransition() {
-        try {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         } catch (Exception e) {
-            Log.d(TAG, "overridePendingTransition failed safely: " + e.getMessage());
-            // Continue without animation - not critical
+            // Fallback to simple recreate
+            recreate();
         }
     }
 
@@ -201,5 +126,15 @@ public class BaseActivity extends AppCompatActivity {
      */
     public void refreshTheme() {
         recreateWithFade();
+    }
+    
+    /**
+     * Debug method to log OpenGL configuration.
+     * Can be called when troubleshooting rendering issues.
+     */
+    public void debugOpenGLConfiguration() {
+        if (BuildConfig.DEBUG) {
+            OpenGLCompatibilityHelper.logWindowConfiguration(this);
+        }
     }
 }

@@ -11,6 +11,9 @@ public class SplashActivity extends AppCompatActivity {
         // Use the regular app theme
         setTheme(R.style.AppTheme);
 
+        // Configure window for OpenGL compatibility before calling super
+        OpenGLCompatibilityHelper.configureWindowForOpenGL(this);
+
         super.onCreate(savedInstanceState);
 
         // Initialize app components
