@@ -410,7 +410,7 @@ public class DebugActivity extends AppCompatActivity {
 
         try (Cursor cursor = getContentResolver().query(
                 Uri.parse("content://sms/conversations"),
-                new String[]{"thread_id", "recipient_ids", "message_count"},
+                new String[]{"thread_id", "message_count"},
                 null, null, null)) {
 
             if (cursor != null && cursor.moveToFirst()) {

@@ -320,30 +320,50 @@ public class MessageService {
         Cursor cursor = null;
 
         try {
-            // Query the canonical addresses table
-            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+            // Try SMS first
+            Uri smsUri = Telephony.Sms.CONTENT_URI;
             cursor = context.getContentResolver().query(
-                    uri,
-                    new String[]{"_id"},
-                    "address = ?",
+                    smsUri,
+                    new String[]{Telephony.Sms.THREAD_ID},
+                    Telephony.Sms.ADDRESS + " = ?",
                     new String[]{address},
-                    null);
+                    Telephony.Sms.DATE + " DESC LIMIT 1");
 
             if (cursor != null && cursor.moveToFirst()) {
-                String recipientId = cursor.getString(0);
-                cursor.close();
+                int threadIdIndex = cursor.getColumnIndex(Telephony.Sms.THREAD_ID);
+                if (threadIdIndex >= 0) {
+                    threadId = cursor.getString(threadIdIndex);
+                    Log.d(TAG, "Found thread ID via SMS: " + threadId + " for address: " + address);
+                }
+            }
 
-                // Query the threads table
-                uri = Uri.parse("content://mms-sms/conversations?simple=true");
+            // If not found in SMS, try MMS
+            if (TextUtils.isEmpty(threadId)) {
+                if (cursor != null) {
+                    cursor.close();
+                }
+                
+                Uri mmsUri = Telephony.Mms.CONTENT_URI;
                 cursor = context.getContentResolver().query(
-                        uri,
-                        new String[]{"_id"},
-                        "recipient_ids = ?",
-                        new String[]{recipientId},
-                        null);
+                        mmsUri,
+                        new String[]{Telephony.Mms.THREAD_ID},
+                        null,
+                        null,
+                        Telephony.Mms.DATE + " DESC");
 
                 if (cursor != null && cursor.moveToFirst()) {
-                    threadId = cursor.getString(0);
+                    do {
+                        int threadIdIndex = cursor.getColumnIndex(Telephony.Mms.THREAD_ID);
+                        if (threadIdIndex >= 0) {
+                            String candidateThreadId = cursor.getString(threadIdIndex);
+                            // Check if this thread contains our address
+                            if (checkThreadContainsAddress(candidateThreadId, address)) {
+                                threadId = candidateThreadId;
+                                Log.d(TAG, "Found thread ID via MMS: " + threadId + " for address: " + address);
+                                break;
+                            }
+                        }
+                    } while (cursor.moveToNext());
                 }
             }
         } catch (Exception e) {
@@ -355,6 +375,48 @@ public class MessageService {
         }
 
         return threadId;
+    }
+
+    /**
+     * Helper method to check if a thread contains a specific address.
+     * This is used for MMS threads where we need to check the recipient addresses.
+     */
+    private boolean checkThreadContainsAddress(String threadId, String targetAddress) {
+        if (TextUtils.isEmpty(threadId) || TextUtils.isEmpty(targetAddress)) {
+            return false;
+        }
+
+        Cursor cursor = null;
+        try {
+            // Query MMS address table for this thread
+            Uri uri = Uri.parse("content://mms/" + threadId + "/addr");
+            cursor = context.getContentResolver().query(
+                    uri,
+                    new String[]{"address"},
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    int addressIndex = cursor.getColumnIndex("address");
+                    if (addressIndex >= 0) {
+                        String address = cursor.getString(addressIndex);
+                        if (targetAddress.equals(address)) {
+                            return true;
+                        }
+                    }
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking thread addresses for thread: " + threadId, e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1078,54 +1140,7 @@ public class MessageService {
         try {
             Log.d(TAG, "Getting address for thread ID: " + threadId);
             
-            // Try method 1: Query the canonical addresses table via recipient_ids
-            String recipientId = null;
-            Cursor threadCursor = null;
-
-            try {
-                threadCursor = context.getContentResolver().query(
-                        Uri.parse("content://mms-sms/conversations?simple=true"),
-                        new String[]{"recipient_ids"},
-                        "_id = ?",
-                        new String[]{threadId},
-                        null);
-
-                if (threadCursor != null && threadCursor.moveToFirst()) {
-                    recipientId = threadCursor.getString(0);
-                    Log.d(TAG, "Found recipient ID: " + recipientId + " for thread: " + threadId);
-                }
-            } finally {
-                if (threadCursor != null) {
-                    threadCursor.close();
-                }
-            }
-
-            if (!TextUtils.isEmpty(recipientId)) {
-                // Now get the address for this recipient ID
-                Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
-                cursor = context.getContentResolver().query(
-                        uri,
-                        new String[]{"address"},
-                        "_id = ?",
-                        new String[]{recipientId},
-                        null);
-
-                if (cursor != null && cursor.moveToFirst()) {
-                    address = cursor.getString(0);
-                    if (!TextUtils.isEmpty(address)) {
-                        Log.d(TAG, "Found address: " + address + " for recipient ID: " + recipientId);
-                        return address;
-                    }
-                }
-            }
-
-            // Method 2: Fallback - query SMS directly for this thread
-            Log.d(TAG, "Canonical address lookup failed, trying SMS query for thread: " + threadId);
-            if (cursor != null) {
-                cursor.close();
-                cursor = null;
-            }
-
+            // Method 1: Try SMS directly for this thread
             cursor = context.getContentResolver().query(
                     Telephony.Sms.CONTENT_URI,
                     new String[]{Telephony.Sms.ADDRESS},
