@@ -2,6 +2,7 @@ package com.translator.messagingapp;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -12,14 +13,64 @@ import androidx.core.view.WindowInsetsControllerCompat;
 /**
  * Base activity for all activities in the app.
  * Handles theme application and system UI configuration.
+ * Includes defensive measures against reflection-based NullPointerExceptions.
  */
 public class BaseActivity extends AppCompatActivity {
+    private static final String TAG = "BaseActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply theme before calling super.onCreate()
         applyTheme();
-        super.onCreate(savedInstanceState);
+        
+        // Add defensive GC control to prevent NPEs during activity creation
+        safeGcControl(true);
+        
+        try {
+            super.onCreate(savedInstanceState);
+        } finally {
+            // Resume GC after onCreate completes
+            safeGcControl(false);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        // Protect against NPEs during resume
+        safeGcControl(true);
+        
+        try {
+            super.onResume();
+        } finally {
+            safeGcControl(false);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        // Protect against NPEs during pause
+        safeGcControl(true);
+        
+        try {
+            super.onPause();
+        } finally {
+            safeGcControl(false);
+        }
+    }
+
+    /**
+     * Safely attempts to control garbage collection during critical operations.
+     * This prevents NullPointerExceptions in reflection-based GC suppression code.
+     * 
+     * @param suppress Whether to suppress GC
+     */
+    private void safeGcControl(boolean suppress) {
+        try {
+            ReflectionUtils.tryGcControl(suppress);
+        } catch (Exception e) {
+            Log.d(TAG, "GC control failed safely: " + e.getMessage());
+            // Ignore - this is defensive and should not affect app functionality
+        }
     }
 
     /**
@@ -108,15 +159,40 @@ public class BaseActivity extends AppCompatActivity {
 
     /**
      * Recreates the activity with fade animation.
+     * Protected against reflection-based NPEs during transitions.
      */
     protected void recreateWithFade() {
+        // Protect against NPEs during activity recreation
+        safeGcControl(true);
+        
         try {
-            // Apply transition animation
+            // Apply transition animation with GC protection
             recreate();
+            safeOverridePendingTransition();
+        } catch (Exception e) {
+            Log.w(TAG, "Recreation with fade failed, trying simple recreate", e);
+            // Fallback to simple recreate
+            try {
+                recreate();
+            } catch (Exception ex) {
+                Log.e(TAG, "Simple recreate also failed", ex);
+                // Final fallback - just refresh theme without recreating
+                applyTheme();
+            }
+        } finally {
+            safeGcControl(false);
+        }
+    }
+
+    /**
+     * Safely override pending transition to prevent reflection-based NPEs.
+     */
+    private void safeOverridePendingTransition() {
+        try {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         } catch (Exception e) {
-            // Fallback to simple recreate
-            recreate();
+            Log.d(TAG, "overridePendingTransition failed safely: " + e.getMessage());
+            // Continue without animation - not critical
         }
     }
 
