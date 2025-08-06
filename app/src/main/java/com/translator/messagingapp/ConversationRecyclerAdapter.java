@@ -6,10 +6,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -114,6 +117,9 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             // Set contact name or phone number with improved fallback logic
             String displayName = getDisplayName(conversation);
             holder.contactNameTextView.setText(displayName);
+            
+            // Initialize contact avatar with error handling
+            initializeContactAvatar(holder, conversation);
             
             // Log for debugging
             Log.d(TAG, "Displaying conversation: name='" + conversation.getContactName() + 
@@ -258,9 +264,64 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
+     * Initialize contact avatar with proper error handling to prevent bitmap creation errors.
+     * 
+     * @param holder The ViewHolder containing the avatar view
+     * @param conversation The conversation data
+     */
+    private void initializeContactAvatar(ViewHolder holder, Conversation conversation) {
+        if (holder.contactAvatarImageView == null) {
+            return;
+        }
+
+        try {
+            // Ensure the view is visible and has proper dimensions
+            holder.contactAvatarImageView.setVisibility(View.VISIBLE);
+            
+            // Check if view has been measured and has valid dimensions
+            int width = holder.contactAvatarImageView.getWidth();
+            int height = holder.contactAvatarImageView.getHeight();
+            
+            // If dimensions are not available yet (view not measured), use layout params
+            if (width <= 0 || height <= 0) {
+                ViewGroup.LayoutParams params = holder.contactAvatarImageView.getLayoutParams();
+                if (params != null) {
+                    width = params.width;
+                    height = params.height;
+                }
+            }
+            
+            // Log dimensions for debugging
+            Log.d(TAG, "Avatar dimensions: width=" + width + ", height=" + height);
+            
+            // Always set a default image to prevent bitmap creation issues
+            // This ensures the CircleImageView has a valid drawable to work with
+            holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
+            
+            // TODO: In the future, you could add logic here to:
+            // 1. Load actual contact photos
+            // 2. Generate initials-based avatars
+            // 3. Use Glide or similar library for image loading
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up contact avatar for position", e);
+            // Fallback: ensure the view is visible but with default image
+            try {
+                holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
+                holder.contactAvatarImageView.setVisibility(View.VISIBLE);
+            } catch (Exception fallbackException) {
+                Log.e(TAG, "Fallback avatar setup also failed", fallbackException);
+                // Last resort: hide the avatar to prevent crashes
+                holder.contactAvatarImageView.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    /**
      * ViewHolder for conversation items.
      */
     public static class ViewHolder extends RecyclerView.ViewHolder {
+        CircleImageView contactAvatarImageView;
         TextView contactNameTextView;
         TextView snippetTextView;
         TextView dateTextView;
@@ -269,11 +330,45 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            contactAvatarImageView = itemView.findViewById(R.id.contact_avatar);
             contactNameTextView = itemView.findViewById(R.id.contact_name);
             snippetTextView = itemView.findViewById(R.id.snippet);
             dateTextView = itemView.findViewById(R.id.date);
             unreadIndicator = itemView.findViewById(R.id.unread_indicator);
             unreadCountTextView = itemView.findViewById(R.id.unread_count);
+            
+            // Initialize CircleImageView with proper error handling to prevent bitmap creation issues
+            initializeContactAvatar();
+        }
+        
+        /**
+         * Initialize the contact avatar with proper error handling.
+         * This prevents bitmap creation errors when dimensions are invalid.
+         */
+        private void initializeContactAvatar() {
+            if (contactAvatarImageView != null) {
+                try {
+                    // Set a default background to ensure the view has proper dimensions
+                    contactAvatarImageView.setImageResource(R.drawable.circle_background);
+                    
+                    // Ensure the view has proper layout parameters
+                    ViewGroup.LayoutParams params = contactAvatarImageView.getLayoutParams();
+                    if (params != null) {
+                        // Ensure minimum dimensions to prevent bitmap creation errors
+                        if (params.width <= 0) {
+                            params.width = 48; // 48dp converted to pixels would be handled by the system
+                        }
+                        if (params.height <= 0) {
+                            params.height = 48;
+                        }
+                        contactAvatarImageView.setLayoutParams(params);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing contact avatar", e);
+                    // Fallback: hide the avatar if there's an error
+                    contactAvatarImageView.setVisibility(View.GONE);
+                }
+            }
         }
     }
 
