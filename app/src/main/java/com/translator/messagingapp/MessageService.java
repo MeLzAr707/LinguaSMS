@@ -321,11 +321,11 @@ public class MessageService {
 
         try {
             // First, get the recipient ID for this address
-            Uri canonicalUri = Telephony.CanonicalAddressesColumns.CONTENT_URI;
+            Uri canonicalUri = Uri.parse("content://mms-sms/canonical-addresses");
             cursor = context.getContentResolver().query(
                     canonicalUri,
-                    new String[]{Telephony.CanonicalAddressesColumns._ID},
-                    Telephony.CanonicalAddressesColumns.ADDRESS + " = ?",
+                    new String[]{"_id"},
+                    "address = ?",
                     new String[]{address},
                     null);
 
@@ -1089,16 +1089,16 @@ public class MessageService {
         try {
             // The recipientIds is typically a single ID for SMS conversations
             // Query the canonical addresses table directly
-            Uri uri = Telephony.CanonicalAddressesColumns.CONTENT_URI;
+            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
             cursor = context.getContentResolver().query(
                     uri,
-                    new String[]{Telephony.CanonicalAddressesColumns.ADDRESS},
-                    Telephony.CanonicalAddressesColumns._ID + " = ?",
+                    new String[]{"address"},
+                    "_id = ?",
                     new String[]{recipientIds},
                     null);
 
             if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex(Telephony.CanonicalAddressesColumns.ADDRESS);
+                int addressIndex = cursor.getColumnIndex("address");
                 if (addressIndex >= 0) {
                     address = cursor.getString(addressIndex);
                     Log.d(TAG, "Found address: " + address + " for recipient ID: " + recipientIds);
