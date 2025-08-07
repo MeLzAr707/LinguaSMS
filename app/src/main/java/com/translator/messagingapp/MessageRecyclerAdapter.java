@@ -97,28 +97,53 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View view;
 
-        switch (viewType) {
-            case VIEW_TYPE_INCOMING:
-                android.util.Log.d(TAG, "Creating incoming message view holder");
-                view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
-                return new IncomingMessageViewHolder(view);
-            case VIEW_TYPE_OUTGOING:
-                android.util.Log.d(TAG, "Creating outgoing message view holder");
-                view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
-                return new OutgoingMessageViewHolder(view);
-            case VIEW_TYPE_INCOMING_MEDIA:
-                android.util.Log.d(TAG, "Creating incoming media message view holder");
-                view = inflater.inflate(R.layout.item_message_incoming_media, parent, false);
-                return new IncomingMediaMessageViewHolder(view);
-            case VIEW_TYPE_OUTGOING_MEDIA:
-                android.util.Log.d(TAG, "Creating outgoing media message view holder");
-                view = inflater.inflate(R.layout.item_message_outgoing_media, parent, false);
-                return new OutgoingMediaMessageViewHolder(view);
-            default:
-                // Fallback to incoming message layout if view type is invalid
-                android.util.Log.w(TAG, "Unknown viewType: " + viewType + ", falling back to incoming message layout");
-                view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
-                return new IncomingMessageViewHolder(view);
+        try {
+            switch (viewType) {
+                case VIEW_TYPE_INCOMING:
+                    android.util.Log.d(TAG, "Creating incoming message view holder");
+                    view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                    android.util.Log.d(TAG, "Successfully inflated incoming message layout");
+                    return new IncomingMessageViewHolder(view);
+                case VIEW_TYPE_OUTGOING:
+                    android.util.Log.d(TAG, "Creating outgoing message view holder");
+                    view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
+                    android.util.Log.d(TAG, "Successfully inflated outgoing message layout");
+                    return new OutgoingMessageViewHolder(view);
+                case VIEW_TYPE_INCOMING_MEDIA:
+                    android.util.Log.d(TAG, "Creating incoming media message view holder");
+                    try {
+                        view = inflater.inflate(R.layout.item_message_incoming_media, parent, false);
+                        android.util.Log.d(TAG, "Successfully inflated incoming media layout");
+                        return new IncomingMediaMessageViewHolder(view);
+                    } catch (Exception e) {
+                        android.util.Log.w(TAG, "Failed to inflate incoming media layout, using regular incoming: " + e.getMessage());
+                        view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                        return new IncomingMessageViewHolder(view);
+                    }
+                case VIEW_TYPE_OUTGOING_MEDIA:
+                    android.util.Log.d(TAG, "Creating outgoing media message view holder");
+                    try {
+                        view = inflater.inflate(R.layout.item_message_outgoing_media, parent, false);
+                        android.util.Log.d(TAG, "Successfully inflated outgoing media layout");
+                        return new OutgoingMediaMessageViewHolder(view);
+                    } catch (Exception e) {
+                        android.util.Log.w(TAG, "Failed to inflate outgoing media layout, using regular outgoing: " + e.getMessage());
+                        view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
+                        return new OutgoingMessageViewHolder(view);
+                    }
+                default:
+                    // Fallback to incoming message layout if view type is invalid
+                    android.util.Log.w(TAG, "Unknown viewType: " + viewType + ", falling back to incoming message layout");
+                    view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                    return new IncomingMessageViewHolder(view);
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Critical error in onCreateViewHolder: " + e.getMessage(), e);
+            // Emergency fallback - create a simple text view if all else fails
+            android.widget.TextView textView = new android.widget.TextView(parent.getContext());
+            textView.setText("Error loading message view");
+            textView.setPadding(16, 16, 16, 16);
+            return new RecyclerView.ViewHolder(textView) {};
         }
     }
 
@@ -320,18 +345,23 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     private void setMessageTextWithHighlighting(TextView textView, Message message) {
         if (textView == null || message == null) {
+            android.util.Log.e(TAG, "setMessageTextWithHighlighting: textView or message is null");
             return;
         }
 
         String messageText = message.getBody();
         if (messageText == null) {
             messageText = ""; // Use empty string if body is null
+            android.util.Log.w(TAG, "Message body is null, using empty string");
         }
+
+        android.util.Log.d(TAG, "Setting message text: " + messageText.substring(0, Math.min(50, messageText.length())));
 
         String searchQuery = message.getSearchQuery();
 
         if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
             messageText = message.getTranslatedText();
+            android.util.Log.d(TAG, "Using translated text: " + messageText.substring(0, Math.min(50, messageText.length())));
         }
 
         if (!TextUtils.isEmpty(searchQuery) && !TextUtils.isEmpty(messageText)) {
@@ -363,11 +393,16 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 textView.setText(spannableString);
             } catch (Exception e) {
                 // Fallback to plain text if highlighting fails
+                android.util.Log.w(TAG, "Highlighting failed, using plain text: " + e.getMessage());
                 textView.setText(messageText);
             }
         } else {
             textView.setText(messageText);
         }
+
+        // Ensure the TextView is visible
+        textView.setVisibility(View.VISIBLE);
+        android.util.Log.d(TAG, "TextView visibility set to VISIBLE");
 
         // Set typeface based on translation state
         try {
@@ -378,6 +413,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             }
         } catch (Exception e) {
             // Ignore typeface errors
+            android.util.Log.w(TAG, "Typeface setting failed: " + e.getMessage());
         }
     }
 

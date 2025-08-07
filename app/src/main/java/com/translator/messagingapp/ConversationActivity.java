@@ -148,9 +148,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 messagesRecyclerView.setAdapter(adapter);
                 Log.d(TAG, "RecyclerView adapter set. Initial item count: " + adapter.getItemCount());
                 
-                // Log RecyclerView visibility
+                // Log RecyclerView visibility and dimensions
                 Log.d(TAG, "RecyclerView visibility: " + messagesRecyclerView.getVisibility() + 
                     " (VISIBLE=" + View.VISIBLE + ", GONE=" + View.GONE + ", INVISIBLE=" + View.INVISIBLE + ")");
+                
+                // Post a runnable to check RecyclerView dimensions after layout
+                messagesRecyclerView.post(() -> {
+                    Log.d(TAG, "RecyclerView dimensions: " + messagesRecyclerView.getWidth() + "x" + messagesRecyclerView.getHeight());
+                    Log.d(TAG, "RecyclerView has LayoutManager: " + (messagesRecyclerView.getLayoutManager() != null));
+                });
             } else {
                 Log.e(TAG, "messages_recycler_view not found in layout");
             }
@@ -245,8 +251,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             
                             if (adapter != null) {
                                 Log.d(TAG, "Notifying adapter of data change. Adapter item count: " + adapter.getItemCount());
-                                adapter.notifyDataSetChanged();
-                                Log.d(TAG, "Adapter notifyDataSetChanged() called successfully");
+                                // Ensure this runs on the main thread
+                                runOnUiThread(() -> {
+                                    try {
+                                        adapter.notifyDataSetChanged();
+                                        Log.d(TAG, "Adapter notifyDataSetChanged() called successfully on UI thread");
+                                        
+                                        // Additional check to ensure the RecyclerView is properly set up
+                                        if (messagesRecyclerView != null) {
+                                            messagesRecyclerView.post(() -> {
+                                                Log.d(TAG, "RecyclerView child count after update: " + messagesRecyclerView.getChildCount());
+                                                Log.d(TAG, "RecyclerView adapter: " + messagesRecyclerView.getAdapter());
+                                                if (messagesRecyclerView.getAdapter() != null) {
+                                                    Log.d(TAG, "RecyclerView adapter item count: " + messagesRecyclerView.getAdapter().getItemCount());
+                                                }
+                                            });
+                                        }
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Error notifying adapter: " + e.getMessage(), e);
+                                    }
+                                });
                             } else {
                                 Log.e(TAG, "Adapter is null - cannot notify of data changes!");
                             }
@@ -873,6 +897,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Delete conversation
             deleteConversation();
             return true;
+        } else if (id == R.id.action_test_messages) {
+            // Add test messages for debugging - new menu option
+            addMultipleTestMessages();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -956,9 +984,61 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Delete conversation
+     * Add multiple test messages for debugging
      */
-    private void deleteConversation() {
+    private void addMultipleTestMessages() {
+        try {
+            Log.d(TAG, "Adding multiple test messages for debugging");
+            
+            messages.clear(); // Start fresh
+            
+            // Add several test messages with different types
+            String[] testMessages = {
+                "📱 Incoming test message: Hello! This is a test message to verify the RecyclerView display.",
+                "📤 Outgoing test message: This should appear on the right side as an outgoing message.",
+                "🌍 Translated message: Hola! ¿Cómo estás? This message can be translated.",
+                "📷 Media message: This is a message with potential media content.",
+                "⚡ Quick message: Short text.",
+                "📝 Long message: This is a longer test message that contains more text to see how the message bubble handles longer content and wrapping. It should display properly in the conversation view and not cause any layout issues."
+            };
+            
+            boolean[] isIncoming = {true, false, true, false, true, false};
+            
+            for (int i = 0; i < testMessages.length; i++) {
+                SmsMessage testMessage = new SmsMessage();
+                testMessage.setBody(testMessages[i]);
+                testMessage.setAddress(TextUtils.isEmpty(address) ? "+1234567890" : address);
+                testMessage.setDate(System.currentTimeMillis() - (testMessages.length - i) * 60000); // Space them out by minutes
+                testMessage.setType(isIncoming[i] ? Message.TYPE_INBOX : Message.TYPE_SENT);
+                testMessage.setId("test_message_" + i + "_" + System.currentTimeMillis());
+                testMessage.setRead(true);
+                testMessage.setThreadId(threadId);
+                testMessage.setMessageType(Message.MESSAGE_TYPE_SMS);
+                
+                messages.add(testMessage);
+                Log.d(TAG, "Added test message " + i + ": " + testMessage.getBody().substring(0, Math.min(30, testMessage.getBody().length())));
+            }
+            
+            Log.d(TAG, "Added " + messages.size() + " test messages");
+            
+            if (adapter != null) {
+                Log.d(TAG, "Notifying adapter of test messages");
+                runOnUiThread(() -> {
+                    adapter.notifyDataSetChanged();
+                    Log.d(TAG, "Adapter notified. Item count: " + adapter.getItemCount());
+                    scrollToBottom();
+                    showEmptyState(false);
+                });
+            } else {
+                Log.e(TAG, "Adapter is null!");
+            }
+            
+            Toast.makeText(this, "Added " + messages.size() + " test messages", Toast.LENGTH_SHORT).show();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error adding multiple test messages: " + e.getMessage(), e);
+        }
+    }
         if (TextUtils.isEmpty(threadId) && TextUtils.isEmpty(address)) {
             Toast.makeText(this, "Cannot identify conversation", Toast.LENGTH_SHORT).show();
             return;
