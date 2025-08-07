@@ -138,12 +138,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Set up RecyclerView
             messagesRecyclerView = findViewById(R.id.messages_recycler_view);
             if (messagesRecyclerView != null) {
+                Log.d(TAG, "Setting up RecyclerView");
                 LinearLayoutManager layoutManager = new LinearLayoutManager(this);
                 layoutManager.setStackFromEnd(true);
                 messagesRecyclerView.setLayoutManager(layoutManager);
+                Log.d(TAG, "RecyclerView LayoutManager set");
 
                 adapter = new MessageRecyclerAdapter(this, messages, this);
                 messagesRecyclerView.setAdapter(adapter);
+                Log.d(TAG, "RecyclerView adapter set. Initial item count: " + adapter.getItemCount());
+                
+                // Log RecyclerView visibility
+                Log.d(TAG, "RecyclerView visibility: " + messagesRecyclerView.getVisibility() + 
+                    " (VISIBLE=" + View.VISIBLE + ", GONE=" + View.GONE + ", INVISIBLE=" + View.INVISIBLE + ")");
             } else {
                 Log.e(TAG, "messages_recycler_view not found in layout");
             }
@@ -231,20 +238,37 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                         if (loadedMessages != null && !loadedMessages.isEmpty()) {
                             Log.d(TAG, "Loaded " + loadedMessages.size() + " messages");
+                            Log.d(TAG, "Current messages list size before update: " + messages.size());
                             messages.clear();
                             messages.addAll(loadedMessages);
-                            adapter.notifyDataSetChanged();
+                            Log.d(TAG, "Messages list size after update: " + messages.size());
+                            
+                            if (adapter != null) {
+                                Log.d(TAG, "Notifying adapter of data change. Adapter item count: " + adapter.getItemCount());
+                                adapter.notifyDataSetChanged();
+                                Log.d(TAG, "Adapter notifyDataSetChanged() called successfully");
+                            } else {
+                                Log.e(TAG, "Adapter is null - cannot notify of data changes!");
+                            }
+                            
                             scrollToBottom();
                             showEmptyState(false);
+                            
+                            // Log details about first few messages for debugging
+                            for (int i = 0; i < Math.min(3, loadedMessages.size()); i++) {
+                                Message msg = loadedMessages.get(i);
+                                Log.d(TAG, "Message " + i + ": " + 
+                                    (msg != null && msg.getBody() != null ? 
+                                        msg.getBody().substring(0, Math.min(50, msg.getBody().length())) : "null") + 
+                                    " (type: " + (msg != null ? msg.getType() : "null") + ")");
+                            }
                         } else {
                             Log.d(TAG, "No messages found");
-                            showEmptyState(true);
+                            showEmptyState("No messages found");
 
-                            // Add a test message if no messages are found and debug is enabled
-                            if (userPreferences != null && userPreferences.isDebugModeEnabled()) {
-                                Log.d(TAG, "Adding test message for debugging");
-                                addTestMessage();
-                            }
+                            // Always add a test message if no messages are found for debugging
+                            Log.d(TAG, "Adding test message for debugging (no messages found)");
+                            addTestMessage();
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Error updating UI with loaded messages", e);
@@ -271,16 +295,47 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void addTestMessage() {
         try {
-            Message testMessage = new Message();
-            testMessage.setBody("This is a test message. You can translate this message to test the translation feature.");
-            testMessage.setAddress(TextUtils.isEmpty(address) ? "Test Contact" : address);
+            Log.d(TAG, "Adding test message for debugging");
+            
+            // Create a safe test message using SmsMessage which extends Message
+            SmsMessage testMessage = new SmsMessage();
+            testMessage.setBody("📱 TEST MESSAGE: This is a debug test message to verify the RecyclerView is working. If you can see this, the adapter is functioning correctly! 🔧");
+            testMessage.setAddress(TextUtils.isEmpty(address) ? "+1234567890" : address);
             testMessage.setDate(System.currentTimeMillis());
             testMessage.setType(Message.TYPE_INBOX);
+            testMessage.setId("test_message_" + System.currentTimeMillis());
+            testMessage.setRead(false);
+            testMessage.setThreadId(threadId);
+            testMessage.setMessageType(Message.MESSAGE_TYPE_SMS);
 
+            Log.d(TAG, "Test message created with body: " + testMessage.getBody());
+            Log.d(TAG, "Test message type: " + testMessage.getType());
+            Log.d(TAG, "Test message ID: " + testMessage.getId());
+            
+            messages.clear(); // Clear any existing messages first
             messages.add(testMessage);
-            adapter.notifyDataSetChanged();
+            Log.d(TAG, "Test message added to list. Messages size: " + messages.size());
+            
+            if (adapter != null) {
+                Log.d(TAG, "Calling adapter.notifyDataSetChanged()");
+                adapter.notifyDataSetChanged();
+                Log.d(TAG, "Adapter notified of test message. Adapter item count: " + adapter.getItemCount());
+                
+                // Force a layout pass
+                if (messagesRecyclerView != null) {
+                    messagesRecyclerView.post(() -> {
+                        Log.d(TAG, "RecyclerView child count: " + messagesRecyclerView.getChildCount());
+                        Log.d(TAG, "RecyclerView adapter item count: " + messagesRecyclerView.getAdapter().getItemCount());
+                    });
+                }
+            } else {
+                Log.e(TAG, "Adapter is null - cannot notify of test message!");
+            }
+            
             scrollToBottom();
             showEmptyState(false);
+            
+            Log.d(TAG, "Test message setup completed");
         } catch (Exception e) {
             Log.e(TAG, "Error adding test message: " + e.getMessage(), e);
         }
@@ -422,8 +477,20 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Show or hide empty state
      */
     private void showEmptyState(boolean show) {
+        Log.d(TAG, "showEmptyState called with show=" + show);
         if (emptyStateTextView != null) {
             emptyStateTextView.setVisibility(show ? View.VISIBLE : View.GONE);
+            Log.d(TAG, "Empty state visibility set to: " + (show ? "VISIBLE" : "GONE"));
+        } else {
+            Log.e(TAG, "emptyStateTextView is null!");
+        }
+        
+        // Also ensure RecyclerView visibility is correct
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(show ? View.GONE : View.VISIBLE);
+            Log.d(TAG, "RecyclerView visibility set to: " + (show ? "GONE" : "VISIBLE"));
+        } else {
+            Log.e(TAG, "messagesRecyclerView is null!");
         }
     }
 
@@ -442,7 +509,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void scrollToBottom() {
         if (messagesRecyclerView != null && adapter != null && adapter.getItemCount() > 0) {
-            messagesRecyclerView.smoothScrollToPosition(adapter.getItemCount() - 1);
+            Log.d(TAG, "Scrolling to bottom. Item count: " + adapter.getItemCount());
+            messagesRecyclerView.post(() -> {
+                try {
+                    messagesRecyclerView.smoothScrollToPosition(adapter.getItemCount() - 1);
+                    Log.d(TAG, "Scroll to position: " + (adapter.getItemCount() - 1));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error scrolling to bottom: " + e.getMessage(), e);
+                }
+            });
+        } else {
+            Log.w(TAG, "Cannot scroll to bottom - RecyclerView: " + (messagesRecyclerView != null) + 
+                    ", Adapter: " + (adapter != null) + 
+                    ", Item count: " + (adapter != null ? adapter.getItemCount() : "N/A"));
         }
     }
 
