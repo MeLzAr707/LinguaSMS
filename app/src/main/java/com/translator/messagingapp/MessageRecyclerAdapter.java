@@ -78,7 +78,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     public MessageRecyclerAdapter(Context context, List<Message> messages, OnMessageClickListener listener) {
         this(context, messages);
         this.clickListener = listener;
-        android.util.Log.d(TAG, "MessageRecyclerAdapter created with " + (messages != null ? messages.size() : 0) + " messages");
     }
 
     /**
@@ -93,82 +92,135 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        android.util.Log.d(TAG, "onCreateViewHolder called with viewType: " + viewType);
+        
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View view;
 
-        switch (viewType) {
-            case VIEW_TYPE_INCOMING:
-                view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
-                return new IncomingMessageViewHolder(view);
-            case VIEW_TYPE_OUTGOING:
-                view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
-                return new OutgoingMessageViewHolder(view);
-            case VIEW_TYPE_INCOMING_MEDIA:
-                view = inflater.inflate(R.layout.item_message_incoming_media, parent, false);
-                return new IncomingMediaMessageViewHolder(view);
-            case VIEW_TYPE_OUTGOING_MEDIA:
-                view = inflater.inflate(R.layout.item_message_outgoing_media, parent, false);
-                return new OutgoingMediaMessageViewHolder(view);
-            default:
-                // Fallback to incoming message layout if view type is invalid
-                view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
-                return new IncomingMessageViewHolder(view);
+        try {
+            switch (viewType) {
+                case VIEW_TYPE_INCOMING:
+                    android.util.Log.d(TAG, "Creating incoming message view holder");
+                    view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                    android.util.Log.d(TAG, "Successfully inflated incoming message layout");
+                    return new IncomingMessageViewHolder(view);
+                case VIEW_TYPE_OUTGOING:
+                    android.util.Log.d(TAG, "Creating outgoing message view holder");
+                    view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
+                    android.util.Log.d(TAG, "Successfully inflated outgoing message layout");
+                    return new OutgoingMessageViewHolder(view);
+                case VIEW_TYPE_INCOMING_MEDIA:
+                    android.util.Log.d(TAG, "Creating incoming media message view holder");
+                    try {
+                        view = inflater.inflate(R.layout.item_message_incoming_media, parent, false);
+                        android.util.Log.d(TAG, "Successfully inflated incoming media layout");
+                        return new IncomingMediaMessageViewHolder(view);
+                    } catch (Exception e) {
+                        android.util.Log.w(TAG, "Failed to inflate incoming media layout, using regular incoming: " + e.getMessage());
+                        view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                        return new IncomingMessageViewHolder(view);
+                    }
+                case VIEW_TYPE_OUTGOING_MEDIA:
+                    android.util.Log.d(TAG, "Creating outgoing media message view holder");
+                    try {
+                        view = inflater.inflate(R.layout.item_message_outgoing_media, parent, false);
+                        android.util.Log.d(TAG, "Successfully inflated outgoing media layout");
+                        return new OutgoingMediaMessageViewHolder(view);
+                    } catch (Exception e) {
+                        android.util.Log.w(TAG, "Failed to inflate outgoing media layout, using regular outgoing: " + e.getMessage());
+                        view = inflater.inflate(R.layout.item_message_outgoing_updated, parent, false);
+                        return new OutgoingMessageViewHolder(view);
+                    }
+                default:
+                    // Fallback to incoming message layout if view type is invalid
+                    android.util.Log.w(TAG, "Unknown viewType: " + viewType + ", falling back to incoming message layout");
+                    view = inflater.inflate(R.layout.item_message_incoming_updated, parent, false);
+                    return new IncomingMessageViewHolder(view);
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Critical error in onCreateViewHolder: " + e.getMessage(), e);
+            // Emergency fallback - create a simple text view if all else fails
+            android.widget.TextView textView = new android.widget.TextView(parent.getContext());
+            textView.setText("Error loading message view");
+            textView.setPadding(16, 16, 16, 16);
+            return new RecyclerView.ViewHolder(textView) {};
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        android.util.Log.d(TAG, "onBindViewHolder called - position: " + position + ", total messages: " + messages.size());
+        
         if (position < 0 || position >= messages.size()) {
-            Log.w(TAG, "Invalid position: " + position + ", messages size: " + messages.size());
+            android.util.Log.e(TAG, "Invalid position: " + position + ", messages size: " + messages.size());
             return; // Prevent index out of bounds
         }
 
         Message message = messages.get(position);
         if (message == null) {
-            Log.w(TAG, "Message is null at position: " + position);
+            android.util.Log.e(TAG, "Message is null at position: " + position);
             return; // Skip binding if message is null
         }
+
+        android.util.Log.d(TAG, "Binding message at position " + position + ": " + 
+            (message.getBody() != null ? message.getBody().substring(0, Math.min(50, message.getBody().length())) : "null body") + 
+            " (type: " + holder.getItemViewType() + ")");
 
         try {
             switch (holder.getItemViewType()) {
                 case VIEW_TYPE_INCOMING:
+                    android.util.Log.d(TAG, "Binding incoming message at position " + position);
                     bindIncomingMessage((IncomingMessageViewHolder) holder, message, position);
                     break;
                 case VIEW_TYPE_OUTGOING:
+                    android.util.Log.d(TAG, "Binding outgoing message at position " + position);
                     bindOutgoingMessage((OutgoingMessageViewHolder) holder, message, position);
                     break;
                 case VIEW_TYPE_INCOMING_MEDIA:
                     if (message instanceof MmsMessage) {
+                        android.util.Log.d(TAG, "Binding incoming media message at position " + position);
                         bindIncomingMediaMessage((IncomingMediaMessageViewHolder) holder, (MmsMessage) message, position);
                     }
                     break;
                 case VIEW_TYPE_OUTGOING_MEDIA:
                     if (message instanceof MmsMessage) {
+                        android.util.Log.d(TAG, "Binding outgoing media message at position " + position);
                         bindOutgoingMediaMessage((OutgoingMediaMessageViewHolder) holder, (MmsMessage) message, position);
                     }
                     break;
-                default:
-                    Log.w(TAG, "Unknown view type: " + holder.getItemViewType());
-                    break;
             }
+            android.util.Log.d(TAG, "Successfully bound message at position " + position);
         } catch (Exception e) {
-            Log.e(TAG, "Error binding view holder at position " + position + ": " + e.getMessage(), e);
+            android.util.Log.e(TAG, "Error binding view holder at position " + position + ": " + e.getMessage(), e);
         }
     }
 
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, int position) {
+        android.util.Log.d(TAG, "bindIncomingMessage called for position " + position);
+        
         if (holder == null || message == null) {
+            android.util.Log.e(TAG, "bindIncomingMessage: holder or message is null");
             return;
         }
+
+        android.util.Log.d(TAG, "bindIncomingMessage: Setting message text: " + 
+            (message.getBody() != null ? message.getBody().substring(0, Math.min(50, message.getBody().length())) : "null"));
 
         // Set message text with highlighting if needed
         if (holder.messageText != null) {
             setMessageTextWithHighlighting(holder.messageText, message);
+            android.util.Log.d(TAG, "bindIncomingMessage: Message text set successfully");
+        } else {
+            android.util.Log.e(TAG, "bindIncomingMessage: messageText view is null!");
         }
 
         // Set date - handle both date_text and message_date IDs
         if (holder.dateText != null) {
-            holder.dateText.setText(formatMessageDate(message.getDate()));
+            String formattedDate = formatMessageDate(message.getDate());
+            holder.dateText.setText(formattedDate);
+            android.util.Log.d(TAG, "bindIncomingMessage: Date set to: " + formattedDate);
+        } else {
+            android.util.Log.w(TAG, "bindIncomingMessage: dateText view is null");
         }
 
         // Set up click listeners
@@ -176,26 +228,44 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         // Set up reactions
         setupReactions(holder.reactionsLayout, holder.addReactionButton, message, position);
+        
+        android.util.Log.d(TAG, "bindIncomingMessage completed for position " + position);
     }
 
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, int position) {
+        android.util.Log.d(TAG, "bindOutgoingMessage called for position " + position);
+        
         if (holder == null || message == null) {
+            android.util.Log.e(TAG, "bindOutgoingMessage: holder or message is null");
             return;
         }
+
+        android.util.Log.d(TAG, "bindOutgoingMessage: Setting message text: " + 
+            (message.getBody() != null ? message.getBody().substring(0, Math.min(50, message.getBody().length())) : "null"));
 
         // Set message text with highlighting if needed
         if (holder.messageText != null) {
             setMessageTextWithHighlighting(holder.messageText, message);
+            android.util.Log.d(TAG, "bindOutgoingMessage: Message text set successfully");
+        } else {
+            android.util.Log.e(TAG, "bindOutgoingMessage: messageText view is null!");
         }
 
         // Set date - handle both date_text and message_date IDs
         if (holder.dateText != null) {
-            holder.dateText.setText(formatMessageDate(message.getDate()));
+            String formattedDate = formatMessageDate(message.getDate());
+            holder.dateText.setText(formattedDate);
+            android.util.Log.d(TAG, "bindOutgoingMessage: Date set to: " + formattedDate);
+        } else {
+            android.util.Log.w(TAG, "bindOutgoingMessage: dateText view is null");
         }
 
         // Set message status
         if (holder.messageStatus != null) {
             setMessageStatus(holder.messageStatus, message);
+            android.util.Log.d(TAG, "bindOutgoingMessage: Message status set");
+        } else {
+            android.util.Log.w(TAG, "bindOutgoingMessage: messageStatus view is null");
         }
 
         // Set up click listeners
@@ -203,6 +273,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         // Set up reactions
         setupReactions(holder.reactionsLayout, holder.addReactionButton, message, position);
+        
+        android.util.Log.d(TAG, "bindOutgoingMessage completed for position " + position);
     }
 
     private void bindIncomingMediaMessage(IncomingMediaMessageViewHolder holder, MmsMessage message, int position) {
@@ -273,18 +345,23 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     private void setMessageTextWithHighlighting(TextView textView, Message message) {
         if (textView == null || message == null) {
+            android.util.Log.e(TAG, "setMessageTextWithHighlighting: textView or message is null");
             return;
         }
 
         String messageText = message.getBody();
         if (messageText == null) {
             messageText = ""; // Use empty string if body is null
+            android.util.Log.w(TAG, "Message body is null, using empty string");
         }
+
+        android.util.Log.d(TAG, "Setting message text: " + messageText.substring(0, Math.min(50, messageText.length())));
 
         String searchQuery = message.getSearchQuery();
 
         if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
             messageText = message.getTranslatedText();
+            android.util.Log.d(TAG, "Using translated text: " + messageText.substring(0, Math.min(50, messageText.length())));
         }
 
         if (!TextUtils.isEmpty(searchQuery) && !TextUtils.isEmpty(messageText)) {
@@ -316,11 +393,16 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 textView.setText(spannableString);
             } catch (Exception e) {
                 // Fallback to plain text if highlighting fails
+                android.util.Log.w(TAG, "Highlighting failed, using plain text: " + e.getMessage());
                 textView.setText(messageText);
             }
         } else {
             textView.setText(messageText);
         }
+
+        // Ensure the TextView is visible
+        textView.setVisibility(View.VISIBLE);
+        android.util.Log.d(TAG, "TextView visibility set to VISIBLE");
 
         // Set typeface based on translation state
         try {
@@ -331,6 +413,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             }
         } catch (Exception e) {
             // Ignore typeface errors
+            android.util.Log.w(TAG, "Typeface setting failed: " + e.getMessage());
         }
     }
 
@@ -536,7 +619,9 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     @Override
     public int getItemCount() {
-        return messages != null ? messages.size() : 0;
+        int count = messages != null ? messages.size() : 0;
+        android.util.Log.d(TAG, "getItemCount() returning: " + count);
+        return count;
     }
 
     @Override
@@ -580,23 +665,54 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         IncomingMessageViewHolder(View itemView) {
             super(itemView);
+            android.util.Log.d("MessageRecyclerAdapter", "Creating IncomingMessageViewHolder");
+            
             messageText = itemView.findViewById(R.id.message_text);
+            if (messageText == null) {
+                android.util.Log.e("MessageRecyclerAdapter", "message_text view not found in incoming layout!");
+            } else {
+                android.util.Log.d("MessageRecyclerAdapter", "message_text found in incoming layout");
+            }
 
             // Try to find date text with either ID
             dateText = itemView.findViewById(R.id.date_text);
             if (dateText == null) {
                 dateText = itemView.findViewById(R.id.message_date);
+                if (dateText != null) {
+                    android.util.Log.d("MessageRecyclerAdapter", "Found dateText as message_date in incoming layout");
+                } else {
+                    android.util.Log.e("MessageRecyclerAdapter", "Neither date_text nor message_date found in incoming layout!");
+                }
+            } else {
+                android.util.Log.d("MessageRecyclerAdapter", "Found dateText as date_text in incoming layout");
             }
 
             translateButton = itemView.findViewById(R.id.translate_button);
+            if (translateButton == null) {
+                android.util.Log.w("MessageRecyclerAdapter", "translate_button not found in incoming layout");
+            } else {
+                android.util.Log.d("MessageRecyclerAdapter", "translate_button found in incoming layout");
+            }
 
             // Try to find reactions layout with either ID
             reactionsLayout = itemView.findViewById(R.id.reactions_layout);
             if (reactionsLayout == null) {
                 reactionsLayout = itemView.findViewById(R.id.reactions_container);
+                if (reactionsLayout != null) {
+                    android.util.Log.d("MessageRecyclerAdapter", "Found reactionsLayout as reactions_container in incoming layout");
+                } else {
+                    android.util.Log.w("MessageRecyclerAdapter", "Neither reactions_layout nor reactions_container found in incoming layout");
+                }
+            } else {
+                android.util.Log.d("MessageRecyclerAdapter", "Found reactionsLayout as reactions_layout in incoming layout");
             }
 
             addReactionButton = itemView.findViewById(R.id.add_reaction_button);
+            if (addReactionButton == null) {
+                android.util.Log.w("MessageRecyclerAdapter", "add_reaction_button not found in incoming layout");
+            } else {
+                android.util.Log.d("MessageRecyclerAdapter", "add_reaction_button found in incoming layout");
+            }
         }
     }
 
