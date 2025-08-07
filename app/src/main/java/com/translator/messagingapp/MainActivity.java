@@ -114,10 +114,26 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
 
         // Check if we're the default SMS app
         if (defaultSmsAppManager != null) {
-            defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, () -> {
-                // This will run if we're already the default SMS app
-                loadConversations();
-            });
+            // Check if we should show the default SMS request (first time or manually triggered)
+            UserPreferences userPrefs = ((TranslatorApp) getApplication()).getUserPreferences();
+            boolean shouldRequest = userPrefs.getBoolean("should_request_default_sms", false);
+            
+            if (shouldRequest) {
+                // Clear the flag so we don't keep asking
+                userPrefs.setBoolean("should_request_default_sms", false);
+                
+                // Force the request even if we've asked before on first run
+                DefaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, () -> {
+                    // This will run if we're already the default SMS app
+                    loadConversations();
+                });
+            } else {
+                // Normal check - respect the request count limits
+                DefaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, () -> {
+                    // This will run if we're already the default SMS app
+                    loadConversations();
+                });
+            }
         } else {
             loadConversations();
         }
@@ -160,6 +176,16 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             } else if (id == R.id.action_debug) {
                 Intent intent = new Intent(this, DebugActivity.class);
                 startActivity(intent);
+                return true;
+            } else if (id == R.id.action_default_sms) {
+                handleDefaultSmsAction();
+                return true;
+            } else if (id == R.id.action_refresh) {
+                loadConversations();
+                Toast.makeText(this, "Refreshing conversations...", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (id == R.id.action_test_message) {
+                addTestMessage();
                 return true;
             }
         } catch (Exception e) {
@@ -450,10 +476,42 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private void showDefaultSmsAppDialogIfNeeded() {
         try {
             if (defaultSmsAppManager != null && !DefaultSmsAppManager.isDefaultSmsApp(this)) {
-                defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, null);
+                DefaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, null);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error showing default SMS app dialog", e);
+        }
+    }
+
+    /**
+     * Handles the default SMS action from the menu.
+     */
+    private void handleDefaultSmsAction() {
+        try {
+            if (defaultSmsAppManager != null) {
+                if (DefaultSmsAppManager.isDefaultSmsApp(this)) {
+                    // Already default SMS app, show settings option
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle(R.string.default_sms_title)
+                            .setMessage("This app is already the default SMS app. Would you like to open default app settings?")
+                            .setPositiveButton("Open Settings", (dialog, which) -> {
+                                DefaultSmsAppManager.tryDirectDefaultSmsAppSetting(this);
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                } else {
+                    // Not default SMS app, request to become default
+                    DefaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE, () -> {
+                        Toast.makeText(this, R.string.default_set_success, Toast.LENGTH_SHORT).show();
+                        loadConversations();
+                    });
+                }
+            } else {
+                Toast.makeText(this, "Default SMS manager not available", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling default SMS action", e);
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 }
