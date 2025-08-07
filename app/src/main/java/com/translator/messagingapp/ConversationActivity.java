@@ -141,9 +141,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.d(TAG, "Setting up RecyclerView");
                 LinearLayoutManager layoutManager = new LinearLayoutManager(this);
                 layoutManager.setStackFromEnd(true);
+                layoutManager.setReverseLayout(false);
                 messagesRecyclerView.setLayoutManager(layoutManager);
                 Log.d(TAG, "RecyclerView LayoutManager set");
 
+                // Ensure RecyclerView has proper size
+                messagesRecyclerView.setHasFixedSize(false); // Allow dynamic sizing
+                messagesRecyclerView.setItemAnimator(null); // Disable animations to prevent issues
+                
                 adapter = new MessageRecyclerAdapter(this, messages, this);
                 messagesRecyclerView.setAdapter(adapter);
                 Log.d(TAG, "RecyclerView adapter set. Initial item count: " + adapter.getItemCount());
@@ -156,6 +161,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 messagesRecyclerView.post(() -> {
                     Log.d(TAG, "RecyclerView dimensions: " + messagesRecyclerView.getWidth() + "x" + messagesRecyclerView.getHeight());
                     Log.d(TAG, "RecyclerView has LayoutManager: " + (messagesRecyclerView.getLayoutManager() != null));
+                    Log.d(TAG, "RecyclerView child count: " + messagesRecyclerView.getChildCount());
+                    
+                    // Force a layout pass if dimensions are 0
+                    if (messagesRecyclerView.getWidth() == 0 || messagesRecyclerView.getHeight() == 0) {
+                        Log.w(TAG, "RecyclerView has zero dimensions, requesting layout");
+                        messagesRecyclerView.requestLayout();
+                    }
                 });
             } else {
                 Log.e(TAG, "messages_recycler_view not found in layout");
@@ -1037,6 +1049,36 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             
         } catch (Exception e) {
             Log.e(TAG, "Error adding multiple test messages: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Refresh the RecyclerView to force a redraw
+     */
+    private void refreshRecyclerView() {
+        if (messagesRecyclerView != null && adapter != null) {
+            Log.d(TAG, "Refreshing RecyclerView");
+            runOnUiThread(() -> {
+                try {
+                    // Multiple strategies to refresh the view
+                    adapter.notifyDataSetChanged();
+                    messagesRecyclerView.invalidate();
+                    messagesRecyclerView.requestLayout();
+                    
+                    // Post another check after a brief delay
+                    messagesRecyclerView.postDelayed(() -> {
+                        Log.d(TAG, "Post-refresh check - child count: " + messagesRecyclerView.getChildCount() + 
+                            ", adapter count: " + adapter.getItemCount());
+                    }, 100);
+                    
+                    Log.d(TAG, "RecyclerView refresh completed");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error refreshing RecyclerView: " + e.getMessage(), e);
+                }
+            });
+        } else {
+            Log.w(TAG, "Cannot refresh RecyclerView - RecyclerView: " + (messagesRecyclerView != null) + 
+                    ", Adapter: " + (adapter != null));
         }
     }
         if (TextUtils.isEmpty(threadId) && TextUtils.isEmpty(address)) {
