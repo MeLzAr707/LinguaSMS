@@ -425,6 +425,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (emptyStateTextView != null) {
             emptyStateTextView.setVisibility(show ? View.VISIBLE : View.GONE);
         }
+        // Show/hide RecyclerView inversely to empty state
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(show ? View.GONE : View.VISIBLE);
+        }
     }
 
     /**
@@ -434,6 +438,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (emptyStateTextView != null) {
             emptyStateTextView.setText(message);
             emptyStateTextView.setVisibility(View.VISIBLE);
+        }
+        // Hide the RecyclerView when showing empty state
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(View.GONE);
         }
     }
 
