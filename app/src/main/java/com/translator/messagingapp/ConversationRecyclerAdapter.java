@@ -264,7 +264,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
-     * Initialize contact avatar with proper error handling to prevent bitmap creation errors.
+     * Initialize contact avatar with proper error handling using ContactAvatarHelper.
      * 
      * @param holder The ViewHolder containing the avatar view
      * @param conversation The conversation data
@@ -278,33 +278,15 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             // Ensure the view is visible and has proper dimensions
             holder.contactAvatarImageView.setVisibility(View.VISIBLE);
             
-            // Check if view has been measured and has valid dimensions
-            int width = holder.contactAvatarImageView.getWidth();
-            int height = holder.contactAvatarImageView.getHeight();
-            
-            // If dimensions are not available yet (view not measured), use layout params
-            if (width <= 0 || height <= 0) {
-                ViewGroup.LayoutParams params = holder.contactAvatarImageView.getLayoutParams();
-                if (params != null) {
-                    width = params.width;
-                    height = params.height;
-                }
-            }
-            
-            // Log dimensions for debugging
-            Log.d(TAG, "Avatar dimensions: width=" + width + ", height=" + height);
-            
-            // Always set a default image to prevent bitmap creation issues
-            // This ensures the CircleImageView has a valid drawable to work with
-            holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
-            
-            // TODO: In the future, you could add logic here to:
-            // 1. Load actual contact photos
-            // 2. Generate initials-based avatars
-            // 3. Use Glide or similar library for image loading
+            // Use ContactAvatarHelper to load avatar following priority order:
+            // 1. Actual contact photo
+            // 2. Initials-based avatar
+            // 3. Colored background
+            // 4. Default gray circle
+            ContactAvatarHelper.loadContactAvatar(context, holder.contactAvatarImageView, conversation);
             
         } catch (Exception e) {
-            Log.e(TAG, "Error setting up contact avatar for position", e);
+            Log.e(TAG, "Error setting up contact avatar", e);
             // Fallback: ensure the view is visible but with default image
             try {
                 holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
@@ -343,7 +325,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         
         /**
          * Initialize the contact avatar with proper error handling.
-         * This prevents bitmap creation errors when dimensions are invalid.
+         * This method sets up the CircleImageView to prevent bitmap creation errors.
          */
         private void initializeContactAvatar() {
             if (contactAvatarImageView != null) {
@@ -356,7 +338,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
                     if (params != null) {
                         // Ensure minimum dimensions to prevent bitmap creation errors
                         if (params.width <= 0) {
-                            params.width = 48; // 48dp converted to pixels would be handled by the system
+                            params.width = 48; // 48dp - will be converted to pixels by the system
                         }
                         if (params.height <= 0) {
                             params.height = 48;

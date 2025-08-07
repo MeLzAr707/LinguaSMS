@@ -69,6 +69,8 @@ dependencies {
 
     // Testing dependencies
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockito.core)
     androidTestImplementation(libs.junit.v113)
     androidTestImplementation(libs.espresso.core.v340)
 }

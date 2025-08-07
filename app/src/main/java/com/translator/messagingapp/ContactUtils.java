@@ -210,6 +210,107 @@ public class ContactUtils {
 
         return colors[index];
     }
+
+    /**
+     * Gets the contact photo URI for a phone number.
+     *
+     * @param context     The context
+     * @param phoneNumber The phone number
+     * @return The contact photo URI, or null if not found
+     */
+    public static String getContactPhotoUri(Context context, String phoneNumber) {
+        if (context == null || TextUtils.isEmpty(phoneNumber)) {
+            return null;
+        }
+
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = contentResolver.query(
+                    uri,
+                    new String[]{ContactsContract.PhoneLookup.PHOTO_URI},
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int photoUriIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+                        if (photoUriIndex >= 0) {
+                            return cursor.getString(photoUriIndex);
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting contact photo URI for " + phoneNumber, e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets contact details including name and photo URI for a phone number.
+     *
+     * @param context     The context
+     * @param phoneNumber The phone number
+     * @return ContactInfo object with name and photo URI
+     */
+    public static ContactInfo getContactInfo(Context context, String phoneNumber) {
+        if (context == null || TextUtils.isEmpty(phoneNumber)) {
+            return new ContactInfo(null, null);
+        }
+
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = contentResolver.query(
+                    uri,
+                    new String[]{
+                        ContactsContract.PhoneLookup.DISPLAY_NAME,
+                        ContactsContract.PhoneLookup.PHOTO_URI
+                    },
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                        int photoUriIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+                        
+                        String name = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+                        String photoUri = photoUriIndex >= 0 ? cursor.getString(photoUriIndex) : null;
+                        
+                        return new ContactInfo(name, photoUri);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting contact info for " + phoneNumber, e);
+        }
+
+        return new ContactInfo(null, null);
+    }
+
+    /**
+     * Simple class to hold contact information.
+     */
+    public static class ContactInfo {
+        public final String name;
+        public final String photoUri;
+
+        public ContactInfo(String name, String photoUri) {
+            this.name = name;
+            this.photoUri = photoUri;
+        }
+    }
 }
 
 
