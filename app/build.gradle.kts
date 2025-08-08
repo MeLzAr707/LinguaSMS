@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application") version "8.1.4"
+    alias(libs.plugins.android.application)
 }
 
 android {
@@ -46,8 +46,8 @@ dependencies {
     implementation(libs.preference)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(libs.appcompat.v141)
-    implementation(libs.material.v150)
+    implementation(libs.appcompat)
+    implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(libs.cardview)
     implementation(libs.swiperefreshlayout)
@@ -65,13 +65,11 @@ dependencies {
 
     // Add Glide for image loading
     implementation(libs.glide)
-    annotationProcessor(libs.compiler)
+    annotationProcessor(libs.glide.compiler)
 
     // Testing dependencies
     testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
-    testImplementation(libs.mockito.core)
-    androidTestImplementation(libs.junit.v113)
-    androidTestImplementation(libs.espresso.core.v340)
+    androidTestImplementation(libs.ext.junit)
+    androidTestImplementation(libs.espresso.core)
 }
 
