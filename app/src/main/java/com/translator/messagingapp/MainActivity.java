@@ -539,22 +539,33 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                     case UserPreferences.THEME_LIGHT:
                         // Light theme navigation
                         navigationView.setBackgroundColor(getResources().getColor(R.color.background_light, getTheme()));
+                        navigationView.setItemTextColor(getResources().getColorStateList(R.color.nav_item_text_light, getTheme()));
+                        navigationView.setItemIconTintList(getResources().getColorStateList(R.color.nav_item_icon_light, getTheme()));
                         break;
                     case UserPreferences.THEME_DARK:
                         // Dark theme navigation with dark purple
                         navigationView.setBackgroundColor(getResources().getColor(R.color.background_dark, getTheme()));
+                        navigationView.setItemTextColor(getResources().getColorStateList(R.color.nav_item_text_dark, getTheme()));
+                        navigationView.setItemIconTintList(getResources().getColorStateList(R.color.nav_item_icon_dark, getTheme()));
                         break;
                     case UserPreferences.THEME_BLACK_GLASS:
-                        // Black glass theme navigation
+                        // Black glass theme navigation - now properly handled
                         navigationView.setBackgroundColor(getResources().getColor(R.color.darkBackground, getTheme()));
+                        navigationView.setItemTextColor(getResources().getColorStateList(R.color.nav_item_text_black_glass, getTheme()));
+                        navigationView.setItemIconTintList(getResources().getColorStateList(R.color.nav_item_icon_black_glass, getTheme()));
                         break;
                     case UserPreferences.THEME_SYSTEM:
                     default:
                         // Follow system setting
                         if (isSystemInDarkMode()) {
+                            // Use black glass for system dark mode
                             navigationView.setBackgroundColor(getResources().getColor(R.color.darkBackground, getTheme()));
+                            navigationView.setItemTextColor(getResources().getColorStateList(R.color.nav_item_text_black_glass, getTheme()));
+                            navigationView.setItemIconTintList(getResources().getColorStateList(R.color.nav_item_icon_black_glass, getTheme()));
                         } else {
                             navigationView.setBackgroundColor(getResources().getColor(R.color.background_light, getTheme()));
+                            navigationView.setItemTextColor(getResources().getColorStateList(R.color.nav_item_text_light, getTheme()));
+                            navigationView.setItemIconTintList(getResources().getColorStateList(R.color.nav_item_icon_light, getTheme()));
                         }
                         break;
                 }
