@@ -53,9 +53,7 @@ dependencies {
     implementation(libs.swiperefreshlayout)
     implementation(libs.google.playServices.base)
     implementation(libs.circleimageview)
-    annotationProcessor(libs.glide.compiler)
     implementation(libs.androidx.work.runtime)
-
 
     // Network libraries
     implementation(libs.okhttp)
@@ -65,7 +63,7 @@ dependencies {
 
     // Add Glide for image loading
     implementation(libs.glide)
-    annotationProcessor(libs.compiler)
+    annotationProcessor(libs.glide.compiler)
 
     // Testing dependencies
     testImplementation(libs.junit)

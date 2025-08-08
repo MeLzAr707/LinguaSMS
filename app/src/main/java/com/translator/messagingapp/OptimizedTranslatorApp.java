@@ -3,6 +3,8 @@ package com.translator.messagingapp;
 import android.app.Application;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -74,7 +76,7 @@ public class OptimizedTranslatorApp extends Application {
             Log.d(TAG, "Prefetching recent messages");
             
             // Get recent conversations
-            var conversations = messageService.loadConversations();
+            List<Conversation> conversations = messageService.loadConversations();
             
             // Prefetch messages from the 3 most recent conversations
             int count = 0;
@@ -107,10 +109,10 @@ public class OptimizedTranslatorApp extends Application {
             Log.d(TAG, "Prefetching contacts");
             
             // Get recent conversations
-            var conversations = messageService.loadConversations();
+            List<Conversation> conversations = messageService.loadConversations();
             
             // Extract phone numbers
-            var phoneNumbers = new java.util.ArrayList<String>();
+            List<String> phoneNumbers = new ArrayList<>();
             for (Conversation conversation : conversations) {
                 String address = conversation.getAddress();
                 if (address != null && !address.isEmpty()) {

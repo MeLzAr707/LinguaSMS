@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
  * Optimized activity for displaying and sending messages in a conversation.
  * Uses pagination, efficient background processing, and optimized RecyclerView updates.
  */
-public class OptimizedConversationActivity extends BaseActivity implements MessageRecyclerAdapter.MessageClickListener {
+public class OptimizedConversationActivity extends BaseActivity {
     private static final String TAG = "OptimizedConversationActivity";
     private static final int PAGE_SIZE = 50;
 
@@ -85,7 +85,19 @@ public class OptimizedConversationActivity extends BaseActivity implements Messa
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new MessageRecyclerAdapter(this, messages, this);
+            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
+                @Override
+                public void onMessageClick(Message message) {
+                    // Handle message click
+                    Toast.makeText(OptimizedConversationActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onMessageLongClick(Message message) {
+                    // Handle message long click
+                    showMessageOptions(message);
+                }
+            });
             messagesRecyclerView.setAdapter(adapter);
 
             // Set up pagination
@@ -98,6 +110,16 @@ public class OptimizedConversationActivity extends BaseActivity implements Messa
             Toast.makeText(this, "Error initializing conversation", Toast.LENGTH_SHORT).show();
             finish();
         }
+    }
+
+    /**
+     * Shows options for a message.
+     *
+     * @param message The message
+     */
+    private void showMessageOptions(Message message) {
+        // Implementation for showing message options
+        Toast.makeText(this, "Message options", Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -329,6 +351,67 @@ public class OptimizedConversationActivity extends BaseActivity implements Messa
         }
         
         showLoading(false);
+    }
+
+    /**
+     * Initialize UI components with improved error handling
+     */
+    private void initializeComponents() {
+        try {
+            // Set up toolbar
+            Toolbar toolbar = findViewById(R.id.toolbar);
+            if (toolbar != null) {
+                setSupportActionBar(toolbar);
+                if (getSupportActionBar() != null) {
+                    getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+                    getSupportActionBar().setTitle(TextUtils.isEmpty(contactName) ? address : contactName);
+                }
+            }
+
+            // Set up RecyclerView
+            messagesRecyclerView = findViewById(R.id.messages_recycler_view);
+            if (messagesRecyclerView != null) {
+                LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+                layoutManager.setStackFromEnd(true);
+                messagesRecyclerView.setLayoutManager(layoutManager);
+            }
+
+            // Set up other UI components
+            messageInput = findViewById(R.id.message_input);
+            sendButton = findViewById(R.id.send_button);
+            translateButton = findViewById(R.id.translate_button);
+            progressBar = findViewById(R.id.progress_bar);
+            emptyStateTextView = findViewById(R.id.empty_state_text);
+            loadingIndicator = findViewById(R.id.loading_indicator);
+
+            // Set up click listeners
+            if (sendButton != null) {
+                sendButton.setOnClickListener(v -> sendMessage());
+            }
+
+            if (translateButton != null) {
+                translateButton.setOnClickListener(v -> translateInputText());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing components: " + e.getMessage(), e);
+            Toast.makeText(this, "Error initializing UI components", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Sends a message.
+     */
+    private void sendMessage() {
+        // Implementation for sending a message
+        Toast.makeText(this, "Send message", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Translates the input text.
+     */
+    private void translateInputText() {
+        // Implementation for translating input text
+        Toast.makeText(this, "Translate input text", Toast.LENGTH_SHORT).show();
     }
 
     @Override
