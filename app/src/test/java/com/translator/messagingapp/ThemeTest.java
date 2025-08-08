@@ -12,6 +12,11 @@ import org.junit.runner.RunWith;
 
 /**
  * Test for theme functionality in BaseActivity and UserPreferences.
+ * 
+ * This test validates the theme system after fixes for:
+ * 1. Theme changes propagating immediately without app restart
+ * 2. Navigation drawer showing black glass theme properly  
+ * 3. Dark theme using dark purple #170133 instead of default purple
  */
 @RunWith(AndroidJUnit4.class)
 public class ThemeTest {

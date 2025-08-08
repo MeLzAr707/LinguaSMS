@@ -21,6 +21,8 @@ public class BaseActivity extends AppCompatActivity {
 
     public static final String ACTION_THEME_CHANGED = "com.translator.messagingapp.THEME_CHANGED";
     
+    private boolean receiverRegistered = false;
+    
     private BroadcastReceiver themeChangeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -38,17 +40,23 @@ public class BaseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         
         // Register theme change receiver using regular broadcasts
-        registerReceiver(themeChangeReceiver, new IntentFilter(ACTION_THEME_CHANGED));
+        if (!receiverRegistered) {
+            registerReceiver(themeChangeReceiver, new IntentFilter(ACTION_THEME_CHANGED));
+            receiverRegistered = true;
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         // Unregister theme change receiver
-        try {
-            unregisterReceiver(themeChangeReceiver);
-        } catch (Exception e) {
-            // Receiver might not be registered
+        if (receiverRegistered) {
+            try {
+                unregisterReceiver(themeChangeReceiver);
+                receiverRegistered = false;
+            } catch (Exception e) {
+                // Receiver might not be registered
+            }
         }
     }
 
