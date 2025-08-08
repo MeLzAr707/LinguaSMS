@@ -1,5 +1,9 @@
 package com.translator.messagingapp;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
@@ -15,11 +19,37 @@ import androidx.core.view.WindowInsetsControllerCompat;
  */
 public class BaseActivity extends AppCompatActivity {
 
+    public static final String ACTION_THEME_CHANGED = "com.translator.messagingapp.THEME_CHANGED";
+    
+    private BroadcastReceiver themeChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_THEME_CHANGED.equals(intent.getAction())) {
+                // Recreate activity to apply new theme
+                recreateWithFade();
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply theme before calling super.onCreate()
         applyTheme();
         super.onCreate(savedInstanceState);
+        
+        // Register theme change receiver using regular broadcasts
+        registerReceiver(themeChangeReceiver, new IntentFilter(ACTION_THEME_CHANGED));
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Unregister theme change receiver
+        try {
+            unregisterReceiver(themeChangeReceiver);
+        } catch (Exception e) {
+            // Receiver might not be registered
+        }
     }
 
     /**
@@ -121,5 +151,13 @@ public class BaseActivity extends AppCompatActivity {
      */
     public void refreshTheme() {
         recreateWithFade();
+    }
+    
+    /**
+     * Broadcasts a theme change event to all activities.
+     */
+    public static void broadcastThemeChange(Context context) {
+        Intent intent = new Intent(ACTION_THEME_CHANGED);
+        context.sendBroadcast(intent);
     }
 }

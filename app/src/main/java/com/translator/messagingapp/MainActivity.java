@@ -2,6 +2,7 @@
 package com.translator.messagingapp;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -76,6 +77,9 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         // Set up navigation view
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+        
+        // Apply theme-specific styling to navigation view
+        applyNavigationViewTheme(navigationView);
 
         // Initialize UI components
         conversationsRecyclerView = findViewById(R.id.conversations_recycler_view);
@@ -143,6 +147,12 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     protected void onResume() {
         super.onResume();
         loadConversations();
+        
+        // Refresh navigation view theme in case it changed
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        if (navigationView != null) {
+            applyNavigationViewTheme(navigationView);
+        }
     }
 
     @Override
@@ -512,6 +522,58 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         } catch (Exception e) {
             Log.e(TAG, "Error handling default SMS action", e);
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Applies theme-specific styling to the navigation view.
+     */
+    private void applyNavigationViewTheme(NavigationView navigationView) {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            if (app != null) {
+                UserPreferences userPreferences = app.getUserPreferences();
+                int themeId = userPreferences.getThemeId();
+                
+                switch (themeId) {
+                    case UserPreferences.THEME_LIGHT:
+                        // Light theme navigation
+                        navigationView.setBackgroundColor(getResources().getColor(R.color.background_light, getTheme()));
+                        break;
+                    case UserPreferences.THEME_DARK:
+                        // Dark theme navigation with dark purple
+                        navigationView.setBackgroundColor(getResources().getColor(R.color.background_dark, getTheme()));
+                        break;
+                    case UserPreferences.THEME_BLACK_GLASS:
+                        // Black glass theme navigation
+                        navigationView.setBackgroundColor(getResources().getColor(R.color.darkBackground, getTheme()));
+                        break;
+                    case UserPreferences.THEME_SYSTEM:
+                    default:
+                        // Follow system setting
+                        if (isSystemInDarkMode()) {
+                            navigationView.setBackgroundColor(getResources().getColor(R.color.darkBackground, getTheme()));
+                        } else {
+                            navigationView.setBackgroundColor(getResources().getColor(R.color.background_light, getTheme()));
+                        }
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error applying navigation view theme", e);
+        }
+    }
+
+    /**
+     * Checks if the system is currently in dark mode.
+     */
+    private boolean isSystemInDarkMode() {
+        try {
+            int nightModeFlags = getResources().getConfiguration().uiMode & 
+                Configuration.UI_MODE_NIGHT_MASK;
+            return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

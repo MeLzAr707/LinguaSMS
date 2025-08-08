@@ -17,11 +17,11 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <!-- Dark theme -->
+    <!-- Dark theme with dark purple bars -->
     <style name="AppTheme.Dark" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorPrimary">@color/colorPrimary_dark_purple</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark_dark_purple</item>
+        <item name="colorAccent">@color/colorAccent_dark_purple</item>
         <item name="android:windowBackground">@color/background_dark</item>
         <item name="android:textColor">@color/textColorPrimary_dark</item>
         <item name="android:textColorSecondary">@color/textColorSecondary_dark</item>
@@ -29,6 +29,9 @@
         <item name="alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
         <item name="cardViewStyle">@style/DarkCardView</item>
+        <!-- Navigation drawer styling -->
+        <item name="android:statusBarColor">@color/colorPrimary_dark_purple</item>
+        <item name="android:navigationBarColor">@color/background_dark</item>
     </style>
 
     <!-- Black Glass theme with Deep Dark Blue accents -->
@@ -151,6 +154,25 @@
         <item name="android:ellipsize">end</item>
         <item name="android:maxLines">1</item>
         <item name="android:alpha">0.7</item>
+    </style>
+
+    <!-- Navigation View Styles -->
+    <style name="NavigationView.Light" parent="Widget.Design.NavigationView">
+        <item name="android:background">@color/background_light</item>
+        <item name="itemTextColor">@color/textColorPrimary</item>
+        <item name="itemIconTint">@color/colorPrimary</item>
+    </style>
+
+    <style name="NavigationView.Dark" parent="Widget.Design.NavigationView">
+        <item name="android:background">@color/background_dark</item>
+        <item name="itemTextColor">@color/textColorPrimary_dark</item>
+        <item name="itemIconTint">@color/colorPrimary_dark_purple</item>
+    </style>
+
+    <style name="NavigationView.BlackGlass" parent="Widget.Design.NavigationView">
+        <item name="android:background">@color/darkBackground</item>
+        <item name="itemTextColor">@color/darkTextPrimary</item>
+        <item name="itemIconTint">@color/deep_dark_blue_lighter</item>
     </style>
 
     <!-- Dark theme NoActionBar variant -->

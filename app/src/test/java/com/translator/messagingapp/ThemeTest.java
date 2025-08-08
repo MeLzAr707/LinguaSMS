@@ -71,4 +71,10 @@ public class ThemeTest {
         assertTrue("Light theme should be settable independently of system dark mode", 
                   userPreferences.getThemeId() == UserPreferences.THEME_LIGHT);
     }
+
+    @Test
+    public void testThemeChangeBroadcast() {
+        // Test that theme change broadcast action is correctly defined
+        assertEquals("com.translator.messagingapp.THEME_CHANGED", BaseActivity.ACTION_THEME_CHANGED);
+    }
 }

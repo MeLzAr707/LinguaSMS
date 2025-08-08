@@ -15,6 +15,11 @@
     <color name="textColorPrimaryDark">#FFFFFF</color>
     <color name="textColorSecondaryDark">#B3FFFFFF</color> <!-- 70% white -->
 
+    <!-- Dark Theme Primary Colors - Changed to dark purple #170133 -->
+    <color name="colorPrimary_dark_purple">#170133</color>
+    <color name="colorPrimaryDark_dark_purple">#0D0A1A</color>
+    <color name="colorAccent_dark_purple">#BB86FC</color>
+
     <!-- Black Glass Theme Colors -->
     <color name="darkBackground">#000000</color>
     <color name="darkTextPrimary">#FFFFFF</color>
