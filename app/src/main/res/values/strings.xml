@@ -236,7 +236,6 @@
     <string name="choose_file">Choose File</string>
     <string name="delete_conversation">Delete Conversation</string>
     <string name="error_loading_conversations">Error loading conversations</string>
-    <string name="settings_error_message">There was a problem loading the settings. Please try again later.</string>
 
     <!-- Menu Items -->
     <string name="action_refresh">Refresh</string>
@@ -347,19 +346,14 @@
     <string name="debug">debug</string>
     <string name="search">Search</string>
 
-
-
     <string name="pref_preferred_incoming_language">Preferred Incoming Language</string>
     <string name="pref_preferred_incoming_language_summary">Language to translate incoming messages to</string>
-
-
 
     <!-- Error and UI messages -->
     <string name="error">Error</string>
     <string name="settings_error">Settings Error</string>
     <string name="settings_error_message">Unable to load settings. Please try again.</string>
     <string name="go_back">Go Back</string>
-    <string name="cancel">Cancel</string>
     <string name="unknown_contact">Unknown Contact</string>
     <string name="error_loading_conversation">Error loading conversation</string>
 
@@ -370,10 +364,6 @@
     <string name="not_now">Not Now</string>
     <string name="default_set_success">Successfully set as default SMS app</string>
     <string name="default_set_failed">Failed to set as default SMS app</string>
-
-
-
-
 
     <!-- Arrays for theme and API services -->
     <string-array name="theme_names">
@@ -389,7 +379,4 @@
         <item>2</item>
         <item>3</item>
     </string-array>
-
-
-
 </resources>
