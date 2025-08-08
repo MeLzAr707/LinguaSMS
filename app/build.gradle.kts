@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.translator.messagingapp"
-    compileSdk = 34
+    compileSdk = 34  // Downgraded from 35 to 34 for better compatibility
 
     // Add this line to enable BuildConfig
     buildFeatures {
@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.translator.messagingapp"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 34  // Downgraded from 35 to 34 for better compatibility
         versionCode = 1
         versionName = "1.0"
         manifestPlaceholders["ENABLE_DEBUG_TOOLS"] = "false"
@@ -46,8 +46,8 @@ dependencies {
     implementation(libs.preference)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(libs.appcompat)
-    implementation(libs.material)
+    implementation(libs.appcompat.v141)
+    implementation(libs.material.v150)
     implementation(libs.constraintlayout)
     implementation(libs.cardview)
     implementation(libs.swiperefreshlayout)
@@ -65,11 +65,10 @@ dependencies {
 
     // Add Glide for image loading
     implementation(libs.glide)
-    annotationProcessor(libs.glide.compiler)
+    annotationProcessor(libs.compiler)
 
     // Testing dependencies
     testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.junit.v113)
+    androidTestImplementation(libs.espresso.core.v340)
 }
-
