@@ -915,7 +915,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return true;
         } else if (id == R.id.action_delete_conversation) {
             // Delete conversation
-            deleteConversation();
+            //deleteConversation();
             return true;
         } else if (id == R.id.action_test_messages) {
             // Add test messages for debugging - new menu option
@@ -1088,7 +1088,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Log.w(TAG, "Cannot refresh RecyclerView - RecyclerView: " + (messagesRecyclerView != null) + 
                     ", Adapter: " + (adapter != null));
         }
-    }
+
         if (TextUtils.isEmpty(threadId) && TextUtils.isEmpty(address)) {
             Toast.makeText(this, "Cannot identify conversation", Toast.LENGTH_SHORT).show();
             return;
