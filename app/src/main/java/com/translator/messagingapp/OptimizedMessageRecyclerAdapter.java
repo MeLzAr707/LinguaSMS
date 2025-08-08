@@ -1,8 +1,10 @@
+
 package com.translator.messagingapp;
 
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -18,10 +20,16 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -38,13 +46,28 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
 
     private final Context context;
     private final List<Message> messages;
-    private final MessageClickListener clickListener;
+    private MessageClickListener clickListener;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Executor imageLoadExecutor = Executors.newFixedThreadPool(3); // Use a thread pool for image loading
     private boolean showLoadingFooter = false;
 
+    // Cache for attachment thumbnails and full images
+    private final Map<String, Bitmap> thumbnailCache = new HashMap<>();
+    private final Map<String, Bitmap> fullImageCache = new HashMap<>();
+
     /**
      * Creates a new OptimizedMessageRecyclerAdapter.
+     *
+     * @param context The context
+     * @param messages The list of messages
+     */
+    public OptimizedMessageRecyclerAdapter(Context context, List<Message> messages) {
+        this.context = context;
+        this.messages = messages;
+    }
+
+    /**
+     * Creates a new OptimizedMessageRecyclerAdapter with a click listener.
      *
      * @param context The context
      * @param messages The list of messages
@@ -56,24 +79,33 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
         this.clickListener = clickListener;
     }
 
+    /**
+     * Sets the click listener.
+     *
+     * @param clickListener The click listener
+     */
+    public void setClickListener(MessageClickListener clickListener) {
+        this.clickListener = clickListener;
+    }
+
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-        
+
         switch (viewType) {
             case VIEW_TYPE_SENT:
-                return new SentMessageViewHolder(
+                return new SentMessageHolder(
                         inflater.inflate(R.layout.item_message_sent, parent, false));
             case VIEW_TYPE_RECEIVED:
-                return new ReceivedMessageViewHolder(
+                return new ReceivedMessageHolder(
                         inflater.inflate(R.layout.item_message_received, parent, false));
             case VIEW_TYPE_SENT_MMS:
-                return new SentMmsViewHolder(
-                        inflater.inflate(R.layout.item_message_sent_mms, parent, false));
+                return new SentMmsMessageHolder(
+                        inflater.inflate(R.layout.item_message_outgoing_media, parent, false));
             case VIEW_TYPE_RECEIVED_MMS:
-                return new ReceivedMmsViewHolder(
-                        inflater.inflate(R.layout.item_message_received_mms, parent, false));
+                return new ReceivedMmsMessageHolder(
+                        inflater.inflate(R.layout.item_message_incoming_media, parent, false));
             case VIEW_TYPE_LOADING:
                 return new LoadingViewHolder(
                         inflater.inflate(R.layout.item_loading, parent, false));
@@ -88,20 +120,36 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
             // No binding needed for loading view
             return;
         }
-        
-        // Get message at position
-        Message message = messages.get(position);
-        
-        // Bind message based on view type
-        if (holder instanceof SentMessageViewHolder) {
-            bindSentMessage((SentMessageViewHolder) holder, message);
-        } else if (holder instanceof ReceivedMessageViewHolder) {
-            bindReceivedMessage((ReceivedMessageViewHolder) holder, message);
-        } else if (holder instanceof SentMmsViewHolder) {
-            bindSentMms((SentMmsViewHolder) holder, (MmsMessage) message);
-        } else if (holder instanceof ReceivedMmsViewHolder) {
-            bindReceivedMms((ReceivedMmsViewHolder) holder, (MmsMessage) message);
+
+        // Get the message at this position
+        final Message message = getItem(position);
+        if (message == null) {
+            return;
         }
+
+        // Bind the message based on the holder type
+        if (holder instanceof SentMessageHolder) {
+            bindSentMessage((SentMessageHolder) holder, message, position);
+        } else if (holder instanceof ReceivedMessageHolder) {
+            bindReceivedMessage((ReceivedMessageHolder) holder, message, position);
+        } else if (holder instanceof SentMmsMessageHolder) {
+            bindSentMmsMessage((SentMmsMessageHolder) holder, (MmsMessage) message, position);
+        } else if (holder instanceof ReceivedMmsMessageHolder) {
+            bindReceivedMmsMessage((ReceivedMmsMessageHolder) holder, (MmsMessage) message, position);
+        }
+    }
+
+    /**
+     * Gets the item at the specified position, accounting for the loading footer.
+     *
+     * @param position The position
+     * @return The message at the position, or null if it's the loading footer
+     */
+    private Message getItem(int position) {
+        if (showLoadingFooter && position == messages.size()) {
+            return null; // Loading footer
+        }
+        return messages.get(position);
     }
 
     /**
@@ -109,37 +157,31 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
      *
      * @param holder The view holder
      * @param message The message
+     * @param position The position
      */
-    private void bindSentMessage(SentMessageViewHolder holder, Message message) {
-        // Bind message text
+    private void bindSentMessage(SentMessageHolder holder, Message message, int position) {
+        // Set message text
         holder.messageText.setText(message.getBody());
-        
-        // Bind message time
+
+        // Set time
         holder.timeText.setText(formatTime(message.getDate()));
-        
-        // Bind translated text if available
-        if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
+
+        // Handle translation
+        if (message.isTranslated() && message.getTranslatedText() != null) {
             holder.translatedText.setText(message.getTranslatedText());
-            holder.translatedText.setVisibility(View.VISIBLE);
+            holder.translatedText.setVisibility(message.isShowTranslation() ? View.VISIBLE : View.GONE);
         } else {
             holder.translatedText.setVisibility(View.GONE);
         }
-        
-        // Set click listener
-        holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onMessageClick(message);
-            }
-        });
-        
-        // Set long click listener
-        holder.itemView.setOnLongClickListener(v -> {
-            if (clickListener != null) {
+
+        // Set click listeners
+        if (clickListener != null) {
+            holder.itemView.setOnClickListener(v -> clickListener.onMessageClick(message));
+            holder.itemView.setOnLongClickListener(v -> {
                 clickListener.onMessageLongClick(message);
                 return true;
-            }
-            return false;
-        });
+            });
+        }
     }
 
     /**
@@ -147,226 +189,198 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
      *
      * @param holder The view holder
      * @param message The message
+     * @param position The position
      */
-    private void bindReceivedMessage(ReceivedMessageViewHolder holder, Message message) {
-        // Bind message text
+    private void bindReceivedMessage(ReceivedMessageHolder holder, Message message, int position) {
+        // Set message text
         holder.messageText.setText(message.getBody());
-        
-        // Bind message time
+
+        // Set time
         holder.timeText.setText(formatTime(message.getDate()));
-        
-        // Bind translated text if available
-        if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
+
+        // Handle translation
+        if (message.isTranslated() && message.getTranslatedText() != null) {
             holder.translatedText.setText(message.getTranslatedText());
-            holder.translatedText.setVisibility(View.VISIBLE);
+            holder.translatedText.setVisibility(message.isShowTranslation() ? View.VISIBLE : View.GONE);
         } else {
             holder.translatedText.setVisibility(View.GONE);
         }
-        
-        // Set click listener
-        holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onMessageClick(message);
-            }
-        });
-        
-        // Set long click listener
-        holder.itemView.setOnLongClickListener(v -> {
-            if (clickListener != null) {
+
+        // Set click listeners
+        if (clickListener != null) {
+            holder.itemView.setOnClickListener(v -> clickListener.onMessageClick(message));
+            holder.itemView.setOnLongClickListener(v -> {
                 clickListener.onMessageLongClick(message);
                 return true;
-            }
-            return false;
-        });
+            });
+        }
     }
 
     /**
-     * Binds a sent MMS message to its view holder with lazy loading of attachments.
+     * Binds a sent MMS message to its view holder.
      *
      * @param holder The view holder
      * @param message The MMS message
+     * @param position The position
      */
-    private void bindSentMms(SentMmsViewHolder holder, MmsMessage message) {
-        // Bind message text
+    private void bindSentMmsMessage(SentMmsMessageHolder holder, MmsMessage message, int position) {
+        // Set message text
         holder.messageText.setText(message.getBody());
-        
-        // Bind message time
+
+        // Set time
         holder.timeText.setText(formatTime(message.getDate()));
-        
-        // Bind translated text if available
-        if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
+
+        // Handle translation
+        if (message.isTranslated() && message.getTranslatedText() != null) {
             holder.translatedText.setText(message.getTranslatedText());
-            holder.translatedText.setVisibility(View.VISIBLE);
+            holder.translatedText.setVisibility(message.isShowTranslation() ? View.VISIBLE : View.GONE);
         } else {
             holder.translatedText.setVisibility(View.GONE);
         }
-        
-        // Lazy load attachment
-        loadAttachmentLazily(message, holder.attachmentImage, holder.attachmentProgress);
-        
-        // Set click listener
-        holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onMessageClick(message);
-            }
-        });
-        
-        // Set long click listener
-        holder.itemView.setOnLongClickListener(v -> {
-            if (clickListener != null) {
+
+        // Handle attachments with lazy loading
+        if (message.hasAttachments() && !message.getAttachmentObjects().isEmpty()) {
+            MmsMessage.Attachment attachment = message.getAttachmentObjects().get(0);
+            holder.attachmentImage.setVisibility(View.VISIBLE);
+            holder.attachmentProgress.setVisibility(View.VISIBLE);
+
+            // Load image in background
+            loadAttachmentImage(attachment, holder.attachmentImage, holder.attachmentProgress);
+        } else {
+            holder.attachmentImage.setVisibility(View.GONE);
+            holder.attachmentProgress.setVisibility(View.GONE);
+        }
+
+        // Set click listeners
+        if (clickListener != null) {
+            holder.itemView.setOnClickListener(v -> clickListener.onMessageClick(message));
+            holder.itemView.setOnLongClickListener(v -> {
                 clickListener.onMessageLongClick(message);
                 return true;
-            }
-            return false;
-        });
+            });
+        }
     }
 
     /**
-     * Binds a received MMS message to its view holder with lazy loading of attachments.
+     * Binds a received MMS message to its view holder.
      *
      * @param holder The view holder
      * @param message The MMS message
+     * @param position The position
      */
-    private void bindReceivedMms(ReceivedMmsViewHolder holder, MmsMessage message) {
-        // Bind message text
+    private void bindReceivedMmsMessage(ReceivedMmsMessageHolder holder, MmsMessage message, int position) {
+        // Set message text
         holder.messageText.setText(message.getBody());
-        
-        // Bind message time
+
+        // Set time
         holder.timeText.setText(formatTime(message.getDate()));
-        
-        // Bind translated text if available
-        if (message.isTranslated() && !TextUtils.isEmpty(message.getTranslatedText())) {
+
+        // Handle translation
+        if (message.isTranslated() && message.getTranslatedText() != null) {
             holder.translatedText.setText(message.getTranslatedText());
-            holder.translatedText.setVisibility(View.VISIBLE);
+            holder.translatedText.setVisibility(message.isShowTranslation() ? View.VISIBLE : View.GONE);
         } else {
             holder.translatedText.setVisibility(View.GONE);
         }
-        
-        // Lazy load attachment
-        loadAttachmentLazily(message, holder.attachmentImage, holder.attachmentProgress);
-        
-        // Set click listener
-        holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onMessageClick(message);
-            }
-        });
-        
-        // Set long click listener
-        holder.itemView.setOnLongClickListener(v -> {
-            if (clickListener != null) {
+
+        // Handle attachments with lazy loading
+        if (message.hasAttachments() && !message.getAttachmentObjects().isEmpty()) {
+            MmsMessage.Attachment attachment = message.getAttachmentObjects().get(0);
+            holder.attachmentImage.setVisibility(View.VISIBLE);
+            holder.attachmentProgress.setVisibility(View.VISIBLE);
+
+            // Load image in background
+            loadAttachmentImage(attachment, holder.attachmentImage, holder.attachmentProgress);
+        } else {
+            holder.attachmentImage.setVisibility(View.GONE);
+            holder.attachmentProgress.setVisibility(View.GONE);
+        }
+
+        // Set click listeners
+        if (clickListener != null) {
+            holder.itemView.setOnClickListener(v -> clickListener.onMessageClick(message));
+            holder.itemView.setOnLongClickListener(v -> {
                 clickListener.onMessageLongClick(message);
                 return true;
-            }
-            return false;
-        });
+            });
+        }
     }
 
     /**
-     * Loads an attachment lazily.
+     * Loads an attachment image with lazy loading.
      *
-     * @param message The MMS message
-     * @param imageView The image view to display the attachment
-     * @param progressBar The progress bar to show while loading
+     * @param attachment The attachment
+     * @param imageView The image view
+     * @param progressBar The progress bar
      */
-    private void loadAttachmentLazily(MmsMessage message, ImageView imageView, ProgressBar progressBar) {
-        // Check if message has attachments
-        List<MmsMessage.Attachment> attachments = message.getAttachmentObjects();
-        if (attachments == null || attachments.isEmpty()) {
-            imageView.setVisibility(View.GONE);
+    private void loadAttachmentImage(MmsMessage.Attachment attachment, ImageView imageView, ProgressBar progressBar) {
+        if (attachment == null || attachment.getUri() == null) {
             progressBar.setVisibility(View.GONE);
             return;
         }
-        
-        // Show progress bar and hide image view
-        imageView.setVisibility(View.GONE);
-        progressBar.setVisibility(View.VISIBLE);
-        
-        // Load attachment in background
+
+        // Generate a unique key for this attachment
+        String attachmentKey = attachment.getUri().toString();
+
+        // First check if we have a thumbnail in our cache
+        if (thumbnailCache.containsKey(attachmentKey)) {
+            imageView.setImageBitmap(thumbnailCache.get(attachmentKey));
+
+            // If we also have the full image, hide the progress bar
+            if (fullImageCache.containsKey(attachmentKey)) {
+                progressBar.setVisibility(View.GONE);
+            }
+
+            return;
+        }
+
+        // Load the image in the background
         imageLoadExecutor.execute(() -> {
             try {
-                MmsMessage.Attachment attachment = attachments.get(0);
-                
-                // Load thumbnail first for better performance
-                final Bitmap thumbnail = loadAttachmentThumbnail(attachment);
-                
-                // Update UI on main thread
+                // First try to load a thumbnail
+                Bitmap thumbnail = null;
+                try {
+                    InputStream thumbnailStream = context.getContentResolver().openInputStream(attachment.getUri());
+                    if (thumbnailStream != null) {
+                        BitmapFactory.Options options = new BitmapFactory.Options();
+                        options.inSampleSize = 4; // Load a smaller version first
+                        thumbnail = BitmapFactory.decodeStream(thumbnailStream, null, options);
+                        thumbnailStream.close();
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Error loading thumbnail", e);
+                }
+
+                // Update UI with thumbnail
+                final Bitmap finalThumbnail = thumbnail;
                 handler.post(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    
-                    if (thumbnail != null) {
-                        imageView.setImageBitmap(thumbnail);
-                        imageView.setVisibility(View.VISIBLE);
-                        
-                        // Load full image after thumbnail is displayed
-                        loadFullAttachment(attachment, imageView);
-                    } else {
-                        imageView.setVisibility(View.GONE);
+                    if (finalThumbnail != null) {
+                        imageView.setImageBitmap(finalThumbnail);
+                        thumbnailCache.put(attachmentKey, finalThumbnail);
                     }
                 });
+
+                // Then load the full image
+                try {
+                    InputStream fullStream = context.getContentResolver().openInputStream(attachment.getUri());
+                    if (fullStream != null) {
+                        Bitmap fullImage = BitmapFactory.decodeStream(fullStream);
+                        fullStream.close();
+
+                        // Update UI with full image
+                        handler.post(() -> {
+                            imageView.setImageBitmap(fullImage);
+                            progressBar.setVisibility(View.GONE);
+                            fullImageCache.put(attachmentKey, fullImage);
+                        });
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Error loading full image", e);
+                    handler.post(() -> progressBar.setVisibility(View.GONE));
+                }
             } catch (Exception e) {
-                Log.e(TAG, "Error loading attachment", e);
-                handler.post(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    imageView.setVisibility(View.GONE);
-                });
-            }
-        });
-    }
-
-    /**
-     * Loads a thumbnail of an attachment.
-     *
-     * @param attachment The attachment
-     * @return The thumbnail bitmap, or null if loading failed
-     */
-    private Bitmap loadAttachmentThumbnail(MmsMessage.Attachment attachment) {
-        try {
-            // Get content resolver
-            InputStream is = context.getContentResolver().openInputStream(attachment.getUri());
-            if (is == null) {
-                return null;
-            }
-            
-            // Load thumbnail with reduced size
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 4; // Load at 1/4 the original size
-            
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            
-            return bitmap;
-        } catch (IOException e) {
-            Log.e(TAG, "Error loading attachment thumbnail", e);
-            return null;
-        }
-    }
-
-    /**
-     * Loads the full attachment.
-     *
-     * @param attachment The attachment
-     * @param imageView The image view to display the attachment
-     */
-    private void loadFullAttachment(MmsMessage.Attachment attachment, ImageView imageView) {
-        imageLoadExecutor.execute(() -> {
-            try {
-                // Get content resolver
-                InputStream is = context.getContentResolver().openInputStream(attachment.getUri());
-                if (is == null) {
-                    return;
-                }
-                
-                // Load full image
-                final Bitmap fullBitmap = BitmapFactory.decodeStream(is);
-                is.close();
-                
-                // Update UI on main thread
-                if (fullBitmap != null) {
-                    handler.post(() -> imageView.setImageBitmap(fullBitmap));
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error loading full attachment", e);
+                Log.e(TAG, "Error loading image", e);
+                handler.post(() -> progressBar.setVisibility(View.GONE));
             }
         });
     }
@@ -375,11 +389,11 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
      * Formats a timestamp into a readable time string.
      *
      * @param timestamp The timestamp
-     * @return The formatted time string
+     * @return A formatted time string
      */
     private String formatTime(long timestamp) {
-        // Simple time formatting - in a real app, use DateFormat
-        return new java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault())
+        // Simple time formatting for now
+        return new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                 .format(new java.util.Date(timestamp));
     }
 
@@ -390,49 +404,20 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
 
     @Override
     public int getItemViewType(int position) {
-        // Check if this is the loading footer
         if (showLoadingFooter && position == messages.size()) {
             return VIEW_TYPE_LOADING;
         }
-        
-        // Get message at position
-        Message message = messages.get(position);
-        
-        // Determine view type based on message type
-        if (message instanceof MmsMessage) {
-            // MMS message
-            if (message.getType() == Message.TYPE_SENT || 
-                message.getType() == Message.TYPE_OUTBOX ||
-                message.getType() == Message.TYPE_QUEUED) {
-                return VIEW_TYPE_SENT_MMS;
-            } else {
-                return VIEW_TYPE_RECEIVED_MMS;
-            }
-        } else {
-            // SMS message
-            if (message.getType() == Message.TYPE_SENT || 
-                message.getType() == Message.TYPE_OUTBOX ||
-                message.getType() == Message.TYPE_QUEUED) {
-                return VIEW_TYPE_SENT;
-            } else {
-                return VIEW_TYPE_RECEIVED;
-            }
-        }
-    }
 
-    /**
-     * Updates the messages list using DiffUtil for efficient RecyclerView updates.
-     *
-     * @param newMessages The new list of messages
-     */
-    public void updateMessages(List<Message> newMessages) {
-        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
-                new MessageDiffCallback(messages, newMessages));
-        
-        messages.clear();
-        messages.addAll(newMessages);
-        
-        diffResult.dispatchUpdatesTo(this);
+        Message message = messages.get(position);
+        boolean isSent = message.getType() == Message.TYPE_SENT ||
+                message.getType() == Message.TYPE_OUTBOX ||
+                message.getType() == Message.TYPE_QUEUED;
+
+        if (message instanceof MmsMessage || message.isMms()) {
+            return isSent ? VIEW_TYPE_SENT_MMS : VIEW_TYPE_RECEIVED_MMS;
+        } else {
+            return isSent ? VIEW_TYPE_SENT : VIEW_TYPE_RECEIVED;
+        }
     }
 
     /**
@@ -440,10 +425,9 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
      *
      * @param show Whether to show the loading footer
      */
-    public void showLoadingFooter(boolean show) {
+    public void setShowLoadingFooter(boolean show) {
         if (this.showLoadingFooter != show) {
             this.showLoadingFooter = show;
-            
             if (show) {
                 notifyItemInserted(messages.size());
             } else {
@@ -453,79 +437,94 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
     }
 
     /**
+     * Updates the messages list using DiffUtil for efficient updates.
+     *
+     * @param newMessages The new list of messages
+     */
+    public void updateMessages(List<Message> newMessages) {
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+                new MessageDiffCallback(messages, newMessages));
+
+        messages.clear();
+        messages.addAll(newMessages);
+
+        diffResult.dispatchUpdatesTo(this);
+    }
+
+    /**
      * View holder for sent messages.
      */
-    static class SentMessageViewHolder extends RecyclerView.ViewHolder {
+    static class SentMessageHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView timeText;
         TextView translatedText;
-        
-        SentMessageViewHolder(View itemView) {
+
+        SentMessageHolder(View itemView) {
             super(itemView);
-            messageText = itemView.findViewById(R.id.text_message_body);
-            timeText = itemView.findViewById(R.id.text_message_time);
-            translatedText = itemView.findViewById(R.id.text_message_translated);
+            messageText = itemView.findViewById(R.id.text_message);
+            timeText = itemView.findViewById(R.id.text_time);
+            translatedText = itemView.findViewById(R.id.translation_text);
         }
     }
 
     /**
      * View holder for received messages.
      */
-    static class ReceivedMessageViewHolder extends RecyclerView.ViewHolder {
+    static class ReceivedMessageHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView timeText;
         TextView translatedText;
-        
-        ReceivedMessageViewHolder(View itemView) {
+
+        ReceivedMessageHolder(View itemView) {
             super(itemView);
-            messageText = itemView.findViewById(R.id.text_message_body);
-            timeText = itemView.findViewById(R.id.text_message_time);
-            translatedText = itemView.findViewById(R.id.text_message_translated);
+            messageText = itemView.findViewById(R.id.text_message);
+            timeText = itemView.findViewById(R.id.text_time);
+            translatedText = itemView.findViewById(R.id.translation_text);
         }
     }
 
     /**
      * View holder for sent MMS messages.
      */
-    static class SentMmsViewHolder extends RecyclerView.ViewHolder {
+    static class SentMmsMessageHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView timeText;
         TextView translatedText;
         ImageView attachmentImage;
         ProgressBar attachmentProgress;
-        
-        SentMmsViewHolder(View itemView) {
+
+        SentMmsMessageHolder(View itemView) {
             super(itemView);
-            messageText = itemView.findViewById(R.id.text_message_body);
-            timeText = itemView.findViewById(R.id.text_message_time);
-            translatedText = itemView.findViewById(R.id.text_message_translated);
-            attachmentImage = itemView.findViewById(R.id.image_attachment);
-            attachmentProgress = itemView.findViewById(R.id.attachment_progress);
+            messageText = itemView.findViewById(R.id.message_text);
+            timeText = itemView.findViewById(R.id.message_date);
+            translatedText = itemView.findViewById(R.id.translation_text);
+            attachmentImage = itemView.findViewById(R.id.media_image);
+            attachmentProgress = itemView.findViewById(R.id.media_icon); // Using media_icon as progress indicator
         }
     }
 
     /**
      * View holder for received MMS messages.
      */
-    static class ReceivedMmsViewHolder extends RecyclerView.ViewHolder {
+    static class ReceivedMmsMessageHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView timeText;
         TextView translatedText;
         ImageView attachmentImage;
         ProgressBar attachmentProgress;
-        
-        ReceivedMmsViewHolder(View itemView) {
+
+        ReceivedMmsMessageHolder(View itemView) {
             super(itemView);
-            messageText = itemView.findViewById(R.id.text_message_body);
-            timeText = itemView.findViewById(R.id.text_message_time);
-            translatedText = itemView.findViewById(R.id.text_message_translated);
-            attachmentImage = itemView.findViewById(R.id.image_attachment);
-            attachmentProgress = itemView.findViewById(R.id.attachment_progress);
+            messageText = itemView.findViewById(R.id.message_text);
+            timeText = itemView.findViewById(R.id.message_date);
+            translatedText = itemView.findViewById(R.id.translation_text);
+            attachmentImage = itemView.findViewById(R.id.media_image);
+            attachmentProgress = itemView.findViewById(R.id.media_icon); // Using media_icon as progress indicator
         }
     }
 
     /**
-     * View holder for loading footer.
+     * View holder for the loading footer.
      */
     static class LoadingViewHolder extends RecyclerView.ViewHolder {
         LoadingViewHolder(View itemView) {
@@ -541,3 +540,4 @@ public class OptimizedMessageRecyclerAdapter extends RecyclerView.Adapter<Recycl
         void onMessageLongClick(Message message);
     }
 }
+

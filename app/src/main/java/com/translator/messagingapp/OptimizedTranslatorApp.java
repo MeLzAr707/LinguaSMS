@@ -1,3 +1,4 @@
+
 package com.translator.messagingapp;
 
 import android.app.Application;
@@ -13,28 +14,32 @@ import java.util.concurrent.Executors;
  */
 public class OptimizedTranslatorApp extends Application {
     private static final String TAG = "OptimizedTranslatorApp";
-    
+
     private ExecutorService prefetchExecutor;
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
-    
+    private GoogleTranslationService translationService;
+    private UserPreferences userPreferences;
+
     @Override
     public void onCreate() {
         super.onCreate();
-        
+
         // Initialize services
-        translationManager = new TranslationManager(this);
+        translationService = new GoogleTranslationService(this);
+        userPreferences = new UserPreferences(this);
+        translationManager = new TranslationManager(this, translationService, userPreferences);
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
-        
+
         // Initialize prefetch executor
         prefetchExecutor = Executors.newSingleThreadExecutor();
-        
+
         // Prefetch conversations and frequently accessed data
         prefetchData();
     }
-    
+
     /**
      * Prefetches data in the background to improve app responsiveness.
      */
@@ -43,10 +48,10 @@ public class OptimizedTranslatorApp extends Application {
             try {
                 // Prefetch conversations
                 prefetchConversations();
-                
+
                 // Prefetch recent messages
                 prefetchRecentMessages();
-                
+
                 // Prefetch contact information
                 prefetchContacts();
             } catch (Exception e) {
@@ -54,7 +59,7 @@ public class OptimizedTranslatorApp extends Application {
             }
         });
     }
-    
+
     /**
      * Prefetches conversations in the background.
      */
@@ -67,50 +72,50 @@ public class OptimizedTranslatorApp extends Application {
             Log.e(TAG, "Error prefetching conversations", e);
         }
     }
-    
+
     /**
      * Prefetches recent messages from the most recent conversations.
      */
     private void prefetchRecentMessages() {
         try {
             Log.d(TAG, "Prefetching recent messages");
-            
+
             // Get recent conversations
             List<Conversation> conversations = messageService.loadConversations();
-            
+
             // Prefetch messages from the 3 most recent conversations
             int count = 0;
             for (Conversation conversation : conversations) {
                 if (count >= 3) break;
-                
+
                 String threadId = conversation.getThreadId();
                 if (threadId != null && !threadId.isEmpty()) {
                     optimizedMessageService.getMessagesByThreadIdPaginated(
-                        threadId, 
-                        0, 
-                        20, // Just prefetch the 20 most recent messages
-                        messages -> Log.d(TAG, "Prefetched " + messages.size() + " messages for thread " + threadId)
+                            threadId,
+                            0,
+                            20, // Just prefetch the 20 most recent messages
+                            messages -> Log.d(TAG, "Prefetched " + messages.size() + " messages for thread " + threadId)
                     );
                     count++;
                 }
             }
-            
+
             Log.d(TAG, "Recent messages prefetched");
         } catch (Exception e) {
             Log.e(TAG, "Error prefetching recent messages", e);
         }
     }
-    
+
     /**
      * Prefetches contact information for recent conversations.
      */
     private void prefetchContacts() {
         try {
             Log.d(TAG, "Prefetching contacts");
-            
+
             // Get recent conversations
             List<Conversation> conversations = messageService.loadConversations();
-            
+
             // Extract phone numbers
             List<String> phoneNumbers = new ArrayList<>();
             for (Conversation conversation : conversations) {
@@ -119,7 +124,7 @@ public class OptimizedTranslatorApp extends Application {
                     phoneNumbers.add(address);
                 }
             }
-            
+
             // Batch lookup contacts
             if (!phoneNumbers.isEmpty()) {
                 OptimizedContactUtils.getContactNamesForNumbers(this, phoneNumbers);
@@ -129,23 +134,28 @@ public class OptimizedTranslatorApp extends Application {
             Log.e(TAG, "Error prefetching contacts", e);
         }
     }
-    
+
     @Override
     public void onTerminate() {
         // Shutdown executor
         if (prefetchExecutor != null && !prefetchExecutor.isShutdown()) {
             prefetchExecutor.shutdown();
         }
-        
+
         super.onTerminate();
     }
-    
+
     /**
      * Gets the translation manager.
      *
      * @return The translation manager
      */
     public TranslationManager getTranslationManager() {
+        if (translationManager == null) {
+            translationService = new GoogleTranslationService(this);
+            userPreferences = new UserPreferences(this);
+            translationManager = new TranslationManager(this, translationService, userPreferences);
+        }
         return translationManager;
     }
 }

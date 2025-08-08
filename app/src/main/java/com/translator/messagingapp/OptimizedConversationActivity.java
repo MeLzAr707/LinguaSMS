@@ -1,3 +1,4 @@
+
 package com.translator.messagingapp;
 
 import android.content.Intent;
@@ -85,17 +86,42 @@ public class OptimizedConversationActivity extends BaseActivity {
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
+            adapter = new MessageRecyclerAdapter(this, messages);
+            adapter.setOnMessageClickListener(new MessageRecyclerAdapter.OnMessageClickListener() {
                 @Override
-                public void onMessageClick(Message message) {
+                public void onMessageClick(Message message, int position) {
                     // Handle message click
                     Toast.makeText(OptimizedConversationActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
-                public void onMessageLongClick(Message message) {
+                public void onMessageLongClick(Message message, int position) {
                     // Handle message long click
                     showMessageOptions(message);
+                }
+
+                @Override
+                public void onTranslateClick(Message message, int position) {
+                    // Handle translate click
+                    Toast.makeText(OptimizedConversationActivity.this, "Translate clicked", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
+                    // Handle attachment click
+                    Toast.makeText(OptimizedConversationActivity.this, "Attachment clicked", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onReactionClick(Message message, int position) {
+                    // Handle reaction click
+                    Toast.makeText(OptimizedConversationActivity.this, "Reaction clicked", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onAddReactionClick(Message message, int position) {
+                    // Handle add reaction click
+                    Toast.makeText(OptimizedConversationActivity.this, "Add reaction clicked", Toast.LENGTH_SHORT).show();
                 }
             });
             messagesRecyclerView.setAdapter(adapter);
@@ -113,6 +139,20 @@ public class OptimizedConversationActivity extends BaseActivity {
     }
 
     /**
+     * Gets the translation manager.
+     *
+     * @return The translation manager
+     */
+    private TranslationManager getTranslationManager() {
+        if (translationManager == null) {
+            GoogleTranslationService translationService = new GoogleTranslationService(this);
+            UserPreferences userPreferences = new UserPreferences(this);
+            translationManager = new TranslationManager(this, translationService, userPreferences);
+        }
+        return translationManager;
+    }
+
+    /**
      * Shows options for a message.
      *
      * @param message The message
@@ -127,18 +167,18 @@ public class OptimizedConversationActivity extends BaseActivity {
      */
     private void setupPagination() {
         LinearLayoutManager layoutManager = (LinearLayoutManager) messagesRecyclerView.getLayoutManager();
-        
+
         paginationScrollListener = (PaginationUtils.PaginationScrollListener) PaginationUtils.setupPagination(
-            messagesRecyclerView,
-            onLoadingComplete -> {
-                // Load next page
-                int nextPage = currentPage + 1;
-                int offset = nextPage * PAGE_SIZE;
-                
-                loadMessagesOptimized(offset, PAGE_SIZE, onLoadingComplete);
-            },
-            10, // threshold - start loading when 10 items from the end
-            loadingIndicator
+                messagesRecyclerView,
+                onLoadingComplete -> {
+                    // Load next page
+                    int nextPage = currentPage + 1;
+                    int offset = nextPage * PAGE_SIZE;
+
+                    loadMessagesOptimized(offset, PAGE_SIZE, onLoadingComplete);
+                },
+                10, // threshold - start loading when 10 items from the end
+                progressBar // Use the main progress bar as loading indicator
         );
     }
 
@@ -186,24 +226,24 @@ public class OptimizedConversationActivity extends BaseActivity {
         // Use the appropriate method based on available data
         if (!TextUtils.isEmpty(threadId)) {
             Log.d(TAG, "Loading messages by thread ID: " + threadId + ", offset: " + offset + ", limit: " + limit);
-            
+
             optimizedMessageService.getMessagesByThreadIdPaginated(threadId, offset, limit, loadedMessages -> {
                 handleLoadedMessages(loadedMessages, offset, onLoadingComplete);
             });
         } else if (!TextUtils.isEmpty(address)) {
             Log.d(TAG, "Loading messages by address: " + address + ", offset: " + offset + ", limit: " + limit);
-            
+
             // For address-based loading, we'll use the regular service for now
             // In a real implementation, we would create an optimized version for this as well
             backgroundExecutor.execute(() -> {
                 List<Message> loadedMessages = messageService.getMessagesByAddress(address);
-                
+
                 // Apply pagination manually for now
                 int endIndex = Math.min(offset + limit, loadedMessages.size());
-                List<Message> pagedMessages = offset < loadedMessages.size() 
-                    ? loadedMessages.subList(offset, endIndex) 
-                    : new ArrayList<>();
-                
+                List<Message> pagedMessages = offset < loadedMessages.size()
+                        ? loadedMessages.subList(offset, endIndex)
+                        : new ArrayList<>();
+
                 handleLoadedMessages(pagedMessages, offset, onLoadingComplete);
             });
         } else {
@@ -248,7 +288,7 @@ public class OptimizedConversationActivity extends BaseActivity {
                 // Update pagination state
                 currentPage = offset / PAGE_SIZE;
                 hasMoreMessages = !loadedMessages.isEmpty();
-                
+
                 if (paginationScrollListener != null) {
                     paginationScrollListener.setHasMoreItems(hasMoreMessages);
                 }
@@ -258,7 +298,7 @@ public class OptimizedConversationActivity extends BaseActivity {
                     showEmptyState("No messages");
                 } else {
                     showMessagesState();
-                    
+
                     // Scroll to bottom on first load
                     if (offset == 0) {
                         messagesRecyclerView.scrollToPosition(messages.size() - 1);
@@ -270,7 +310,7 @@ public class OptimizedConversationActivity extends BaseActivity {
             } finally {
                 showLoading(false);
                 isLoading = false;
-                
+
                 // Notify that loading is complete
                 if (onLoadingComplete != null) {
                     onLoadingComplete.onLoadingComplete();
@@ -287,10 +327,10 @@ public class OptimizedConversationActivity extends BaseActivity {
     private void updateMessages(List<Message> newMessages) {
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
                 new MessageDiffCallback(messages, newMessages));
-        
+
         messages.clear();
         messages.addAll(newMessages);
-        
+
         diffResult.dispatchUpdatesTo(adapter);
     }
 
@@ -303,7 +343,7 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (newMessages.isEmpty()) {
             return;
         }
-        
+
         int startPosition = messages.size();
         messages.addAll(newMessages);
         adapter.notifyItemRangeInserted(startPosition, newMessages.size());
@@ -329,12 +369,12 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (messagesRecyclerView != null) {
             messagesRecyclerView.setVisibility(View.GONE);
         }
-        
+
         if (emptyStateTextView != null) {
             emptyStateTextView.setText(message);
             emptyStateTextView.setVisibility(View.VISIBLE);
         }
-        
+
         showLoading(false);
     }
 
@@ -345,11 +385,11 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (messagesRecyclerView != null) {
             messagesRecyclerView.setVisibility(View.VISIBLE);
         }
-        
+
         if (emptyStateTextView != null) {
             emptyStateTextView.setVisibility(View.GONE);
         }
-        
+
         showLoading(false);
     }
 
@@ -381,8 +421,9 @@ public class OptimizedConversationActivity extends BaseActivity {
             sendButton = findViewById(R.id.send_button);
             translateButton = findViewById(R.id.translate_button);
             progressBar = findViewById(R.id.progress_bar);
-            emptyStateTextView = findViewById(R.id.empty_state_text);
-            loadingIndicator = findViewById(R.id.loading_indicator);
+            emptyStateTextView = findViewById(R.id.empty_state_text_view); // Fixed ID
+            // Use progress_bar as loading indicator since loading_indicator doesn't exist
+            loadingIndicator = progressBar;
 
             // Set up click listeners
             if (sendButton != null) {
@@ -420,6 +461,25 @@ public class OptimizedConversationActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    // Rest of the ConversationActivity implementation remains the same
-    // ...
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.conversation_menu, menu); // Fixed menu resource name
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == android.R.id.home) {
+            finish();
+            return true;
+        } else if (id == R.id.action_settings) {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
 }

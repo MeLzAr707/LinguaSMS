@@ -340,6 +340,7 @@
 
     <string name="pref_api_service">API Service</string>
     <string name="pref_api_service_summary">Select translation service provider</string>
+    <string name="settings_error_message">Settings Error</string>
 
     <string name="pref_debug_mode">Debug Mode</string>
     <string name="pref_debug_mode_summary">Enable additional logging and debug features</string>

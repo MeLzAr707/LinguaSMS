@@ -46,8 +46,8 @@ dependencies {
     implementation(libs.preference)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation(libs.appcompat.v141)
-    implementation(libs.material.v150)
+    implementation(libs.appcompat)
+    implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(libs.cardview)
     implementation(libs.swiperefreshlayout)
@@ -67,6 +67,6 @@ dependencies {
 
     // Testing dependencies
     testImplementation(libs.junit)
-    androidTestImplementation(libs.junit.v113)
-    androidTestImplementation(libs.espresso.core.v340)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.espresso.core)
 }
