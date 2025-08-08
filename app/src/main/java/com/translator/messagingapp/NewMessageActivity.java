@@ -16,6 +16,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FilterQueryProvider;
+import android.widget.ImageButton;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
@@ -37,7 +38,7 @@ public class NewMessageActivity extends BaseActivity {
     private EditText recipientInput; // Changed from AutoCompleteTextView to EditText
     private EditText messageInput;
     private Button sendButton;
-    private Button contactPickerButton;
+    private ImageButton contactPickerButton; // Changed from Button to ImageButton
 
     // Services
     private MessageService messageService;
@@ -53,6 +54,26 @@ public class NewMessageActivity extends BaseActivity {
         if (app != null) {
             messageService = app.getMessageService();
             translationManager = app.getTranslationManager();
+            
+            // Verify services are initialized
+            if (messageService == null) {
+                Log.e(TAG, "MessageService is null");
+                Toast.makeText(this, "Error: Message service not available", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            
+            if (translationManager == null) {
+                Log.e(TAG, "TranslationManager is null");
+                Toast.makeText(this, "Error: Translation service not available", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+        } else {
+            Log.e(TAG, "TranslatorApp is null");
+            Toast.makeText(this, "Error: Application not initialized properly", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
         // Set up toolbar
@@ -66,9 +87,24 @@ public class NewMessageActivity extends BaseActivity {
         // Initialize UI components
         try {
             recipientInput = findViewById(R.id.recipient_input); // Now using EditText
+            if (recipientInput == null) {
+                throw new RuntimeException("recipient_input not found in layout");
+            }
+            
             messageInput = findViewById(R.id.message_input);
+            if (messageInput == null) {
+                throw new RuntimeException("message_input not found in layout");
+            }
+            
             sendButton = findViewById(R.id.send_button);
-            contactPickerButton = findViewById(R.id.contact_button);
+            if (sendButton == null) {
+                throw new RuntimeException("send_button not found in layout");
+            }
+            
+            contactPickerButton = findViewById(R.id.contact_button); // Now using ImageButton
+            if (contactPickerButton == null) {
+                throw new RuntimeException("contact_button not found in layout");
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing UI components", e);
             Toast.makeText(this, "Error initializing UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
