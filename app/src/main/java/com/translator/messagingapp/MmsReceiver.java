@@ -17,7 +17,7 @@ public class MmsReceiver extends BroadcastReceiver {
         Log.d(TAG, "MMS received: " + intent.getAction());
 
         // Get the MessageService from the application
-        TranslatorApp app = (TranslatorApp) context.getApplicationContext();
+        OptimizedTranslatorApp app = (OptimizedTranslatorApp) context.getApplicationContext();
         MessageService messageService = app.getMessageService();
 
         if (messageService != null) {

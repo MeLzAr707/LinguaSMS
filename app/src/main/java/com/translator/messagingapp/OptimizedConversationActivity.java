@@ -34,7 +34,7 @@ public class OptimizedConversationActivity extends BaseActivity {
 
     // UI components
     private RecyclerView messagesRecyclerView;
-    private MessageRecyclerAdapter adapter;
+    private OptimizedMessageRecyclerAdapter adapter;
     private EditText messageInput;
     private ImageButton sendButton;
     private ImageButton translateButton;
@@ -76,16 +76,16 @@ public class OptimizedConversationActivity extends BaseActivity {
             }
 
             // Initialize services
-            messageService = new MessageService(this, getTranslationManager());
             translationManager = getTranslationManager();
             optimizedMessageService = new OptimizedMessageService(this, translationManager);
+            messageService = optimizedMessageService; // Use optimized service
 
             // Initialize UI components
             initializeComponents();
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
+            adapter = new OptimizedMessageRecyclerAdapter(this, messages, new OptimizedMessageRecyclerAdapter.MessageClickListener() {
                 @Override
                 public void onMessageClick(Message message) {
                     // Handle message click

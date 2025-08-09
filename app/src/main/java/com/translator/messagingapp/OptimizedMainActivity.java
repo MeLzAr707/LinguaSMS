@@ -44,7 +44,7 @@ public class OptimizedMainActivity extends BaseActivity implements NavigationVie
     private FloatingActionButton newMessageFab;
 
     // Services
-    private MessageService messageService;
+    private OptimizedMessageService messageService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private TranslationManager translationManager;
     
@@ -61,9 +61,9 @@ public class OptimizedMainActivity extends BaseActivity implements NavigationVie
 
         try {
             // Initialize services
-            messageService = new MessageService(this, getTranslationManager());
-            defaultSmsAppManager = new DefaultSmsAppManager(this);
             translationManager = getTranslationManager();
+            messageService = new OptimizedMessageService(this, translationManager);
+            defaultSmsAppManager = new DefaultSmsAppManager(this);
 
             // Initialize UI components
             initializeComponents();

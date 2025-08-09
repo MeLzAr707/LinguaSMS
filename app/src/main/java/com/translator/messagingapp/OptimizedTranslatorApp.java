@@ -15,9 +15,10 @@ public class OptimizedTranslatorApp extends Application {
     private static final String TAG = "OptimizedTranslatorApp";
     
     private ExecutorService prefetchExecutor;
-    private MessageService messageService;
+    private OptimizedMessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
+    private UserPreferences userPreferences;
     
     @Override
     public void onCreate() {
@@ -25,8 +26,8 @@ public class OptimizedTranslatorApp extends Application {
         
         // Initialize services
         translationManager = new TranslationManager(this);
-        messageService = new MessageService(this, translationManager);
-        optimizedMessageService = new OptimizedMessageService(this, translationManager);
+        messageService = new OptimizedMessageService(this, translationManager);
+        optimizedMessageService = messageService; // Both refer to the same optimized service
         
         // Initialize prefetch executor
         prefetchExecutor = Executors.newSingleThreadExecutor();
@@ -147,5 +148,17 @@ public class OptimizedTranslatorApp extends Application {
      */
     public TranslationManager getTranslationManager() {
         return translationManager;
+    }
+    
+    public OptimizedMessageService getMessageService() {
+        return messageService;
+    }
+    
+    public UserPreferences getUserPreferences() {
+        // Initialize if not already done
+        if (userPreferences == null) {
+            userPreferences = new UserPreferences(this);
+        }
+        return userPreferences;
     }
 }
