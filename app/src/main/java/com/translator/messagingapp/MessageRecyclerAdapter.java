@@ -293,7 +293,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         // Set up media
-        setupMedia(holder.mediaContainer, holder.mediaIcon, message, position);
+        setupMedia(holder.mediaContainer, holder.mediaImage, holder.mediaIcon, message, position);
 
         // Set up click listeners
         setupMessageClickListeners(holder.itemView, holder.translateButton, message, position);
@@ -323,7 +323,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         // Set up media
-        setupMedia(holder.mediaContainer, holder.mediaIcon, message, position);
+        setupMedia(holder.mediaContainer, holder.mediaImage, holder.mediaIcon, message, position);
 
         // Set up click listeners
         setupMessageClickListeners(holder.itemView, holder.translateButton, message, position);
@@ -441,10 +441,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     }
 
     /**
-     * Fixed method for handling media attachments
+     * Updated method for handling media attachments
      */
-    private void setupMedia(ViewGroup mediaContainer, ImageView mediaIcon, Message message, int position) {
-        if (mediaContainer == null || mediaIcon == null || message == null) {
+    private void setupMedia(ViewGroup mediaContainer, ImageView mediaImage, ImageView mediaIcon, Message message, int position) {
+        if (mediaContainer == null || message == null) {
             return;
         }
 
@@ -462,7 +462,13 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     }
 
                     // Check if it's an image
-                    if (attachment.isImage() && attachment.getUri() != null) {
+                    if (attachment.isImage() && attachment.getUri() != null && mediaImage != null) {
+                        // Show image in the large media_image view
+                        mediaImage.setVisibility(View.VISIBLE);
+                        if (mediaIcon != null) {
+                            mediaIcon.setVisibility(View.GONE);
+                        }
+
                         // Load image with Glide with error handling
                         try {
                             RequestOptions options = new RequestOptions()
@@ -473,22 +479,39 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                             Glide.with(context)
                                     .load(attachment.getUri())
                                     .apply(options)
-                                    .into(mediaIcon);
+                                    .into(mediaImage);
                         } catch (Exception e) {
-                            // If Glide fails, show generic attachment icon
-                            mediaIcon.setImageResource(R.drawable.ic_attachment);
+                            // If Glide fails, show generic attachment icon in mediaIcon instead
+                            mediaImage.setVisibility(View.GONE);
+                            if (mediaIcon != null) {
+                                mediaIcon.setVisibility(View.VISIBLE);
+                                mediaIcon.setImageResource(R.drawable.ic_attachment);
+                            }
                         }
-                    } else {
-                        // Show generic attachment icon
-                        mediaIcon.setImageResource(R.drawable.ic_attachment);
-                    }
 
-                    // Set click listener for attachment
-                    mediaIcon.setOnClickListener(v -> {
-                        if (clickListener != null) {
-                            clickListener.onAttachmentClick(attachment, position);
+                        // Set click listener for image
+                        mediaImage.setOnClickListener(v -> {
+                            if (clickListener != null) {
+                                clickListener.onAttachmentClick(attachment, position);
+                            }
+                        });
+                    } else {
+                        // Non-image attachment: show generic icon in the small media_icon view
+                        if (mediaImage != null) {
+                            mediaImage.setVisibility(View.GONE);
                         }
-                    });
+                        if (mediaIcon != null) {
+                            mediaIcon.setVisibility(View.VISIBLE);
+                            mediaIcon.setImageResource(R.drawable.ic_attachment);
+
+                            // Set click listener for attachment
+                            mediaIcon.setOnClickListener(v -> {
+                                if (clickListener != null) {
+                                    clickListener.onAttachmentClick(attachment, position);
+                                }
+                            });
+                        }
+                    }
                 } else {
                     mediaContainer.setVisibility(View.GONE);
                 }
@@ -758,6 +781,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView dateText;
         View translateButton;
         ViewGroup mediaContainer;
+        ImageView mediaImage;
         ImageView mediaIcon;
         LinearLayout reactionsLayout;
         View addReactionButton;
@@ -774,6 +798,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
             translateButton = itemView.findViewById(R.id.translate_button);
             mediaContainer = itemView.findViewById(R.id.media_container);
+            mediaImage = itemView.findViewById(R.id.media_image);
             mediaIcon = itemView.findViewById(R.id.media_icon);
 
             // Try to find reactions layout with either ID
@@ -795,6 +820,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         ImageView messageStatus;
         View translateButton;
         ViewGroup mediaContainer;
+        ImageView mediaImage;
         ImageView mediaIcon;
         LinearLayout reactionsLayout;
         View addReactionButton;
@@ -812,6 +838,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             messageStatus = itemView.findViewById(R.id.message_status);
             translateButton = itemView.findViewById(R.id.translate_button);
             mediaContainer = itemView.findViewById(R.id.media_container);
+            mediaImage = itemView.findViewById(R.id.media_image);
             mediaIcon = itemView.findViewById(R.id.media_icon);
 
             // Try to find reactions layout with either ID
