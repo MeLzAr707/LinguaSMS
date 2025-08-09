@@ -26,6 +26,11 @@ public class MessageService {
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private MessageCache messageCache;
+    
+    // Simple conversation caching to improve performance
+    private List<Conversation> cachedConversations = null;
+    private long conversationCacheTimestamp = 0;
+    private static final long CONVERSATION_CACHE_DURATION = 30000; // 30 seconds
 
     /**
      * Creates a new MessageService.
@@ -307,7 +312,6 @@ public class MessageService {
 
     /**
      * Gets the thread ID for an address.
-     * IMPROVED: Uses phone number normalization to prevent conversation thread mixups.
      *
      * @param address The address
      * @return The thread ID, or null if not found
@@ -321,71 +325,32 @@ public class MessageService {
         Cursor cursor = null;
 
         try {
-            Log.d(TAG, "Getting thread ID for address: " + address);
-            
-            // Try multiple phone number variants to handle different formats
-            String[] phoneVariants = PhoneUtils.getPhoneNumberVariants(address);
-            
-            for (String phoneNumber : phoneVariants) {
-                if (TextUtils.isEmpty(phoneNumber)) {
-                    continue;
-                }
-                
-                Log.d(TAG, "Trying phone variant: " + phoneNumber);
-                
-                // Query the canonical addresses table
-                Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+            // Query the canonical addresses table
+            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+            cursor = context.getContentResolver().query(
+                    uri,
+                    new String[]{"_id"},
+                    "address = ?",
+                    new String[]{address},
+                    null);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                String recipientId = cursor.getString(0);
+                cursor.close();
+
+                // Query the threads table
+                uri = Uri.parse("content://mms-sms/conversations?simple=true");
                 cursor = context.getContentResolver().query(
                         uri,
                         new String[]{"_id"},
-                        "address = ?",
-                        new String[]{phoneNumber},
+                        "recipient_ids = ?",
+                        new String[]{recipientId},
                         null);
 
                 if (cursor != null && cursor.moveToFirst()) {
-                    String recipientId = cursor.getString(0);
-                    cursor.close();
-                    cursor = null;
-
-                    Log.d(TAG, "Found recipient ID: " + recipientId + " for phone: " + phoneNumber);
-
-                    // Query the threads table - improved to handle multiple recipient scenarios
-                    uri = Uri.parse("content://mms-sms/conversations?simple=true");
-                    cursor = context.getContentResolver().query(
-                            uri,
-                            new String[]{"_id", "recipient_ids"},
-                            "recipient_ids = ? OR recipient_ids LIKE ? OR recipient_ids LIKE ? OR recipient_ids LIKE ?",
-                            new String[]{
-                                recipientId,                    // Exact match
-                                recipientId + " %",            // First in list
-                                "% " + recipientId,            // Last in list
-                                "% " + recipientId + " %"      // Middle in list
-                            },
-                            null);
-
-                    if (cursor != null && cursor.moveToFirst()) {
-                        threadId = cursor.getString(0);
-                        String foundRecipientIds = cursor.getString(1);
-                        Log.d(TAG, "Found thread ID: " + threadId + " with recipients: " + foundRecipientIds + " for address: " + address);
-                        break; // Found it, exit the loop
-                    }
-                    
-                    if (cursor != null) {
-                        cursor.close();
-                        cursor = null;
-                    }
-                }
-                
-                if (cursor != null) {
-                    cursor.close();
-                    cursor = null;
+                    threadId = cursor.getString(0);
                 }
             }
-            
-            if (TextUtils.isEmpty(threadId)) {
-                Log.d(TAG, "No thread ID found for address: " + address + " after trying all variants");
-            }
-            
         } catch (Exception e) {
             Log.e(TAG, "Error getting thread ID for address: " + address, e);
         } finally {
@@ -955,115 +920,6 @@ public class MessageService {
     }
 
     /**
-     * Handles an incoming MMS message.
-     *
-     * @param intent The intent containing the MMS data
-     */
-    public void handleIncomingMms(Intent intent) {
-        if (intent == null) {
-            Log.e(TAG, "Cannot handle MMS: intent is null");
-            return;
-        }
-
-        Log.d(TAG, "Handling incoming MMS: " + intent.getAction());
-
-        try {
-            // Extract MMS data from intent
-            byte[] data = intent.getByteArrayExtra("data");
-            if (data != null) {
-                Log.d(TAG, "MMS data received, size: " + data.length + " bytes");
-                
-                // Process the MMS data
-                processMmsData(data, intent);
-            } else {
-                Log.w(TAG, "No MMS data found in intent");
-                
-                // Try alternative methods to extract MMS information
-                handleMmsIntent(intent);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling incoming MMS", e);
-        }
-    }
-
-    /**
-     * Processes raw MMS data.
-     *
-     * @param data The raw MMS data
-     * @param intent The original intent
-     */
-    private void processMmsData(byte[] data, Intent intent) {
-        try {
-            Log.d(TAG, "Processing MMS data");
-            
-            // The actual MMS processing would typically involve:
-            // 1. Parsing the MMS PDU (Protocol Data Unit)
-            // 2. Extracting message parts and attachments
-            // 3. Saving to the MMS database
-            // 4. Triggering notifications
-            
-            // For now, we'll log that the MMS was received and handle basic intent data
-            Log.d(TAG, "MMS data processed successfully");
-            
-            // Clear cache since new MMS message arrived
-            messageCache.clearAllCaches();
-            
-            // Notify about new MMS (this could trigger UI updates)
-            notifyNewMmsReceived(intent);
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error processing MMS data", e);
-        }
-    }
-
-    /**
-     * Handles MMS intent when no raw data is available.
-     *
-     * @param intent The MMS intent
-     */
-    private void handleMmsIntent(Intent intent) {
-        try {
-            Log.d(TAG, "Handling MMS intent without raw data");
-            
-            // Extract what information we can from the intent
-            String action = intent.getAction();
-            Log.d(TAG, "MMS intent action: " + action);
-            
-            // Clear cache to ensure fresh data is loaded
-            messageCache.clearAllCaches();
-            
-            // Notify about MMS reception
-            notifyNewMmsReceived(intent);
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling MMS intent", e);
-        }
-    }
-
-    /**
-     * Notifies about a new MMS message being received.
-     *
-     * @param intent The MMS intent
-     */
-    private void notifyNewMmsReceived(Intent intent) {
-        try {
-            Log.d(TAG, "Notifying about new MMS reception");
-            
-            // This could be extended to:
-            // 1. Send broadcast to update UI
-            // 2. Show notification
-            // 3. Trigger translation if enabled
-            // 4. Update conversation list
-            
-            // For now, just log the notification
-            Log.d(TAG, "New MMS notification sent");
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error notifying about new MMS", e);
-        }
-    }
-
-    /**
      * Loads messages for a conversation.
      *
      * @param threadId The thread ID
@@ -1114,11 +970,47 @@ public class MessageService {
     }
 
     /**
-     * Loads all conversations.
+     * Loads conversations from the database.
+     * Uses caching to improve performance for frequent requests.
      *
      * @return The list of conversations
      */
     public List<Conversation> loadConversations() {
+        return loadConversations(false);
+    }
+    
+    /**
+     * Loads conversations from the database with optional cache bypass.
+     *
+     * @param forceRefresh If true, bypasses the cache and loads fresh data
+     * @return The list of conversations
+     */
+    public List<Conversation> loadConversations(boolean forceRefresh) {
+        // Check cache first (unless force refresh is requested)
+        if (!forceRefresh && cachedConversations != null) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - conversationCacheTimestamp < CONVERSATION_CACHE_DURATION) {
+                Log.d(TAG, "Returning cached conversations (" + cachedConversations.size() + " items)");
+                return new ArrayList<>(cachedConversations); // Return copy to prevent modification
+            }
+        }
+        
+        List<Conversation> conversations = loadConversationsFromDatabase();
+        
+        // Update cache
+        cachedConversations = new ArrayList<>(conversations);
+        conversationCacheTimestamp = System.currentTimeMillis();
+        
+        Log.d(TAG, "Loaded and cached " + conversations.size() + " conversations");
+        return conversations;
+    }
+    
+    /**
+     * Loads conversations directly from the database (internal method).
+     *
+     * @return The list of conversations
+     */
+    private List<Conversation> loadConversationsFromDatabase() {
         List<Conversation> conversations = new ArrayList<>();
         Cursor cursor = null;
 
@@ -1148,23 +1040,26 @@ public class MessageService {
 
                     // Set conversation data
                     conversation.setThreadId(threadId);
-                    conversation.setSnippet(snippet);
                     conversation.setDate(new Date(date));
                     conversation.setMessageCount(messageCount);
                     conversation.setRead(read == 1);
 
-                    // Get recipient address and normalize it for consistency
+                    // Get recipient address
                     String address = getAddressForThreadId(threadId);
-                    if (!TextUtils.isEmpty(address)) {
-                        // Ensure consistent phone number format for address lookups
-                        address = PhoneUtils.normalizePhoneNumber(address);
-                    }
                     conversation.setAddress(address);
                     
                     // Collect addresses for batch contact lookup
                     if (!TextUtils.isEmpty(address)) {
                         addresses.add(address);
                     }
+
+                    // Improved snippet handling - get actual last message if snippet is empty
+                    String finalSnippet = snippet;
+                    if (TextUtils.isEmpty(finalSnippet) || finalSnippet.trim().isEmpty()) {
+                        Log.d(TAG, "Empty snippet for thread " + threadId + ", fetching last message");
+                        finalSnippet = getLastMessageForThread(threadId);
+                    }
+                    conversation.setSnippet(finalSnippet);
 
                     // Add conversation to list
                     conversations.add(conversation);
@@ -1174,33 +1069,15 @@ public class MessageService {
                 Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
                 Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
                 
-                // Third pass: assign contact names with fallbacks and additional validation
+                // Third pass: assign contact names with fallbacks
                 for (Conversation conversation : conversations) {
                     String address = conversation.getAddress();
                     String contactName = contactNames.get(address);
                     String threadId = conversation.getThreadId();
                     
-                    // If we didn't find a contact name with the normalized address, try other variants
-                    if (TextUtils.isEmpty(contactName) && !TextUtils.isEmpty(address)) {
-                        String[] phoneVariants = PhoneUtils.getPhoneNumberVariants(address);
-                        for (String variant : phoneVariants) {
-                            contactName = contactNames.get(variant);
-                            if (!TextUtils.isEmpty(contactName)) {
-                                Log.d(TAG, "Found contact name '" + contactName + "' using variant " + variant + " for address " + address);
-                                break;
-                            }
-                        }
-                    }
-                    
                     if (!TextUtils.isEmpty(contactName)) {
-                        // Validate that contact name is reasonable
-                        if (isValidContactName(contactName, threadId)) {
-                            conversation.setContactName(contactName);
-                            Log.d(TAG, "Found contact name '" + contactName + "' for address " + address + " (thread " + threadId + ")");
-                        } else {
-                            Log.w(TAG, "Contact name '" + contactName + "' appears invalid for thread " + threadId + ", using address instead");
-                            conversation.setContactName(!TextUtils.isEmpty(address) ? address : "Unknown Contact");
-                        }
+                        conversation.setContactName(contactName);
+                        Log.d(TAG, "Found contact name '" + contactName + "' for address " + address + " (thread " + threadId + ")");
                     } else if (!TextUtils.isEmpty(address)) {
                         // Fallback to address/phone number
                         conversation.setContactName(address);
@@ -1217,12 +1094,6 @@ public class MessageService {
                         Log.e(TAG, "ERROR: Contact name was set to threadId " + threadId + " - fixing to 'Unknown Contact'");
                         conversation.setContactName("Unknown Contact");
                     }
-                    
-                    // Additional safety check: ensure contact name is never just a number that looks like a thread ID
-                    if (!TextUtils.isEmpty(displayName) && displayName.matches("^\\d+$") && displayName.length() < 7) {
-                        Log.w(TAG, "Contact name '" + displayName + "' looks like a thread ID, using fallback");
-                        conversation.setContactName(!TextUtils.isEmpty(address) ? address : "Unknown Contact");
-                    }
                 }
             }
         } catch (Exception e) {
@@ -1238,15 +1109,17 @@ public class MessageService {
     }
 
     /**
-     * Gets the address for a thread ID.
-     * IMPROVED: More consistent address resolution and better handling of multiple recipients.
+     * Gets the address for a thread ID (identifies the conversation partner, not the user).
+     * This method ensures that we always return the other person's number/address, 
+     * never the user's own number, even if the user sent the last message.
      *
      * @param threadId The thread ID
-     * @return The address
+     * @return The address of the conversation partner
      */
     private String getAddressForThreadId(String threadId) {
         String address = "";
         Cursor cursor = null;
+        String userPhoneNumber = getUserPhoneNumber();
 
         if (TextUtils.isEmpty(threadId)) {
             Log.w(TAG, "Cannot get address for empty thread ID");
@@ -1254,10 +1127,10 @@ public class MessageService {
         }
 
         try {
-            Log.d(TAG, "Getting address for thread ID: " + threadId);
+            Log.d(TAG, "Getting conversation partner address for thread ID: " + threadId);
             
-            // Try method 1: Query the canonical addresses table via recipient_ids
-            String recipientIds = null;
+            // Method 1: Try canonical addresses via recipient_ids (most reliable)
+            String recipientId = null;
             Cursor threadCursor = null;
 
             try {
@@ -1269,8 +1142,8 @@ public class MessageService {
                         null);
 
                 if (threadCursor != null && threadCursor.moveToFirst()) {
-                    recipientIds = threadCursor.getString(0);
-                    Log.d(TAG, "Found recipient IDs: " + recipientIds + " for thread: " + threadId);
+                    recipientId = threadCursor.getString(0);
+                    Log.d(TAG, "Found recipient ID: " + recipientId + " for thread: " + threadId);
                 }
             } finally {
                 if (threadCursor != null) {
@@ -1278,112 +1151,86 @@ public class MessageService {
                 }
             }
 
-            if (!TextUtils.isEmpty(recipientIds)) {
-                // Handle multiple recipients - take the first one
-                String primaryRecipientId = recipientIds.split(" ")[0];
-                
-                // Now get the address for this recipient ID
+            if (!TextUtils.isEmpty(recipientId)) {
                 Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
                 cursor = context.getContentResolver().query(
                         uri,
                         new String[]{"address"},
                         "_id = ?",
-                        new String[]{primaryRecipientId},
+                        new String[]{recipientId},
                         null);
 
                 if (cursor != null && cursor.moveToFirst()) {
                     address = cursor.getString(0);
-                    if (!TextUtils.isEmpty(address)) {
-                        // Normalize the address for consistency
-                        address = PhoneUtils.normalizePhoneNumber(address);
-                        Log.d(TAG, "Found address: " + address + " for recipient ID: " + primaryRecipientId);
-                        
-                        // Validate that this address makes sense
-                        if (isValidPhoneNumber(address)) {
-                            return address;
-                        } else {
-                            Log.w(TAG, "Address looks invalid, trying fallback methods: " + address);
-                        }
+                    if (!TextUtils.isEmpty(address) && !isUserPhoneNumber(address, userPhoneNumber)) {
+                        Log.d(TAG, "Found conversation partner address: " + address + " for recipient ID: " + recipientId);
+                        return address;
                     }
                 }
             }
 
-            // Method 2: Fallback - query SMS directly for this thread
-            Log.d(TAG, "Canonical address lookup failed, trying SMS query for thread: " + threadId);
+            // Method 2: Query all unique addresses in the thread and filter out user's number
+            Log.d(TAG, "Canonical address lookup failed, trying comprehensive SMS/MMS query for thread: " + threadId);
             if (cursor != null) {
                 cursor.close();
                 cursor = null;
             }
 
+            // Get all unique addresses from both SMS and MMS in this thread
+            List<String> threadAddresses = getAllAddressesInThread(threadId);
+            
+            // Find the conversation partner (not the user)
+            for (String threadAddress : threadAddresses) {
+                if (!TextUtils.isEmpty(threadAddress) && !isUserPhoneNumber(threadAddress, userPhoneNumber)) {
+                    Log.d(TAG, "Found conversation partner from thread analysis: " + threadAddress + " for thread: " + threadId);
+                    return threadAddress;
+                }
+            }
+
+            // Method 3: Last resort - query the most recent message and get its address
+            Log.d(TAG, "Comprehensive query failed, trying latest message fallback for thread: " + threadId);
             cursor = context.getContentResolver().query(
                     Telephony.Sms.CONTENT_URI,
-                    new String[]{Telephony.Sms.ADDRESS},
+                    new String[]{Telephony.Sms.ADDRESS, Telephony.Sms.TYPE},
                     Telephony.Sms.THREAD_ID + " = ?",
                     new String[]{threadId},
-                    Telephony.Sms.DATE + " DESC LIMIT 1");
+                    Telephony.Sms.DATE + " DESC LIMIT 10"); // Check last 10 messages
 
             if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
-                if (addressIndex >= 0) {
-                    address = cursor.getString(addressIndex);
-                    if (!TextUtils.isEmpty(address)) {
-                        address = PhoneUtils.normalizePhoneNumber(address);
-                        Log.d(TAG, "Found address from SMS: " + address + " for thread: " + threadId);
+                do {
+                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                    int typeIndex = cursor.getColumnIndex(Telephony.Sms.TYPE);
+                    
+                    if (addressIndex >= 0 && typeIndex >= 0) {
+                        String messageAddress = cursor.getString(addressIndex);
+                        int messageType = cursor.getInt(typeIndex);
                         
-                        if (isValidPhoneNumber(address)) {
-                            return address;
-                        }
-                    }
-                }
-            }
-
-            // Method 3: Fallback - query MMS for this thread 
-            Log.d(TAG, "SMS query failed, trying MMS query for thread: " + threadId);
-            if (cursor != null) {
-                cursor.close();
-                cursor = null;
-            }
-
-            // Try a different MMS query approach
-            cursor = context.getContentResolver().query(
-                    Telephony.Mms.CONTENT_URI,
-                    new String[]{Telephony.Mms._ID},
-                    Telephony.Mms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    Telephony.Mms.DATE + " DESC LIMIT 1");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                String mmsId = cursor.getString(0);
-                cursor.close();
-                cursor = null;
-                
-                // Now get the address for this MMS
-                cursor = context.getContentResolver().query(
-                        Uri.parse("content://mms/" + mmsId + "/addr"),
-                        new String[]{"address", "type"},
-                        "type = 137", // 137 = TO address type
-                        null,
-                        null);
-
-                if (cursor != null && cursor.moveToFirst()) {
-                    int addressIndex = cursor.getColumnIndex("address");
-                    if (addressIndex >= 0) {
-                        address = cursor.getString(addressIndex);
-                        if (!TextUtils.isEmpty(address)) {
-                            address = PhoneUtils.normalizePhoneNumber(address);
-                            Log.d(TAG, "Found address from MMS: " + address + " for thread: " + threadId);
-                            
-                            if (isValidPhoneNumber(address)) {
-                                return address;
+                        if (!TextUtils.isEmpty(messageAddress)) {
+                            // For incoming messages, the address is definitely the conversation partner
+                            if (messageType == Telephony.Sms.MESSAGE_TYPE_INBOX && 
+                                !isUserPhoneNumber(messageAddress, userPhoneNumber)) {
+                                Log.d(TAG, "Found partner address from incoming message: " + messageAddress);
+                                return messageAddress;
+                            }
+                            // For outgoing messages, check if it's not the user's number
+                            else if (messageType == Telephony.Sms.MESSAGE_TYPE_SENT && 
+                                     !isUserPhoneNumber(messageAddress, userPhoneNumber)) {
+                                address = messageAddress; // Store as fallback
                             }
                         }
                     }
+                } while (cursor.moveToNext());
+                
+                // Use the fallback address if we found one
+                if (!TextUtils.isEmpty(address)) {
+                    Log.d(TAG, "Using fallback address from sent message: " + address);
+                    return address;
                 }
             }
 
-            Log.w(TAG, "Could not find valid address for thread ID: " + threadId);
+            Log.w(TAG, "Could not find conversation partner address for thread ID: " + threadId);
         } catch (Exception e) {
-            Log.e(TAG, "Error getting address for thread ID: " + threadId, e);
+            Log.e(TAG, "Error getting conversation partner address for thread ID: " + threadId, e);
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -1394,70 +1241,244 @@ public class MessageService {
     }
 
     /**
-     * Validates that a phone number looks reasonable to prevent thread mixup.
+     * Gets all unique addresses (phone numbers) involved in a thread from both SMS and MMS.
+     * This helps identify conversation participants.
      *
-     * @param phoneNumber The phone number to validate
-     * @return true if the phone number appears valid
+     * @param threadId The thread ID
+     * @return List of unique addresses in the thread
      */
-    private boolean isValidPhoneNumber(String phoneNumber) {
-        if (TextUtils.isEmpty(phoneNumber)) {
-            return false;
-        }
+    private List<String> getAllAddressesInThread(String threadId) {
+        List<String> addresses = new ArrayList<>();
         
-        // Check if it's all digits (with optional + at start)
-        String digits = phoneNumber.replaceAll("[^0-9]", "");
-        
-        // Must have at least 7 digits for a valid phone number
-        if (digits.length() < 7) {
-            return false;
-        }
-        
-        // Must not be all the same digit (like 1111111)
-        boolean allSame = true;
-        char firstDigit = digits.charAt(0);
-        for (int i = 1; i < digits.length(); i++) {
-            if (digits.charAt(i) != firstDigit) {
-                allSame = false;
-                break;
+        // Get addresses from SMS
+        Cursor smsCursor = null;
+        try {
+            smsCursor = context.getContentResolver().query(
+                    Telephony.Sms.CONTENT_URI,
+                    new String[]{Telephony.Sms.ADDRESS},
+                    Telephony.Sms.THREAD_ID + " = ?",
+                    new String[]{threadId},
+                    null);
+
+            if (smsCursor != null && smsCursor.moveToFirst()) {
+                do {
+                    String address = smsCursor.getString(0);
+                    if (!TextUtils.isEmpty(address) && !addresses.contains(address)) {
+                        addresses.add(address);
+                    }
+                } while (smsCursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting SMS addresses for thread: " + threadId, e);
+        } finally {
+            if (smsCursor != null) {
+                smsCursor.close();
             }
         }
-        
-        if (allSame) {
-            return false;
+
+        // Get addresses from MMS
+        Cursor mmsCursor = null;
+        try {
+            mmsCursor = context.getContentResolver().query(
+                    Telephony.Mms.CONTENT_URI,
+                    new String[]{Telephony.Mms._ID},
+                    Telephony.Mms.THREAD_ID + " = ?",
+                    new String[]{threadId},
+                    null);
+
+            if (mmsCursor != null && mmsCursor.moveToFirst()) {
+                do {
+                    String mmsId = mmsCursor.getString(0);
+                    String mmsAddress = getMmsAddress(context.getContentResolver(), mmsId);
+                    if (!TextUtils.isEmpty(mmsAddress) && !addresses.contains(mmsAddress)) {
+                        addresses.add(mmsAddress);
+                    }
+                } while (mmsCursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMS addresses for thread: " + threadId, e);
+        } finally {
+            if (mmsCursor != null) {
+                mmsCursor.close();
+            }
         }
-        
-        return true;
+
+        Log.d(TAG, "Found " + addresses.size() + " unique addresses in thread " + threadId + ": " + addresses);
+        return addresses;
     }
 
     /**
-     * Validates that a contact name is reasonable and not confused with thread ID.
+     * Checks if a given address/phone number belongs to the current user.
+     * This helps distinguish between user's messages and conversation partner's messages.
      *
-     * @param contactName The contact name to validate
-     * @param threadId The thread ID to check against
-     * @return true if the contact name appears valid
+     * @param address The address to check
+     * @param userPhoneNumber The user's phone number
+     * @return true if the address belongs to the user
      */
-    private boolean isValidContactName(String contactName, String threadId) {
-        if (TextUtils.isEmpty(contactName)) {
+    private boolean isUserPhoneNumber(String address, String userPhoneNumber) {
+        if (TextUtils.isEmpty(address) || TextUtils.isEmpty(userPhoneNumber)) {
             return false;
         }
+
+        // Normalize both numbers for comparison
+        String normalizedAddress = normalizePhoneNumber(address);
+        String normalizedUserNumber = normalizePhoneNumber(userPhoneNumber);
         
-        // Never allow thread ID as contact name
-        if (contactName.equals(threadId)) {
-            return false;
+        if (normalizedAddress.equals(normalizedUserNumber)) {
+            return true;
+        }
+
+        // Additional checks for different number formats
+        // Check if they end with the same digits (for international vs local format)
+        if (normalizedAddress.length() >= 7 && normalizedUserNumber.length() >= 7) {
+            String addressSuffix = normalizedAddress.substring(normalizedAddress.length() - 7);
+            String userSuffix = normalizedUserNumber.substring(normalizedUserNumber.length() - 7);
+            return addressSuffix.equals(userSuffix);
+        }
+
+        return false;
+    }
+
+    /**
+     * Gets the current user's phone number.
+     * This is used to filter out the user's own messages when identifying conversation partners.
+     *
+     * @return The user's phone number, or empty string if not available
+     */
+    private String getUserPhoneNumber() {
+        try {
+            // Try multiple methods to get the user's phone number
+            android.telephony.TelephonyManager tm = 
+                (android.telephony.TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            
+            if (tm != null) {
+                String number = tm.getLine1Number();
+                if (!TextUtils.isEmpty(number)) {
+                    Log.d(TAG, "Got user phone number from TelephonyManager");
+                    return normalizePhoneNumber(number);
+                }
+            }
+
+            // Fallback: Check if there's a stored user preference
+            String storedNumber = UserPreferences.getUserPhoneNumber(context);
+            if (!TextUtils.isEmpty(storedNumber)) {
+                Log.d(TAG, "Got user phone number from preferences");
+                return normalizePhoneNumber(storedNumber);
+            }
+
+            Log.w(TAG, "Could not determine user's phone number");
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting user phone number", e);
         }
         
-        // Don't allow short numeric strings that might be thread IDs
-        if (contactName.matches("^\\d{1,6}$")) {
-            return false;
+        return "";
+    }
+
+    /**
+     * Normalizes a phone number by removing non-digit characters.
+     * This helps with comparing phone numbers in different formats.
+     *
+     * @param phoneNumber The phone number to normalize
+     * @return The normalized phone number
+     */
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return "";
         }
         
-        // Don't allow obviously invalid names
-        if (contactName.toLowerCase().contains("thread") || 
-            contactName.toLowerCase().contains("id")) {
-            return false;
+        // Remove all non-digit characters except +
+        String normalized = phoneNumber.replaceAll("[^+0-9]", "");
+        
+        // Remove leading + if present
+        if (normalized.startsWith("+")) {
+            normalized = normalized.substring(1);
         }
         
-        return true;
+        return normalized;
+    }
+
+    /**
+     * Gets the last message (body/content) for a specific thread.
+     * This is used when the system snippet is empty or unreliable.
+     *
+     * @param threadId The thread ID
+     * @return The last message body, or empty string if not found
+     */
+    private String getLastMessageForThread(String threadId) {
+        if (TextUtils.isEmpty(threadId)) {
+            return "";
+        }
+
+        Cursor cursor = null;
+        String lastMessage = "";
+
+        try {
+            // First try SMS messages
+            cursor = context.getContentResolver().query(
+                    Telephony.Sms.CONTENT_URI,
+                    new String[]{Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE},
+                    Telephony.Sms.THREAD_ID + " = ?",
+                    new String[]{threadId},
+                    Telephony.Sms.DATE + " DESC LIMIT 1");
+
+            if (cursor != null && cursor.moveToFirst()) {
+                int bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY);
+                if (bodyIndex >= 0) {
+                    String smsBody = cursor.getString(bodyIndex);
+                    if (!TextUtils.isEmpty(smsBody)) {
+                        lastMessage = smsBody.trim();
+                        Log.d(TAG, "Found last SMS message for thread " + threadId + ": " + lastMessage.substring(0, Math.min(50, lastMessage.length())) + "...");
+                    }
+                }
+            }
+
+            // If no SMS found or SMS body is empty, try MMS
+            if (TextUtils.isEmpty(lastMessage)) {
+                if (cursor != null) {
+                    cursor.close();
+                    cursor = null;
+                }
+
+                cursor = context.getContentResolver().query(
+                        Telephony.Mms.CONTENT_URI,
+                        new String[]{Telephony.Mms._ID, Telephony.Mms.DATE},
+                        Telephony.Mms.THREAD_ID + " = ?",
+                        new String[]{threadId},
+                        Telephony.Mms.DATE + " DESC LIMIT 1");
+
+                if (cursor != null && cursor.moveToFirst()) {
+                    String mmsId = cursor.getString(0);
+                    String mmsText = getMmsText(context.getContentResolver(), mmsId);
+                    if (!TextUtils.isEmpty(mmsText)) {
+                        lastMessage = mmsText.trim();
+                        Log.d(TAG, "Found last MMS message for thread " + threadId + ": " + lastMessage.substring(0, Math.min(50, lastMessage.length())) + "...");
+                    } else {
+                        // If no text in MMS, indicate it's a media message
+                        lastMessage = "[Media Message]";
+                        Log.d(TAG, "Found MMS with no text for thread " + threadId + ", using media indicator");
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting last message for thread " + threadId, e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return lastMessage;
+    }
+
+    /**
+     * Clears the conversation cache to force a refresh on next load.
+     * Should be called when new messages arrive or conversations change.
+     */
+    public void clearConversationCache() {
+        cachedConversations = null;
+        conversationCacheTimestamp = 0;
+        Log.d(TAG, "Conversation cache cleared");
     }
 
     /**

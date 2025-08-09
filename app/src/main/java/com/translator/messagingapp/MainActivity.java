@@ -3,7 +3,6 @@ package com.translator.messagingapp;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,7 +16,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -26,8 +24,6 @@ import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 /**
  * Main activity for the messaging app.
@@ -44,14 +40,13 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private ConversationRecyclerAdapter conversationAdapter;
     private TextView emptyStateTextView;
     private FloatingActionButton newMessageFab;
+    private androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefreshLayout;
+    private android.widget.ProgressBar progressBar;
 
     // Services
     private MessageService messageService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private TranslationManager translationManager;
-
-    // Performance optimizations
-    private final Executor backgroundExecutor = Executors.newSingleThreadExecutor();
 
     // Data
     private List<Conversation> conversations;
@@ -88,6 +83,19 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         conversationsRecyclerView = findViewById(R.id.conversations_recycler_view);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         newMessageFab = findViewById(R.id.new_message_fab);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
+        progressBar = findViewById(R.id.progress_bar);
+
+        // Set up SwipeRefreshLayout
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
+            swipeRefreshLayout.setColorSchemeResources(
+                    android.R.color.holo_blue_bright,
+                    android.R.color.holo_green_light,
+                    android.R.color.holo_orange_light,
+                    android.R.color.holo_red_light
+            );
+        }
 
         // Set up recycler view
         conversationsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -237,38 +245,45 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     /**
-     * Loads conversations asynchronously with DiffUtil for efficient updates.
+     * Refreshes conversations (called by SwipeRefreshLayout).
+     */
+    private void refreshConversations() {
+        Log.d(TAG, "Refreshing conversations via pull-to-refresh");
+        loadConversations(true); // Force refresh to bypass cache
+    }
+
+    /**
+     * Loads conversations asynchronously.
      */
     private void loadConversations() {
+        loadConversations(false); // Use cache for normal loads
+    }
+    
+    /**
+     * Loads conversations asynchronously with optional cache bypass.
+     * 
+     * @param forceRefresh If true, bypasses cache and loads fresh data
+     */
+    private void loadConversations(boolean forceRefresh) {
         try {
             // Show loading state
             showLoadingState();
 
-            // Load conversations using background executor
-            backgroundExecutor.execute(() -> {
+            // Load conversations in background thread
+            new Thread(() -> {
                 try {
                     if (messageService != null) {
-                        List<Conversation> loadedConversations = messageService.loadConversations();
+                        List<Conversation> loadedConversations = messageService.loadConversations(forceRefresh);
 
-                        // Calculate diff to optimize RecyclerView updates
-                        final List<Conversation> oldConversations = new ArrayList<>(conversations);
-                        final List<Conversation> newConversations = loadedConversations != null 
-                            ? loadedConversations 
-                            : new ArrayList<>();
-
-                        // Update UI on main thread with DiffUtil
+                        // Update UI on main thread
                         runOnUiThread(() -> {
                             try {
-                                // Use DiffUtil to calculate minimal changes
-                                DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
-                                        new ConversationDiffCallback(oldConversations, newConversations));
-                                
-                                // Update data
                                 conversations.clear();
-                                conversations.addAll(newConversations);
-                                
-                                // Apply changes to adapter efficiently
-                                diffResult.dispatchUpdatesTo(conversationAdapter);
+                                if (loadedConversations != null) {
+                                    conversations.addAll(loadedConversations);
+                                }
+
+                                conversationAdapter.notifyDataSetChanged();
 
                                 // Show appropriate state
                                 if (conversations.isEmpty()) {
@@ -279,20 +294,30 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                             } catch (Exception e) {
                                 Log.e(TAG, "Error updating UI with conversations", e);
                                 showErrorState();
+                            } finally {
+                                // Always stop the refresh indicator
+                                stopRefreshAnimation();
                             }
                         });
                     } else {
                         Log.e(TAG, "MessageService is null");
-                        runOnUiThread(this::showErrorState);
+                        runOnUiThread(() -> {
+                            showErrorState();
+                            stopRefreshAnimation();
+                        });
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading conversations in background", e);
-                    runOnUiThread(this::showErrorState);
+                    runOnUiThread(() -> {
+                        showErrorState();
+                        stopRefreshAnimation();
+                    });
                 }
-            });
+            }).start();
         } catch (Exception e) {
             Log.e(TAG, "Error starting conversation loading", e);
             showErrorState();
+            stopRefreshAnimation();
         }
     }
 
@@ -301,8 +326,12 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
      */
     private void showLoadingState() {
         emptyStateTextView.setVisibility(View.GONE);
-        conversationsRecyclerView.setVisibility(View.GONE);
-        // Note: Add progress bar if available in layout
+        conversationsRecyclerView.setVisibility(View.VISIBLE); // Keep RecyclerView visible for existing data
+        
+        // Show progress bar if not using SwipeRefreshLayout
+        if (progressBar != null && (swipeRefreshLayout == null || !swipeRefreshLayout.isRefreshing())) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
     }
 
     /**
@@ -312,6 +341,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         emptyStateTextView.setText(R.string.no_conversations);
         emptyStateTextView.setVisibility(View.VISIBLE);
         conversationsRecyclerView.setVisibility(View.GONE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -320,6 +353,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private void showConversationsState() {
         emptyStateTextView.setVisibility(View.GONE);
         conversationsRecyclerView.setVisibility(View.VISIBLE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -329,6 +366,20 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         emptyStateTextView.setText(R.string.error_loading_conversation);
         emptyStateTextView.setVisibility(View.VISIBLE);
         conversationsRecyclerView.setVisibility(View.GONE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Stops the refresh animation from SwipeRefreshLayout.
+     */
+    private void stopRefreshAnimation() {
+        if (swipeRefreshLayout != null && swipeRefreshLayout.isRefreshing()) {
+            swipeRefreshLayout.setRefreshing(false);
+            Log.d(TAG, "Stopped SwipeRefreshLayout animation");
+        }
     }
 
     /**
@@ -529,53 +580,6 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         } catch (Exception e) {
             Log.e(TAG, "Error handling default SMS action", e);
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * DiffUtil callback for comparing lists of conversations to enable efficient RecyclerView updates.
-     */
-    private static class ConversationDiffCallback extends DiffUtil.Callback {
-        private final List<Conversation> oldConversations;
-        private final List<Conversation> newConversations;
-        
-        public ConversationDiffCallback(List<Conversation> oldConversations, List<Conversation> newConversations) {
-            this.oldConversations = oldConversations;
-            this.newConversations = newConversations;
-        }
-        
-        @Override
-        public int getOldListSize() {
-            return oldConversations.size();
-        }
-        
-        @Override
-        public int getNewListSize() {
-            return newConversations.size();
-        }
-        
-        @Override
-        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-            Conversation oldConversation = oldConversations.get(oldItemPosition);
-            Conversation newConversation = newConversations.get(newItemPosition);
-            
-            // Compare by thread ID
-            return oldConversation.getThreadId().equals(newConversation.getThreadId());
-        }
-        
-        @Override
-        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-            Conversation oldConversation = oldConversations.get(oldItemPosition);
-            Conversation newConversation = newConversations.get(newItemPosition);
-            
-            // Compare relevant fields that affect display
-            boolean sameSnippet = TextUtils.equals(oldConversation.getSnippet(), newConversation.getSnippet());
-            boolean sameDate = oldConversation.getDate() == newConversation.getDate();
-            boolean sameUnreadCount = oldConversation.getUnreadCount() == newConversation.getUnreadCount();
-            boolean sameAddress = TextUtils.equals(oldConversation.getAddress(), newConversation.getAddress());
-            boolean sameContactName = TextUtils.equals(oldConversation.getContactName(), newConversation.getContactName());
-            
-            return sameSnippet && sameDate && sameUnreadCount && sameAddress && sameContactName;
         }
     }
 }
