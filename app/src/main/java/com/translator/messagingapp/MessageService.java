@@ -26,11 +26,6 @@ public class MessageService {
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private MessageCache messageCache;
-    
-    // Simple conversation caching to improve performance
-    private List<Conversation> cachedConversations = null;
-    private long conversationCacheTimestamp = 0;
-    private static final long CONVERSATION_CACHE_DURATION = 30000; // 30 seconds
 
     /**
      * Creates a new MessageService.
@@ -970,47 +965,11 @@ public class MessageService {
     }
 
     /**
-     * Loads conversations from the database.
-     * Uses caching to improve performance for frequent requests.
+     * Loads all conversations.
      *
      * @return The list of conversations
      */
     public List<Conversation> loadConversations() {
-        return loadConversations(false);
-    }
-    
-    /**
-     * Loads conversations from the database with optional cache bypass.
-     *
-     * @param forceRefresh If true, bypasses the cache and loads fresh data
-     * @return The list of conversations
-     */
-    public List<Conversation> loadConversations(boolean forceRefresh) {
-        // Check cache first (unless force refresh is requested)
-        if (!forceRefresh && cachedConversations != null) {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - conversationCacheTimestamp < CONVERSATION_CACHE_DURATION) {
-                Log.d(TAG, "Returning cached conversations (" + cachedConversations.size() + " items)");
-                return new ArrayList<>(cachedConversations); // Return copy to prevent modification
-            }
-        }
-        
-        List<Conversation> conversations = loadConversationsFromDatabase();
-        
-        // Update cache
-        cachedConversations = new ArrayList<>(conversations);
-        conversationCacheTimestamp = System.currentTimeMillis();
-        
-        Log.d(TAG, "Loaded and cached " + conversations.size() + " conversations");
-        return conversations;
-    }
-    
-    /**
-     * Loads conversations directly from the database (internal method).
-     *
-     * @return The list of conversations
-     */
-    private List<Conversation> loadConversationsFromDatabase() {
         List<Conversation> conversations = new ArrayList<>();
         Cursor cursor = null;
 
@@ -1469,16 +1428,6 @@ public class MessageService {
         }
 
         return lastMessage;
-    }
-
-    /**
-     * Clears the conversation cache to force a refresh on next load.
-     * Should be called when new messages arrive or conversations change.
-     */
-    public void clearConversationCache() {
-        cachedConversations = null;
-        conversationCacheTimestamp = 0;
-        Log.d(TAG, "Conversation cache cleared");
     }
 
     /**

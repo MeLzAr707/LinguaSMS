@@ -249,22 +249,13 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
      */
     private void refreshConversations() {
         Log.d(TAG, "Refreshing conversations via pull-to-refresh");
-        loadConversations(true); // Force refresh to bypass cache
+        loadConversations();
     }
 
     /**
      * Loads conversations asynchronously.
      */
     private void loadConversations() {
-        loadConversations(false); // Use cache for normal loads
-    }
-    
-    /**
-     * Loads conversations asynchronously with optional cache bypass.
-     * 
-     * @param forceRefresh If true, bypasses cache and loads fresh data
-     */
-    private void loadConversations(boolean forceRefresh) {
         try {
             // Show loading state
             showLoadingState();
@@ -273,7 +264,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             new Thread(() -> {
                 try {
                     if (messageService != null) {
-                        List<Conversation> loadedConversations = messageService.loadConversations(forceRefresh);
+                        List<Conversation> loadedConversations = messageService.loadConversations();
 
                         // Update UI on main thread
                         runOnUiThread(() -> {
