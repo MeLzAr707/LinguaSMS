@@ -340,7 +340,7 @@ public class DebugActivity extends AppCompatActivity {
 
                             result.append("- ")
                                     .append(type == Telephony.Sms.MESSAGE_TYPE_INBOX ? "Received: " : "Sent: ")
-                                    .append(body.length() > 30 ? body.substring(0, 30) + "..." : body)
+                                    .append(body != null && body.length() > 30 ? body.substring(0, 30) + "..." : (body != null ? body : "[No content]"))
                                     .append(" (Address: ")
                                     .append(msgAddress)
                                     .append(", Thread: ")
@@ -387,7 +387,7 @@ public class DebugActivity extends AppCompatActivity {
 
                                 result.append("- ")
                                         .append(type == Telephony.Sms.MESSAGE_TYPE_INBOX ? "Received: " : "Sent: ")
-                                        .append(body.length() > 30 ? body.substring(0, 30) + "..." : body)
+                                        .append(body != null && body.length() > 30 ? body.substring(0, 30) + "..." : (body != null ? body : "[No content]"))
                                         .append(" (Address: ")
                                         .append(msgAddress)
                                         .append(", Thread: ")
