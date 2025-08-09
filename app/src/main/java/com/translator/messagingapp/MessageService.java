@@ -26,6 +26,11 @@ public class MessageService {
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private MessageCache messageCache;
+    
+    // Conversation caching for improved performance
+    private List<Conversation> cachedConversations;
+    private long conversationCacheTime = 0;
+    private static final long CONVERSATION_CACHE_DURATION = 30000; // 30 seconds
 
     /**
      * Creates a new MessageService.
@@ -781,6 +786,9 @@ public class MessageService {
                 if (!TextUtils.isEmpty(threadId)) {
                     messageCache.clearCache(threadId);
                 }
+                
+                // Clear conversation cache since a new message was sent
+                clearConversationCache();
 
                 // Call callback
                 if (callback != null) {
@@ -873,6 +881,9 @@ public class MessageService {
 
             // Clear cache for this thread
             messageCache.clearCache(threadId);
+            
+            // Clear conversation cache since conversations list changed
+            clearConversationCache();
 
             return deleted > 0 || mmsDeleted > 0;
         } catch (Exception e) {
@@ -956,6 +967,9 @@ public class MessageService {
 
             // Clear cache for this thread
             messageCache.clearCache(threadId);
+            
+            // Clear conversation cache since read status changed
+            clearConversationCache();
 
             return updated > 0 || mmsUpdated > 0;
         } catch (Exception e) {
@@ -970,6 +984,14 @@ public class MessageService {
      * @return The list of conversations
      */
     public List<Conversation> loadConversations() {
+        // Check cache first for improved performance
+        long currentTime = System.currentTimeMillis();
+        if (cachedConversations != null && (currentTime - conversationCacheTime) < CONVERSATION_CACHE_DURATION) {
+            Log.d(TAG, "Returning " + cachedConversations.size() + " cached conversations");
+            return new ArrayList<>(cachedConversations);
+        }
+
+        Log.d(TAG, "Loading conversations from database");
         List<Conversation> conversations = new ArrayList<>();
         Cursor cursor = null;
 
@@ -1017,9 +1039,9 @@ public class MessageService {
                     conversations.add(conversation);
                 } while (cursor.moveToNext());
                 
-                // Second pass: batch lookup contact names
+                // Second pass: batch lookup contact names using optimized utility
                 Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
-                Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
+                Map<String, String> contactNames = OptimizedContactUtils.getContactNamesForNumbers(context, addresses);
                 
                 // Third pass: assign contact names with fallbacks
                 for (Conversation conversation : conversations) {
@@ -1057,7 +1079,21 @@ public class MessageService {
         }
 
         Log.d(TAG, "Loaded " + conversations.size() + " conversations");
+        
+        // Cache the results for improved performance
+        cachedConversations = new ArrayList<>(conversations);
+        conversationCacheTime = System.currentTimeMillis();
+        
         return conversations;
+    }
+
+    /**
+     * Clears the conversation cache. Should be called when conversations are modified.
+     */
+    public void clearConversationCache() {
+        cachedConversations = null;
+        conversationCacheTime = 0;
+        Log.d(TAG, "Conversation cache cleared");
     }
 
     /**

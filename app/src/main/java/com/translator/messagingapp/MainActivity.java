@@ -3,6 +3,7 @@ package com.translator.messagingapp;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -16,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -24,6 +26,8 @@ import com.google.android.material.navigation.NavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Main activity for the messaging app.
@@ -45,6 +49,9 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private MessageService messageService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private TranslationManager translationManager;
+
+    // Performance optimizations
+    private final Executor backgroundExecutor = Executors.newSingleThreadExecutor();
 
     // Data
     private List<Conversation> conversations;
@@ -230,28 +237,38 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     /**
-     * Loads conversations asynchronously.
+     * Loads conversations asynchronously with DiffUtil for efficient updates.
      */
     private void loadConversations() {
         try {
             // Show loading state
             showLoadingState();
 
-            // Load conversations in background thread
-            new Thread(() -> {
+            // Load conversations using background executor
+            backgroundExecutor.execute(() -> {
                 try {
                     if (messageService != null) {
                         List<Conversation> loadedConversations = messageService.loadConversations();
 
-                        // Update UI on main thread
+                        // Calculate diff to optimize RecyclerView updates
+                        final List<Conversation> oldConversations = new ArrayList<>(conversations);
+                        final List<Conversation> newConversations = loadedConversations != null 
+                            ? loadedConversations 
+                            : new ArrayList<>();
+
+                        // Update UI on main thread with DiffUtil
                         runOnUiThread(() -> {
                             try {
+                                // Use DiffUtil to calculate minimal changes
+                                DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+                                        new ConversationDiffCallback(oldConversations, newConversations));
+                                
+                                // Update data
                                 conversations.clear();
-                                if (loadedConversations != null) {
-                                    conversations.addAll(loadedConversations);
-                                }
-
-                                conversationAdapter.notifyDataSetChanged();
+                                conversations.addAll(newConversations);
+                                
+                                // Apply changes to adapter efficiently
+                                diffResult.dispatchUpdatesTo(conversationAdapter);
 
                                 // Show appropriate state
                                 if (conversations.isEmpty()) {
@@ -272,7 +289,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                     Log.e(TAG, "Error loading conversations in background", e);
                     runOnUiThread(this::showErrorState);
                 }
-            }).start();
+            });
         } catch (Exception e) {
             Log.e(TAG, "Error starting conversation loading", e);
             showErrorState();
@@ -512,6 +529,53 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         } catch (Exception e) {
             Log.e(TAG, "Error handling default SMS action", e);
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * DiffUtil callback for comparing lists of conversations to enable efficient RecyclerView updates.
+     */
+    private static class ConversationDiffCallback extends DiffUtil.Callback {
+        private final List<Conversation> oldConversations;
+        private final List<Conversation> newConversations;
+        
+        public ConversationDiffCallback(List<Conversation> oldConversations, List<Conversation> newConversations) {
+            this.oldConversations = oldConversations;
+            this.newConversations = newConversations;
+        }
+        
+        @Override
+        public int getOldListSize() {
+            return oldConversations.size();
+        }
+        
+        @Override
+        public int getNewListSize() {
+            return newConversations.size();
+        }
+        
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            Conversation oldConversation = oldConversations.get(oldItemPosition);
+            Conversation newConversation = newConversations.get(newItemPosition);
+            
+            // Compare by thread ID
+            return oldConversation.getThreadId().equals(newConversation.getThreadId());
+        }
+        
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            Conversation oldConversation = oldConversations.get(oldItemPosition);
+            Conversation newConversation = newConversations.get(newItemPosition);
+            
+            // Compare relevant fields that affect display
+            boolean sameSnippet = TextUtils.equals(oldConversation.getSnippet(), newConversation.getSnippet());
+            boolean sameDate = oldConversation.getDate() == newConversation.getDate();
+            boolean sameUnreadCount = oldConversation.getUnreadCount() == newConversation.getUnreadCount();
+            boolean sameAddress = TextUtils.equals(oldConversation.getAddress(), newConversation.getAddress());
+            boolean sameContactName = TextUtils.equals(oldConversation.getContactName(), newConversation.getContactName());
+            
+            return sameSnippet && sameDate && sameUnreadCount && sameAddress && sameContactName;
         }
     }
 }
