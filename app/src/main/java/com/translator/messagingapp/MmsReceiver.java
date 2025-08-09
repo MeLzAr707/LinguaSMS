@@ -22,7 +22,9 @@ public class MmsReceiver extends BroadcastReceiver {
 
         if (messageService != null) {
             // Handle the MMS message
-            Log.d(TAG, "MessageService available, processing MMS");
+            Log.d(TAG, "Passing MMS to MessageService");
+
+            // Handle the incoming MMS
             messageService.handleIncomingMms(intent);
         } else {
             Log.e(TAG, "MessageService is null, cannot process MMS");
