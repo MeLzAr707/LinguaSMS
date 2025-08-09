@@ -89,6 +89,7 @@ public class OptimizedContactUtils {
     
     /**
      * Looks up a batch of contacts.
+     * IMPROVED: Uses phone number variants to handle different formats.
      *
      * @param resolver ContentResolver
      * @param phoneNumbers List of phone numbers to look up
@@ -101,48 +102,23 @@ public class OptimizedContactUtils {
             return results;
         }
         
-        // Build selection string for batch query
-        StringBuilder selection = new StringBuilder();
-        String[] selectionArgs = new String[phoneNumbers.size()];
+        Log.d(TAG, "Looking up contacts for " + phoneNumbers.size() + " phone numbers");
         
-        for (int i = 0; i < phoneNumbers.size(); i++) {
-            if (i > 0) selection.append(" OR ");
-            selection.append(ContactsContract.PhoneLookup.NUMBER).append(" LIKE ?");
-            selectionArgs[i] = phoneNumbers.get(i);
-        }
-        
-        // Execute batch query
-        Cursor cursor = null;
-        try {
-            cursor = resolver.query(
-                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                    new String[]{
-                            ContactsContract.PhoneLookup.NUMBER,
-                            ContactsContract.PhoneLookup.DISPLAY_NAME
-                    },
-                    selection.toString(),
-                    selectionArgs,
-                    null
-            );
-            
-            if (cursor != null) {
-                int numberIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.NUMBER);
-                int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
-                
-                while (cursor.moveToNext()) {
-                    String number = cursor.getString(numberIndex);
-                    String name = cursor.getString(nameIndex);
-                    
-                    if (!TextUtils.isEmpty(name)) {
-                        results.put(number, name);
-                    }
-                }
+        // For each phone number, try different variants
+        for (String originalNumber : phoneNumbers) {
+            if (TextUtils.isEmpty(originalNumber)) {
+                continue;
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error in batch contact lookup", e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
+            
+            // Skip if we already found this number
+            if (results.containsKey(originalNumber)) {
+                continue;
+            }
+            
+            String contactName = lookupSingleContact(resolver, originalNumber);
+            if (!TextUtils.isEmpty(contactName)) {
+                results.put(originalNumber, contactName);
+                Log.d(TAG, "Found contact: " + contactName + " for number: " + originalNumber);
             }
         }
         
@@ -154,6 +130,59 @@ public class OptimizedContactUtils {
         }
         
         return results;
+    }
+    
+    /**
+     * Looks up a single contact trying multiple phone number variants.
+     *
+     * @param resolver ContentResolver
+     * @param phoneNumber The phone number to look up
+     * @return The contact name, or null if not found
+     */
+    private static String lookupSingleContact(ContentResolver resolver, String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return null;
+        }
+        
+        // Get different variants of the phone number
+        String[] phoneVariants = PhoneUtils.getPhoneNumberVariants(phoneNumber);
+        
+        for (String variant : phoneVariants) {
+            if (TextUtils.isEmpty(variant)) {
+                continue;
+            }
+            
+            Cursor cursor = null;
+            try {
+                // Use PhoneLookup for each variant
+                Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(variant));
+                cursor = resolver.query(
+                        uri,
+                        new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME},
+                        null,
+                        null,
+                        null);
+                
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                    if (nameIndex >= 0) {
+                        String name = cursor.getString(nameIndex);
+                        if (!TextUtils.isEmpty(name)) {
+                            Log.d(TAG, "Found contact name: " + name + " for variant: " + variant + " (original: " + phoneNumber + ")");
+                            return name;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error looking up contact for variant: " + variant, e);
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+        }
+        
+        return null;
     }
     
     /**
