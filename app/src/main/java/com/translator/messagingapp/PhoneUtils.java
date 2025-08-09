@@ -356,6 +356,77 @@ public class PhoneUtils {
         return phoneNumber.replaceAll("[^0-9+]", "");
     }
 
+    /**
+     * Normalizes a phone number for consistent comparison.
+     * This helps prevent conversation thread mixups caused by different phone number formats.
+     *
+     * @param phoneNumber The phone number to normalize
+     * @return The normalized phone number, or the original if normalization fails
+     */
+    public static String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+
+        try {
+            // Remove all non-digit characters except +
+            String cleaned = phoneNumber.replaceAll("[^0-9+]", "");
+            
+            // Handle common formats
+            if (cleaned.startsWith("+1") && cleaned.length() == 12) {
+                // US number with country code: +1234567890 -> 234567890
+                return cleaned.substring(2);
+            } else if (cleaned.startsWith("1") && cleaned.length() == 11) {
+                // US number with leading 1: 1234567890 -> 234567890
+                return cleaned.substring(1);
+            } else if (cleaned.length() == 10) {
+                // Standard US number: 234567890
+                return cleaned;
+            } else if (cleaned.startsWith("+")) {
+                // International number - keep as is
+                return cleaned;
+            } else {
+                // Other format - keep cleaned version
+                return cleaned;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error normalizing phone number: " + phoneNumber, e);
+            // Return original if normalization fails
+            return phoneNumber;
+        }
+    }
+
+    /**
+     * Gets multiple normalized versions of a phone number for lookup.
+     * This helps find thread IDs even when phone numbers are stored in different formats.
+     *
+     * @param phoneNumber The phone number
+     * @return Array of possible normalized formats
+     */
+    public static String[] getPhoneNumberVariants(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return new String[]{phoneNumber};
+        }
+
+        String normalized = normalizePhoneNumber(phoneNumber);
+        String original = phoneNumber.trim();
+        
+        if (normalized.length() == 10) {
+            // For 10-digit US numbers, also try with country code
+            return new String[]{
+                original,           // Original format
+                normalized,         // Normalized format
+                "1" + normalized,   // With leading 1
+                "+1" + normalized   // With +1 country code
+            };
+        } else {
+            return new String[]{
+                original,
+                normalized
+            };
+        }
+    }
+
     public static boolean hasTelephonyFeature(Context context) {
         PackageManager packageManager = context.getPackageManager();
         return packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
