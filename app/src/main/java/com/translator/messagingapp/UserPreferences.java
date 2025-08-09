@@ -28,6 +28,9 @@ public class UserPreferences {
     private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_API_SERVICE = "api_service";
+    private static final String KEY_USER_PHONE_NUMBER = "user_phone_number";
+    private static final String KEY_FIRST_RUN = "first_run";
+    private static final String KEY_DEFAULT_SMS_CHECK = "default_sms_check";
     
     // Default values
     private static final boolean DEFAULT_AUTO_TRANSLATE = false;
@@ -364,6 +367,91 @@ public class UserPreferences {
             preferences.edit().clear().apply();
         } catch (Exception e) {
             Log.e(TAG, "Error clearing preferences", e);
+        }
+    }
+    
+    // Static convenience methods for commonly used preferences
+    
+    /**
+     * Gets the user's phone number from preferences.
+     *
+     * @param context The context
+     * @return The user's phone number, or empty string if not set
+     */
+    public static String getUserPhoneNumber(Context context) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            return prefs.getString(KEY_USER_PHONE_NUMBER, "");
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting user phone number", e);
+            return "";
+        }
+    }
+    
+    /**
+     * Sets the user's phone number in preferences.
+     *
+     * @param context The context
+     * @param phoneNumber The user's phone number
+     */
+    public static void setUserPhoneNumber(Context context, String phoneNumber) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putString(KEY_USER_PHONE_NUMBER, phoneNumber).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting user phone number", e);
+        }
+    }
+    
+    /**
+     * Checks if this is the first run of the app.
+     *
+     * @param context The context
+     * @return true if this is the first run, false otherwise
+     */
+    public static boolean isFirstRun(Context context) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            boolean isFirstRun = prefs.getBoolean(KEY_FIRST_RUN, true);
+            if (isFirstRun) {
+                // Mark that we've completed the first run
+                prefs.edit().putBoolean(KEY_FIRST_RUN, false).apply();
+            }
+            return isFirstRun;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking first run", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Checks if the app should check for default SMS app status.
+     *
+     * @param context The context
+     * @return true if the app should check for default SMS app status
+     */
+    public static boolean shouldCheckDefaultSmsApp(Context context) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            return prefs.getBoolean(KEY_DEFAULT_SMS_CHECK, true);
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking default SMS app preference", e);
+            return true;
+        }
+    }
+    
+    /**
+     * Sets whether the app should check for default SMS app status.
+     *
+     * @param context The context
+     * @param shouldCheck true if the app should check for default SMS app status
+     */
+    public static void setShouldCheckDefaultSmsApp(Context context, boolean shouldCheck) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putBoolean(KEY_DEFAULT_SMS_CHECK, shouldCheck).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting default SMS app preference", e);
         }
     }
 }

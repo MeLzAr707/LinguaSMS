@@ -40,6 +40,8 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private ConversationRecyclerAdapter conversationAdapter;
     private TextView emptyStateTextView;
     private FloatingActionButton newMessageFab;
+    private androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefreshLayout;
+    private android.widget.ProgressBar progressBar;
 
     // Services
     private MessageService messageService;
@@ -81,6 +83,19 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         conversationsRecyclerView = findViewById(R.id.conversations_recycler_view);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         newMessageFab = findViewById(R.id.new_message_fab);
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
+        progressBar = findViewById(R.id.progress_bar);
+
+        // Set up SwipeRefreshLayout
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
+            swipeRefreshLayout.setColorSchemeResources(
+                    android.R.color.holo_blue_bright,
+                    android.R.color.holo_green_light,
+                    android.R.color.holo_orange_light,
+                    android.R.color.holo_red_light
+            );
+        }
 
         // Set up recycler view
         conversationsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -230,6 +245,14 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     }
 
     /**
+     * Refreshes conversations (called by SwipeRefreshLayout).
+     */
+    private void refreshConversations() {
+        Log.d(TAG, "Refreshing conversations via pull-to-refresh");
+        loadConversations();
+    }
+
+    /**
      * Loads conversations asynchronously.
      */
     private void loadConversations() {
@@ -262,20 +285,30 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
                             } catch (Exception e) {
                                 Log.e(TAG, "Error updating UI with conversations", e);
                                 showErrorState();
+                            } finally {
+                                // Always stop the refresh indicator
+                                stopRefreshAnimation();
                             }
                         });
                     } else {
                         Log.e(TAG, "MessageService is null");
-                        runOnUiThread(this::showErrorState);
+                        runOnUiThread(() -> {
+                            showErrorState();
+                            stopRefreshAnimation();
+                        });
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading conversations in background", e);
-                    runOnUiThread(this::showErrorState);
+                    runOnUiThread(() -> {
+                        showErrorState();
+                        stopRefreshAnimation();
+                    });
                 }
             }).start();
         } catch (Exception e) {
             Log.e(TAG, "Error starting conversation loading", e);
             showErrorState();
+            stopRefreshAnimation();
         }
     }
 
@@ -284,8 +317,12 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
      */
     private void showLoadingState() {
         emptyStateTextView.setVisibility(View.GONE);
-        conversationsRecyclerView.setVisibility(View.GONE);
-        // Note: Add progress bar if available in layout
+        conversationsRecyclerView.setVisibility(View.VISIBLE); // Keep RecyclerView visible for existing data
+        
+        // Show progress bar if not using SwipeRefreshLayout
+        if (progressBar != null && (swipeRefreshLayout == null || !swipeRefreshLayout.isRefreshing())) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
     }
 
     /**
@@ -295,6 +332,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         emptyStateTextView.setText(R.string.no_conversations);
         emptyStateTextView.setVisibility(View.VISIBLE);
         conversationsRecyclerView.setVisibility(View.GONE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -303,6 +344,10 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
     private void showConversationsState() {
         emptyStateTextView.setVisibility(View.GONE);
         conversationsRecyclerView.setVisibility(View.VISIBLE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -312,6 +357,20 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         emptyStateTextView.setText(R.string.error_loading_conversation);
         emptyStateTextView.setVisibility(View.VISIBLE);
         conversationsRecyclerView.setVisibility(View.GONE);
+        
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Stops the refresh animation from SwipeRefreshLayout.
+     */
+    private void stopRefreshAnimation() {
+        if (swipeRefreshLayout != null && swipeRefreshLayout.isRefreshing()) {
+            swipeRefreshLayout.setRefreshing(false);
+            Log.d(TAG, "Stopped SwipeRefreshLayout animation");
+        }
     }
 
     /**
