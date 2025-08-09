@@ -77,8 +77,8 @@ public class OptimizedConversationActivity extends BaseActivity {
 
             // Initialize services
             translationManager = getTranslationManager();
+            messageService = new MessageService(this, translationManager);
             optimizedMessageService = new OptimizedMessageService(this, translationManager);
-            messageService = optimizedMessageService; // Use optimized service
 
             // Initialize UI components
             initializeComponents();
