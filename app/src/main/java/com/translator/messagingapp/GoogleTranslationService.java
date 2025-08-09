@@ -79,7 +79,20 @@ public class GoogleTranslationService {
      * @return The translated text
      */
     public String translate(String text, String sourceLanguage, String targetLanguage) {
-        // Implementation
-        return "Translated: " + text;
+        // For now, this is a mock implementation that simulates translation
+        // In a real implementation, this would call the Google Translate API
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        
+        // Skip translation if source and target languages are the same
+        if (sourceLanguage != null && targetLanguage != null && 
+            sourceLanguage.equals(targetLanguage)) {
+            return text;
+        }
+        
+        // Mock translation - in real implementation this would use Google Translate API
+        // For now, return the original text without the "Translated:" prefix
+        return text;
     }
 }

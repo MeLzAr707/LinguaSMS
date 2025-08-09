@@ -77,9 +77,12 @@ public class OptimizedConversationActivity extends BaseActivity {
             }
 
             // Initialize services
-            messageService = new MessageService(this, getTranslationManager());
-            translationManager = getTranslationManager();
-            optimizedMessageService = new OptimizedMessageService(this, translationManager);
+            TranslatorApp app = (TranslatorApp) getApplication();
+            if (app != null) {
+                messageService = new MessageService(this, app.getTranslationManager());
+                translationManager = app.getTranslationManager();
+                optimizedMessageService = new OptimizedMessageService(this, translationManager);
+            }
 
             // Initialize UI components
             initializeComponents();
@@ -448,11 +451,65 @@ public class OptimizedConversationActivity extends BaseActivity {
     }
 
     /**
-     * Translates the input text.
+     * Translates the input text to the preferred outgoing language.
      */
     private void translateInputText() {
-        // Implementation for translating input text
-        Toast.makeText(this, "Translate input text", Toast.LENGTH_SHORT).show();
+        if (messageInput == null || translationManager == null) {
+            Toast.makeText(this, "Cannot translate text", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String text = messageInput.getText().toString().trim();
+        if (TextUtils.isEmpty(text)) {
+            Toast.makeText(this, "No text to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show loading
+        showLoading(true);
+
+        // Get user's preferred outgoing language
+        TranslatorApp app = (TranslatorApp) getApplication();
+        UserPreferences userPreferences = app != null ? app.getUserPreferences() : null;
+        
+        if (userPreferences == null) {
+            showLoading(false);
+            Toast.makeText(this, "Cannot access user preferences", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String targetLanguage = userPreferences.getPreferredOutgoingLanguage();
+        if (TextUtils.isEmpty(targetLanguage)) {
+            targetLanguage = userPreferences.getPreferredLanguage();
+        }
+
+        if (TextUtils.isEmpty(targetLanguage)) {
+            showLoading(false);
+            Toast.makeText(this, "No target language set in preferences", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final String finalTargetLanguage = targetLanguage;
+
+        // Translate text
+        translationManager.translateText(text, finalTargetLanguage, new TranslationManager.TranslationCallback() {
+            @Override
+            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                runOnUiThread(() -> {
+                    showLoading(false);
+
+                    if (success && !TextUtils.isEmpty(translatedText)) {
+                        messageInput.setText(translatedText);
+                        messageInput.setSelection(translatedText.length());
+                        Toast.makeText(OptimizedConversationActivity.this, "Text translated", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(OptimizedConversationActivity.this,
+                                "Translation failed: " + (errorMessage != null ? errorMessage : "Unknown error"),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
     }
 
     @Override
