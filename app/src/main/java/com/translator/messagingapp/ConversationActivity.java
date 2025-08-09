@@ -47,7 +47,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
-    private ImageButton emojiButton;
 
     // Data
     private String threadId;
@@ -121,6 +120,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
+     * Configure emoji support for the EditText
+     */
+    private void configureEmojiSupport(EditText editText) {
+        try {
+            // Set input type to support emoji
+            editText.setInputType(android.text.InputType.TYPE_CLASS_TEXT 
+                | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE);
+            
+            // Set IME options to allow emoji input
+            editText.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NONE);
+            
+            // Ensure the text field supports Unicode emoji characters
+            editText.setKeyListener(android.text.method.TextKeyListener.getInstance());
+        } catch (Exception e) {
+            Log.e(TAG, "Error configuring emoji support: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Initialize UI components with improved error handling
      */
     private void initializeComponents() {
@@ -156,6 +175,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
             // Set up message input
             messageInput = findViewById(R.id.message_input);
+            if (messageInput != null) {
+                // Enable emoji support for the input field
+                configureEmojiSupport(messageInput);
+            }
 
             // Set up send button
             sendButton = findViewById(R.id.send_button);
@@ -169,12 +192,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             translateInputButton = findViewById(R.id.translate_input_button);
             if (translateInputButton != null) {
                 translateInputButton.setOnClickListener(v -> translateInputText());
-            }
-
-            // Set up emoji button
-            emojiButton = findViewById(R.id.emoji_button);
-            if (emojiButton != null) {
-                emojiButton.setOnClickListener(v -> showEmojiPicker());
             }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing components: " + e.getMessage(), e);
@@ -390,24 +407,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         });
     }
 
-    /**
-     * Show emoji picker with improved error handling
-     */
-    private void showEmojiPicker() {
-        try {
-            EmojiPickerDialog dialog = new EmojiPickerDialog(this, emoji -> {
-                if (messageInput != null) {
-                    int start = messageInput.getSelectionStart();
-                    int end = messageInput.getSelectionEnd();
-                    messageInput.getText().replace(Math.min(start, end), Math.max(start, end), emoji);
-                }
-            }, false);
-            dialog.show();
-        } catch (Exception e) {
-            Log.e(TAG, "Error showing emoji picker: " + e.getMessage(), e);
-            Toast.makeText(this, "Error showing emoji picker", Toast.LENGTH_SHORT).show();
-        }
-    }
+
 
     /**
      * Show or hide loading indicator

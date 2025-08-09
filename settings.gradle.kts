@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Multilingual Messaging App"
+rootProject.name = "LinguaSMS"
 include(":app")
