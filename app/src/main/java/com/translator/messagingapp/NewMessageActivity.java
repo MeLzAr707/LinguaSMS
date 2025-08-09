@@ -260,9 +260,7 @@ public class NewMessageActivity extends BaseActivity {
             // Get contact data
             Uri contactUri = data.getData();
             if (contactUri != null) {
-                Cursor cursor = null;
-                try {
-                    cursor = getContentResolver().query(contactUri, null, null, null, null);
+                try (Cursor cursor = getContentResolver().query(contactUri, null, null, null, null)) {
                     if (cursor != null && cursor.moveToFirst()) {
                         int numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
                         if (numberIndex != -1) {
@@ -277,10 +275,6 @@ public class NewMessageActivity extends BaseActivity {
                 } catch (Exception e) {
                     Log.e(TAG, "Error getting contact data", e);
                     Toast.makeText(this, "Error getting contact: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                } finally {
-                    if (cursor != null) {
-                        cursor.close();
-                    }
                 }
             }
         }
@@ -307,23 +301,18 @@ public class NewMessageActivity extends BaseActivity {
                 Toast.makeText(this, R.string.translating, Toast.LENGTH_SHORT).show();
                 
                 // Translate the message (this would typically be async)
-                translationManager.translateText(messageText, "en", new TranslationManager.TranslationCallback() {
-                    @Override
-                    public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                        runOnUiThread(() -> {
-                            if (success && translatedText != null) {
-                                // Replace the original text with translated text
-                                messageInput.setText(translatedText);
-                                Toast.makeText(NewMessageActivity.this, 
-                                    "Translation successful", Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(NewMessageActivity.this, 
-                                    "Translation failed: " + (errorMessage != null ? errorMessage : "Unknown error"), 
-                                    Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                translationManager.translateText(messageText, "en", (success, translatedText, errorMessage) -> runOnUiThread(() -> {
+                    if (success && translatedText != null) {
+                        // Replace the original text with translated text
+                        messageInput.setText(translatedText);
+                        Toast.makeText(NewMessageActivity.this,
+                            "Translation successful", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(NewMessageActivity.this,
+                            "Translation failed: " + (errorMessage != null ? errorMessage : "Unknown error"),
+                            Toast.LENGTH_SHORT).show();
                     }
-                });
+                }));
             } else {
                 Toast.makeText(this, "Translation service not available", Toast.LENGTH_SHORT).show();
             }
