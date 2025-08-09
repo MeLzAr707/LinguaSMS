@@ -984,7 +984,101 @@ public class MessageService {
      * @param intent The intent containing the SMS data
      */
     public void handleIncomingSms(Intent intent) {
-        // Implementation
+        if (intent == null) {
+            Log.e(TAG, "Cannot handle incoming SMS: intent is null");
+            return;
+        }
+
+        try {
+            Log.d(TAG, "Handling incoming SMS with action: " + intent.getAction());
+
+            // Use Telephony.Sms.Intents.getMessagesFromIntent for better compatibility
+            android.telephony.SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+            
+            if (messages != null && messages.length > 0) {
+                StringBuilder body = new StringBuilder();
+                String sender = null;
+                long timestamp = System.currentTimeMillis();
+
+                // Concatenate message parts if it's a multi-part message
+                for (android.telephony.SmsMessage sms : messages) {
+                    if (sender == null) {
+                        sender = sms.getOriginatingAddress();
+                    }
+                    if (sms.getMessageBody() != null) {
+                        body.append(sms.getMessageBody());
+                    }
+                    timestamp = sms.getTimestampMillis();
+                }
+
+                String messageBody = body.toString();
+                Log.d(TAG, "Received SMS from " + sender + ": " + messageBody);
+
+                if (sender != null && !messageBody.isEmpty()) {
+                    // Get or create thread ID for this sender
+                    String threadId = getThreadIdForAddress(sender);
+                    if (threadId == null) {
+                        // If no existing thread, we'll let the system create one
+                        threadId = "0"; // Temporary placeholder
+                    }
+
+                    // Get contact name for better notification display
+                    String displayName = sender;
+                    try {
+                        String contactName = ContactUtils.getContactName(context, sender);
+                        if (contactName != null && !contactName.isEmpty() && !contactName.equals(sender)) {
+                            displayName = contactName;
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Could not get contact name for " + sender, e);
+                    }
+
+                    // Create notification helper and show notification
+                    NotificationHelper notificationHelper = new NotificationHelper(context);
+                    notificationHelper.showSmsReceivedNotification(displayName, messageBody, threadId);
+
+                    // Clear message cache for this thread to force refresh
+                    if (!threadId.equals("0")) {
+                        messageCache.clearCache(threadId);
+                    }
+
+                    Log.d(TAG, "Notification shown for SMS from " + displayName + " (" + sender + ")");
+                } else {
+                    Log.w(TAG, "Incomplete SMS data - sender: " + sender + ", body length: " + messageBody.length());
+                }
+            } else {
+                Log.e(TAG, "No SMS messages found in intent");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling incoming SMS", e);
+        }
+    }
+
+    /**
+     * Handles an incoming MMS.
+     *
+     * @param intent The intent containing the MMS data
+     */
+    public void handleIncomingMms(Intent intent) {
+        if (intent == null) {
+            Log.e(TAG, "Cannot handle incoming MMS: intent is null");
+            return;
+        }
+
+        try {
+            Log.d(TAG, "Handling incoming MMS with action: " + intent.getAction());
+
+            // For MMS, we need to process the data differently
+            // This is a simplified implementation - in a real app you'd need more complex MMS parsing
+            
+            // Show a generic MMS notification for now
+            NotificationHelper notificationHelper = new NotificationHelper(context);
+            notificationHelper.showMmsReceivedNotification("New MMS", "You have received a multimedia message");
+
+            Log.d(TAG, "MMS notification shown");
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling incoming MMS", e);
+        }
     }
 
     /**
