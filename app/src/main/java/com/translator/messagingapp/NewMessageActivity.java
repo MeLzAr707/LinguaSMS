@@ -192,25 +192,46 @@ public class NewMessageActivity extends BaseActivity {
         try {
             // Send message using MessageService
             final String finalRecipient = recipient;
-            messageService.sendSmsMessage(recipient, messageText, null, MessageService.MessageCallback.onSuccess(() -> {
-                // Success callback
+            boolean success = messageService.sendSmsMessage(recipient, messageText, null, new MessageService.MessageCallback() {
+                @Override
+                public void onMessageSent(Message message) {
+                    // Success callback - run on UI thread
+                    runOnUiThread(() -> {
+                        // Set result and finish
+                        setResult(RESULT_OK);
 
-                // Set result and finish
-                setResult(RESULT_OK);
+                        try {
+                            // Open conversation with this recipient
+                            Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
+                            intent.putExtra("address", finalRecipient);
+                            startActivity(intent);
 
-                try {
-                    // Open conversation with this recipient
-                    Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
-                    intent.putExtra("address", finalRecipient);
-                    startActivity(intent);
-
-                    finish();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error opening conversation", e);
-                    Toast.makeText(NewMessageActivity.this, "Message sent, but error opening conversation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    finish();
+                            finish();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error opening conversation", e);
+                            Toast.makeText(NewMessageActivity.this, "Message sent, but error opening conversation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+                    });
                 }
-            }));
+
+                @Override
+                public void onMessageFailed(String error) {
+                    // Failure callback - run on UI thread
+                    runOnUiThread(() -> {
+                        Log.e(TAG, "Failed to send message: " + error);
+                        Toast.makeText(NewMessageActivity.this, "Failed to send message: " + error, Toast.LENGTH_SHORT).show();
+                        sendButton.setEnabled(true);
+                    });
+                }
+            });
+
+            // Handle immediate failure (before callback)
+            if (!success) {
+                Log.e(TAG, "Failed to initiate message sending");
+                Toast.makeText(this, R.string.error_sending_message, Toast.LENGTH_SHORT).show();
+                sendButton.setEnabled(true);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error sending message", e);
             Toast.makeText(this, R.string.error_sending_message, Toast.LENGTH_SHORT).show();
