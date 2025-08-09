@@ -183,19 +183,25 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
-     * Gets the display name for a conversation with proper fallback logic.
+     * Gets the display name for a conversation with improved fallback logic.
      *
      * @param conversation The conversation
      * @return The display name to show
      */
     private String getDisplayName(Conversation conversation) {
         if (conversation == null) {
+            Log.w(TAG, "Conversation is null in getDisplayName");
             return context.getString(R.string.unknown_contact);
         }
         
         String contactName = conversation.getContactName();
         String address = conversation.getAddress();
         String threadId = conversation.getThreadId();
+        
+        // Debug logging
+        Log.d(TAG, "getDisplayName: threadId=" + threadId + 
+                  ", contactName='" + contactName + "'" +
+                  ", address='" + address + "'");
         
         // Safety check: never display threadId as the contact name
         if (!TextUtils.isEmpty(contactName) && contactName.equals(threadId)) {
@@ -205,6 +211,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         
         // First priority: Non-empty contact name that's not just the phone number
         if (!TextUtils.isEmpty(contactName) && !contactName.equals(address)) {
+            Log.d(TAG, "Using contact name: " + contactName + " for thread " + threadId);
             return contactName;
         }
         
@@ -215,15 +222,18 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
                 Log.e(TAG, "WARNING: Address equals threadId (" + threadId + ") - this should not happen!");
                 return context.getString(R.string.unknown_contact);
             }
+            Log.d(TAG, "Using address: " + address + " for thread " + threadId);
             return address;
         }
         
         // Third priority: Contact name even if it might be a phone number
         if (!TextUtils.isEmpty(contactName)) {
+            Log.d(TAG, "Using contact name (fallback): " + contactName + " for thread " + threadId);
             return contactName;
         }
         
         // Last resort: Unknown contact
+        Log.w(TAG, "No valid display name found for thread " + threadId + " - using Unknown Contact");
         return context.getString(R.string.unknown_contact);
     }
 

@@ -1008,9 +1008,14 @@ public class MessageService {
                     String address = getAddressForThreadId(threadId);
                     conversation.setAddress(address);
                     
+                    // Debug logging for address resolution
+                    Log.d(TAG, "Thread " + threadId + " -> address: '" + address + "'");
+                    
                     // Collect addresses for batch contact lookup
                     if (!TextUtils.isEmpty(address)) {
                         addresses.add(address);
+                    } else {
+                        Log.w(TAG, "No address found for thread " + threadId);
                     }
 
                     // Add conversation to list
@@ -1020,6 +1025,7 @@ public class MessageService {
                 // Second pass: batch lookup contact names
                 Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
                 Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
+                Log.d(TAG, "Contact lookup returned " + contactNames.size() + " results");
                 
                 // Third pass: assign contact names with fallbacks
                 for (Conversation conversation : conversations) {
@@ -1046,6 +1052,12 @@ public class MessageService {
                         Log.e(TAG, "ERROR: Contact name was set to threadId " + threadId + " - fixing to 'Unknown Contact'");
                         conversation.setContactName("Unknown Contact");
                     }
+                    
+                    // Additional logging for debugging
+                    Log.d(TAG, "Final conversation: threadId=" + threadId + 
+                          ", address='" + address + "'" +
+                          ", contactName='" + conversation.getContactName() + "'" +
+                          ", snippet='" + conversation.getSnippet() + "'");
                 }
             }
         } catch (Exception e) {
@@ -1061,7 +1073,7 @@ public class MessageService {
     }
 
     /**
-     * Gets the address for a thread ID.
+     * Gets the address for a thread ID with improved fallback mechanisms.
      *
      * @param threadId The thread ID
      * @return The address
@@ -1078,7 +1090,31 @@ public class MessageService {
         try {
             Log.d(TAG, "Getting address for thread ID: " + threadId);
             
-            // Try method 1: Query the canonical addresses table via recipient_ids
+            // Method 1: Try the most recent SMS message first (fastest and most reliable)
+            cursor = context.getContentResolver().query(
+                    Telephony.Sms.CONTENT_URI,
+                    new String[]{Telephony.Sms.ADDRESS},
+                    Telephony.Sms.THREAD_ID + " = ?",
+                    new String[]{threadId},
+                    Telephony.Sms.DATE + " DESC LIMIT 1");
+
+            if (cursor != null && cursor.moveToFirst()) {
+                int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                if (addressIndex >= 0) {
+                    address = cursor.getString(addressIndex);
+                    if (!TextUtils.isEmpty(address)) {
+                        Log.d(TAG, "Found address from most recent SMS: " + address + " for thread: " + threadId);
+                        return address;
+                    }
+                }
+            }
+            
+            if (cursor != null) {
+                cursor.close();
+                cursor = null;
+            }
+
+            // Method 2: Try canonical addresses table via recipient_ids
             String recipientId = null;
             Cursor threadCursor = null;
 
@@ -1094,6 +1130,8 @@ public class MessageService {
                     recipientId = threadCursor.getString(0);
                     Log.d(TAG, "Found recipient ID: " + recipientId + " for thread: " + threadId);
                 }
+            } catch (Exception e) {
+                Log.w(TAG, "Error querying conversation recipient_ids for thread " + threadId, e);
             } finally {
                 if (threadCursor != null) {
                     threadCursor.close();
@@ -1101,75 +1139,109 @@ public class MessageService {
             }
 
             if (!TextUtils.isEmpty(recipientId)) {
-                // Now get the address for this recipient ID
-                Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
-                cursor = context.getContentResolver().query(
-                        uri,
-                        new String[]{"address"},
-                        "_id = ?",
-                        new String[]{recipientId},
-                        null);
+                try {
+                    // Now get the address for this recipient ID
+                    Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
+                    cursor = context.getContentResolver().query(
+                            uri,
+                            new String[]{"address"},
+                            "_id = ?",
+                            new String[]{recipientId},
+                            null);
 
-                if (cursor != null && cursor.moveToFirst()) {
-                    address = cursor.getString(0);
-                    if (!TextUtils.isEmpty(address)) {
-                        Log.d(TAG, "Found address: " + address + " for recipient ID: " + recipientId);
-                        return address;
+                    if (cursor != null && cursor.moveToFirst()) {
+                        address = cursor.getString(0);
+                        if (!TextUtils.isEmpty(address)) {
+                            Log.d(TAG, "Found address from canonical table: " + address + " for recipient ID: " + recipientId);
+                            return address;
+                        }
                     }
+                } catch (Exception e) {
+                    Log.w(TAG, "Error querying canonical addresses for recipient " + recipientId, e);
+                }
+                
+                if (cursor != null) {
+                    cursor.close();
+                    cursor = null;
                 }
             }
 
-            // Method 2: Fallback - query SMS directly for this thread
-            Log.d(TAG, "Canonical address lookup failed, trying SMS query for thread: " + threadId);
-            if (cursor != null) {
-                cursor.close();
-                cursor = null;
-            }
-
+            // Method 3: Try all SMS messages for this thread (broader search)
+            Log.d(TAG, "Previous methods failed, trying broader SMS query for thread: " + threadId);
             cursor = context.getContentResolver().query(
                     Telephony.Sms.CONTENT_URI,
                     new String[]{Telephony.Sms.ADDRESS},
                     Telephony.Sms.THREAD_ID + " = ?",
                     new String[]{threadId},
-                    Telephony.Sms.DATE + " DESC LIMIT 1");
+                    null);
 
             if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
-                if (addressIndex >= 0) {
-                    address = cursor.getString(addressIndex);
-                    if (!TextUtils.isEmpty(address)) {
-                        Log.d(TAG, "Found address from SMS: " + address + " for thread: " + threadId);
-                        return address;
+                do {
+                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                    if (addressIndex >= 0) {
+                        address = cursor.getString(addressIndex);
+                        if (!TextUtils.isEmpty(address)) {
+                            Log.d(TAG, "Found address from any SMS: " + address + " for thread: " + threadId);
+                            return address;
+                        }
                     }
-                }
+                } while (cursor.moveToNext());
             }
-
-            // Method 3: Fallback - query MMS for this thread 
-            Log.d(TAG, "SMS query failed, trying MMS query for thread: " + threadId);
+            
             if (cursor != null) {
                 cursor.close();
                 cursor = null;
             }
 
+            // Method 4: Try MMS messages for this thread
+            Log.d(TAG, "SMS queries failed, trying MMS query for thread: " + threadId);
+            
+            // First, get MMS message IDs for this thread
             cursor = context.getContentResolver().query(
-                    Uri.parse("content://mms/" + threadId + "/addr"),
-                    new String[]{"address", "type"},
-                    "type = 137", // 137 = TO address type
-                    null,
-                    null);
+                    Telephony.Mms.CONTENT_URI,
+                    new String[]{Telephony.Mms._ID},
+                    Telephony.Mms.THREAD_ID + " = ?",
+                    new String[]{threadId},
+                    Telephony.Mms.DATE + " DESC");
 
             if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex("address");
-                if (addressIndex >= 0) {
-                    address = cursor.getString(addressIndex);
-                    if (!TextUtils.isEmpty(address)) {
-                        Log.d(TAG, "Found address from MMS: " + address + " for thread: " + threadId);
-                        return address;
+                do {
+                    String mmsId = cursor.getString(0);
+                    Log.d(TAG, "Checking MMS message ID: " + mmsId + " for thread: " + threadId);
+                    
+                    // Now get addresses for this MMS message
+                    Cursor addrCursor = null;
+                    try {
+                        addrCursor = context.getContentResolver().query(
+                                Uri.parse("content://mms/" + mmsId + "/addr"),
+                                new String[]{"address", "type"},
+                                "type IN (137, 151)", // 137 = TO, 151 = FROM
+                                null,
+                                null);
+
+                        if (addrCursor != null && addrCursor.moveToFirst()) {
+                            do {
+                                int addressIndex = addrCursor.getColumnIndex("address");
+                                if (addressIndex >= 0) {
+                                    String mmsAddress = addrCursor.getString(addressIndex);
+                                    if (!TextUtils.isEmpty(mmsAddress)) {
+                                        Log.d(TAG, "Found address from MMS: " + mmsAddress + " for thread: " + threadId);
+                                        return mmsAddress;
+                                    }
+                                }
+                            } while (addrCursor.moveToNext());
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error querying MMS addresses for message " + mmsId, e);
+                    } finally {
+                        if (addrCursor != null) {
+                            addrCursor.close();
+                        }
                     }
-                }
+                } while (cursor.moveToNext());
             }
 
-            Log.w(TAG, "Could not find address for thread ID: " + threadId);
+            Log.w(TAG, "Could not find address for thread ID: " + threadId + " using any method");
         } catch (Exception e) {
             Log.e(TAG, "Error getting address for thread ID: " + threadId, e);
         } finally {
