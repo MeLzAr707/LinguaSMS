@@ -307,22 +307,20 @@ public class NewMessageActivity extends BaseActivity {
                 Toast.makeText(this, R.string.translating, Toast.LENGTH_SHORT).show();
                 
                 // Translate the message (this would typically be async)
-                translationManager.translateText(messageText, "auto", "en", new TranslationManager.TranslationCallback() {
+                translationManager.translateText(messageText, "en", new TranslationManager.TranslationCallback() {
                     @Override
-                    public void onSuccess(String translatedText, String detectedLanguage) {
+                    public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
                         runOnUiThread(() -> {
-                            // Replace the original text with translated text
-                            messageInput.setText(translatedText);
-                            Toast.makeText(NewMessageActivity.this, 
-                                "Translated from " + detectedLanguage, Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                    
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            Toast.makeText(NewMessageActivity.this, 
-                                "Translation failed: " + error, Toast.LENGTH_SHORT).show();
+                            if (success && translatedText != null) {
+                                // Replace the original text with translated text
+                                messageInput.setText(translatedText);
+                                Toast.makeText(NewMessageActivity.this, 
+                                    "Translation successful", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(NewMessageActivity.this, 
+                                    "Translation failed: " + (errorMessage != null ? errorMessage : "Unknown error"), 
+                                    Toast.LENGTH_SHORT).show();
+                            }
                         });
                     }
                 });
@@ -335,7 +333,3 @@ public class NewMessageActivity extends BaseActivity {
         }
     }
 }
-
-
-
-
