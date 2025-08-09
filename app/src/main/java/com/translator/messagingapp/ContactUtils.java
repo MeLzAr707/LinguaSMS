@@ -69,10 +69,14 @@ public class ContactUtils {
      */
     public static Map<String, String> getContactNamesForNumbers(Context context, List<String> phoneNumbers) {
         if (context == null || phoneNumbers == null || phoneNumbers.isEmpty()) {
+            Log.d(TAG, "getContactNamesForNumbers: context null=" + (context == null) + 
+                      ", phoneNumbers null=" + (phoneNumbers == null) + 
+                      ", phoneNumbers empty=" + (phoneNumbers != null && phoneNumbers.isEmpty()));
             return new HashMap<>();
         }
 
         Map<String, String> result = new HashMap<>();
+        Log.d(TAG, "Looking up contact names for " + phoneNumbers.size() + " phone numbers");
 
         try {
             ContentResolver contentResolver = context.getContentResolver();
@@ -80,19 +84,27 @@ public class ContactUtils {
             // Process in batches to avoid excessive queries
             for (String phoneNumber : phoneNumbers) {
                 if (TextUtils.isEmpty(phoneNumber)) {
+                    Log.d(TAG, "Skipping empty phone number");
                     continue;
                 }
 
                 // Skip if we already have this number
                 if (result.containsKey(phoneNumber)) {
+                    Log.d(TAG, "Already have contact name for: " + phoneNumber);
                     continue;
                 }
+
+                Log.d(TAG, "Looking up contact for phone number: " + phoneNumber);
 
                 // Try to normalize the phone number
                 String normalizedNumber = phoneNumber;
                 try {
                     normalizedNumber = PhoneNumberUtils.normalizeNumber(phoneNumber);
+                    if (!normalizedNumber.equals(phoneNumber)) {
+                        Log.d(TAG, "Normalized " + phoneNumber + " to " + normalizedNumber);
+                    }
                 } catch (Exception e) {
+                    Log.d(TAG, "Could not normalize phone number: " + phoneNumber);
                     // Ignore normalization errors
                 }
 
@@ -113,18 +125,28 @@ public class ContactUtils {
                                 String contactName = cursor.getString(nameIndex);
                                 if (!TextUtils.isEmpty(contactName)) {
                                     result.put(phoneNumber, contactName);
+                                    Log.d(TAG, "Found contact name '" + contactName + "' for phone number: " + phoneNumber);
+                                } else {
+                                    Log.d(TAG, "Contact name is empty for phone number: " + phoneNumber);
                                 }
+                            } else {
+                                Log.d(TAG, "DISPLAY_NAME column not found for phone number: " + phoneNumber);
                             }
+                        } else {
+                            Log.d(TAG, "No contact found for phone number: " + phoneNumber);
                         }
                     } finally {
                         cursor.close();
                     }
+                } else {
+                    Log.d(TAG, "Query returned null cursor for phone number: " + phoneNumber);
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error batch looking up contact names", e);
         }
 
+        Log.d(TAG, "Contact lookup completed. Found " + result.size() + " contacts out of " + phoneNumbers.size() + " phone numbers");
         return result;
     }
 
