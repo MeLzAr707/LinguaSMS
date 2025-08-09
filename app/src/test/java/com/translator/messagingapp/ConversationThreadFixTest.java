@@ -119,4 +119,49 @@ public class ConversationThreadFixTest {
             fail("Thread ID should never be used as contact name. ThreadID: " + threadId + ", ContactName: " + contactName);
         }
     }
+
+    @Test
+    public void testPhoneNumberFormatConsistency() {
+        // Test that different formats of the same number are treated consistently
+        String[] sameNumberFormats = {
+            "2345678901",
+            "+1 234-567-8901", 
+            "(234) 567-8901",
+            "234.567.8901"
+        };
+        
+        String firstNormalized = PhoneUtils.normalizePhoneNumber(sameNumberFormats[0]);
+        
+        // All should normalize to the same value
+        for (int i = 1; i < sameNumberFormats.length; i++) {
+            String normalized = PhoneUtils.normalizePhoneNumber(sameNumberFormats[i]);
+            assertEquals("All formats of the same number should normalize identically: " + 
+                        sameNumberFormats[i] + " vs " + sameNumberFormats[0], 
+                        firstNormalized, normalized);
+        }
+    }
+
+    @Test
+    public void testEdgeCasePhoneNumbers() {
+        // Test edge cases that might cause problems
+        String[] edgeCases = {
+            "000-000-0000",  // Invalid but formatted
+            "123",           // Too short
+            "+",             // Just plus sign
+            "abc-def-ghij",  // Letters
+            "",              // Empty
+            null             // Null
+        };
+        
+        // These should either normalize safely or return original
+        for (String edgeCase : edgeCases) {
+            try {
+                String result = PhoneUtils.normalizePhoneNumber(edgeCase);
+                // Should not throw exception
+                assertNotNull("Should handle edge case without throwing: " + edgeCase);
+            } catch (Exception e) {
+                fail("Should not throw exception for edge case: " + edgeCase + " - " + e.getMessage());
+            }
+        }
+    }
 }

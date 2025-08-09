@@ -1044,8 +1044,12 @@ public class MessageService {
                     conversation.setMessageCount(messageCount);
                     conversation.setRead(read == 1);
 
-                    // Get recipient address
+                    // Get recipient address and normalize it for consistency
                     String address = getAddressForThreadId(threadId);
+                    if (!TextUtils.isEmpty(address)) {
+                        // Ensure consistent phone number format for address lookups
+                        address = PhoneUtils.normalizePhoneNumber(address);
+                    }
                     conversation.setAddress(address);
                     
                     // Collect addresses for batch contact lookup
@@ -1061,15 +1065,33 @@ public class MessageService {
                 Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
                 Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
                 
-                // Third pass: assign contact names with fallbacks
+                // Third pass: assign contact names with fallbacks and additional validation
                 for (Conversation conversation : conversations) {
                     String address = conversation.getAddress();
                     String contactName = contactNames.get(address);
                     String threadId = conversation.getThreadId();
                     
+                    // If we didn't find a contact name with the normalized address, try other variants
+                    if (TextUtils.isEmpty(contactName) && !TextUtils.isEmpty(address)) {
+                        String[] phoneVariants = PhoneUtils.getPhoneNumberVariants(address);
+                        for (String variant : phoneVariants) {
+                            contactName = contactNames.get(variant);
+                            if (!TextUtils.isEmpty(contactName)) {
+                                Log.d(TAG, "Found contact name '" + contactName + "' using variant " + variant + " for address " + address);
+                                break;
+                            }
+                        }
+                    }
+                    
                     if (!TextUtils.isEmpty(contactName)) {
-                        conversation.setContactName(contactName);
-                        Log.d(TAG, "Found contact name '" + contactName + "' for address " + address + " (thread " + threadId + ")");
+                        // Validate that contact name is reasonable
+                        if (isValidContactName(contactName, threadId)) {
+                            conversation.setContactName(contactName);
+                            Log.d(TAG, "Found contact name '" + contactName + "' for address " + address + " (thread " + threadId + ")");
+                        } else {
+                            Log.w(TAG, "Contact name '" + contactName + "' appears invalid for thread " + threadId + ", using address instead");
+                            conversation.setContactName(!TextUtils.isEmpty(address) ? address : "Unknown Contact");
+                        }
                     } else if (!TextUtils.isEmpty(address)) {
                         // Fallback to address/phone number
                         conversation.setContactName(address);
@@ -1085,6 +1107,12 @@ public class MessageService {
                     if (!TextUtils.isEmpty(displayName) && displayName.equals(threadId)) {
                         Log.e(TAG, "ERROR: Contact name was set to threadId " + threadId + " - fixing to 'Unknown Contact'");
                         conversation.setContactName("Unknown Contact");
+                    }
+                    
+                    // Additional safety check: ensure contact name is never just a number that looks like a thread ID
+                    if (!TextUtils.isEmpty(displayName) && displayName.matches("^\\d+$") && displayName.length() < 7) {
+                        Log.w(TAG, "Contact name '" + displayName + "' looks like a thread ID, using fallback");
+                        conversation.setContactName(!TextUtils.isEmpty(address) ? address : "Unknown Contact");
                     }
                 }
             }
@@ -1286,6 +1314,37 @@ public class MessageService {
         }
         
         if (allSame) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Validates that a contact name is reasonable and not confused with thread ID.
+     *
+     * @param contactName The contact name to validate
+     * @param threadId The thread ID to check against
+     * @return true if the contact name appears valid
+     */
+    private boolean isValidContactName(String contactName, String threadId) {
+        if (TextUtils.isEmpty(contactName)) {
+            return false;
+        }
+        
+        // Never allow thread ID as contact name
+        if (contactName.equals(threadId)) {
+            return false;
+        }
+        
+        // Don't allow short numeric strings that might be thread IDs
+        if (contactName.matches("^\\d{1,6}$")) {
+            return false;
+        }
+        
+        // Don't allow obviously invalid names
+        if (contactName.toLowerCase().contains("thread") || 
+            contactName.toLowerCase().contains("id")) {
             return false;
         }
         
