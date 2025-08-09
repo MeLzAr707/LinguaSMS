@@ -16,6 +16,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FilterQueryProvider;
+import android.widget.ImageButton;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
@@ -38,6 +39,7 @@ public class NewMessageActivity extends BaseActivity {
     private EditText messageInput;
     private Button sendButton;
     private Button contactPickerButton;
+    private ImageButton translateButton;
 
     // Services
     private MessageService messageService;
@@ -69,6 +71,7 @@ public class NewMessageActivity extends BaseActivity {
             messageInput = findViewById(R.id.message_input);
             sendButton = findViewById(R.id.send_button);
             contactPickerButton = findViewById(R.id.contact_button);
+            translateButton = findViewById(R.id.translate_button);
         } catch (Exception e) {
             Log.e(TAG, "Error initializing UI components", e);
             Toast.makeText(this, "Error initializing UI: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -80,6 +83,16 @@ public class NewMessageActivity extends BaseActivity {
         contactPickerButton.setOnClickListener(v -> {
             Intent contactPickerIntent = new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
             startActivityForResult(contactPickerIntent, CONTACT_PICKER_RESULT);
+        });
+
+        // Set up translate button
+        translateButton.setOnClickListener(v -> {
+            String messageText = messageInput.getText().toString().trim();
+            if (!TextUtils.isEmpty(messageText)) {
+                translateMessage(messageText);
+            } else {
+                Toast.makeText(this, "Please enter a message to translate", Toast.LENGTH_SHORT).show();
+            }
         });
 
         // Set up send button
@@ -259,6 +272,46 @@ public class NewMessageActivity extends BaseActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Translates the message using the translation manager.
+     *
+     * @param messageText The message text to translate
+     */
+    private void translateMessage(String messageText) {
+        try {
+            if (translationManager != null) {
+                // Show translation in progress
+                Toast.makeText(this, R.string.translating, Toast.LENGTH_SHORT).show();
+                
+                // Translate the message (this would typically be async)
+                translationManager.translateText(messageText, "auto", "en", new TranslationManager.TranslationCallback() {
+                    @Override
+                    public void onSuccess(String translatedText, String detectedLanguage) {
+                        runOnUiThread(() -> {
+                            // Replace the original text with translated text
+                            messageInput.setText(translatedText);
+                            Toast.makeText(NewMessageActivity.this, 
+                                "Translated from " + detectedLanguage, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(NewMessageActivity.this, 
+                                "Translation failed: " + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            } else {
+                Toast.makeText(this, "Translation service not available", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error translating message", e);
+            Toast.makeText(this, "Error translating message: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 }
 

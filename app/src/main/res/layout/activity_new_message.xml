@@ -61,8 +61,7 @@
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/select_contact"
-                android:src="@android:drawable/ic_menu_add"
-                app:tint="?attr/colorPrimary" />
+                android:src="@android:drawable/ic_menu_add" />
 
         </LinearLayout>
 
@@ -109,8 +108,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/translate_message"
-                android:src="@android:drawable/ic_menu_sort_alphabetically"
-                app:tint="?attr/colorPrimary" />
+                android:src="@android:drawable/ic_menu_sort_alphabetically" />
 
             <Button
                 android:id="@+id/send_button"
