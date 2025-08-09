@@ -23,6 +23,7 @@ public class DebugActivity extends AppCompatActivity {
     private Button checkButton;
     private Button openButton;
     private Button directOpenButton;
+    private Button testNotificationButton;
     private TextView resultText;
 
     @Override
@@ -43,12 +44,14 @@ public class DebugActivity extends AppCompatActivity {
         checkButton = findViewById(R.id.debug_check_button);
         openButton = findViewById(R.id.debug_open_button);
         directOpenButton = findViewById(R.id.debug_direct_open_button);
+        testNotificationButton = findViewById(R.id.debug_test_notification_button);
         resultText = findViewById(R.id.debug_result_text);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
         directOpenButton.setOnClickListener(v -> openConversationDirect());
+        testNotificationButton.setOnClickListener(v -> testNotification());
 
         // Check if we were launched with an address
         String launchedAddress = getIntent().getStringExtra("address");
@@ -466,6 +469,38 @@ public class DebugActivity extends AppCompatActivity {
         }
 
         return null;
+    }
+
+    private void testNotification() {
+        String address = addressInput.getText().toString().trim();
+        if (address.isEmpty()) {
+            address = "+15551234567"; // Use default test number
+        }
+
+        try {
+            // Test SMS notification
+            NotificationHelper notificationHelper = new NotificationHelper(this);
+            notificationHelper.showSmsReceivedNotification(
+                address,
+                "This is a test SMS notification from the debug tool",
+                "1"
+            );
+
+            Toast.makeText(this, "Test SMS notification sent for " + address, Toast.LENGTH_SHORT).show();
+            
+            // Also test MMS notification after a short delay
+            new android.os.Handler().postDelayed(() -> {
+                notificationHelper.showMmsReceivedNotification(
+                    "Test MMS",
+                    "This is a test MMS notification from the debug tool"
+                );
+                Toast.makeText(this, "Test MMS notification sent", Toast.LENGTH_SHORT).show();
+            }, 2000);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error testing notification", e);
+            Toast.makeText(this, "Error testing notification: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 }
 
