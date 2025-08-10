@@ -65,6 +65,9 @@ dependencies {
     implementation(libs.glide)
     annotationProcessor(libs.glide.compiler)
 
+    // MLKit Translation for offline translation
+    implementation(libs.mlkit.translate)
+
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.junit.v113)

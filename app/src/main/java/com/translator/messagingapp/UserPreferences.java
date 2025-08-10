@@ -28,17 +28,23 @@ public class UserPreferences {
     private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_API_SERVICE = "api_service";
-    private static final String KEY_USER_PHONE_NUMBER = "user_phone_number";
-    private static final String KEY_FIRST_RUN = "first_run";
-    private static final String KEY_DEFAULT_SMS_CHECK = "default_sms_check";
+    private static final String KEY_TRANSLATION_MODE = "translation_mode";
+    private static final String KEY_PREFER_OFFLINE = "prefer_offline";
+    
+    // Translation mode constants
+    public static final int TRANSLATION_MODE_ONLINE_ONLY = 0;
+    public static final int TRANSLATION_MODE_OFFLINE_ONLY = 1;
+    public static final int TRANSLATION_MODE_AUTO = 2; // Try offline first, fallback to online
     
     // Default values
-    private static final boolean DEFAULT_AUTO_TRANSLATE = true; // Enable by default for testing
+    private static final boolean DEFAULT_AUTO_TRANSLATE = false;
     private static final String DEFAULT_PREFERRED_LANGUAGE = "en";
     private static final String DEFAULT_PREFERRED_OUTGOING_LANGUAGE = "en";
     private static final int DEFAULT_THEME_ID = THEME_SYSTEM; // System default
     private static final boolean DEFAULT_DEBUG_MODE = false;
     private static final String DEFAULT_API_SERVICE = "google";
+    private static final int DEFAULT_TRANSLATION_MODE = TRANSLATION_MODE_AUTO;
+    private static final boolean DEFAULT_PREFER_OFFLINE = true;
     
     private final SharedPreferences preferences;
     private final Context context;
@@ -222,16 +228,10 @@ public class UserPreferences {
      */
     public String getApiKey() {
         try {
-            String apiKey = preferences.getString(KEY_API_KEY, "");
-            // If no API key is set, provide a default test key
-            if (apiKey.isEmpty()) {
-                apiKey = "test-api-key-for-development";
-                Log.d(TAG, "Using default test API key for development");
-            }
-            return apiKey;
+            return preferences.getString(KEY_API_KEY, "");
         } catch (Exception e) {
             Log.e(TAG, "Error getting API key", e);
-            return "test-api-key-for-development";
+            return "";
         }
     }
     
@@ -366,6 +366,60 @@ public class UserPreferences {
     }
     
     /**
+     * Gets the translation mode preference.
+     *
+     * @return the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     */
+    public int getTranslationMode() {
+        try {
+            return preferences.getInt(KEY_TRANSLATION_MODE, DEFAULT_TRANSLATION_MODE);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting translation mode", e);
+            return DEFAULT_TRANSLATION_MODE;
+        }
+    }
+    
+    /**
+     * Sets the translation mode preference.
+     *
+     * @param mode the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     */
+    public void setTranslationMode(int mode) {
+        try {
+            preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting translation mode", e);
+        }
+    }
+    
+    /**
+     * Gets whether to prefer offline translation when both are available.
+     *
+     * @return true if offline translation is preferred, false otherwise
+     */
+    public boolean getPreferOfflineTranslation() {
+        try {
+            return preferences.getBoolean(KEY_PREFER_OFFLINE, DEFAULT_PREFER_OFFLINE);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting prefer offline preference", e);
+            return DEFAULT_PREFER_OFFLINE;
+        }
+    }
+    
+    /**
+     * Sets whether to prefer offline translation when both are available.
+     *
+     * @param prefer true to prefer offline translation, false otherwise
+     */
+    public void setPreferOfflineTranslation(boolean prefer) {
+        try {
+            preferences.edit().putBoolean(KEY_PREFER_OFFLINE, prefer).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting prefer offline preference", e);
+        }
+    }
+    
+    /**
      * Clears all preferences.
      */
     public void clearAll() {
@@ -373,91 +427,6 @@ public class UserPreferences {
             preferences.edit().clear().apply();
         } catch (Exception e) {
             Log.e(TAG, "Error clearing preferences", e);
-        }
-    }
-    
-    // Static convenience methods for commonly used preferences
-    
-    /**
-     * Gets the user's phone number from preferences.
-     *
-     * @param context The context
-     * @return The user's phone number, or empty string if not set
-     */
-    public static String getUserPhoneNumber(Context context) {
-        try {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            return prefs.getString(KEY_USER_PHONE_NUMBER, "");
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting user phone number", e);
-            return "";
-        }
-    }
-    
-    /**
-     * Sets the user's phone number in preferences.
-     *
-     * @param context The context
-     * @param phoneNumber The user's phone number
-     */
-    public static void setUserPhoneNumber(Context context, String phoneNumber) {
-        try {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit().putString(KEY_USER_PHONE_NUMBER, phoneNumber).apply();
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting user phone number", e);
-        }
-    }
-    
-    /**
-     * Checks if this is the first run of the app.
-     *
-     * @param context The context
-     * @return true if this is the first run, false otherwise
-     */
-    public static boolean isFirstRun(Context context) {
-        try {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            boolean isFirstRun = prefs.getBoolean(KEY_FIRST_RUN, true);
-            if (isFirstRun) {
-                // Mark that we've completed the first run
-                prefs.edit().putBoolean(KEY_FIRST_RUN, false).apply();
-            }
-            return isFirstRun;
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking first run", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Checks if the app should check for default SMS app status.
-     *
-     * @param context The context
-     * @return true if the app should check for default SMS app status
-     */
-    public static boolean shouldCheckDefaultSmsApp(Context context) {
-        try {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            return prefs.getBoolean(KEY_DEFAULT_SMS_CHECK, true);
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking default SMS app preference", e);
-            return true;
-        }
-    }
-    
-    /**
-     * Sets whether the app should check for default SMS app status.
-     *
-     * @param context The context
-     * @param shouldCheck true if the app should check for default SMS app status
-     */
-    public static void setShouldCheckDefaultSmsApp(Context context, boolean shouldCheck) {
-        try {
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit().putBoolean(KEY_DEFAULT_SMS_CHECK, shouldCheck).apply();
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting default SMS app preference", e);
         }
     }
 }

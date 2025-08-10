@@ -23,7 +23,8 @@ public class DebugActivity extends AppCompatActivity {
     private Button checkButton;
     private Button openButton;
     private Button directOpenButton;
-    private Button testNotificationButton;
+    private Button translationStatusButton;
+    private Button testTranslationButton;
     private TextView resultText;
 
     @Override
@@ -44,14 +45,16 @@ public class DebugActivity extends AppCompatActivity {
         checkButton = findViewById(R.id.debug_check_button);
         openButton = findViewById(R.id.debug_open_button);
         directOpenButton = findViewById(R.id.debug_direct_open_button);
-        testNotificationButton = findViewById(R.id.debug_test_notification_button);
+        translationStatusButton = findViewById(R.id.debug_translation_status_button);
+        testTranslationButton = findViewById(R.id.debug_test_translation_button);
         resultText = findViewById(R.id.debug_result_text);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
         directOpenButton.setOnClickListener(v -> openConversationDirect());
-        testNotificationButton.setOnClickListener(v -> testNotification());
+        translationStatusButton.setOnClickListener(v -> checkTranslationStatus());
+        testTranslationButton.setOnClickListener(v -> testOfflineTranslation());
 
         // Check if we were launched with an address
         String launchedAddress = getIntent().getStringExtra("address");
@@ -340,7 +343,7 @@ public class DebugActivity extends AppCompatActivity {
 
                             result.append("- ")
                                     .append(type == Telephony.Sms.MESSAGE_TYPE_INBOX ? "Received: " : "Sent: ")
-                                    .append(body != null && body.length() > 30 ? body.substring(0, 30) + "..." : (body != null ? body : "[No content]"))
+                                    .append(body.length() > 30 ? body.substring(0, 30) + "..." : body)
                                     .append(" (Address: ")
                                     .append(msgAddress)
                                     .append(", Thread: ")
@@ -387,7 +390,7 @@ public class DebugActivity extends AppCompatActivity {
 
                                 result.append("- ")
                                         .append(type == Telephony.Sms.MESSAGE_TYPE_INBOX ? "Received: " : "Sent: ")
-                                        .append(body != null && body.length() > 30 ? body.substring(0, 30) + "..." : (body != null ? body : "[No content]"))
+                                        .append(body.length() > 30 ? body.substring(0, 30) + "..." : body)
                                         .append(" (Address: ")
                                         .append(msgAddress)
                                         .append(", Thread: ")
@@ -413,7 +416,7 @@ public class DebugActivity extends AppCompatActivity {
 
         try (Cursor cursor = getContentResolver().query(
                 Uri.parse("content://sms/conversations"),
-                new String[]{"thread_id", "message_count"},
+                new String[]{"thread_id", "recipient_ids", "message_count"},
                 null, null, null)) {
 
             if (cursor != null && cursor.moveToFirst()) {
@@ -470,36 +473,60 @@ public class DebugActivity extends AppCompatActivity {
 
         return null;
     }
-
-    private void testNotification() {
-        String address = addressInput.getText().toString().trim();
-        if (address.isEmpty()) {
-            address = "+15551234567"; // Use default test number
-        }
-
+    
+    private void checkTranslationStatus() {
         try {
-            // Test SMS notification
-            NotificationHelper notificationHelper = new NotificationHelper(this);
-            notificationHelper.showSmsReceivedNotification(
-                address,
-                "This is a test SMS notification from the debug tool",
-                "1"
-            );
-
-            Toast.makeText(this, "Test SMS notification sent for " + address, Toast.LENGTH_SHORT).show();
+            TranslatorApp app = (TranslatorApp) getApplication();
+            UserPreferences userPreferences = app.getUserPreferences();
             
-            // Also test MMS notification after a short delay
-            new android.os.Handler().postDelayed(() -> {
-                notificationHelper.showMmsReceivedNotification(
-                    "Test MMS",
-                    "This is a test MMS notification from the debug tool"
-                );
-                Toast.makeText(this, "Test MMS notification sent", Toast.LENGTH_SHORT).show();
-            }, 2000);
-
+            String status = OfflineTranslationDemo.demonstrateOfflineTranslation(this, userPreferences);
+            resultText.setText("=== OFFLINE TRANSLATION STATUS ===\n\n" + status);
+            
         } catch (Exception e) {
-            Log.e(TAG, "Error testing notification", e);
-            Toast.makeText(this, "Error testing notification: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Error checking translation status", e);
+            resultText.setText("Error checking translation status: " + e.getMessage());
+        }
+    }
+    
+    private void testOfflineTranslation() {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            UserPreferences userPreferences = app.getUserPreferences();
+            
+            resultText.setText("=== TESTING OFFLINE TRANSLATION ===\n\nTesting English to Spanish translation...\n");
+            
+            OfflineTranslationDemo.testOfflineTranslation(this, userPreferences, 
+                new OfflineTranslationService.OfflineTranslationCallback() {
+                    @Override
+                    public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                        runOnUiThread(() -> {
+                            String result = "=== TRANSLATION TEST RESULT ===\n\n";
+                            result += "Original: Hello, how are you?\n";
+                            result += "Target Language: Spanish (es)\n";
+                            result += "Success: " + success + "\n";
+                            
+                            if (success && translatedText != null) {
+                                result += "Translation: " + translatedText + "\n";
+                                result += "\n✅ Offline translation is working!";
+                            } else {
+                                result += "Error: " + (errorMessage != null ? errorMessage : "Unknown error") + "\n";
+                                result += "\n❌ Offline translation failed. You may need to download language models first.";
+                            }
+                            
+                            result += "\n\nTo download language models:\n";
+                            result += "1. Go to Settings\n";
+                            result += "2. Find 'Translation' section\n";
+                            result += "3. Tap 'Manage Offline Models'\n";
+                            result += "4. Download English and Spanish models";
+                            
+                            resultText.setText(result);
+                        });
+                    }
+                });
+                
+        } catch (Exception e) {
+            Log.e(TAG, "Error testing offline translation", e);
+            resultText.setText("Error testing offline translation: " + e.getMessage());
         }
     }
 }

@@ -83,6 +83,13 @@
             android:exported="false"
             android:theme="@style/AppTheme.NoActionBar" />
 
+        <!-- Added OfflineModelsActivity -->
+        <activity
+            android:name=".OfflineModelsActivity"
+            android:exported="false"
+            android:label="@string/manage_offline_models"
+            android:theme="@style/AppTheme" />
+
         <!-- Added SearchActivity -->
         <activity
             android:name=".SearchActivity"
