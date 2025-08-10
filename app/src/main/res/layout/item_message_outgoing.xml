@@ -102,28 +102,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Reactions container -->
-    <include
-        android:id="@+id/reactions_container"
-        layout="@layout/message_reactions_layout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/message_bubble"
-        android:layout_alignEnd="@id/message_bubble"
-        android:layout_marginTop="2dp" />
-
-    <!-- Add reaction button -->
-    <ImageView
-        android:id="@+id/add_reaction_button"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_below="@id/message_bubble"
-        android:layout_toStartOf="@id/reactions_container"
-        android:layout_marginEnd="4dp"
-        android:layout_marginTop="2dp"
-        android:src="@android:drawable/ic_menu_add"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/add_reaction"
-        android:visibility="gone" />
-
 </RelativeLayout>

@@ -22,7 +22,7 @@
             android:id="@+id/debug_address_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter phone number"
+            android:hint="@string/debug_phone_number_hint"
             android:inputType="phone" />
 
         <LinearLayout
@@ -35,21 +35,21 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Check" />
+                android:text="@string/debug_check_button" />
 
             <Button
                 android:id="@+id/debug_open_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Open" />
+                android:text="@string/debug_open_button" />
 
             <Button
                 android:id="@+id/debug_direct_open_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Direct Open" />
+                android:text="@string/debug_direct_open_button" />
         </LinearLayout>
 
         <ScrollView
