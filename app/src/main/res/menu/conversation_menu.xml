@@ -24,12 +24,6 @@
         android:title="@string/delete_conversation"
         android:icon="@android:drawable/ic_menu_delete"
         app:showAsAction="never" />
-
-    <item
-        android:id="@+id/action_test_messages"
-        android:title="Add Test Messages"
-        android:icon="@android:drawable/ic_menu_add"
-        app:showAsAction="never" />
 </menu>
 
 

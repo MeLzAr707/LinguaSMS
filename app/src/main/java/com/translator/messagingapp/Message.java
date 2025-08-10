@@ -6,7 +6,6 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -35,16 +34,12 @@ public class Message {
     private String originalLanguage;
     private String translatedLanguage;
     private boolean showTranslation;
-    private boolean translated; // Added field to track if message has been translated
     
     // Search-related fields
     private String searchQuery;
     
     // Reaction-related fields
     private MessageReaction.ReactionManager reactionManager;
-    
-    // Delivery status fields
-    private boolean delivered = false;
 
     // Constants for message types
     public static final int TYPE_INBOX = 1;
@@ -53,8 +48,6 @@ public class Message {
     public static final int TYPE_OUTBOX = 4;
     public static final int TYPE_FAILED = 5;
     public static final int TYPE_QUEUED = 6;
-    public static final int TYPE_ALL = 7; // Added missing TYPE_ALL constant
-    public static final int TYPE_SMS = 100; // Added missing TYPE_SMS constant
     // Constants for message types
     public static final int TYPE_MMS = 128; // Or any value that doesn't conflict with existing types
 
@@ -105,20 +98,6 @@ public class Message {
     public void setId(long id) {
         this.id = id;
     }
-    
-    /**
-     * Sets the ID from a String value.
-     *
-     * @param idString The ID as a String
-     */
-    public void setId(String idString) {
-        try {
-            this.id = Long.parseLong(idString);
-        } catch (NumberFormatException e) {
-            Log.e(TAG, "Error parsing ID: " + idString, e);
-            this.id = -1;
-        }
-    }
 
     public String getBody() {
         return body;
@@ -166,20 +145,6 @@ public class Message {
 
     public void setThreadId(long threadId) {
         this.threadId = threadId;
-    }
-    
-    /**
-     * Sets the thread ID from a String value.
-     *
-     * @param threadIdString The thread ID as a String
-     */
-    public void setThreadId(String threadIdString) {
-        try {
-            this.threadId = Long.parseLong(threadIdString);
-        } catch (NumberFormatException e) {
-            Log.e(TAG, "Error parsing thread ID: " + threadIdString, e);
-            this.threadId = -1;
-        }
     }
 
     public String getContactName() {
@@ -294,18 +259,6 @@ public class Message {
     }
 
     /**
-     * Gets all reactions for this message.
-     * 
-     * @return List of message reactions
-     */
-    public List<MessageReaction> getReactions() {
-        if (reactionManager == null) {
-            return new ArrayList<>();
-        }
-        return reactionManager.getAllReactions();
-    }
-
-    /**
      * Gets the message type (SMS or MMS).
      *
      * @return The message type
@@ -361,15 +314,6 @@ public class Message {
     }
 
     /**
-     * Sets whether the message has been translated.
-     *
-     * @param translated true if the message has been translated, false otherwise
-     */
-    public void setTranslated(boolean translated) {
-        this.translated = translated;
-    }
-
-    /**
      * Checks if the message is incoming.
      *
      * @return true if the message is incoming, false otherwise
@@ -385,34 +329,6 @@ public class Message {
      */
     public String getFormattedDate() {
         return new Date(date).toString();
-    }
-
-    /**
-     * Checks if the message has been delivered.
-     *
-     * @return true if the message has been delivered, false otherwise
-     */
-    public boolean isDelivered() {
-        return delivered;
-    }
-
-    /**
-     * Sets whether the message has been delivered.
-     *
-     * @param delivered true if the message has been delivered, false otherwise
-     */
-    public void setDelivered(boolean delivered) {
-        this.delivered = delivered;
-    }
-
-    /**
-     * Checks if the message can be translated.
-     *
-     * @return true if the message can be translated, false otherwise
-     */
-    public boolean isTranslatable() {
-        // A message is translatable if it has a body and is not already translated
-        return body != null && !body.isEmpty();
     }
 
     /**
@@ -523,3 +439,7 @@ public class Message {
                 '}';
     }
 }
+
+
+
+

@@ -4,14 +4,10 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
 
-import java.util.Calendar;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Manager class for handling translation functionality.
@@ -22,27 +18,24 @@ public class TranslationManager {
 
     // Rate limiting parameters
     private static final Object SYNC_OBJECT = new Object();
-    private final AtomicLong lastTranslationTime = new AtomicLong(0);
+    private static long lastTranslationTime = 0;
     private static final long MIN_TRANSLATION_INTERVAL = 5000; // 5 seconds minimum between translations
-    private final AtomicInteger translationsToday = new AtomicInteger(0);
-    private final AtomicLong dayStartTime = new AtomicLong(System.currentTimeMillis());
+    private static int translationsToday = 0;
+    private static long dayStartTime = System.currentTimeMillis();
     private static final int MAX_TRANSLATIONS_PER_DAY = 100; // Maximum translations per day
 
     // Cache for recently translated messages to avoid duplicates
-    private final ConcurrentHashMap<String, Long> recentlyTranslatedMessages = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Long> recentlyTranslatedMessages = new ConcurrentHashMap<>();
     private static final int MAX_CACHE_SIZE = 50;
-    private static final int EXECUTOR_SHUTDOWN_TIMEOUT = 5; // seconds
 
     // Counter for generating unique notification IDs
     private static final AtomicInteger notificationIdCounter = new AtomicInteger(1001);
 
     private final Context context;
     private final GoogleTranslationService translationService;
-    private final OfflineTranslationService offlineTranslationService;
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
-    private volatile boolean isShuttingDown = false;
 
     /**
      * Creates a new TranslationManager.
@@ -52,20 +45,11 @@ public class TranslationManager {
      * @param userPreferences The user preferences
      */
     public TranslationManager(Context context, GoogleTranslationService translationService, UserPreferences userPreferences) {
-        this.context = context.getApplicationContext(); // Use application context to prevent leaks
+        this.context = context;
         this.translationService = translationService;
-        this.offlineTranslationService = new OfflineTranslationService(context, userPreferences);
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
-        this.translationCache = new TranslationCache(context.getApplicationContext());
-        
-        // Initialize day start time to the beginning of the current day
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        dayStartTime.set(calendar.getTimeInMillis());
+        this.translationCache = new TranslationCache(context);
     }
 
     /**
@@ -78,15 +62,6 @@ public class TranslationManager {
     }
 
     /**
-     * Gets the offline translation service instance.
-     *
-     * @return The OfflineTranslationService instance
-     */
-    public OfflineTranslationService getOfflineTranslationService() {
-        return offlineTranslationService;
-    }
-
-    /**
      * Gets a translated text from the cache.
      *
      * @param originalText The original text
@@ -94,10 +69,6 @@ public class TranslationManager {
      * @return The translated text, or null if not found in cache
      */
     public String getTranslatedText(String originalText, String targetLanguage) {
-        if (originalText == null || targetLanguage == null) {
-            return null;
-        }
-        
         String cacheKey = originalText + "_" + targetLanguage;
         return translationCache.get(cacheKey);
     }
@@ -131,16 +102,16 @@ public class TranslationManager {
             return;
         }
 
-        if (targetLanguage == null || targetLanguage.isEmpty()) {
+        // Check if translation service is available
+        if (translationService == null || !translationService.hasApiKey()) {
             if (callback != null) {
-                callback.onTranslationComplete(false, null, "No target language specified");
+                callback.onTranslationComplete(false, null, "Translation service not available");
             }
             return;
         }
 
-        // Check rate limiting for online translations only
-        int translationMode = userPreferences.getTranslationMode();
-        if (translationMode != UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY && !checkRateLimiting()) {
+        // Check rate limiting
+        if (!checkRateLimiting()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
@@ -148,7 +119,7 @@ public class TranslationManager {
         }
 
         // Generate cache key
-        final String cacheKey = text + "_" + targetLanguage;
+        String cacheKey = text + "_" + targetLanguage;
 
         // Check cache first
         String cachedTranslation = translationCache.get(cacheKey);
@@ -159,18 +130,11 @@ public class TranslationManager {
             return;
         }
 
-        // Translate based on user preference
-        if (isShuttingDown || executorService.isShutdown()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, "Translation service is shutting down");
-            }
-            return;
-        }
-        
+        // Translate in background
         executorService.execute(() -> {
             try {
-                // Detect language first (needed for both online and offline)
-                String detectedLanguage = detectLanguage(text);
+                // Detect language
+                String detectedLanguage = translationService.detectLanguage(text);
                 if (detectedLanguage == null) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null, "Could not detect language");
@@ -178,7 +142,7 @@ public class TranslationManager {
                     return;
                 }
 
-                // Skip if already in target language
+                // Skip if already in target language (comparing base language codes)
                 String baseDetected = detectedLanguage.split("-")[0];
                 String baseTarget = targetLanguage.split("-")[0];
 
@@ -189,16 +153,27 @@ public class TranslationManager {
                     return;
                 }
 
-                // Determine which translation method to use
-                boolean useOffline = shouldUseOfflineTranslation(detectedLanguage, targetLanguage);
-                
-                if (useOffline) {
-                    translateWithOffline(text, detectedLanguage, targetLanguage, cacheKey, callback);
-                } else {
-                    translateWithOnline(text, detectedLanguage, targetLanguage, cacheKey, callback);
+                // Translate
+                String translatedText = translationService.translate(text, detectedLanguage, targetLanguage);
+                if (translatedText == null) {
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, "Translation failed");
+                    }
+                    return;
+                }
+
+                // Cache the translation
+                translationCache.put(cacheKey, translatedText);
+
+                // Update translation counters
+                updateTranslationCounters();
+
+                // Return result
+                if (callback != null) {
+                    callback.onTranslationComplete(true, translatedText, null);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error in translation flow", e);
+                Log.e(TAG, "Error translating text", e);
                 if (callback != null) {
                     callback.onTranslationComplete(false, null, e.getMessage());
                 }
@@ -245,7 +220,7 @@ public class TranslationManager {
         }
 
         // Create a message ID for deduplication
-        final String messageId = message.getAddress() + ":" + message.getOriginalText().hashCode();
+        String messageId = message.getAddress() + ":" + message.getOriginalText().hashCode();
 
         // Check if we've recently translated this message
         if (recentlyTranslatedMessages.containsKey(messageId)) {
@@ -264,15 +239,8 @@ public class TranslationManager {
         }
 
         // Generate cache key
-        final String targetLanguage = userPreferences.getPreferredLanguage();
-        if (targetLanguage == null || targetLanguage.isEmpty()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null);
-            }
-            return;
-        }
-        
-        final String cacheKey = message.getOriginalText() + "_" + targetLanguage;
+        String targetLanguage = userPreferences.getPreferredLanguage();
+        String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first
         String cachedTranslation = translationCache.get(cacheKey);
@@ -286,13 +254,6 @@ public class TranslationManager {
         }
 
         // Translate in background
-        if (isShuttingDown || executorService.isShutdown()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null);
-            }
-            return;
-        }
-        
         executorService.execute(() -> {
             try {
                 // Detect language
@@ -360,18 +321,11 @@ public class TranslationManager {
         if (targetLanguage == null || targetLanguage.isEmpty()) {
             targetLanguage = userPreferences.getPreferredLanguage();
         }
-        
-        if (targetLanguage == null || targetLanguage.isEmpty()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, "No target language specified");
-            }
-            return;
-        }
 
         final String finalTargetLanguage = targetLanguage;
 
         // Generate cache key
-        final String cacheKey = message.getBody() + "_" + targetLanguage;
+        String cacheKey = message.getBody() + "_" + targetLanguage;
 
         // Check cache first
         String cachedTranslation = translationCache.get(cacheKey);
@@ -394,13 +348,6 @@ public class TranslationManager {
         }
 
         // Translate in background
-        if (isShuttingDown || executorService.isShutdown()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, "Translation service is shutting down");
-            }
-            return;
-        }
-        
         executorService.execute(() -> {
             try {
                 // Detect language
@@ -466,37 +413,28 @@ public class TranslationManager {
      */
     private boolean checkRateLimiting() {
         long currentTime = System.currentTimeMillis();
-        
-        // Reset daily counter if a new day has started
-        long storedDayStartTime = dayStartTime.get();
-        if (currentTime - storedDayStartTime > 24 * 60 * 60 * 1000) { // 24 hours
-            // Use CAS to ensure thread safety when updating day start time
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(Calendar.HOUR_OF_DAY, 0);
-            calendar.set(Calendar.MINUTE, 0);
-            calendar.set(Calendar.SECOND, 0);
-            calendar.set(Calendar.MILLISECOND, 0);
-            long newDayStartTime = calendar.getTimeInMillis();
-            
-            if (dayStartTime.compareAndSet(storedDayStartTime, newDayStartTime)) {
-                translationsToday.set(0);
+        synchronized (SYNC_OBJECT) {
+            // Reset daily counter if a new day has started
+            if (currentTime - dayStartTime > 24 * 60 * 60 * 1000) { // 24 hours
+                dayStartTime = currentTime;
+                translationsToday = 0;
                 Log.d(TAG, "Reset daily translation counter");
             }
-        }
 
-        // Check daily translation limit
-        if (translationsToday.get() >= MAX_TRANSLATIONS_PER_DAY) {
-            Log.d(TAG, "Daily translation limit reached: " + translationsToday.get() + " translations today");
-            return false;
-        }
+            // Check daily translation limit
+            if (translationsToday >= MAX_TRANSLATIONS_PER_DAY) {
+                Log.d(TAG, "Daily translation limit reached: " + translationsToday + " translations today");
+                return false;
+            }
 
-        // Rate limiting - check if we've translated recently
-        if (currentTime - lastTranslationTime.get() < MIN_TRANSLATION_INTERVAL) {
-            Log.d(TAG, "Skipping translation due to rate limiting (too frequent)");
-            return false;
-        }
+            // Rate limiting - check if we've translated recently
+            if (currentTime - lastTranslationTime < MIN_TRANSLATION_INTERVAL) {
+                Log.d(TAG, "Skipping translation due to rate limiting (too frequent)");
+                return false;
+            }
 
-        return true;
+            return true;
+        }
     }
 
     /**
@@ -504,39 +442,31 @@ public class TranslationManager {
      */
     private void updateTranslationCounters() {
         long currentTime = System.currentTimeMillis();
-        lastTranslationTime.set(currentTime);
-        translationsToday.incrementAndGet();
-        Log.d(TAG, "Translation completed. Total today: " + translationsToday.get());
+        synchronized (SYNC_OBJECT) {
+            lastTranslationTime = currentTime;
+            translationsToday++;
+            Log.d(TAG, "Translation completed. Total today: " + translationsToday);
+        }
     }
 
     /**
      * Cleans up the message cache by removing older entries.
      */
-    private synchronized void cleanupMessageCache() {
-        if (recentlyTranslatedMessages.size() <= MAX_CACHE_SIZE) {
-            return; // No cleanup needed
-        }
-        
-        try {
-            // Find the oldest entries
-            int toRemove = recentlyTranslatedMessages.size() - MAX_CACHE_SIZE;
-            if (toRemove <= 0) return;
-            
-            // Create a sorted map of entries by timestamp
-            Map.Entry<String, Long>[] entries = recentlyTranslatedMessages.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue())
-                .limit(toRemove)
-                .toArray(Map.Entry[]::new);
-            
-            // Remove the oldest entries
-            for (Map.Entry<String, Long> entry : entries) {
-                recentlyTranslatedMessages.remove(entry.getKey());
+    private void cleanupMessageCache() {
+        // Find the oldest entry
+        long oldestTime = Long.MAX_VALUE;
+        String oldestKey = null;
+
+        for (ConcurrentHashMap.Entry<String, Long> entry : recentlyTranslatedMessages.entrySet()) {
+            if (entry.getValue() < oldestTime) {
+                oldestTime = entry.getValue();
+                oldestKey = entry.getKey();
             }
-            
-            Log.d(TAG, "Cleaned up message cache, removed " + toRemove + " entries");
-        } catch (Exception e) {
-            Log.e(TAG, "Error cleaning up message cache", e);
+        }
+
+        // Remove the oldest entry
+        if (oldestKey != null) {
+            recentlyTranslatedMessages.remove(oldestKey);
         }
     }
 
@@ -572,7 +502,6 @@ public class TranslationManager {
             default: return languageCode; // Return the code if name not known
         }
     }
-    
     /**
      * Translates a Message object and saves its state to the cache.
      *
@@ -581,7 +510,7 @@ public class TranslationManager {
      */
     public void translateMessageAndSave(Message message, TranslationCallback callback) {
         translateMessage(message, (success, translatedText, errorMessage) -> {
-            if (success && message != null && translationCache != null) {
+            if (success) {
                 // Save the message state to ensure persistence
                 message.saveTranslationState(translationCache);
             }
@@ -592,16 +521,12 @@ public class TranslationManager {
             }
         });
     }
-    
     /**
      * Gets translation cache statistics.
      *
      * @return A string containing cache statistics
      */
     public String getCacheStatistics() {
-        if (translationCache == null) {
-            return "Translation cache not available";
-        }
         return translationCache.getStatistics();
     }
 
@@ -609,174 +534,23 @@ public class TranslationManager {
      * Clears the translation cache.
      */
     public void clearCache() {
-        if (translationCache != null) {
-            translationCache.clear();
-        }
+        translationCache.clear();
     }
 
     /**
      * Cleans up resources.
      */
     public void cleanup() {
-        isShuttingDown = true;
-        
         if (executorService != null && !executorService.isShutdown()) {
-            try {
-                // First attempt to shutdown gracefully
-                executorService.shutdown();
-                
-                // Wait for tasks to complete with timeout
-                if (!executorService.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
-                    // Force shutdown if tasks don't complete in time
-                    executorService.shutdownNow();
-                    
-                    // Wait again for forced shutdown
-                    if (!executorService.awaitTermination(EXECUTOR_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS)) {
-                        Log.e(TAG, "ExecutorService did not terminate");
-                    }
-                }
-            } catch (InterruptedException e) {
-                // If current thread is interrupted, force shutdown
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
-                Log.e(TAG, "ExecutorService shutdown interrupted", e);
-            }
+            executorService.shutdownNow();
         }
-        
         if (translationCache != null) {
             translationCache.close();
         }
-        
-        if (offlineTranslationService != null) {
-            offlineTranslationService.cleanup();
-        }
-        
-        Log.d(TAG, "TranslationManager resources cleaned up");
     }
 
-    /**
-     * Determines whether to use offline translation based on user preferences and availability.
-     */
-    private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
-        int translationMode = userPreferences.getTranslationMode();
-        
-        switch (translationMode) {
-            case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
-                return true;
-            case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
-                return false;
-            case UserPreferences.TRANSLATION_MODE_AUTO:
-            default:
-                // In auto mode, check if offline is available and preferred
-                boolean offlineAvailable = offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
-                if (offlineAvailable && userPreferences.getPreferOfflineTranslation()) {
-                    return true;
-                }
-                // Also use offline if online service is not available
-                return offlineAvailable && (translationService == null || !translationService.hasApiKey());
-        }
-    }
-
-    /**
-     * Performs translation using offline service.
-     */
-    private void translateWithOffline(String text, String sourceLanguage, String targetLanguage, 
-                                     String cacheKey, TranslationCallback callback) {
-        offlineTranslationService.translateOffline(text, sourceLanguage, targetLanguage, 
-            new OfflineTranslationService.OfflineTranslationCallback() {
-                @Override
-                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                    if (success && translatedText != null) {
-                        // Cache the translation
-                        translationCache.put(cacheKey, translatedText);
-                        
-                        if (callback != null) {
-                            callback.onTranslationComplete(true, translatedText, null);
-                        }
-                    } else {
-                        // If offline fails and we're in auto mode, try online as fallback
-                        int translationMode = userPreferences.getTranslationMode();
-                        if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO) {
-                            Log.d(TAG, "Offline translation failed, trying online as fallback");
-                            translateWithOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
-                        } else {
-                            if (callback != null) {
-                                callback.onTranslationComplete(false, null, errorMessage != null ? errorMessage : "Offline translation failed");
-                            }
-                        }
-                    }
-                }
-            });
-    }
-
-    /**
-     * Performs translation using online service.
-     */
-    private void translateWithOnline(String text, String sourceLanguage, String targetLanguage, 
-                                    String cacheKey, TranslationCallback callback) {
-        // Check if online translation service is available
-        if (translationService == null || !translationService.hasApiKey()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, "Online translation service not available");
-            }
-            return;
-        }
-
-        try {
-            // Translate using online service
-            String translatedText = translationService.translate(text, sourceLanguage, targetLanguage);
-            if (translatedText == null) {
-                // If online fails and we're in auto mode, try offline as fallback
-                int translationMode = userPreferences.getTranslationMode();
-                if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                    offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
-                    Log.d(TAG, "Online translation failed, trying offline as fallback");
-                    translateWithOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
-                } else {
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null, "Online translation failed");
-                    }
-                }
-                return;
-            }
-
-            // Cache the translation
-            translationCache.put(cacheKey, translatedText);
-
-            // Update translation counters for online translations
-            updateTranslationCounters();
-
-            // Return result
-            if (callback != null) {
-                callback.onTranslationComplete(true, translatedText, null);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error with online translation", e);
-            
-            // If online fails and we're in auto mode, try offline as fallback
-            int translationMode = userPreferences.getTranslationMode();
-            if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
-                Log.d(TAG, "Online translation error, trying offline as fallback");
-                translateWithOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
-            } else {
-                if (callback != null) {
-                    callback.onTranslationComplete(false, null, e.getMessage());
-                }
-            }
-        }
-    }
-
-    /**
-     * Detects the language of the given text.
-     * Uses online service if available, otherwise returns a default.
-     */
-    private String detectLanguage(String text) {
-        if (translationService != null && translationService.hasApiKey()) {
-            return translationService.detectLanguage(text);
-        }
-        // For offline-only mode, we could implement basic language detection
-        // For now, return English as default (could be enhanced later)
-        return "en";
-    }
 }
+
+
+
+

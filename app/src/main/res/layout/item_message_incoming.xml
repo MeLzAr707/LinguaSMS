@@ -61,17 +61,17 @@
                 android:visibility="gone" />
 
             <!-- Translation button -->
-            <ImageButton
+            <Button
                 android:id="@+id/translate_button"
+                style="@style/Widget.AppCompat.Button.Borderless.Colored"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:padding="4dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_translate"
-                android:contentDescription="@string/action_translate" />
+                android:text="@string/action_translate"
+                android:textSize="12sp" />
 
             <!-- Message timestamp -->
             <TextView
@@ -84,28 +84,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Reactions container -->
-    <include
-        android:id="@+id/reactions_layout"
-        layout="@layout/message_reactions_layout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/message_bubble"
-        android:layout_alignStart="@id/message_bubble"
-        android:layout_marginTop="2dp" />
-
-    <!-- Add reaction button -->
-    <ImageView
-        android:id="@+id/add_reaction_button"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_below="@id/message_bubble"
-        android:layout_toEndOf="@id/reactions_layout"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="2dp"
-        android:src="@android:drawable/ic_menu_add"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/add_reaction"
-        android:visibility="gone" />
 
 </RelativeLayout>
+
+

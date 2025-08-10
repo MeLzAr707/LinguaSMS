@@ -4,130 +4,138 @@ import android.content.Context;
 import android.util.Log;
 
 /**
- * Utility class for demonstrating offline translation capabilities.
+ * Demo class for offline translation features.
+ * Provides utilities to demonstrate and test offline translation functionality.
  */
 public class OfflineTranslationDemo {
     private static final String TAG = "OfflineTranslationDemo";
+    
+    private final UserPreferences userPreferences;
+    private final Context context;
+
+    public OfflineTranslationDemo(Context context) {
+        this.context = context;
+        this.userPreferences = new UserPreferences(context);
+    }
 
     /**
-     * Demonstrates offline translation functionality.
-     * 
-     * @param context Application context
-     * @param userPreferences User preferences
-     * @return A status message about offline translation capabilities
+     * Shows the current translation mode status.
+     *
+     * @return Status string describing the current translation mode
      */
-    public static String demonstrateOfflineTranslation(Context context, UserPreferences userPreferences) {
+    public String getTranslationModeStatus() {
+        StringBuilder status = new StringBuilder();
+        
         try {
-            // Initialize offline translation service
-            OfflineTranslationService offlineService = new OfflineTranslationService(context, userPreferences);
-            
-            StringBuilder status = new StringBuilder();
-            status.append("Offline Translation Status:\n\n");
-            
-            // Check translation mode
             int translationMode = userPreferences.getTranslationMode();
-            String modeName;
+            
+            status.append("Translation Mode: ");
             switch (translationMode) {
                 case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
-                    modeName = "Online Only";
+                    status.append("Online Only");
                     break;
                 case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
-                    modeName = "Offline Only";
+                    status.append("Offline Only");
                     break;
                 case UserPreferences.TRANSLATION_MODE_AUTO:
                 default:
-                    modeName = "Auto (Smart Fallback)";
+                    status.append("Auto (Smart Mode)");
                     break;
             }
-            status.append("Translation Mode: ").append(modeName).append("\n");
+            status.append("\n");
+            
             status.append("Prefer Offline: ").append(userPreferences.getPreferOfflineTranslation() ? "Yes" : "No").append("\n\n");
             
-            // Check downloaded models
-            int downloadedCount = offlineService.getDownloadedModels().size();
-            status.append("Downloaded Language Models: ").append(downloadedCount).append("\n");
-            
-            // Check specific language availability
-            String preferredLang = userPreferences.getPreferredLanguage();
-            boolean hasPreferredModel = offlineService.isLanguageModelDownloaded(preferredLang);
-            status.append("Preferred Language (").append(preferredLang).append(") Model: ");
-            status.append(hasPreferredModel ? "Downloaded" : "Not Downloaded").append("\n\n");
-            
-            // Test offline availability for common language pairs
-            status.append("Offline Translation Availability:\n");
-            String[] testLanguages = {"en", "es", "fr", "de", "zh"};
-            for (String lang : testLanguages) {
-                boolean available = offlineService.isOfflineTranslationAvailable("en", lang);
-                status.append("English to ").append(lang.toUpperCase()).append(": ");
-                status.append(available ? "Available" : "Unavailable").append("\n");
-            }
-            
-            status.append("\nSupported Languages: ").append(offlineService.getSupportedLanguages().length);
-            
-            return status.toString();
+            // Add additional status information
+            status.append("Preferred Language: ").append(userPreferences.getPreferredLanguage()).append("\n");
+            status.append("Auto Translate: ").append(userPreferences.isAutoTranslateEnabled() ? "Enabled" : "Disabled").append("\n");
             
         } catch (Exception e) {
-            Log.e(TAG, "Error demonstrating offline translation", e);
-            return "Error checking offline translation status: " + e.getMessage();
+            Log.e(TAG, "Error getting translation mode status", e);
+            status.append("Error getting status: ").append(e.getMessage());
         }
+        
+        return status.toString();
     }
 
     /**
-     * Tests offline translation with a sample text.
-     * 
-     * @param context Application context
-     * @param userPreferences User preferences
-     * @param callback Callback to receive the result
+     * Demonstrates offline translation features.
      */
-    public static void testOfflineTranslation(Context context, UserPreferences userPreferences, 
-                                            OfflineTranslationService.OfflineTranslationCallback callback) {
-        try {
-            OfflineTranslationService offlineService = new OfflineTranslationService(context, userPreferences);
-            
-            // Test translation if English and Spanish models are available
-            if (offlineService.isOfflineTranslationAvailable("en", "es")) {
-                offlineService.translateOffline("Hello, how are you?", "en", "es", callback);
-            } else {
-                if (callback != null) {
-                    callback.onTranslationComplete(false, null, "English or Spanish language models not downloaded");
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error testing offline translation", e);
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, e.getMessage());
-            }
-        }
+    public void demonstrateOfflineFeatures() {
+        Log.d(TAG, "=== Offline Translation Demo ===");
+        Log.d(TAG, getTranslationModeStatus());
     }
 
     /**
-     * Gets a quick status message for the current translation setup.
-     * 
-     * @param context Application context
-     * @param userPreferences User preferences
-     * @return Short status message
+     * Sets up demo translation modes for testing.
      */
-    public static String getQuickStatus(Context context, UserPreferences userPreferences) {
+    public void setupDemoModes() {
+        Log.d(TAG, "Setting up demo translation modes...");
+        
+        // Test different translation modes
+        int[] modes = {
+            UserPreferences.TRANSLATION_MODE_AUTO,
+            UserPreferences.TRANSLATION_MODE_ONLINE_ONLY,
+            UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY
+        };
+        
+        for (int mode : modes) {
+            userPreferences.setTranslationMode(mode);
+            Log.d(TAG, "Testing mode: " + getModeDescription(mode));
+            
+            // Test the mode
+            testTranslationMode();
+        }
+        
+        // Reset to auto mode
+        userPreferences.setTranslationMode(UserPreferences.TRANSLATION_MODE_AUTO);
+    }
+
+    /**
+     * Tests the current translation mode.
+     */
+    private void testTranslationMode() {
         try {
-            OfflineTranslationService offlineService = new OfflineTranslationService(context, userPreferences);
             int translationMode = userPreferences.getTranslationMode();
-            int downloadedModels = offlineService.getDownloadedModels().size();
+            
+            Log.d(TAG, "Current mode: " + getModeDescription(translationMode));
             
             switch (translationMode) {
                 case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
-                    return "Online translation only";
+                    Log.d(TAG, "Testing online-only translation...");
+                    break;
                 case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
-                    return downloadedModels > 0 ? 
-                        "Offline mode (" + downloadedModels + " models)" : 
-                        "Offline mode (no models)";
+                    Log.d(TAG, "Testing offline-only translation...");
+                    break;
                 case UserPreferences.TRANSLATION_MODE_AUTO:
-                default:
-                    return downloadedModels > 0 ? 
-                        "Auto mode (" + downloadedModels + " offline models)" : 
-                        "Auto mode (online only)";
+                    Log.d(TAG, "Testing auto translation mode...");
+                    if (userPreferences.getPreferOfflineTranslation()) {
+                        Log.d(TAG, "Auto mode with offline preference");
+                    } else {
+                        Log.d(TAG, "Auto mode with online preference");
+                    }
+                    break;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting quick status", e);
-            return "Translation status unknown";
+            Log.e(TAG, "Error testing translation mode", e);
+        }
+    }
+
+    /**
+     * Gets a description of the translation mode.
+     *
+     * @param mode The translation mode
+     * @return Description string
+     */
+    private String getModeDescription(int mode) {
+        switch (mode) {
+            case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
+                return "Online Only";
+            case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
+                return "Offline Only";
+            case UserPreferences.TRANSLATION_MODE_AUTO:
+            default:
+                return "Auto (Smart Mode)";
         }
     }
 }

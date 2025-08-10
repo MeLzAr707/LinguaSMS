@@ -8,14 +8,10 @@
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
-        <item name="android:windowBackground">@color/background_light</item>
-        <!-- OpenGL compatibility settings -->
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowDisablePreview">false</item>
     </style>
 
     <!-- No Action Bar theme -->
-    <style name="AppTheme.NoActionBar" parent="AppTheme">
+    <style name="AppTheme.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -32,9 +28,6 @@
         <item name="alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
         <item name="cardViewStyle">@style/DarkCardView</item>
-        <!-- OpenGL compatibility settings -->
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowDisablePreview">false</item>
     </style>
 
     <!-- Black Glass theme with Deep Dark Blue accents -->
@@ -49,19 +42,16 @@
         <item name="alertDialogTheme">@style/BlackGlassAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
-        <!-- Status bar configuration -->
-        <item name="android:statusBarColor">@color/deep_dark_blue</item>
-        <item name="android:navigationBarColor">@color/darkBackground</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <!-- Ensure proper layout with system bars without OpenGL conflicts -->
-        <item name="android:fitsSystemWindows">true</item>
-        <!-- OpenGL compatibility settings -->
-        <item name="android:windowIsTranslucent">false</item>
-        <item name="android:windowDisablePreview">false</item>
     </style>
 
+    <!-- Black Glass No Action Bar theme - Adding this back -->
+    <style name="AppTheme.BlackGlass.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
 
     <!-- Button style -->
     <style name="AppButton" parent="Widget.MaterialComponents.Button">
@@ -163,13 +153,7 @@
     </style>
 
     <!-- Dark theme NoActionBar variant -->
-    <style name="AppTheme.Dark.NoActionBar" parent="AppTheme.Dark">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
-
-    <!-- Black Glass No Action Bar theme -->
-    <style name="AppTheme.BlackGlass.NoActionBar" parent="AppTheme.BlackGlass">
+    <style name="AppTheme.Dark.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>

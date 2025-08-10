@@ -24,16 +24,13 @@ public class SmsReceiver extends BroadcastReceiver {
         MessageService messageService = app.getMessageService();
 
         if (messageService != null) {
-            Log.d(TAG, "MessageService available, processing SMS");
             // Handle SMS_RECEIVED action (when not default app)
             if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) {
-                Log.d(TAG, "Handling SMS_RECEIVED_ACTION");
                 // Pass to MessageService for processing
                 messageService.handleIncomingSms(intent);
             }
             // Handle SMS_DELIVER action (when default app)
             else if (Telephony.Sms.Intents.SMS_DELIVER_ACTION.equals(intent.getAction())) {
-                Log.d(TAG, "Handling SMS_DELIVER_ACTION");
                 // Extract SMS messages from the intent
                 SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
                 if (messages != null && messages.length > 0) {

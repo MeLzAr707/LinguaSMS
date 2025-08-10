@@ -6,534 +6,290 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.Telephony;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
+import android.webkit.MimeTypeMap;
+import java.io.OutputStream;
 
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Service for handling messages.
- * This is a complete implementation with all required methods.
+ * Service class that handles all SMS and MMS related operations.
+ * Consolidates functionality from SmsSender, SmsReceiver, and MessageLoader.
  */
 public class MessageService {
     private static final String TAG = "MessageService";
-    private Context context;
-    private TranslationManager translationManager;
-    private TranslationCache translationCache;
-    private MessageCache messageCache;
+    private static final int MAX_SMS_LENGTH = 160;
+    private static final int MAX_MMS_SIZE = 1024 * 1024; // 1MB max size
+
+    // Define missing MMS constants
+    private static final int MESSAGE_TYPE_SEND_REQ = 128;
+    private static final int TYPE_TO = 151;
+
+    private final Context context;
+    private final ExecutorService executorService;
+    private final TranslationManager translationManager;
+    private final TranslationCache translationCache;
 
     /**
      * Creates a new MessageService.
      *
      * @param context The application context
      * @param translationManager The translation manager
+     * @param translationCache The translation cache
      */
-    public MessageService(Context context, TranslationManager translationManager) {
+    public MessageService(Context context, TranslationManager translationManager, TranslationCache translationCache) {
         this.context = context;
+        this.executorService = Executors.newCachedThreadPool();
         this.translationManager = translationManager;
-        this.translationCache = ((TranslatorApp) context.getApplicationContext()).getTranslationCache();
-        this.messageCache = new MessageCache();
+        this.translationCache = translationCache;
     }
 
     /**
-     * Gets messages by thread ID.
+     * Loads all conversations.
      *
-     * @param threadId The thread ID
-     * @return The list of messages
+     * @return A list of conversations
      */
-    public List<Message> getMessagesByThreadId(String threadId) {
-        Log.d(TAG, "Getting messages for thread ID: " + threadId);
+    public List<Conversation> loadConversations() {
+        List<Conversation> conversations = new ArrayList<>();
+        ContentResolver contentResolver = context.getContentResolver();
 
-        if (TextUtils.isEmpty(threadId)) {
-            Log.e(TAG, "Thread ID is empty");
-            return new ArrayList<>();
-        }
-
-        // Check cache first
-        List<Message> cachedMessages = messageCache.getMessages(threadId);
-        if (cachedMessages != null && !cachedMessages.isEmpty()) {
-            Log.d(TAG, "Returning " + cachedMessages.size() + " cached messages for thread ID: " + threadId);
-            return cachedMessages;
-        }
-
-        List<Message> messages = new ArrayList<>();
-
-        try {
-            // Query SMS messages
-            List<Message> smsMessages = getSmsMessagesByThreadId(threadId);
-            if (smsMessages != null) {
-                messages.addAll(smsMessages);
-                Log.d(TAG, "Found " + smsMessages.size() + " SMS messages for thread " + threadId);
-            }
-
-            // Query MMS messages
-            List<Message> mmsMessages = getMmsMessagesByThreadId(threadId);
-            if (mmsMessages != null) {
-                messages.addAll(mmsMessages);
-                Log.d(TAG, "Found " + mmsMessages.size() + " MMS messages for thread " + threadId);
-            }
-
-            // Sort messages by date
-            messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
-
-            // Cache messages
-            messageCache.cacheMessages(threadId, messages);
-
-            Log.d(TAG, "Returning " + messages.size() + " total messages for thread ID: " + threadId);
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting messages for thread ID: " + threadId, e);
-        }
-
-        return messages;
-    }
-
-    /**
-     * Gets messages by address.
-     *
-     * @param address The address
-     * @return The list of messages
-     */
-    public List<Message> getMessagesByAddress(String address) {
-        Log.d(TAG, "Getting messages for address: " + address);
-
-        if (TextUtils.isEmpty(address)) {
-            Log.e(TAG, "Address is empty");
-            return new ArrayList<>();
-        }
-
-        try {
-            // Find thread ID for this address
-            String threadId = getThreadIdForAddress(address);
-
-            if (!TextUtils.isEmpty(threadId)) {
-                // If we found a thread ID, use it to get messages
-                Log.d(TAG, "Found thread ID " + threadId + " for address " + address);
-                return getMessagesByThreadId(threadId);
-            } else {
-                // If no thread ID found, try direct query by address
-                Log.d(TAG, "No thread ID found for address " + address + ", trying direct query");
-                return getMessagesByAddressDirect(address);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting messages for address: " + address, e);
-            return new ArrayList<>();
-        }
-    }
-
-    /**
-     * Gets messages by address using direct query (fallback method).
-     *
-     * @param address The address
-     * @return The list of messages
-     */
-    private List<Message> getMessagesByAddressDirect(String address) {
-        List<Message> messages = new ArrayList<>();
-        
-        try {
-            // Query SMS messages directly by address
-            List<Message> smsMessages = getSmsMessagesByAddress(address);
-            if (smsMessages != null) {
-                messages.addAll(smsMessages);
-                Log.d(TAG, "Found " + smsMessages.size() + " SMS messages for address " + address);
-            }
-
-            // Query MMS messages directly by address
-            List<Message> mmsMessages = getMmsMessagesByAddress(address);
-            if (mmsMessages != null) {
-                messages.addAll(mmsMessages);
-                Log.d(TAG, "Found " + mmsMessages.size() + " MMS messages for address " + address);
-            }
-
-            // Sort messages by date
-            messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
-
-            Log.d(TAG, "Returning " + messages.size() + " total messages for address: " + address);
-        } catch (Exception e) {
-            Log.e(TAG, "Error in direct query for address: " + address, e);
-        }
-
-        return messages;
-    }
-
-    /**
-     * Gets SMS messages by address directly.
-     *
-     * @param address The address
-     * @return The list of SMS messages
-     */
-    private List<Message> getSmsMessagesByAddress(String address) {
-        List<Message> messages = new ArrayList<>();
+        // Query the SMS content provider for conversations
+        Uri uri = Uri.parse("content://sms/conversations");
         Cursor cursor = null;
 
         try {
-            // Query SMS messages by address
-            cursor = context.getContentResolver().query(
-                    Telephony.Sms.CONTENT_URI,
-                    null,
-                    Telephony.Sms.ADDRESS + " = ?",
-                    new String[]{address},
-                    Telephony.Sms.DATE + " ASC");
+            cursor = contentResolver.query(uri, null, null, null, "date DESC");
 
             if (cursor != null && cursor.moveToFirst()) {
                 do {
-                    SmsMessage message = new SmsMessage();
+                    // Get thread_id
+                    int threadIdIndex = cursor.getColumnIndex("thread_id");
+                    if (threadIdIndex < 0) {
+                        Log.e(TAG, "thread_id column not found");
+                        continue;
+                    }
 
-                    // Get message data
-                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Sms._ID));
-                    String body = cursor.getString(cursor.getColumnIndex(Telephony.Sms.BODY));
-                    String messageAddress = cursor.getString(cursor.getColumnIndex(Telephony.Sms.ADDRESS));
-                    long date = cursor.getLong(cursor.getColumnIndex(Telephony.Sms.DATE));
-                    int type = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.TYPE));
-                    boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.READ)) == 1;
-                    String threadId = cursor.getString(cursor.getColumnIndex(Telephony.Sms.THREAD_ID));
+                    String threadId = cursor.getString(threadIdIndex);
+                    if (threadId == null) {
+                        Log.e(TAG, "thread_id is null");
+                        continue;
+                    }
 
-                    // Set message data
-                    message.setId(id);
-                    message.setBody(body);
-                    message.setAddress(messageAddress);
-                    message.setDate(date);
-                    message.setType(type);
-                    message.setRead(read);
-                    message.setThreadId(threadId);
-                    message.setMessageType(Message.MESSAGE_TYPE_SMS);
-
-                    // Add message to list
-                    messages.add(message);
-                } while (cursor.moveToNext());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting SMS messages for address: " + address, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return messages;
-    }
-
-    /**
-     * Gets MMS messages by address directly.
-     *
-     * @param address The address
-     * @return The list of MMS messages
-     */
-    private List<Message> getMmsMessagesByAddress(String address) {
-        List<Message> messages = new ArrayList<>();
-        Cursor cursor = null;
-
-        try {
-            // This is more complex for MMS as we need to join with the address table
-            // For now, we'll do a simplified approach
-            cursor = context.getContentResolver().query(
-                    Telephony.Mms.CONTENT_URI,
-                    null,
-                    null,
-                    null,
-                    Telephony.Mms.DATE + " ASC");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Mms._ID));
-                    
-                    // Check if this MMS is to/from the specified address
-                    String mmsAddress = getMmsAddress(context.getContentResolver(), id);
-                    if (address.equals(mmsAddress)) {
-                        MmsMessage message = new MmsMessage();
-
-                        // Get message data
-                        long date = cursor.getLong(cursor.getColumnIndex(Telephony.Mms.DATE)) * 1000;
-                        int type = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX));
-                        boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.READ)) == 1;
-                        String threadId = cursor.getString(cursor.getColumnIndex(Telephony.Mms.THREAD_ID));
-
-                        // Convert MMS message box to SMS type
-                        int smsType;
-                        switch (type) {
-                            case Telephony.Mms.MESSAGE_BOX_INBOX:
-                                smsType = Message.TYPE_INBOX;
-                                break;
-                            case Telephony.Mms.MESSAGE_BOX_SENT:
-                                smsType = Message.TYPE_SENT;
-                                break;
-                            case Telephony.Mms.MESSAGE_BOX_DRAFTS:
-                                smsType = Message.TYPE_DRAFT;
-                                break;
-                            case Telephony.Mms.MESSAGE_BOX_OUTBOX:
-                                smsType = Message.TYPE_OUTBOX;
-                                break;
-                            default:
-                                smsType = Message.TYPE_ALL;
-                                break;
-                        }
-
-                        // Get MMS text
-                        String body = getMmsText(context.getContentResolver(), id);
-
-                        // Set message data
-                        message.setId(id);
-                        message.setBody(body);
-                        message.setDate(date);
-                        message.setType(smsType);
-                        message.setRead(read);
-                        message.setAddress(mmsAddress);
-                        message.setThreadId(threadId);
-                        message.setMessageType(Message.MESSAGE_TYPE_MMS);
-
-                        // Add attachments
-                        List<MmsMessage.Attachment> attachments = getMmsAttachments(context.getContentResolver(), id);
-                        message.setAttachmentObjects(attachments);
-
-                        // Add message to list
-                        messages.add(message);
+                    // Load conversation details
+                    Conversation conversation = loadConversationDetails(threadId);
+                    if (conversation != null) {
+                        conversations.add(conversation);
                     }
                 } while (cursor.moveToNext());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS messages for address: " + address, e);
+            Log.e(TAG, "Error loading conversations", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
             }
         }
 
-        return messages;
+        return conversations;
     }
 
     /**
-     * Gets the thread ID for an address.
+     * Loads the details of a conversation.
      *
-     * @param address The address
-     * @return The thread ID, or null if not found
+     * @param threadId The thread ID
+     * @return The conversation
      */
-    private String getThreadIdForAddress(String address) {
-        if (TextUtils.isEmpty(address)) {
-            return null;
-        }
+    private Conversation loadConversationDetails(String threadId) {
+        ContentResolver contentResolver = context.getContentResolver();
+        Conversation conversation = new Conversation();
+        conversation.setThreadId(threadId);
 
-        String threadId = null;
+        // Query the SMS content provider for the latest message in this thread
+        Uri uri = Uri.parse("content://sms");
+        String selection = "thread_id = ?";
+        String[] selectionArgs = { threadId };
+        String sortOrder = "date DESC";
         Cursor cursor = null;
 
         try {
-            // Query the canonical addresses table
-            Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
-            cursor = context.getContentResolver().query(
-                    uri,
-                    new String[]{"_id"},
-                    "address = ?",
-                    new String[]{address},
-                    null);
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder);
 
             if (cursor != null && cursor.moveToFirst()) {
-                String recipientId = cursor.getString(0);
+                // Get message details
+                int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                int bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY);
+                int dateIndex = cursor.getColumnIndex(Telephony.Sms.DATE);
+                int typeIndex = cursor.getColumnIndex(Telephony.Sms.TYPE);
+                int readIndex = cursor.getColumnIndex(Telephony.Sms.READ);
+
+                // Skip if we don't have required columns
+                if (addressIndex < 0 || bodyIndex < 0 || dateIndex < 0) {
+                    Log.e(TAG, "Required columns not found");
+                    return null;
+                }
+
+                // Get values
+                String address = cursor.getString(addressIndex);
+                String snippet = cursor.getString(bodyIndex);
+                long date = cursor.getLong(dateIndex);
+                int type = typeIndex >= 0 ? cursor.getInt(typeIndex) : Telephony.Sms.MESSAGE_TYPE_INBOX;
+                boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+
+                // Set conversation details
+                conversation.setAddress(address);
+                conversation.setSnippet(snippet);
+                conversation.setDate(date);
+                conversation.setType(type);
+                conversation.setRead(read);
+
+                // Get contact name
+                String contactName = ContactUtils.getContactName(context, address);
+                conversation.setContactName(contactName);
+
+                // Count unread messages
+                int unreadCount = countUnreadMessages(threadId);
+                conversation.setUnreadCount(unreadCount);
+
+                return conversation;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading conversation details", e);
+        } finally {
+            if (cursor != null) {
                 cursor.close();
+            }
+        }
 
-                // Query the threads table
-                uri = Uri.parse("content://mms-sms/conversations?simple=true");
-                cursor = context.getContentResolver().query(
-                        uri,
-                        new String[]{"_id"},
-                        "recipient_ids = ?",
-                        new String[]{recipientId},
-                        null);
+        // Try MMS if SMS failed or returned no results
+        return loadMmsConversationDetails(threadId);
+    }
 
-                if (cursor != null && cursor.moveToFirst()) {
-                    threadId = cursor.getString(0);
+    /**
+     * Loads the details of an MMS conversation.
+     *
+     * @param threadId The thread ID
+     * @return The conversation
+     */
+    private Conversation loadMmsConversationDetails(String threadId) {
+        ContentResolver contentResolver = context.getContentResolver();
+        Conversation conversation = new Conversation();
+        conversation.setThreadId(threadId);
+
+        // Query the MMS content provider for the latest message in this thread
+        Uri uri = Uri.parse("content://mms");
+        String selection = "thread_id = ?";
+        String[] selectionArgs = { threadId };
+        String sortOrder = "date DESC";
+        Cursor cursor = null;
+
+        try {
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                // Get message details
+                int idIndex = cursor.getColumnIndex(Telephony.Mms._ID);
+                int dateIndex = cursor.getColumnIndex(Telephony.Mms.DATE);
+                int readIndex = cursor.getColumnIndex(Telephony.Mms.READ);
+
+                // Skip if we don't have required columns
+                if (idIndex < 0 || dateIndex < 0) {
+                    Log.e(TAG, "Required MMS columns not found");
+                    return null;
+                }
+
+                // Get values
+                String id = cursor.getString(idIndex);
+                long date = cursor.getLong(dateIndex) * 1000; // MMS date is in seconds, convert to milliseconds
+                boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+
+                // Get address from MMS addr table
+                String address = getMmsAddress(contentResolver, id, Telephony.Mms.MESSAGE_BOX_INBOX);
+                if (address == null) {
+                    Log.e(TAG, "Could not get MMS address");
+                    return null;
+                }
+
+                // Get MMS text
+                String snippet = getMmsText(contentResolver, id);
+                if (snippet == null) {
+                    snippet = "[MMS]"; // Fallback if no text found
+                }
+
+                // Set conversation details
+                conversation.setAddress(address);
+                conversation.setSnippet(snippet);
+                conversation.setDate(date);
+                conversation.setType(Telephony.Mms.MESSAGE_BOX_INBOX); // Default to inbox
+                conversation.setRead(read);
+
+                // Get contact name
+                String contactName = ContactUtils.getContactName(context, address);
+                conversation.setContactName(contactName);
+
+                // Count unread messages
+                int unreadCount = countUnreadMessages(threadId);
+                conversation.setUnreadCount(unreadCount);
+
+                return conversation;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS conversation details", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the address from an MMS message.
+     *
+     * @param contentResolver The content resolver
+     * @param messageId The message ID
+     * @param messageBox The message box (inbox, outbox, etc.)
+     * @return The address
+     */
+    public String getMmsAddress(ContentResolver contentResolver, String messageId, int messageBox) {
+        String address = null;
+        Cursor cursor = null;
+
+        try {
+            Uri uri = Uri.parse("content://mms/" + messageId + "/addr");
+            String selection;
+
+            if (messageBox == Telephony.Mms.MESSAGE_BOX_INBOX) {
+                // For received messages, get the sender's address
+                selection = "type=" + TYPE_TO;
+            } else {
+                // For sent messages, get the recipient's address
+                selection = "type=" + TYPE_TO;
+            }
+
+            cursor = contentResolver.query(uri, null, selection, null, null);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                int addressIndex = cursor.getColumnIndex("address");
+                if (addressIndex >= 0) {
+                    address = cursor.getString(addressIndex);
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting thread ID for address: " + address, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return threadId;
-    }
-
-    /**
-     * Gets SMS messages by thread ID.
-     *
-     * @param threadId The thread ID
-     * @return The list of SMS messages
-     */
-    private List<Message> getSmsMessagesByThreadId(String threadId) {
-        List<Message> messages = new ArrayList<>();
-        Cursor cursor = null;
-
-        try {
-            // Query SMS messages
-            cursor = context.getContentResolver().query(
-                    Telephony.Sms.CONTENT_URI,
-                    null,
-                    Telephony.Sms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    Telephony.Sms.DATE + " ASC");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    SmsMessage message = new SmsMessage();
-
-                    // Get message data
-                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Sms._ID));
-                    String body = cursor.getString(cursor.getColumnIndex(Telephony.Sms.BODY));
-                    long date = cursor.getLong(cursor.getColumnIndex(Telephony.Sms.DATE));
-                    int type = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.TYPE));
-                    boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.READ)) == 1;
-                    String address = cursor.getString(cursor.getColumnIndex(Telephony.Sms.ADDRESS));
-
-                    // Set message data
-                    message.setId(id);
-                    message.setBody(body);
-                    message.setDate(date);
-                    message.setType(type);
-                    message.setRead(read);
-                    message.setAddress(address);
-                    message.setThreadId(threadId);
-                    message.setMessageType(Message.MESSAGE_TYPE_SMS);
-
-                    // Add message to list
-                    messages.add(message);
-                } while (cursor.moveToNext());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting SMS messages for thread ID: " + threadId, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return messages;
-    }
-
-    /**
-     * Gets MMS messages by thread ID.
-     *
-     * @param threadId The thread ID
-     * @return The list of MMS messages
-     */
-    private List<Message> getMmsMessagesByThreadId(String threadId) {
-        List<Message> messages = new ArrayList<>();
-        Cursor cursor = null;
-
-        try {
-            // Query MMS messages
-            cursor = context.getContentResolver().query(
-                    Telephony.Mms.CONTENT_URI,
-                    null,
-                    Telephony.Mms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    Telephony.Mms.DATE + " ASC");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    MmsMessage message = new MmsMessage();
-
-                    // Get message data
-                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Mms._ID));
-                    long date = cursor.getLong(cursor.getColumnIndex(Telephony.Mms.DATE)) * 1000; // MMS date is in seconds
-                    int type = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX));
-                    boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Mms.READ)) == 1;
-
-                    // Convert MMS message box to SMS type
-                    int smsType;
-                    switch (type) {
-                        case Telephony.Mms.MESSAGE_BOX_INBOX:
-                            smsType = Message.TYPE_INBOX;
-                            break;
-                        case Telephony.Mms.MESSAGE_BOX_SENT:
-                            smsType = Message.TYPE_SENT;
-                            break;
-                        case Telephony.Mms.MESSAGE_BOX_DRAFTS:
-                            smsType = Message.TYPE_DRAFT;
-                            break;
-                        case Telephony.Mms.MESSAGE_BOX_OUTBOX:
-                            smsType = Message.TYPE_OUTBOX;
-                            break;
-                        default:
-                            smsType = Message.TYPE_ALL;
-                            break;
-                    }
-
-                    // Get MMS address
-                    String address = getMmsAddress(context.getContentResolver(), id);
-
-                    // Get MMS text
-                    String body = getMmsText(context.getContentResolver(), id);
-
-                    // Set message data
-                    message.setId(id);
-                    message.setBody(body);
-                    message.setDate(date);
-                    message.setType(smsType);
-                    message.setRead(read);
-                    message.setAddress(address);
-                    message.setThreadId(threadId);
-                    message.setMessageType(Message.MESSAGE_TYPE_MMS);
-
-                    // Add attachments
-                    List<MmsMessage.Attachment> attachments = getMmsAttachments(context.getContentResolver(), id);
-                    message.setAttachmentObjects(attachments);
-
-                    // Add message to list
-                    messages.add(message);
-                } while (cursor.moveToNext());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS messages for thread ID: " + threadId, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return messages;
-    }
-
-    /**
-     * Gets the MMS address.
-     *
-     * @param contentResolver The content resolver
-     * @param id The message ID
-     * @return The address
-     */
-    public String getMmsAddress(ContentResolver contentResolver, String id) {
-        return getMmsAddress(contentResolver, id, 0);
-    }
-
-    /**
-     * Gets the MMS address with type.
-     *
-     * @param contentResolver The content resolver
-     * @param id The message ID
-     * @param type The address type
-     * @return The address
-     */
-    public String getMmsAddress(ContentResolver contentResolver, String id, int type) {
-        String address = "";
-        Cursor cursor = null;
-
-        try {
-            // Query MMS address
-            cursor = contentResolver.query(
-                    Uri.parse("content://mms/" + id + "/addr"),
-                    new String[]{"address"},
-                    "type = ?",
-                    new String[]{String.valueOf(type)},
-                    null);
-
-            if (cursor != null && cursor.moveToFirst()) {
-                address = cursor.getString(0);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS address for ID: " + id, e);
+            Log.e(TAG, "Error getting MMS address", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -544,139 +300,358 @@ public class MessageService {
     }
 
     /**
-     * Gets the text of an MMS message.
+     * Gets the text content from an MMS message.
      *
      * @param contentResolver The content resolver
-     * @param id The message ID
-     * @return The message text
+     * @param messageId The message ID
+     * @return The text content
      */
-    public String getMmsText(ContentResolver contentResolver, String id) {
-        String text = "";
+    public String getMmsText(ContentResolver contentResolver, String messageId) {
+        String text = null;
         Cursor cursor = null;
 
         try {
-            // Query MMS parts
-            cursor = contentResolver.query(
-                    Uri.parse("content://mms/part"),
-                    new String[]{"_id", "text", "ct"},
-                    "mid = ?",
-                    new String[]{id},
-                    null);
+            Uri uri = Uri.parse("content://mms/part");
+            String selection = "mid=? AND ct=?";
+            String[] selectionArgs = { messageId, "text/plain" };
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, null);
 
             if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    String partId = cursor.getString(0);
-                    String partText = cursor.getString(1);
-                    String contentType = cursor.getString(2);
+                int textIndex = cursor.getColumnIndex("text");
+                int dataIndex = cursor.getColumnIndex("_data");
 
-                    if (contentType != null && contentType.equals("text/plain")) {
-                        if (partText != null) {
-                            text = partText;
-                            break;
-                        } else {
-                            // If text is null, try to get it from the part
-                            text = getMmsPartText(contentResolver, partId);
-                            if (!TextUtils.isEmpty(text)) {
-                                break;
-                            }
-                        }
+                if (textIndex >= 0) {
+                    // Text is stored directly in the table
+                    text = cursor.getString(textIndex);
+                } else if (dataIndex >= 0) {
+                    // Text is stored in a file
+                    String dataPath = cursor.getString(dataIndex);
+                    if (dataPath != null) {
+                        text = getMmsTextFromFile(contentResolver, dataPath);
                     }
-                } while (cursor.moveToNext());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS text for ID: " + id, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return text;
-    }
-
-    /**
-     * Gets the text of an MMS part.
-     *
-     * @param contentResolver The content resolver
-     * @param partId The part ID
-     * @return The part text
-     */
-    private String getMmsPartText(ContentResolver contentResolver, String partId) {
-        String text = "";
-
-        try {
-            // Get part data
-            Uri partUri = Uri.parse("content://mms/part/" + partId);
-            byte[] data = new byte[0];
-
-            try (java.io.InputStream is = contentResolver.openInputStream(partUri)) {
-                if (is != null) {
-                    data = new byte[is.available()];
-                    is.read(data);
                 }
             }
-
-            if (data.length > 0) {
-                text = new String(data);
-            }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS part text for ID: " + partId, e);
-        }
-
-        return text;
-    }
-
-    /**
-     * Gets the attachments of an MMS message.
-     *
-     * @param contentResolver The content resolver
-     * @param id The message ID
-     * @return The list of attachments
-     */
-    private List<MmsMessage.Attachment> getMmsAttachments(ContentResolver contentResolver, String id) {
-        List<MmsMessage.Attachment> attachments = new ArrayList<>();
-        Cursor cursor = null;
-
-        try {
-            // Query MMS parts
-            cursor = contentResolver.query(
-                    Uri.parse("content://mms/part"),
-                    new String[]{"_id", "ct", "_data", "text"},
-                    "mid = ?",
-                    new String[]{id},
-                    null);
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    String partId = cursor.getString(0);
-                    String contentType = cursor.getString(1);
-                    String data = cursor.getString(2);
-                    String text = cursor.getString(3);
-
-                    if (contentType != null && !contentType.equals("text/plain") && !contentType.equals("application/smil")) {
-                        // Create attachment
-                        MmsMessage.Attachment attachment = new MmsMessage.Attachment();
-                        attachment.setContentType(contentType);
-                        attachment.setPartId(partId);
-
-                        // Set URI
-                        Uri uri = Uri.parse("content://mms/part/" + partId);
-                        attachment.setUri(uri);
-
-                        // Add attachment to list
-                        attachments.add(attachment);
-                    }
-                } while (cursor.moveToNext());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS attachments for ID: " + id, e);
+            Log.e(TAG, "Error getting MMS text", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
             }
         }
 
-        return attachments;
+        return text;
+    }
+
+    /**
+     * Gets the text content from an MMS file.
+     *
+     * @param contentResolver The content resolver
+     * @param dataPath The data path
+     * @return The text content
+     */
+    private String getMmsTextFromFile(ContentResolver contentResolver, String dataPath) {
+        InputStream inputStream = null;
+        ByteArrayOutputStream byteArrayOutputStream = null;
+
+        try {
+            inputStream = contentResolver.openInputStream(Uri.parse("content://mms/part/" + dataPath));
+            if (inputStream == null) {
+                return null;
+            }
+
+            byteArrayOutputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                byteArrayOutputStream.write(buffer, 0, length);
+            }
+            return new String(byteArrayOutputStream.toByteArray());
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading MMS text from file", e);
+            return null;
+        } finally {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+                if (byteArrayOutputStream != null) {
+                    byteArrayOutputStream.close();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Error closing streams", e);
+            }
+        }
+    }
+
+    /**
+     * Counts the number of unread messages in a thread.
+     *
+     * @param threadId The thread ID
+     * @return The number of unread messages
+     */
+    private int countUnreadMessages(String threadId) {
+        ContentResolver contentResolver = context.getContentResolver();
+        int unreadCount = 0;
+        Cursor cursor = null;
+
+        try {
+            // Count unread SMS messages
+            Uri uri = Uri.parse("content://sms");
+            String selection = "thread_id = ? AND read = 0";
+            String[] selectionArgs = { threadId };
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, null);
+            if (cursor != null) {
+                unreadCount += cursor.getCount();
+                cursor.close();
+                cursor = null;
+            }
+
+            // Count unread MMS messages
+            uri = Uri.parse("content://mms");
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, null);
+            if (cursor != null) {
+                unreadCount += cursor.getCount();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error counting unread messages", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+
+        return unreadCount;
+    }
+
+    /**
+     * Loads messages for a conversation.
+     *
+     * @param threadId The thread ID
+     * @return A list of messages
+     */
+    public List<Message> loadMessages(String threadId) {
+        List<Message> messages = new ArrayList<>();
+        ContentResolver contentResolver = context.getContentResolver();
+
+        // Load SMS messages
+        loadSmsMessages(contentResolver, threadId, messages);
+
+        // Load MMS messages
+        loadMmsMessages(contentResolver, threadId, messages);
+
+        // Sort messages by date
+        messages.sort((m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+
+        return messages;
+    }
+
+    /**
+     * Loads SMS messages for a conversation.
+     *
+     * @param contentResolver The content resolver
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     */
+    private void loadSmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
+        Cursor cursor = null;
+
+        try {
+            Uri uri = Uri.parse("content://sms");
+            String selection = "thread_id = ?";
+            String[] selectionArgs = { threadId };
+            String sortOrder = "date ASC";
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    // Get message details
+                    int idIndex = cursor.getColumnIndex(Telephony.Sms._ID);
+                    int bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY);
+                    int dateIndex = cursor.getColumnIndex(Telephony.Sms.DATE);
+                    int typeIndex = cursor.getColumnIndex(Telephony.Sms.TYPE);
+                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                    int readIndex = cursor.getColumnIndex(Telephony.Sms.READ);
+
+                    // Skip if we don't have required columns
+                    if (idIndex < 0 || bodyIndex < 0 || dateIndex < 0 || typeIndex < 0) {
+                        Log.e(TAG, "Required SMS columns not found");
+                        continue;
+                    }
+
+                    // Get values
+                    String id = cursor.getString(idIndex);
+                    String body = cursor.getString(bodyIndex);
+                    long date = cursor.getLong(dateIndex);
+                    int type = cursor.getInt(typeIndex);
+                    String address = addressIndex >= 0 ? cursor.getString(addressIndex) : "";
+                    boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+
+                    // Create message
+                    Message message = new Message();
+                    message.setId(id);
+                    message.setBody(body);
+                    message.setDate(date);
+                    message.setType(type);
+                    message.setAddress(address);
+                    message.setRead(read);
+                    message.setThreadId(threadId);
+                    message.setMessageType(Message.TYPE_SMS);
+
+                    // Check if this message has a translation
+                    if (translationCache != null) {
+                        message.restoreTranslationState(translationCache);
+                    }
+
+                    // Add to list
+                    messages.add(message);
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading SMS messages", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+    }
+
+    /**
+     * Loads MMS messages for a conversation.
+     *
+     * @param contentResolver The content resolver
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     */
+    private void loadMmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
+        Cursor cursor = null;
+
+        try {
+            Uri uri = Uri.parse("content://mms");
+            String selection = "thread_id = ?";
+            String[] selectionArgs = { threadId };
+            String sortOrder = "date ASC";
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    // Get message details
+                    int idIndex = cursor.getColumnIndex(Telephony.Mms._ID);
+                    int dateIndex = cursor.getColumnIndex(Telephony.Mms.DATE);
+                    int typeIndex = cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX);
+                    int readIndex = cursor.getColumnIndex(Telephony.Mms.READ);
+
+                    // Skip if we don't have required columns
+                    if (idIndex < 0 || dateIndex < 0 || typeIndex < 0) {
+                        Log.e(TAG, "Required MMS columns not found");
+                        continue;
+                    }
+
+                    // Get values
+                    String id = cursor.getString(idIndex);
+                    long date = cursor.getLong(dateIndex) * 1000; // MMS date is in seconds, convert to milliseconds
+                    int type = cursor.getInt(typeIndex);
+                    boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+
+                    // Get address
+                    String address = getMmsAddress(contentResolver, id, type);
+                    if (address == null) {
+                        Log.e(TAG, "Could not get MMS address");
+                        continue;
+                    }
+
+                    // Get text content
+                    String body = getMmsText(contentResolver, id);
+
+                    // Create MMS message
+                    MmsMessage message = new MmsMessage();
+                    message.setId(id);
+                    message.setBody(body);
+                    message.setDate(date);
+                    message.setType(type);
+                    message.setAddress(address);
+                    message.setRead(read);
+                    message.setThreadId(threadId);
+                    message.setMessageType(Message.TYPE_MMS);
+
+                    // Load attachments
+                    loadMmsAttachments(contentResolver, id, message);
+
+                    // Check if this message has a translation
+                    if (translationCache != null) {
+                        message.restoreTranslationState(translationCache);
+                    }
+
+                    // Add to list
+                    messages.add(message);
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS messages", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+    }
+
+    /**
+     * Loads attachments for an MMS message.
+     *
+     * @param contentResolver The content resolver
+     * @param messageId The message ID
+     * @param message The MMS message
+     */
+    private void loadMmsAttachments(ContentResolver contentResolver, String messageId, MmsMessage message) {
+        Cursor cursor = null;
+
+        try {
+            Uri uri = Uri.parse("content://mms/part");
+            String selection = "mid=?";
+            String[] selectionArgs = { messageId };
+            cursor = contentResolver.query(uri, null, selection, selectionArgs, null);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    int contentTypeIndex = cursor.getColumnIndex("ct");
+                    int nameIndex = cursor.getColumnIndex("name");
+                    int dataIndex = cursor.getColumnIndex("_data");
+                    int textIndex = cursor.getColumnIndex("text");
+                    int idIndex = cursor.getColumnIndex("_id");
+
+                    if (contentTypeIndex < 0 || idIndex < 0) {
+                        continue;
+                    }
+
+                    String contentType = cursor.getString(contentTypeIndex);
+                    String name = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+                    String data = dataIndex >= 0 ? cursor.getString(dataIndex) : null;
+                    String text = textIndex >= 0 ? cursor.getString(textIndex) : null;
+                    String partId = cursor.getString(idIndex);
+
+                    // Skip text/plain parts as they are handled separately
+                    if ("text/plain".equals(contentType)) {
+                        continue;
+                    }
+
+                    // Create attachment
+                    MmsMessage.Attachment attachment = new MmsMessage.Attachment();
+                    attachment.setContentType(contentType);
+                    attachment.setName(name);
+                    attachment.setData(data);
+                    attachment.setText(text);
+                    attachment.setPartId(partId);
+
+                    // Add to message
+                    message.addAttachment(attachment);
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS attachments", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
     }
 
     /**
@@ -684,203 +659,170 @@ public class MessageService {
      *
      * @param address The recipient address
      * @param body The message body
-     * @return True if the message was sent successfully, false otherwise
+     * @return True if the message was sent successfully
      */
     public boolean sendSmsMessage(String address, String body) {
-        return sendSmsMessage(address, body, null, null);
-    }
-
-    /**
-     * Sends an SMS message with additional parameters.
-     *
-     * @param address The recipient address
-     * @param body The message body
-     * @param threadId The thread ID (optional)
-     * @param callback Callback to be called after sending (optional)
-     * @return True if the message was sent successfully, false otherwise
-     */
-    public boolean sendSmsMessage(String address, String body, String threadId, MessageCallback callback) {
-        if (TextUtils.isEmpty(address) || TextUtils.isEmpty(body)) {
-            Log.e(TAG, "Cannot send SMS: address or body is empty");
-            if (callback != null) {
-                callback.onMessageFailed("Address or body is empty");
-            }
-            return false;
-        }
-
-        Log.d(TAG, "Sending SMS to " + address + ": " + body);
-
         try {
-            // Check if we should translate outgoing message
-            UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
-            String finalMessageBody = body;
-            
-            if (userPrefs != null && userPrefs.isAutoTranslateEnabled() && translationManager != null) {
-                String outgoingLanguage = userPrefs.getPreferredOutgoingLanguage();
-                if (!TextUtils.isEmpty(outgoingLanguage) && !outgoingLanguage.equals("en")) {
-                    Log.d(TAG, "Auto-translate enabled for outgoing messages, target language: " + outgoingLanguage);
-                    
-                    // Synchronously check if translation is needed
-                    String detectedLanguage = translationManager.getTranslationCache() != null && 
-                                              ((TranslatorApp) context.getApplicationContext()).getTranslationService() != null ?
-                        ((TranslatorApp) context.getApplicationContext()).getTranslationService().detectLanguage(body) : "en";
-                    
-                    if (!detectedLanguage.equals(outgoingLanguage)) {
-                        // Check cache first for quick translation
-                        String cacheKey = body + "_" + outgoingLanguage;
-                        String cachedTranslation = translationManager.getTranslationCache() != null ? 
-                            translationManager.getTranslationCache().get(cacheKey) : null;
-                        
-                        if (cachedTranslation != null) {
-                            finalMessageBody = cachedTranslation;
-                            Log.d(TAG, "Using cached translation for outgoing message: " + finalMessageBody);
-                        } else {
-                            Log.d(TAG, "No cached translation available, sending original message");
-                        }
-                    }
-                }
-            }
-
-            // Get SMS manager
             SmsManager smsManager = SmsManager.getDefault();
 
-            // Check if message needs to be split
-            if (finalMessageBody.length() > 160) {
-                // Split message
-                ArrayList<String> parts = smsManager.divideMessage(finalMessageBody);
-
-                // Send message parts
+            if (body.length() > MAX_SMS_LENGTH) {
+                // Split the message into parts
+                ArrayList<String> parts = smsManager.divideMessage(body);
                 smsManager.sendMultipartTextMessage(address, null, parts, null, null);
             } else {
-                // Send single message
-                smsManager.sendTextMessage(address, null, finalMessageBody, null, null);
+                // Send a single message
+                smsManager.sendTextMessage(address, null, body, null, null);
             }
 
-            // Create message object
-            SmsMessage message = new SmsMessage();
-            message.setBody(finalMessageBody);
-            message.setOriginalText(body); // Store original text
-            message.setAddress(address);
-            message.setDate(System.currentTimeMillis());
-            message.setType(Message.TYPE_SENT);
-            message.setRead(true);
-
-            if (!TextUtils.isEmpty(threadId)) {
-                message.setThreadId(threadId);
-            }
-
-            // Insert message into database
+            // Add the message to the sent folder
             ContentValues values = new ContentValues();
             values.put(Telephony.Sms.ADDRESS, address);
-            values.put(Telephony.Sms.BODY, finalMessageBody);
+            values.put(Telephony.Sms.BODY, body);
             values.put(Telephony.Sms.DATE, System.currentTimeMillis());
             values.put(Telephony.Sms.READ, 1);
             values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT);
 
-            if (!TextUtils.isEmpty(threadId)) {
-                values.put(Telephony.Sms.THREAD_ID, threadId);
-            }
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = contentResolver.insert(Telephony.Sms.CONTENT_URI, values);
 
-            Uri uri = context.getContentResolver().insert(Telephony.Sms.CONTENT_URI, values);
+            return uri != null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending SMS message", e);
+            return false;
+        }
+    }
+
+    /**
+     * Sends an MMS message.
+     *
+     * @param address The recipient address
+     * @param subject The message subject
+     * @param body The message body
+     * @param attachments The attachments
+     * @return True if the message was sent successfully
+     */
+    public boolean sendMmsMessage(String address, String subject, String body, List<Uri> attachments) {
+        // This is a simplified implementation
+        // In a real app, you would need to use the MMS API to send the message
+        // For now, we'll just add a placeholder message to the sent folder
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Mms.SUBJECT, subject);
+            values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000); // MMS date is in seconds
+            values.put(Telephony.Mms.READ, 1);
+            values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
+            values.put(Telephony.Mms.CONTENT_TYPE, "application/vnd.wap.multipart.related");
+            values.put(Telephony.Mms.MESSAGE_TYPE, MESSAGE_TYPE_SEND_REQ);
+
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = contentResolver.insert(Telephony.Mms.CONTENT_URI, values);
 
             if (uri != null) {
-                // Get message ID
-                String id = uri.getLastPathSegment();
-                message.setId(id);
+                String messageId = uri.getLastPathSegment();
 
-                // Get thread ID if not provided
-                if (TextUtils.isEmpty(threadId)) {
-                    Cursor cursor = null;
-                    try {
-                        cursor = context.getContentResolver().query(
-                                uri,
-                                new String[]{Telephony.Sms.THREAD_ID},
-                                null,
-                                null,
-                                null);
+                // Add address part
+                ContentValues addrValues = new ContentValues();
+                addrValues.put("address", PhoneNumberUtils.stripSeparators(address));
+                addrValues.put("charset", "106");
+                addrValues.put("type", TYPE_TO);
+                addrValues.put("msg_id", messageId);
+                contentResolver.insert(Uri.parse("content://mms/" + messageId + "/addr"), addrValues);
 
-                        if (cursor != null && cursor.moveToFirst()) {
-                            threadId = cursor.getString(0);
-                            message.setThreadId(threadId);
-                        }
-                    } finally {
-                        if (cursor != null) {
-                            cursor.close();
+                // Add text part if body is not empty
+                if (!TextUtils.isEmpty(body)) {
+                    ContentValues textValues = new ContentValues();
+                    textValues.put("mid", messageId);
+                    textValues.put("ct", "text/plain");
+                    textValues.put("text", body);
+                    contentResolver.insert(Uri.parse("content://mms/part"), textValues);
+                }
+
+                // Add attachment parts
+                if (attachments != null) {
+                    for (Uri attachmentUri : attachments) {
+                        try {
+                            // Get content type
+                            String contentType = contentResolver.getType(attachmentUri);
+                            if (contentType == null) {
+                                // Try to guess content type from file extension
+                                String path = attachmentUri.getPath();
+                                if (path != null) {
+                                    String extension = MimeTypeMap.getFileExtensionFromUrl(path);
+                                    if (extension != null) {
+                                        contentType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+                                    }
+                                }
+                                if (contentType == null) {
+                                    contentType = "application/octet-stream";
+                                }
+                            }
+
+                            // Create part
+                            ContentValues partValues = new ContentValues();
+                            partValues.put("mid", messageId);
+                            partValues.put("ct", contentType);
+                            partValues.put("name", "attachment");
+
+                            // Insert part
+                            Uri partUri = contentResolver.insert(Uri.parse("content://mms/part"), partValues);
+                            if (partUri != null) {
+                                // Copy data
+                                InputStream inputStream = null;
+                                OutputStream outputStream = null;
+                                try {
+                                    inputStream = contentResolver.openInputStream(attachmentUri);
+                                    outputStream = contentResolver.openOutputStream(partUri);
+                                    if (inputStream != null && outputStream != null) {
+                                        byte[] buffer = new byte[1024];
+                                        int length;
+                                        while ((length = inputStream.read(buffer)) > 0) {
+                                            outputStream.write(buffer, 0, length);
+                                        }
+                                    }
+                                } finally {
+                                    if (inputStream != null) {
+                                        inputStream.close();
+                                    }
+                                    if (outputStream != null) {
+                                        outputStream.close();
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error adding attachment", e);
                         }
                     }
                 }
 
-                // Clear cache for this thread
-                if (!TextUtils.isEmpty(threadId)) {
-                    messageCache.clearCache(threadId);
-                }
-
-                // Call callback
-                if (callback != null) {
-                    callback.onMessageSent(message);
-                }
-
-                Log.d(TAG, "SMS sent successfully to " + address);
                 return true;
-            } else {
-                Log.e(TAG, "Failed to insert SMS into database");
-                if (callback != null) {
-                    callback.onMessageFailed("Failed to insert SMS into database");
-                }
-                return false;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error sending SMS: " + e.getMessage(), e);
-            if (callback != null) {
-                callback.onMessageFailed(e.getMessage());
-            }
-            return false;
+            Log.e(TAG, "Error sending MMS message", e);
         }
+
+        return false;
     }
 
     /**
-     * Deletes a message.
+     * Adds a test message.
      *
-     * @param id The message ID
-     * @return True if the message was deleted successfully, false otherwise
+     * @return True if the message was added successfully
      */
-    public boolean deleteMessage(String id) {
-        return deleteMessage(id, Message.MESSAGE_TYPE_SMS);
-    }
-
-    /**
-     * Deletes a message.
-     *
-     * @param id The message ID
-     * @param messageType The message type
-     * @return True if the message was deleted successfully, false otherwise
-     */
-    public boolean deleteMessage(String id, int messageType) {
-        if (TextUtils.isEmpty(id)) {
-            Log.e(TAG, "Cannot delete message: ID is empty");
-            return false;
-        }
-
+    public boolean addTestMessage() {
         try {
-            Uri uri;
-            if (messageType == Message.MESSAGE_TYPE_MMS) {
-                uri = Uri.withAppendedPath(Telephony.Mms.CONTENT_URI, id);
-            } else {
-                uri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, id);
-            }
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Sms.ADDRESS, "1234567890");
+            values.put(Telephony.Sms.BODY, "This is a test message created at " + new java.util.Date());
+            values.put(Telephony.Sms.DATE, System.currentTimeMillis());
+            values.put(Telephony.Sms.READ, 0);
+            values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX);
 
-            int deleted = context.getContentResolver().delete(uri, null, null);
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = contentResolver.insert(Telephony.Sms.CONTENT_URI, values);
 
-            if (deleted > 0) {
-                // Clear all caches since we don't know which thread this message belongs to
-                messageCache.clearAllCaches();
-                return true;
-            } else {
-                Log.e(TAG, "Failed to delete message: " + id);
-                return false;
-            }
+            return uri != null;
         } catch (Exception e) {
-            Log.e(TAG, "Error deleting message: " + e.getMessage(), e);
+            Log.e(TAG, "Error adding test message", e);
             return false;
         }
     }
@@ -889,780 +831,266 @@ public class MessageService {
      * Deletes a conversation.
      *
      * @param threadId The thread ID
-     * @return True if successful, false otherwise
+     * @return True if the conversation was deleted successfully
      */
     public boolean deleteConversation(String threadId) {
-        if (TextUtils.isEmpty(threadId)) {
-            Log.e(TAG, "Cannot delete conversation: thread ID is empty");
-            return false;
-        }
-
+        ContentResolver contentResolver = context.getContentResolver();
         try {
-            Uri uri = Uri.parse("content://sms/conversations/" + threadId);
-            int deleted = context.getContentResolver().delete(uri, null, null);
+            // Delete SMS messages
+            Uri smsUri = Uri.parse("content://sms");
+            String smsSelection = "thread_id = ?";
+            String[] smsSelectionArgs = { threadId };
+            int smsDeleted = contentResolver.delete(smsUri, smsSelection, smsSelectionArgs);
 
-            // Also delete MMS messages
-            Uri mmsUri = Uri.parse("content://mms/conversations/" + threadId);
-            int mmsDeleted = context.getContentResolver().delete(mmsUri, null, null);
+            // Delete MMS messages
+            Uri mmsUri = Uri.parse("content://mms");
+            String mmsSelection = "thread_id = ?";
+            String[] mmsSelectionArgs = { threadId };
+            int mmsDeleted = contentResolver.delete(mmsUri, mmsSelection, mmsSelectionArgs);
 
-            // Clear cache for this thread
-            messageCache.clearCache(threadId);
-
-            return deleted > 0 || mmsDeleted > 0;
+            return smsDeleted > 0 || mmsDeleted > 0;
         } catch (Exception e) {
-            Log.e(TAG, "Error deleting conversation: " + e.getMessage(), e);
+            Log.e(TAG, "Error deleting conversation", e);
             return false;
         }
     }
 
     /**
-     * Deletes a conversation by address.
-     *
-     * @param address The address
-     * @return True if successful, false otherwise
-     */
-    public boolean deleteConversationByAddress(String address) {
-        if (TextUtils.isEmpty(address)) {
-            Log.e(TAG, "Cannot delete conversation: address is empty");
-            return false;
-        }
-
-        // Find thread ID for this address
-        String threadId = getThreadIdForAddress(address);
-
-        if (!TextUtils.isEmpty(threadId)) {
-            // If we found a thread ID, use it to delete the conversation
-            return deleteConversation(threadId);
-        } else {
-            Log.e(TAG, "No thread ID found for address: " + address);
-            return false;
-        }
-    }
-
-    /**
-     * Handles an incoming SMS.
-     *
-     * @param intent The intent containing the SMS data
-     */
-    public void handleIncomingSms(Intent intent) {
-        Log.d(TAG, "Handling incoming SMS: " + intent.getAction());
-        
-        if (intent == null) {
-            Log.e(TAG, "Intent is null, cannot handle SMS");
-            return;
-        }
-
-        try {
-            // Extract SMS messages from the intent
-            android.telephony.SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
-            if (messages == null || messages.length == 0) {
-                Log.w(TAG, "No SMS messages found in intent");
-                return;
-            }
-
-            StringBuilder fullMessage = new StringBuilder();
-            String sender = null;
-            long timestamp = 0;
-
-            // Concatenate message parts if it's a multi-part message
-            for (android.telephony.SmsMessage sms : messages) {
-                if (sender == null) {
-                    sender = sms.getOriginatingAddress();
-                    timestamp = sms.getTimestampMillis();
-                }
-                fullMessage.append(sms.getMessageBody());
-            }
-
-            String messageBody = fullMessage.toString();
-            Log.d(TAG, "Received SMS from " + sender + ": " + messageBody);
-
-            // Create our internal SmsMessage object
-            SmsMessage message = new SmsMessage();
-            message.setBody(messageBody);
-            message.setOriginalText(messageBody);
-            message.setAddress(sender);
-            message.setDate(timestamp);
-            message.setType(Message.TYPE_INBOX);
-            message.setRead(false);
-            message.setMessageType(Message.MESSAGE_TYPE_SMS);
-
-            // Clear cache to ensure fresh data
-            if (messageCache != null) {
-                messageCache.clearAllCaches();
-            }
-
-            // Check if auto-translate is enabled and we have a translation manager
-            if (translationManager != null) {
-                UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
-                
-                if (userPrefs != null && userPrefs.isAutoTranslateEnabled()) {
-                    Log.d(TAG, "Auto-translate is enabled, attempting to translate incoming message");
-                    
-                    // Translate the message asynchronously
-                    translationManager.translateSmsMessage(message, new TranslationManager.SmsTranslationCallback() {
-                        @Override
-                        public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
-                            if (success && translatedMessage != null) {
-                                Log.d(TAG, "Translation successful for incoming SMS from " + sender);
-                                Log.d(TAG, "Original: " + messageBody);
-                                Log.d(TAG, "Translated: " + translatedMessage.getTranslatedText());
-                                
-                                // Store the translation result
-                                if (translationCache != null) {
-                                    String cacheKey = messageBody + "_" + userPrefs.getPreferredLanguage();
-                                    translationCache.put(cacheKey, translatedMessage.getTranslatedText());
-                                }
-                                
-                                // Optionally notify the UI or other components about the translation
-                                notifyTranslationComplete(translatedMessage);
-                            } else {
-                                Log.w(TAG, "Translation failed for incoming SMS from " + sender);
-                            }
-                        }
-                    });
-                } else {
-                    Log.d(TAG, "Auto-translate is disabled or translation manager not available");
-                }
-            } else {
-                Log.w(TAG, "Translation manager is null, cannot translate incoming SMS");
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling incoming SMS", e);
-        }
-    }
-
-    /**
-     * Handles an incoming MMS.
-     *
-     * @param intent The intent containing the MMS data
-     */
-    public void handleIncomingMms(Intent intent) {
-        Log.d(TAG, "Handling incoming MMS: " + (intent != null ? intent.getAction() : "null intent"));
-        
-        if (intent == null) {
-            Log.e(TAG, "MMS intent is null");
-            return;
-        }
-        
-        // For now, just log the MMS. In a full implementation, you would:
-        // 1. Extract MMS data from the intent
-        // 2. Parse the MMS message
-        // 3. Store it in the database
-        // 4. Possibly translate it if auto-translate is enabled
-        // 5. Show a notification
-        
-        Log.d(TAG, "MMS processing completed");
-    }
-
-    /**
-     * Loads messages for a conversation.
+     * Marks a conversation as read.
      *
      * @param threadId The thread ID
-     * @return The list of messages
-     */
-    public List<Message> loadMessages(String threadId) {
-        return getMessagesByThreadId(threadId);
-    }
-
-    /**
-     * Marks a thread as read.
-     *
-     * @param threadId The thread ID
-     * @return True if successful, false otherwise
+     * @return True if the conversation was marked as read successfully
      */
     public boolean markThreadAsRead(String threadId) {
-        if (TextUtils.isEmpty(threadId)) {
-            Log.e(TAG, "Cannot mark thread as read: thread ID is empty");
-            return false;
-        }
-
+        ContentResolver contentResolver = context.getContentResolver();
         try {
-            // Mark SMS messages as read
             ContentValues values = new ContentValues();
             values.put(Telephony.Sms.READ, 1);
 
-            int updated = context.getContentResolver().update(
-                    Telephony.Sms.CONTENT_URI,
-                    values,
-                    Telephony.Sms.THREAD_ID + " = ?",
-                    new String[]{threadId});
+            // Mark SMS messages as read
+            Uri smsUri = Uri.parse("content://sms");
+            String smsSelection = Telephony.Sms.THREAD_ID + " = ?";
+            String[] smsSelectionArgs = { threadId };
+            int smsUpdated = contentResolver.update(smsUri, values, smsSelection, smsSelectionArgs);
 
             // Mark MMS messages as read
-            int mmsUpdated = context.getContentResolver().update(
-                    Telephony.Mms.CONTENT_URI,
-                    values,
-                    Telephony.Mms.THREAD_ID + " = ?",
-                    new String[]{threadId});
+            Uri mmsUri = Uri.parse("content://mms");
+            String mmsSelection = Telephony.Mms.THREAD_ID + " = ?";
+            String[] mmsSelectionArgs = { threadId };
+            int mmsUpdated = contentResolver.update(mmsUri, values, mmsSelection, mmsSelectionArgs);
 
-            // Clear cache for this thread
-            messageCache.clearCache(threadId);
-
-            return updated > 0 || mmsUpdated > 0;
+            return smsUpdated > 0 || mmsUpdated > 0;
         } catch (Exception e) {
-            Log.e(TAG, "Error marking thread as read: " + e.getMessage(), e);
+            Log.e(TAG, "Error marking thread as read", e);
             return false;
         }
     }
 
     /**
-     * Loads all conversations.
-     *
-     * @return The list of conversations
-     */
-    public List<Conversation> loadConversations() {
-        List<Conversation> conversations = new ArrayList<>();
-        Cursor cursor = null;
-
-        try {
-            // Query conversations
-            Uri uri = Uri.parse("content://mms-sms/conversations?simple=true");
-            cursor = context.getContentResolver().query(
-                    uri,
-                    null,
-                    null,
-                    null,
-                    Telephony.Sms.DEFAULT_SORT_ORDER);
-
-            if (cursor != null && cursor.moveToFirst()) {
-                // First pass: collect all conversation data without contact names
-                List<String> addresses = new ArrayList<>();
-                
-                do {
-                    Conversation conversation = new Conversation();
-
-                    // Get conversation data
-                    String threadId = cursor.getString(cursor.getColumnIndex("_id"));
-                    String snippet = cursor.getString(cursor.getColumnIndex("snippet"));
-                    long date = cursor.getLong(cursor.getColumnIndex("date"));
-                    int messageCount = cursor.getInt(cursor.getColumnIndex("message_count"));
-                    int read = cursor.getInt(cursor.getColumnIndex("read"));
-
-                    // Set conversation data
-                    conversation.setThreadId(threadId);
-                    conversation.setSnippet(snippet);
-                    conversation.setDate(new Date(date));
-                    conversation.setMessageCount(messageCount);
-                    conversation.setRead(read == 1);
-
-                    // Get recipient address
-                    String address = getAddressForThreadId(threadId);
-                    conversation.setAddress(address);
-                    
-                    // Debug logging for address resolution
-                    Log.d(TAG, "Thread " + threadId + " -> address: '" + address + "'");
-                    
-                    // Collect addresses for batch contact lookup
-                    if (!TextUtils.isEmpty(address)) {
-                        addresses.add(address);
-                    } else {
-                        Log.w(TAG, "No address found for thread " + threadId);
-                    }
-
-                    // Add conversation to list
-                    conversations.add(conversation);
-                } while (cursor.moveToNext());
-                
-                // Second pass: batch lookup contact names
-                Log.d(TAG, "Batch looking up contact names for " + addresses.size() + " addresses");
-                Map<String, String> contactNames = ContactUtils.getContactNamesForNumbers(context, addresses);
-                Log.d(TAG, "Contact lookup returned " + contactNames.size() + " results");
-                
-                // Third pass: assign contact names with fallbacks
-                for (Conversation conversation : conversations) {
-                    String address = conversation.getAddress();
-                    String contactName = contactNames.get(address);
-                    String threadId = conversation.getThreadId();
-                    
-                    if (!TextUtils.isEmpty(contactName)) {
-                        conversation.setContactName(contactName);
-                        Log.d(TAG, "Found contact name '" + contactName + "' for address " + address + " (thread " + threadId + ")");
-                    } else if (!TextUtils.isEmpty(address)) {
-                        // Fallback to address/phone number
-                        conversation.setContactName(address);
-                        Log.d(TAG, "Using address as contact name: " + address + " (thread " + threadId + ")");
-                    } else {
-                        // Last resort fallback - NEVER use threadId as display name
-                        conversation.setContactName("Unknown Contact");
-                        Log.w(TAG, "No address or contact name available for thread " + threadId + " - using 'Unknown Contact'");
-                    }
-                    
-                    // Safety check: ensure we never accidentally show threadId as contact name
-                    String displayName = conversation.getContactName(); 
-                    if (!TextUtils.isEmpty(displayName) && displayName.equals(threadId)) {
-                        Log.e(TAG, "ERROR: Contact name was set to threadId " + threadId + " - fixing to 'Unknown Contact'");
-                        conversation.setContactName("Unknown Contact");
-                    }
-                    
-                    // Additional logging for debugging
-                    Log.d(TAG, "Final conversation: threadId=" + threadId + 
-                          ", address='" + address + "'" +
-                          ", contactName='" + conversation.getContactName() + "'" +
-                          ", snippet='" + conversation.getSnippet() + "'");
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error loading conversations: " + e.getMessage(), e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        Log.d(TAG, "Loaded " + conversations.size() + " conversations");
-        return conversations;
-    }
-
-    /**
-     * Gets the address for a thread ID with improved fallback mechanisms.
-     *
-     * @param threadId The thread ID
-     * @return The address
-     */
-    private String getAddressForThreadId(String threadId) {
-        String address = "";
-        Cursor cursor = null;
-
-        if (TextUtils.isEmpty(threadId)) {
-            Log.w(TAG, "Cannot get address for empty thread ID");
-            return address;
-        }
-
-        try {
-            Log.d(TAG, "Getting address for thread ID: " + threadId);
-            
-            // Method 1: Try the most recent SMS message first (fastest and most reliable)
-            cursor = context.getContentResolver().query(
-                    Telephony.Sms.CONTENT_URI,
-                    new String[]{Telephony.Sms.ADDRESS},
-                    Telephony.Sms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    Telephony.Sms.DATE + " DESC LIMIT 1");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
-                if (addressIndex >= 0) {
-                    address = cursor.getString(addressIndex);
-                    if (!TextUtils.isEmpty(address)) {
-                        Log.d(TAG, "Found address from most recent SMS: " + address + " for thread: " + threadId);
-                        return address;
-                    }
-                }
-            }
-            
-            if (cursor != null) {
-                cursor.close();
-                cursor = null;
-            }
-
-            // Method 2: Try canonical addresses table via recipient_ids
-            String recipientId = null;
-            Cursor threadCursor = null;
-
-            try {
-                threadCursor = context.getContentResolver().query(
-                        Uri.parse("content://mms-sms/conversations?simple=true"),
-                        new String[]{"recipient_ids"},
-                        "_id = ?",
-                        new String[]{threadId},
-                        null);
-
-                if (threadCursor != null && threadCursor.moveToFirst()) {
-                    recipientId = threadCursor.getString(0);
-                    Log.d(TAG, "Found recipient ID: " + recipientId + " for thread: " + threadId);
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Error querying conversation recipient_ids for thread " + threadId, e);
-            } finally {
-                if (threadCursor != null) {
-                    threadCursor.close();
-                }
-            }
-
-            if (!TextUtils.isEmpty(recipientId)) {
-                try {
-                    // Now get the address for this recipient ID
-                    Uri uri = Uri.parse("content://mms-sms/canonical-addresses");
-                    cursor = context.getContentResolver().query(
-                            uri,
-                            new String[]{"address"},
-                            "_id = ?",
-                            new String[]{recipientId},
-                            null);
-
-                    if (cursor != null && cursor.moveToFirst()) {
-                        address = cursor.getString(0);
-                        if (!TextUtils.isEmpty(address)) {
-                            Log.d(TAG, "Found address from canonical table: " + address + " for recipient ID: " + recipientId);
-                            return address;
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Error querying canonical addresses for recipient " + recipientId, e);
-                }
-                
-                if (cursor != null) {
-                    cursor.close();
-                    cursor = null;
-                }
-            }
-
-            // Method 3: Try all SMS messages for this thread (broader search)
-            Log.d(TAG, "Previous methods failed, trying broader SMS query for thread: " + threadId);
-            cursor = context.getContentResolver().query(
-                    Telephony.Sms.CONTENT_URI,
-                    new String[]{Telephony.Sms.ADDRESS},
-                    Telephony.Sms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    null);
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
-                    if (addressIndex >= 0) {
-                        address = cursor.getString(addressIndex);
-                        if (!TextUtils.isEmpty(address)) {
-                            Log.d(TAG, "Found address from any SMS: " + address + " for thread: " + threadId);
-                            return address;
-                        }
-                    }
-                } while (cursor.moveToNext());
-            }
-            
-            if (cursor != null) {
-                cursor.close();
-                cursor = null;
-            }
-
-            // Method 4: Try MMS messages for this thread
-            Log.d(TAG, "SMS queries failed, trying MMS query for thread: " + threadId);
-            
-            // First, get MMS message IDs for this thread
-            cursor = context.getContentResolver().query(
-                    Telephony.Mms.CONTENT_URI,
-                    new String[]{Telephony.Mms._ID},
-                    Telephony.Mms.THREAD_ID + " = ?",
-                    new String[]{threadId},
-                    Telephony.Mms.DATE + " DESC");
-
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    String mmsId = cursor.getString(0);
-                    Log.d(TAG, "Checking MMS message ID: " + mmsId + " for thread: " + threadId);
-                    
-                    // Now get addresses for this MMS message
-                    Cursor addrCursor = null;
-                    try {
-                        addrCursor = context.getContentResolver().query(
-                                Uri.parse("content://mms/" + mmsId + "/addr"),
-                                new String[]{"address", "type"},
-                                "type IN (137, 151)", // 137 = TO, 151 = FROM
-                                null,
-                                null);
-
-                        if (addrCursor != null && addrCursor.moveToFirst()) {
-                            do {
-                                int addressIndex = addrCursor.getColumnIndex("address");
-                                if (addressIndex >= 0) {
-                                    String mmsAddress = addrCursor.getString(addressIndex);
-                                    if (!TextUtils.isEmpty(mmsAddress)) {
-                                        Log.d(TAG, "Found address from MMS: " + mmsAddress + " for thread: " + threadId);
-                                        return mmsAddress;
-                                    }
-                                }
-                            } while (addrCursor.moveToNext());
-                        }
-                    } catch (Exception e) {
-                        Log.w(TAG, "Error querying MMS addresses for message " + mmsId, e);
-                    } finally {
-                        if (addrCursor != null) {
-                            addrCursor.close();
-                        }
-                    }
-                } while (cursor.moveToNext());
-            }
-
-            Log.w(TAG, "Could not find address for thread ID: " + threadId + " using any method");
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting address for thread ID: " + threadId, e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        return address;
-    }
-
-    /**
-     * Searches messages.
+     * Searches for messages containing the specified query text.
      *
      * @param query The search query
-     * @return The list of matching messages
+     * @return A list of messages matching the query
      */
     public List<Message> searchMessages(String query) {
-        List<Message> messages = new ArrayList<>();
-
-        if (TextUtils.isEmpty(query)) {
-            return messages;
+        List<Message> results = new ArrayList<>();
+        
+        if (query == null || query.trim().isEmpty()) {
+            Log.e(TAG, "Cannot search with empty query");
+            return results;
         }
-
-        // Search SMS messages
-        messages.addAll(searchSmsMessages(query));
-
-        // Search MMS messages
-        messages.addAll(searchMmsMessages(query));
-
-        // Sort messages by date
-        messages.sort((m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
-
-        return messages;
-    }
-
-    /**
-     * Searches SMS messages.
-     *
-     * @param query The search query
-     * @return The list of matching SMS messages
-     */
-    private List<Message> searchSmsMessages(String query) {
-        List<Message> messages = new ArrayList<>();
-        Cursor cursor = null;
-
+        
+        // Normalize the query for case-insensitive search
+        String normalizedQuery = query.toLowerCase().trim();
+        
+        ContentResolver contentResolver = context.getContentResolver();
+        
         try {
-            // Query SMS messages
-            cursor = context.getContentResolver().query(
-                    Telephony.Sms.CONTENT_URI,
+            // Search SMS messages
+            searchSmsMessages(contentResolver, normalizedQuery, results);
+            
+            // Search MMS messages
+            searchMmsMessages(contentResolver, normalizedQuery, results);
+            
+            // Sort results by date (newest first)
+            if (!results.isEmpty()) {
+                results.sort((m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
+            }
+            
+            Log.d(TAG, "Found " + results.size() + " messages matching query: " + query);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error searching messages", e);
+        }
+        
+        return results;
+    }
+    
+    /**
+     * Searches for SMS messages containing the specified query text.
+     *
+     * @param contentResolver The content resolver
+     * @param query The search query (normalized)
+     * @param results The list to add results to
+     */
+    private void searchSmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
+        Cursor cursor = null;
+        try {
+            // Query the SMS content provider
+            Uri uri = Uri.parse("content://sms");
+            String selection = "body LIKE ?";
+            String[] selectionArgs = {"%" + query + "%"};
+            String sortOrder = "date DESC";
+            
+            cursor = contentResolver.query(
+                    uri,
                     null,
-                    Telephony.Sms.BODY + " LIKE ?",
-                    new String[]{"%" + query + "%"},
-                    Telephony.Sms.DEFAULT_SORT_ORDER);
-
+                    selection,
+                    selectionArgs,
+                    sortOrder
+            );
+            
             if (cursor != null && cursor.moveToFirst()) {
                 do {
-                    SmsMessage message = new SmsMessage();
-
                     // Get message data
-                    String id = cursor.getString(cursor.getColumnIndex(Telephony.Sms._ID));
-                    String body = cursor.getString(cursor.getColumnIndex(Telephony.Sms.BODY));
-                    long date = cursor.getLong(cursor.getColumnIndex(Telephony.Sms.DATE));
-                    int type = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.TYPE));
-                    boolean read = cursor.getInt(cursor.getColumnIndex(Telephony.Sms.READ)) == 1;
-                    String address = cursor.getString(cursor.getColumnIndex(Telephony.Sms.ADDRESS));
-                    String threadId = cursor.getString(cursor.getColumnIndex(Telephony.Sms.THREAD_ID));
-
-                    // Set message data
+                    int idIndex = cursor.getColumnIndex(Telephony.Sms._ID);
+                    int bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY);
+                    int dateIndex = cursor.getColumnIndex(Telephony.Sms.DATE);
+                    int typeIndex = cursor.getColumnIndex(Telephony.Sms.TYPE);
+                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                    int readIndex = cursor.getColumnIndex(Telephony.Sms.READ);
+                    int threadIdIndex = cursor.getColumnIndex(Telephony.Sms.THREAD_ID);
+                    
+                    // Skip if we don't have required columns
+                    if (idIndex < 0 || bodyIndex < 0 || dateIndex < 0 || typeIndex < 0) {
+                        Log.w(TAG, "Skipping SMS message due to missing required columns");
+                        continue;
+                    }
+                    
+                    String id = cursor.getString(idIndex);
+                    String body = cursor.getString(bodyIndex);
+                    long date = cursor.getLong(dateIndex);
+                    int type = cursor.getInt(typeIndex);
+                    String address = addressIndex >= 0 ? cursor.getString(addressIndex) : "";
+                    boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+                    String threadId = threadIdIndex >= 0 ? cursor.getString(threadIdIndex) : "";
+                    
+                    // Create message object
+                    Message message = new Message();
                     message.setId(id);
                     message.setBody(body);
                     message.setDate(date);
                     message.setType(type);
-                    message.setRead(read);
                     message.setAddress(address);
+                    message.setRead(read);
                     message.setThreadId(threadId);
-                    message.setMessageType(Message.MESSAGE_TYPE_SMS);
+                    message.setMessageType(Message.TYPE_SMS);
+                    
+                    // Set the search query for highlighting
                     message.setSearchQuery(query);
-
-                    // Get contact name
-                    String contactName = ContactUtils.getContactName(context, address);
-                    message.setContactName(contactName);
-
-                    // Add message to list
-                    messages.add(message);
+                    
+                    // Add to results
+                    results.add(message);
+                    
                 } while (cursor.moveToNext());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error searching SMS messages: " + e.getMessage(), e);
+            Log.e(TAG, "Error searching SMS messages", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
             }
         }
-
-        return messages;
     }
-
+    
     /**
-     * Adds a test message to the database.
+     * Searches for MMS messages containing the specified query text.
      *
-     * @return True if successful, false otherwise
+     * @param contentResolver The content resolver
+     * @param query The search query (normalized)
+     * @param results The list to add results to
      */
-    public boolean addTestMessage() {
-        // Create a test message
-        String address = "+15555555555";
-        String body = "This is a test message from the app.";
-
-        // Send the message
-        return sendSmsMessage(address, body);
-    }
-
-    /**
-     * Searches MMS messages.
-     *
-     * @param query The search query
-     * @return The list of matching MMS messages
-     */
-    private List<Message> searchMmsMessages(String query) {
-        List<Message> messages = new ArrayList<>();
+    private void searchMmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
         Cursor cursor = null;
-
         try {
-            // Query MMS parts
-            cursor = context.getContentResolver().query(
-                    Uri.parse("content://mms/part"),
-                    new String[]{"mid"},
-                    "text LIKE ?",
-                    new String[]{"%" + query + "%"},
-                    null);
-
+            // First, get all MMS messages
+            Uri uri = Uri.parse("content://mms");
+            String sortOrder = "date DESC";
+            
+            cursor = contentResolver.query(
+                    uri,
+                    null,
+                    null,
+                    null,
+                    sortOrder
+            );
+            
             if (cursor != null && cursor.moveToFirst()) {
                 do {
-                    String messageId = cursor.getString(0);
-
-                    // Get MMS message
-                    Cursor mmsCursor = null;
-                    try {
-                        mmsCursor = context.getContentResolver().query(
-                                Uri.withAppendedPath(Telephony.Mms.CONTENT_URI, messageId),
-                                null,
-                                null,
-                                null,
-                                null);
-
-                        if (mmsCursor != null && mmsCursor.moveToFirst()) {
-                            MmsMessage message = new MmsMessage();
-
-                            // Get message data
-                            String id = mmsCursor.getString(mmsCursor.getColumnIndex(Telephony.Mms._ID));
-                            long date = mmsCursor.getLong(mmsCursor.getColumnIndex(Telephony.Mms.DATE)) * 1000; // MMS date is in seconds
-                            int type = mmsCursor.getInt(mmsCursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX));
-                            boolean read = mmsCursor.getInt(mmsCursor.getColumnIndex(Telephony.Mms.READ)) == 1;
-                            String threadId = mmsCursor.getString(mmsCursor.getColumnIndex(Telephony.Mms.THREAD_ID));
-
-                            // Convert MMS message box to SMS type
-                            int smsType;
-                            switch (type) {
-                                case Telephony.Mms.MESSAGE_BOX_INBOX:
-                                    smsType = Message.TYPE_INBOX;
-                                    break;
-                                case Telephony.Mms.MESSAGE_BOX_SENT:
-                                    smsType = Message.TYPE_SENT;
-                                    break;
-                                case Telephony.Mms.MESSAGE_BOX_DRAFTS:
-                                    smsType = Message.TYPE_DRAFT;
-                                    break;
-                                case Telephony.Mms.MESSAGE_BOX_OUTBOX:
-                                    smsType = Message.TYPE_OUTBOX;
-                                    break;
-                                default:
-                                    smsType = Message.TYPE_ALL;
-                                    break;
-                            }
-
-                            // Get MMS address
-                            String address = getMmsAddress(context.getContentResolver(), id);
-
-                            // Get MMS text
-                            String body = getMmsText(context.getContentResolver(), id);
-
-                            // Set message data
-                            message.setId(id);
-                            message.setBody(body);
-                            message.setDate(date);
-                            message.setType(smsType);
-                            message.setRead(read);
-                            message.setAddress(address);
-                            message.setThreadId(threadId);
-                            message.setMessageType(Message.MESSAGE_TYPE_MMS);
-                            message.setSearchQuery(query);
-
-                            // Get contact name
-                            String contactName = ContactUtils.getContactName(context, address);
-                            message.setContactName(contactName);
-
-                            // Add attachments
-                            List<MmsMessage.Attachment> attachments = getMmsAttachments(context.getContentResolver(), id);
-                            message.setAttachmentObjects(attachments);
-
-                            // Add message to list
-                            messages.add(message);
-                        }
-                    } finally {
-                        if (mmsCursor != null) {
-                            mmsCursor.close();
-                        }
+                    // Get message data
+                    int idIndex = cursor.getColumnIndex(Telephony.Mms._ID);
+                    int dateIndex = cursor.getColumnIndex(Telephony.Mms.DATE);
+                    int typeIndex = cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX);
+                    int readIndex = cursor.getColumnIndex(Telephony.Mms.READ);
+                    int threadIdIndex = cursor.getColumnIndex(Telephony.Mms.THREAD_ID);
+                    
+                    // Skip if we don't have required columns
+                    if (idIndex < 0 || dateIndex < 0 || typeIndex < 0) {
+                        Log.w(TAG, "Skipping MMS message due to missing required columns");
+                        continue;
                     }
+                    
+                    String id = cursor.getString(idIndex);
+                    long date = cursor.getLong(dateIndex) * 1000; // MMS date is in seconds, convert to milliseconds
+                    int type = cursor.getInt(typeIndex);
+                    boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
+                    String threadId = threadIdIndex >= 0 ? cursor.getString(threadIdIndex) : "";
+                    
+                    // Get MMS text content
+                    String body = getMmsText(contentResolver, id);
+                    
+                    // Skip if no text content or doesn't match query
+                    if (body == null || !body.toLowerCase().contains(query)) {
+                        continue;
+                    }
+                    
+                    // Get address (from or to)
+                    String address = getMmsAddress(contentResolver, id, type);
+                    
+                    // Create message object
+                    Message message = new MmsMessage();
+                    message.setId(id);
+                    message.setBody(body);
+                    message.setDate(date);
+                    message.setType(type);
+                    message.setAddress(address);
+                    message.setRead(read);
+                    message.setThreadId(threadId);
+                    message.setMessageType(Message.TYPE_MMS);
+                    
+                    // Set the search query for highlighting
+                    message.setSearchQuery(query);
+                    
+                    // Add to results
+                    results.add(message);
+                    
                 } while (cursor.moveToNext());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error searching MMS messages: " + e.getMessage(), e);
+            Log.e(TAG, "Error searching MMS messages", e);
         } finally {
             if (cursor != null) {
                 cursor.close();
             }
         }
-
-        return messages;
     }
 
     /**
-     * Callback interface for message operations.
+     * Cleans up resources.
      */
-    public interface MessageCallback {
-        void onMessageSent(Message message);
-        void onMessageFailed(String error);
-
-        /**
-         * Static factory method to create a simple success callback.
-         *
-         * @param runnable The runnable to execute on success
-         * @return A MessageCallback that runs the runnable on success and does nothing on failure
-         */
-        static MessageCallback onSuccess(Runnable runnable) {
-            return new MessageCallback() {
-                @Override
-                public void onMessageSent(Message message) {
-                    runnable.run();
-                }
-
-                @Override
-                public void onMessageFailed(String error) {
-                    // Do nothing
-                }
-            };
+    public void cleanup() {
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
         }
-    }
-
-    /**
-     * Notifies components about a completed translation.
-     * This method can be overridden or extended to integrate with UI components
-     * or other parts of the application that need to be informed about translation results.
-     *
-     * @param translatedMessage The message with translation data
-     */
-    private void notifyTranslationComplete(SmsMessage translatedMessage) {
-        Log.d(TAG, "Translation completed for message from " + translatedMessage.getAddress());
-        
-        // In a real application, this could:
-        // 1. Update the UI if visible
-        // 2. Send a broadcast intent
-        // 3. Update notification with translated text
-        // 4. Store translation state in database
-        
-        // For now, we'll just ensure the translation is cached
-        if (translationCache != null && translatedMessage.getTranslatedText() != null) {
-            UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
-            if (userPrefs != null) {
-                String cacheKey = translatedMessage.getOriginalText() + "_" + userPrefs.getPreferredLanguage();
-                translationCache.put(cacheKey, translatedMessage.getTranslatedText());
-                Log.d(TAG, "Translation cached for future use");
-            }
-        }
-        
-        // You could add additional notification logic here
-        // For example, sending a local broadcast:
-        // Intent intent = new Intent("com.translator.messagingapp.TRANSLATION_COMPLETE");
-        // intent.putExtra("message_id", translatedMessage.getId());
-        // intent.putExtra("translated_text", translatedMessage.getTranslatedText());
-        // context.sendBroadcast(intent);
     }
 }

@@ -35,6 +35,11 @@
     <dimen name="message_input_padding">12dp</dimen>
     <dimen name="message_input_max_height">120dp</dimen>
 
-    <dimen name="action_bar_size">56dp</dimen>
+
+    <dimen name="glass_border_width">1dp</dimen>
+    <dimen name="glass_corner_radius">16dp</dimen>
+
+        <dimen name="action_bar_size">56dp</dimen>
+
 
 </resources>

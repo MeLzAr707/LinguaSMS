@@ -8,57 +8,20 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        try {
-            // Use the regular app theme
-            setTheme(R.style.AppTheme);
-        } catch (Exception e) {
-            android.util.Log.e("SplashActivity", "Error setting theme, using default", e);
-            // Continue with default theme
-        }
-
-        // Configure window for OpenGL compatibility before calling super
-        OpenGLCompatibilityHelper.configureWindowForOpenGL(this);
+        // Use the regular app theme
+        setTheme(R.style.AppTheme);
 
         super.onCreate(savedInstanceState);
 
-        try {
-            // Initialize app components
-            initializeApp();
-        } catch (Exception e) {
-            android.util.Log.e("SplashActivity", "Error during app initialization", e);
-            // Continue anyway - app might still be usable
-        }
+        // Initialize app components
+        initializeApp();
 
-        try {
-            // Start main activity immediately
-            Intent mainIntent = new Intent(this, MainActivity.class);
-            startActivity(mainIntent);
-        } catch (Exception e) {
-            android.util.Log.e("SplashActivity", "Error starting MainActivity", e);
-            // This is critical - if we can't start MainActivity, show an error
-            showErrorAndExit();
-            return;
-        }
+        // Start main activity immediately
+        Intent mainIntent = new Intent(this, MainActivity.class);
+        startActivity(mainIntent);
 
         // Close this activity
         finish();
-    }
-
-    /**
-     * Shows an error message and exits the app if critical initialization fails.
-     */
-    private void showErrorAndExit() {
-        try {
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Initialization Error")
-                    .setMessage("The app failed to initialize properly. Please try restarting the app.")
-                    .setPositiveButton("OK", (dialog, which) -> finish())
-                    .setCancelable(false)
-                    .show();
-        } catch (Exception e) {
-            // If we can't even show a dialog, just finish
-            finish();
-        }
     }
 
     private void initializeApp() {
@@ -84,9 +47,6 @@ public class SplashActivity extends AppCompatActivity {
                 userPreferences.setBoolean("is_first_run", false);
                 String deviceLanguage = getResources().getConfiguration().locale.getLanguage();
                 userPreferences.setPreferredLanguage(deviceLanguage);
-                
-                // On first run, ensure default SMS request will happen
-                userPreferences.setBoolean("should_request_default_sms", true);
             }
 
         } catch (Exception e) {

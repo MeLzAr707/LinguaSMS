@@ -1,6 +1,5 @@
 package com.translator.messagingapp;
 
-import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;
@@ -13,7 +12,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Content provider for SMS functionality when the app is set as the default SMS app.
@@ -55,18 +53,10 @@ public class SmsProvider extends ContentProvider {
     public boolean onCreate() {
         Log.d(TAG, "SmsProvider created");
 
-        // Get service instances from the application context
-        Application app = (Application) Objects.requireNonNull(getContext()).getApplicationContext();
-        
-        if (app instanceof TranslatorApp) {
-            TranslatorApp translatorApp = (TranslatorApp) app;
-            messageService = translatorApp.getMessageService();
-            translationManager = translatorApp.getTranslationManager();
-
-        } else {
-            Log.e(TAG, "Unknown application type: " + app.getClass().getName());
-            return false;
-        }
+        // Get service instances from TranslatorApp
+        TranslatorApp app = (TranslatorApp) getContext().getApplicationContext();
+        messageService = app.getMessageService();
+        translationManager = app.getTranslationManager();
 
         return true;
     }

@@ -5,13 +5,10 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.database.sqlite.SQLiteStatement;
 import android.util.Log;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Cache for storing translated text using SQLite database with memory cache layer.
@@ -20,11 +17,11 @@ public class TranslationCache {
     private static final String TAG = "TranslationCache";
 
     // In-memory cache for fastest access to recent translations
-    private final Map<String, String> memoryCache;
+    private final ConcurrentHashMap<String, String> memoryCache;
     private static final int MEMORY_CACHE_SIZE = 100; // Keep most recent 100 translations in memory
 
     // Database helper and constants
-    private TranslationDbHelper dbHelper;
+    private final TranslationDbHelper dbHelper;
     private static final int MAX_CACHE_SIZE = 10000; // Maximum entries in the database
     private static final long CACHE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000L; // 30 days
 
@@ -81,31 +78,11 @@ public class TranslationCache {
      * @param context The application context
      */
     public TranslationCache(Context context) {
-        // Create a thread-safe LRU cache
-        this.memoryCache = Collections.synchronizedMap(
-            new LinkedHashMap<String, String>(MEMORY_CACHE_SIZE + 1, 0.75f, true) {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-                    return size() > MEMORY_CACHE_SIZE;
-                }
-            });
-        
-        try {
-            this.dbHelper = new TranslationDbHelper(context.getApplicationContext());
-            
-            // Perform maintenance on startup (in background)
-            new Thread(() -> {
-                try {
-                    performMaintenance();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error during initial cache maintenance", e);
-                }
-            }).start();
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing translation cache database", e);
-            // Continue without database - use memory cache only
-            this.dbHelper = null;
-        }
+        this.memoryCache = new ConcurrentHashMap<>(MEMORY_CACHE_SIZE);
+        this.dbHelper = new TranslationDbHelper(context.getApplicationContext());
+
+        // Perform maintenance on startup (in background)
+        new Thread(this::performMaintenance).start();
     }
 
     /**
@@ -128,40 +105,39 @@ public class TranslationCache {
             return translation;
         }
 
-        // Check database only if available
-        if (dbHelper == null) {
-            cacheMisses++;
-            return null;
-        }
+        // Check database
+        SQLiteDatabase db;
+        Cursor cursor = null;
 
-        SQLiteDatabase db = null;
-        
         try {
             db = dbHelper.getReadableDatabase();
 
-            // Query the database using try-with-resources for cursor
-            try (Cursor cursor = db.query(
+            // Query the database
+            cursor = db.query(
                     TranslationDbHelper.TABLE_TRANSLATIONS,
                     new String[]{TranslationDbHelper.COLUMN_TRANSLATION},
                     TranslationDbHelper.COLUMN_CACHE_KEY + " = ?",
                     new String[]{key},
-                    null, null, null)) {
+                    null, null, null);
 
-                if (cursor.moveToFirst()) {
-                    translation = cursor.getString(0);
+            if (cursor.moveToFirst()) {
+                translation = cursor.getString(0);
 
-                    // Update the timestamp in background to mark as recently used
-                    updateTimestamp(key);
+                // Update the timestamp in background to mark as recently used
+                updateTimestamp(key);
 
-                    // Add to memory cache
-                    addToMemoryCache(key, translation);
+                // Add to memory cache
+                addToMemoryCache(key, translation);
 
-                    cacheHits++;
-                    return translation;
-                }
+                cacheHits++;
+                return translation;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error retrieving translation from database", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
 
         // Cache miss
@@ -183,12 +159,8 @@ public class TranslationCache {
         // Add to memory cache
         addToMemoryCache(key, translation);
 
-        // Add to database only if available
-        if (dbHelper == null) {
-            return;
-        }
-
-        SQLiteDatabase db = null;
+        // Add to database
+        SQLiteDatabase db;
 
         try {
             db = dbHelper.getWritableDatabase();
@@ -223,12 +195,8 @@ public class TranslationCache {
         // Remove from memory cache
         memoryCache.remove(key);
 
-        // Remove from database only if available
-        if (dbHelper == null) {
-            return;
-        }
-
-        SQLiteDatabase db = null;
+        // Remove from database
+        SQLiteDatabase db;
         try {
             db = dbHelper.getWritableDatabase();
             db.delete(
@@ -273,32 +241,19 @@ public class TranslationCache {
     }
 
     /**
-     * Saves a translation for a specific message.
-     *
-     * @param messageId The message ID (can be either long or String)
-     * @param translatedText The translated text
-     */
-    public void saveTranslation(Object messageId, String translatedText) {
-        String key = "msg_" + messageId.toString() + "_translation";
-        put(key, translatedText);
-    }
-
-    /**
      * Clears the cache.
      */
     public void clear() {
         // Clear memory cache
         memoryCache.clear();
 
-        // Clear database only if available
-        if (dbHelper != null) {
-            SQLiteDatabase db = null;
-            try {
-                db = dbHelper.getWritableDatabase();
-                db.delete(TranslationDbHelper.TABLE_TRANSLATIONS, null, null);
-            } catch (Exception e) {
-                Log.e(TAG, "Error clearing translation cache", e);
-            }
+        // Clear database
+        SQLiteDatabase db;
+        try {
+            db = dbHelper.getWritableDatabase();
+            db.delete(TranslationDbHelper.TABLE_TRANSLATIONS, null, null);
+        } catch (Exception e) {
+            Log.e(TAG, "Error clearing translation cache", e);
         }
 
         // Reset statistics
@@ -329,21 +284,22 @@ public class TranslationCache {
      * Gets the number of entries in the database.
      */
     private int getDatabaseSize() {
-        if (dbHelper == null) {
-            return 0;
-        }
-        
-        SQLiteDatabase db = null;
-        
+        SQLiteDatabase db;
+        Cursor cursor = null;
+
         try {
             db = dbHelper.getReadableDatabase();
-            try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null)) {
-                if (cursor.moveToFirst()) {
-                    return cursor.getInt(0);
-                }
+            cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null);
+
+            if (cursor.moveToFirst()) {
+                return cursor.getInt(0);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting database size", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
 
         return 0;
@@ -353,12 +309,8 @@ public class TranslationCache {
      * Updates the timestamp for a cache entry to mark it as recently used.
      */
     private void updateTimestamp(final String key) {
-        if (dbHelper == null) {
-            return;
-        }
-        
         new Thread(() -> {
-            SQLiteDatabase db = null;
+            SQLiteDatabase db;
             try {
                 db = dbHelper.getWritableDatabase();
 
@@ -378,14 +330,16 @@ public class TranslationCache {
     }
 
     /**
-     * Adds an entry to the memory cache.
-     * The LinkedHashMap with access ordering will automatically handle LRU eviction.
+     * Adds an entry to the memory cache, managing its size.
      */
-    private void addToMemoryCache(String key, String translation) {
-        if (key == null || translation == null) {
-            return;
+    private synchronized void addToMemoryCache(String key, String translation) {
+        // If memory cache is full, remove the first entry (approximate LRU)
+        if (memoryCache.size() >= MEMORY_CACHE_SIZE) {
+            String firstKey = memoryCache.keySet().iterator().next();
+            memoryCache.remove(firstKey);
         }
-        
+
+        // Add the new entry
         memoryCache.put(key, translation);
     }
 
@@ -395,11 +349,6 @@ public class TranslationCache {
      * 2. Trims the cache if it exceeds the maximum size
      */
     public void performMaintenance() {
-        if (dbHelper == null) {
-            Log.d(TAG, "Database not available, skipping maintenance");
-            return;
-        }
-        
         SQLiteDatabase db = null;
 
         try {
@@ -408,41 +357,52 @@ public class TranslationCache {
             // Begin transaction for better performance
             db.beginTransaction();
 
-            // 1. Remove expired entries first
+            // 1. Remove expired entries
             long expiryThreshold = System.currentTimeMillis() - CACHE_EXPIRY_MS;
-            int expiredCount = db.delete(
+            int deletedExpired = db.delete(
                     TranslationDbHelper.TABLE_TRANSLATIONS,
                     TranslationDbHelper.COLUMN_TIMESTAMP + " < ?",
                     new String[]{String.valueOf(expiryThreshold)});
 
-            // 2. Trim cache if it exceeds maximum size
-            int trimCount = 0;
-            try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null)) {
-                if (cursor.moveToFirst()) {
-                    int currentSize = cursor.getInt(0);
-                    if (currentSize > MAX_CACHE_SIZE) {
-                        int entriesToRemove = currentSize - MAX_CACHE_SIZE;
-                        // Delete oldest entries
-                        String deleteOldest = "DELETE FROM " + TranslationDbHelper.TABLE_TRANSLATIONS + 
-                                " WHERE " + TranslationDbHelper.COLUMN_CACHE_KEY + " IN (" +
-                                "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
-                                " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
-                                " ORDER BY " + TranslationDbHelper.COLUMN_TIMESTAMP + 
-                                " ASC LIMIT ?)";
-                        
-                        SQLiteStatement statement = db.compileStatement(deleteOldest);
-                        statement.bindLong(1, entriesToRemove);
-                        trimCount = statement.executeUpdateDelete();
-                    }
-                }
+            // 2. Check if we still need to trim the cache
+            Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null);
+            int count = 0;
+            if (cursor.moveToFirst()) {
+                count = cursor.getInt(0);
+                cursor.close();
+            } else {
+                cursor.close();
             }
-            
-            int deletedCount = expiredCount + trimCount;
+
+            // If still too many entries, delete oldest ones
+            if (count > MAX_CACHE_SIZE) {
+                int toDelete = count - MAX_CACHE_SIZE;
+
+                // Find the oldest entries
+                cursor = db.query(
+                        TranslationDbHelper.TABLE_TRANSLATIONS,
+                        new String[]{TranslationDbHelper.COLUMN_CACHE_KEY},
+                        null, null, null, null,
+                        TranslationDbHelper.COLUMN_TIMESTAMP + " ASC",
+                        String.valueOf(toDelete));
+
+                while (cursor.moveToNext()) {
+                    String key = cursor.getString(0);
+                    db.delete(
+                            TranslationDbHelper.TABLE_TRANSLATIONS,
+                            TranslationDbHelper.COLUMN_CACHE_KEY + " = ?",
+                            new String[]{key});
+                }
+                cursor.close();
+            }
 
             // Commit the transaction
             db.setTransactionSuccessful();
-            
-            Log.d(TAG, "Cache maintenance completed. Removed " + deletedCount + " entries.");
+
+            // Use Locale.US for consistent formatting in log messages
+            Log.d(TAG, String.format(Locale.US,
+                    "Cache maintenance completed. Removed %d expired entries.",
+                    deletedExpired));
 
         } catch (Exception e) {
             Log.e(TAG, "Error during cache maintenance", e);
@@ -458,8 +418,9 @@ public class TranslationCache {
      * Should be called when the app is being destroyed.
      */
     public void close() {
-        if (dbHelper != null) {
-            dbHelper.close();
-        }
+        dbHelper.close();
     }
 }
+
+
+
