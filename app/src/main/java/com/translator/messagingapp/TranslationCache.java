@@ -89,10 +89,23 @@ public class TranslationCache {
                     return size() > MEMORY_CACHE_SIZE;
                 }
             });
-        this.dbHelper = new TranslationDbHelper(context.getApplicationContext());
-
-        // Perform maintenance on startup (in background)
-        new Thread(this::performMaintenance).start();
+        
+        try {
+            this.dbHelper = new TranslationDbHelper(context.getApplicationContext());
+            
+            // Perform maintenance on startup (in background)
+            new Thread(() -> {
+                try {
+                    performMaintenance();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error during initial cache maintenance", e);
+                }
+            }).start();
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing translation cache database", e);
+            // Continue without database - use memory cache only
+            this.dbHelper = null;
+        }
     }
 
     /**
@@ -115,7 +128,12 @@ public class TranslationCache {
             return translation;
         }
 
-        // Check database
+        // Check database only if available
+        if (dbHelper == null) {
+            cacheMisses++;
+            return null;
+        }
+
         SQLiteDatabase db = null;
         
         try {
@@ -165,7 +183,11 @@ public class TranslationCache {
         // Add to memory cache
         addToMemoryCache(key, translation);
 
-        // Add to database
+        // Add to database only if available
+        if (dbHelper == null) {
+            return;
+        }
+
         SQLiteDatabase db = null;
 
         try {
@@ -201,7 +223,11 @@ public class TranslationCache {
         // Remove from memory cache
         memoryCache.remove(key);
 
-        // Remove from database
+        // Remove from database only if available
+        if (dbHelper == null) {
+            return;
+        }
+
         SQLiteDatabase db = null;
         try {
             db = dbHelper.getWritableDatabase();
@@ -264,13 +290,15 @@ public class TranslationCache {
         // Clear memory cache
         memoryCache.clear();
 
-        // Clear database
-        SQLiteDatabase db = null;
-        try {
-            db = dbHelper.getWritableDatabase();
-            db.delete(TranslationDbHelper.TABLE_TRANSLATIONS, null, null);
-        } catch (Exception e) {
-            Log.e(TAG, "Error clearing translation cache", e);
+        // Clear database only if available
+        if (dbHelper != null) {
+            SQLiteDatabase db = null;
+            try {
+                db = dbHelper.getWritableDatabase();
+                db.delete(TranslationDbHelper.TABLE_TRANSLATIONS, null, null);
+            } catch (Exception e) {
+                Log.e(TAG, "Error clearing translation cache", e);
+            }
         }
 
         // Reset statistics
@@ -301,6 +329,10 @@ public class TranslationCache {
      * Gets the number of entries in the database.
      */
     private int getDatabaseSize() {
+        if (dbHelper == null) {
+            return 0;
+        }
+        
         SQLiteDatabase db = null;
         
         try {
@@ -321,6 +353,10 @@ public class TranslationCache {
      * Updates the timestamp for a cache entry to mark it as recently used.
      */
     private void updateTimestamp(final String key) {
+        if (dbHelper == null) {
+            return;
+        }
+        
         new Thread(() -> {
             SQLiteDatabase db = null;
             try {
@@ -359,6 +395,11 @@ public class TranslationCache {
      * 2. Trims the cache if it exceeds the maximum size
      */
     public void performMaintenance() {
+        if (dbHelper == null) {
+            Log.d(TAG, "Database not available, skipping maintenance");
+            return;
+        }
+        
         SQLiteDatabase db = null;
 
         try {
@@ -367,26 +408,36 @@ public class TranslationCache {
             // Begin transaction for better performance
             db.beginTransaction();
 
-            // 1. Remove expired entries
+            // 1. Remove expired entries first
             long expiryThreshold = System.currentTimeMillis() - CACHE_EXPIRY_MS;
+            int expiredCount = db.delete(
+                    TranslationDbHelper.TABLE_TRANSLATIONS,
+                    TranslationDbHelper.COLUMN_TIMESTAMP + " < ?",
+                    new String[]{String.valueOf(expiryThreshold)});
+
+            // 2. Trim cache if it exceeds maximum size
+            int trimCount = 0;
+            try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null)) {
+                if (cursor.moveToFirst()) {
+                    int currentSize = cursor.getInt(0);
+                    if (currentSize > MAX_CACHE_SIZE) {
+                        int entriesToRemove = currentSize - MAX_CACHE_SIZE;
+                        // Delete oldest entries
+                        String deleteOldest = "DELETE FROM " + TranslationDbHelper.TABLE_TRANSLATIONS + 
+                                " WHERE " + TranslationDbHelper.COLUMN_CACHE_KEY + " IN (" +
+                                "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
+                                " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
+                                " ORDER BY " + TranslationDbHelper.COLUMN_TIMESTAMP + 
+                                " ASC LIMIT ?)";
+                        
+                        SQLiteStatement statement = db.compileStatement(deleteOldest);
+                        statement.bindLong(1, entriesToRemove);
+                        trimCount = statement.executeUpdateDelete();
+                    }
+                }
+            }
             
-            // Use a single SQL statement to delete expired entries and trim the cache
-            String sql = "DELETE FROM " + TranslationDbHelper.TABLE_TRANSLATIONS + 
-                    " WHERE " + TranslationDbHelper.COLUMN_CACHE_KEY + " IN (" +
-                    "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
-                    " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
-                    " WHERE " + TranslationDbHelper.COLUMN_TIMESTAMP + " < ? " +
-                    "UNION ALL " +
-                    "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
-                    " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
-                    " ORDER BY " + TranslationDbHelper.COLUMN_TIMESTAMP + 
-                    " ASC LIMIT MAX(0, (SELECT COUNT(*) FROM " + 
-                    TranslationDbHelper.TABLE_TRANSLATIONS + ") - ?))";
-            
-            SQLiteStatement statement = db.compileStatement(sql);
-            statement.bindLong(1, expiryThreshold);
-            statement.bindLong(2, MAX_CACHE_SIZE);
-            int deletedCount = statement.executeUpdateDelete();
+            int deletedCount = expiredCount + trimCount;
 
             // Commit the transaction
             db.setTransactionSuccessful();
@@ -407,6 +458,8 @@ public class TranslationCache {
      * Should be called when the app is being destroyed.
      */
     public void close() {
-        dbHelper.close();
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
     }
 }

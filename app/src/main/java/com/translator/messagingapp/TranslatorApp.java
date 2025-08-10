@@ -23,34 +23,79 @@ public class TranslatorApp extends Application {
     private GoogleTranslationService translationService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
+    private RcsService rcsService;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        // Initialize user preferences
-        userPreferences = new UserPreferences(this);
+        try {
+            // Initialize user preferences
+            userPreferences = new UserPreferences(this);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing user preferences", e);
+            // Create a fallback UserPreferences that won't crash
+            userPreferences = new UserPreferences(this);
+        }
 
-        // Initialize translation cache
-        translationCache = new TranslationCache(getApplicationContext());
+        try {
+            // Initialize translation cache
+            translationCache = new TranslationCache(getApplicationContext());
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing translation cache", e);
+            // TranslationCache handles this internally now, but extra safety
+        }
 
-        // Initialize translation service
-        translationService = new GoogleTranslationService(userPreferences.getApiKey());
+        try {
+            // Initialize translation service
+            translationService = new GoogleTranslationService(userPreferences != null ? userPreferences.getApiKey() : "");
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing translation service", e);
+            translationService = new GoogleTranslationService("");
+        }
 
-        // Initialize translation manager with the cache
-        translationManager = new TranslationManager(
-                getApplicationContext(),
-                translationService,
-                userPreferences);
+        try {
+            // Initialize translation manager with the cache
+            translationManager = new TranslationManager(
+                    getApplicationContext(),
+                    translationService,
+                    userPreferences);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing translation manager", e);
+            // translationManager will remain null, other components should handle this
+        }
 
-        // Initialize message service
-        messageService = new MessageService(this, translationManager);
+        try {
+            // Initialize message service
+            messageService = new MessageService(this, translationManager);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing message service", e);
+            // messageService will remain null, activities should handle this
+        }
 
-        // Initialize default SMS app manager
-        defaultSmsAppManager = new DefaultSmsAppManager(this);
+        try {
+            // Initialize default SMS app manager
+            defaultSmsAppManager = new DefaultSmsAppManager(this);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing default SMS app manager", e);
+            // defaultSmsAppManager will remain null, activities should handle this
+        }
+        
+        try {
+            // Initialize RCS service
+            rcsService = new RcsService(this);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing RCS service", e);
+            // rcsService will remain null
+        }
 
-        // Schedule periodic cache maintenance
-        schedulePeriodicCacheMaintenance();
+        try {
+            // Schedule periodic cache maintenance
+            schedulePeriodicCacheMaintenance();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error scheduling cache maintenance", e);
+            // Continue without periodic maintenance
+        }
     }
 
     public TranslationCache getTranslationCache() {
@@ -74,7 +119,19 @@ public class TranslatorApp extends Application {
     }
 
     public UserPreferences getUserPreferences() {
+        // Ensure we always return a valid UserPreferences object
+        if (userPreferences == null) {
+            try {
+                userPreferences = new UserPreferences(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback UserPreferences", e);
+            }
+        }
         return userPreferences;
+    }
+    
+    public RcsService getRcsService() {
+        return rcsService;
     }
 
     /**
@@ -113,6 +170,9 @@ public class TranslatorApp extends Application {
         }
         if (translationManager != null) {
             translationManager.cleanup();
+        }
+        if (rcsService != null) {
+            rcsService.cleanup();
         }
         super.onTerminate();
     }
