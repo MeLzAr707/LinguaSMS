@@ -152,12 +152,14 @@ public class OptimizedConversationActivity extends BaseActivity {
 
         paginationScrollListener = (PaginationUtils.PaginationScrollListener) PaginationUtils.setupPagination(
                 messagesRecyclerView,
-                onLoadingComplete -> {
+                () -> {
                     // Load next page
                     int nextPage = currentPage + 1;
                     int offset = nextPage * PAGE_SIZE;
 
-                    loadMessagesOptimized(offset, PAGE_SIZE, onLoadingComplete);
+                    loadMessagesOptimized(offset, PAGE_SIZE, () -> {
+                        // Empty callback implementation
+                    });
                 },
                 10, // threshold - start loading when 10 items from the end
                 loadingIndicator
