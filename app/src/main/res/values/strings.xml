@@ -214,7 +214,6 @@
     <string name="accessibility_new_message">Create new message</string>
 
     <!-- Add these to your existing strings.xml file -->
-    <string name="translate_outgoing_message">Translate outgoing message</string>
     <string name="translating_outgoing">Translating message…</string>
     <string name="translation_ready">Translation ready</string>
     <string name="translation_error">Translation failed</string>
