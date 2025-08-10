@@ -43,13 +43,13 @@
             android:summary="@string/pref_translation_mode_summary"
             android:entries="@array/translation_mode_names"
             android:entryValues="@array/translation_mode_values"
-            android:defaultValue="2" />
+            android:defaultValue="online" />
             
         <SwitchPreferenceCompat
             android:key="prefer_offline"
             android:title="@string/pref_prefer_offline"
             android:summary="@string/pref_prefer_offline_summary"
-            android:defaultValue="true" />
+            android:defaultValue="false" />
             
         <Preference
             android:key="manage_offline_models"
@@ -69,12 +69,12 @@
     <PreferenceCategory android:title="@string/pref_category_offline_models">
         <SwitchPreferenceCompat
             android:key="enable_offline_translation"
-            android:title="@string/enable_offline_translation"
+            android:title="@string/pref_prefer_offline"
             android:summary="@string/enable_offline_translation_summary"
             android:defaultValue="false" />
             
         <Preference
-            android:key="manage_offline_models"
+            android:key="manage_offline_models_advanced"
             android:title="@string/pref_manage_offline_models"
             android:summary="@string/pref_manage_offline_models_summary" />
     </PreferenceCategory>
