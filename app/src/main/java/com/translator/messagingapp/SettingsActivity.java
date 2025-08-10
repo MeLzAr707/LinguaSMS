@@ -79,7 +79,7 @@ public class SettingsActivity extends BaseActivity {
                 setPreferencesFromResource(R.xml.preferences, rootKey);
                 
                 // Get user preferences
-                UserPreferences userPreferences = ((TranslatorApp) requireActivity().getApplication()).getUserPreferences();
+                UserPreferences userPreferences = ((OptimizedTranslatorApp) requireActivity().getApplication()).getUserPreferences();
                 
                 // Setup auto-translate preference
                 setupAutoTranslatePreference(userPreferences);

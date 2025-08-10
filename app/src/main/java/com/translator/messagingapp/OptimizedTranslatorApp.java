@@ -1,12 +1,22 @@
 package com.translator.messagingapp;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Optimized application class with background prefetching capabilities.
@@ -18,10 +28,22 @@ public class OptimizedTranslatorApp extends Application {
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
+    private TranslationCache translationCache;
+    private UserPreferences userPreferences;
+    private DefaultSmsAppManager defaultSmsAppManager;
     
     @Override
     public void onCreate() {
         super.onCreate();
+        
+        // Initialize user preferences
+        userPreferences = new UserPreferences(this);
+        
+        // Initialize translation cache
+        translationCache = new TranslationCache(getApplicationContext());
+        
+        // Initialize default SMS app manager
+        defaultSmsAppManager = new DefaultSmsAppManager(this);
         
         // Initialize services
         translationManager = new TranslationManager(this);
@@ -33,6 +55,9 @@ public class OptimizedTranslatorApp extends Application {
         
         // Prefetch conversations and frequently accessed data
         prefetchData();
+        
+        // Schedule periodic cache maintenance
+        schedulePeriodicCacheMaintenance();
     }
     
     /**
@@ -132,6 +157,14 @@ public class OptimizedTranslatorApp extends Application {
     
     @Override
     public void onTerminate() {
+        // Clean up resources
+        if (translationCache != null) {
+            translationCache.close();
+        }
+        if (translationManager != null) {
+            translationManager.cleanup();
+        }
+        
         // Shutdown executor
         if (prefetchExecutor != null && !prefetchExecutor.isShutdown()) {
             prefetchExecutor.shutdown();
@@ -147,5 +180,77 @@ public class OptimizedTranslatorApp extends Application {
      */
     public TranslationManager getTranslationManager() {
         return translationManager;
+    }
+    
+    /**
+     * Gets the translation cache.
+     *
+     * @return The translation cache
+     */
+    public TranslationCache getTranslationCache() {
+        return translationCache;
+    }
+    
+    /**
+     * Gets the user preferences.
+     *
+     * @return The user preferences
+     */
+    public UserPreferences getUserPreferences() {
+        return userPreferences;
+    }
+    
+    /**
+     * Gets the message service.
+     *
+     * @return The message service
+     */
+    public MessageService getMessageService() {
+        return messageService;
+    }
+    
+    /**
+     * Gets the default SMS app manager.
+     *
+     * @return The default SMS app manager
+     */
+    public DefaultSmsAppManager getDefaultSmsAppManager() {
+        return defaultSmsAppManager;
+    }
+    
+    private void schedulePeriodicCacheMaintenance() {
+        WorkManager workManager = WorkManager.getInstance(this);
+
+        // Define a periodic work request to run once a day
+        PeriodicWorkRequest maintenanceWork =
+                new PeriodicWorkRequest.Builder(CacheMaintenanceWorker.class, 1, TimeUnit.DAYS)
+                        .setConstraints(new Constraints.Builder()
+                                .setRequiresCharging(true)
+                                .setRequiresBatteryNotLow(true)
+                                .build())
+                        .build();
+
+        // Enqueue the work
+        workManager.enqueueUniquePeriodicWork(
+                "translation_cache_maintenance",
+                ExistingPeriodicWorkPolicy.REPLACE,
+                maintenanceWork);
+    }
+    
+    /**
+     * Worker class for cache maintenance.
+     */
+    public static class CacheMaintenanceWorker extends Worker {
+        public CacheMaintenanceWorker(@NonNull Context context, @NonNull WorkerParameters params) {
+            super(context, params);
+        }
+
+        @NonNull
+        @Override
+        public Result doWork() {
+            TranslationCache cache = ((OptimizedTranslatorApp) getApplicationContext()).getTranslationCache();
+            cache.performMaintenance();
+            return Result.success();
+        }
     }
 }

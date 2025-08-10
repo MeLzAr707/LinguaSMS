@@ -55,7 +55,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         setContentView(R.layout.activity_main);
 
         // Initialize services
-        TranslatorApp app = (TranslatorApp) getApplication();
+        OptimizedTranslatorApp app = (OptimizedTranslatorApp) getApplication();
         if (app != null) {
             messageService = app.getMessageService();
             defaultSmsAppManager = app.getDefaultSmsAppManager();
@@ -115,7 +115,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
         // Check if we're the default SMS app
         if (defaultSmsAppManager != null) {
             // Check if we should show the default SMS request (first time or manually triggered)
-            UserPreferences userPrefs = ((TranslatorApp) getApplication()).getUserPreferences();
+            UserPreferences userPrefs = ((OptimizedTranslatorApp) getApplication()).getUserPreferences();
             boolean shouldRequest = userPrefs.getBoolean("should_request_default_sms", false);
             
             if (shouldRequest) {

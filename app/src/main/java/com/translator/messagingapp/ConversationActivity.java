@@ -73,8 +73,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         setContentView(R.layout.activity_conversation_updated);
 
         try {
-            // Get service instances from TranslatorApp
-            TranslatorApp app = (TranslatorApp) getApplication();
+            // Get service instances from OptimizedTranslatorApp
+            OptimizedTranslatorApp app = (OptimizedTranslatorApp) getApplication();
             if (app != null) {
                 messageService = app.getMessageService();
                 translationManager = app.getTranslationManager();

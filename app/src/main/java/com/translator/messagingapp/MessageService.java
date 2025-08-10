@@ -36,7 +36,7 @@ public class MessageService {
     public MessageService(Context context, TranslationManager translationManager) {
         this.context = context;
         this.translationManager = translationManager;
-        this.translationCache = ((TranslatorApp) context.getApplicationContext()).getTranslationCache();
+        this.translationCache = ((OptimizedTranslatorApp) context.getApplicationContext()).getTranslationCache();
         this.messageCache = new MessageCache();
     }
 

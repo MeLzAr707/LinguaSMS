@@ -188,7 +188,7 @@ public class SearchMethods {
                         long threadId = threadIdIndex >= 0 ? cursor.getLong(threadIdIndex) : 0;
                         
                         // Get MMS text content
-                        MessageService messageService = ((TranslatorApp) context.getApplicationContext()).getMessageService();
+                        MessageService messageService = ((OptimizedTranslatorApp) context.getApplicationContext()).getMessageService();
                         String body = messageService.getMmsText(contentResolver, String.valueOf(id));
                         
                         // Get MMS address

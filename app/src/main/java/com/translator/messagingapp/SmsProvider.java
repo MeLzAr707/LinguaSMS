@@ -53,8 +53,8 @@ public class SmsProvider extends ContentProvider {
     public boolean onCreate() {
         Log.d(TAG, "SmsProvider created");
 
-        // Get service instances from TranslatorApp
-        TranslatorApp app = (TranslatorApp) getContext().getApplicationContext();
+        // Get service instances from OptimizedTranslatorApp
+        OptimizedTranslatorApp app = (OptimizedTranslatorApp) getContext().getApplicationContext();
         messageService = app.getMessageService();
         translationManager = app.getTranslationManager();
 
