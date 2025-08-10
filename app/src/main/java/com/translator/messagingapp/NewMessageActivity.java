@@ -51,7 +51,7 @@ public class NewMessageActivity extends BaseActivity {
         setContentView(R.layout.activity_new_message);
 
         // Initialize services
-        OptimizedTranslatorApp app = (OptimizedTranslatorApp) getApplication();
+        TranslatorApp app = (TranslatorApp) getApplication();
         if (app != null) {
             messageService = app.getMessageService();
             translationManager = app.getTranslationManager();

@@ -24,7 +24,7 @@ public class TranslationCache {
     private static final int MEMORY_CACHE_SIZE = 100; // Keep most recent 100 translations in memory
 
     // Database helper and constants
-    private final TranslationDbHelper dbHelper;
+    private TranslationDbHelper dbHelper;
     private static final int MAX_CACHE_SIZE = 10000; // Maximum entries in the database
     private static final long CACHE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000L; // 30 days
 

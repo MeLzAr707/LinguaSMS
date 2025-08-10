@@ -20,7 +20,7 @@ public class SmsReceiver extends BroadcastReceiver {
         Log.d(TAG, "SMS received: " + intent.getAction());
 
         // Get the MessageService from the application
-        OptimizedTranslatorApp app = (OptimizedTranslatorApp) context.getApplicationContext();
+        TranslatorApp app = (TranslatorApp) context.getApplicationContext();
         MessageService messageService = app.getMessageService();
 
         if (messageService != null) {

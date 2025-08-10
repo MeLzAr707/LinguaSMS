@@ -12,7 +12,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -273,7 +272,7 @@ public class MainActivity extends BaseActivity implements NavigationView.OnNavig
             new Thread(() -> {
                 try {
                     if (messageService != null) {
-                        List<Conversation> loadedConversations = messageService.loadConversations(forceRefresh);
+                        List<Conversation> loadedConversations = messageService.loadConversations();
 
                         // Update UI on main thread
                         runOnUiThread(() -> {

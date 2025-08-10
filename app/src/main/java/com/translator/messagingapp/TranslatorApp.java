@@ -23,7 +23,6 @@ public class TranslatorApp extends Application {
     private GoogleTranslationService translationService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
-    private RcsService rcsService;
 
     @Override
     public void onCreate() {
@@ -81,13 +80,7 @@ public class TranslatorApp extends Application {
             // defaultSmsAppManager will remain null, activities should handle this
         }
         
-        try {
-            // Initialize RCS service
-            rcsService = new RcsService(this);
-        } catch (Exception e) {
-            android.util.Log.e(TAG, "Error initializing RCS service", e);
-            // rcsService will remain null
-        }
+
 
         try {
             // Schedule periodic cache maintenance
@@ -130,9 +123,7 @@ public class TranslatorApp extends Application {
         return userPreferences;
     }
     
-    public RcsService getRcsService() {
-        return rcsService;
-    }
+
 
     /**
      * Checks if the app has a valid API key.
@@ -171,10 +162,7 @@ public class TranslatorApp extends Application {
         if (translationManager != null) {
             translationManager.cleanup();
         }
-        if (rcsService != null) {
-            rcsService.cleanup();
-        }
-        super.onTerminate();
+
     }
 
     /**

@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Content provider for SMS functionality when the app is set as the default SMS app.
@@ -55,16 +56,13 @@ public class SmsProvider extends ContentProvider {
         Log.d(TAG, "SmsProvider created");
 
         // Get service instances from the application context
-        Application app = getContext().getApplicationContext();
+        Application app = (Application) Objects.requireNonNull(getContext()).getApplicationContext();
         
         if (app instanceof TranslatorApp) {
             TranslatorApp translatorApp = (TranslatorApp) app;
             messageService = translatorApp.getMessageService();
             translationManager = translatorApp.getTranslationManager();
-        } else if (app instanceof OptimizedTranslatorApp) {
-            OptimizedTranslatorApp optimizedApp = (OptimizedTranslatorApp) app;
-            messageService = optimizedApp.getMessageService();
-            translationManager = optimizedApp.getTranslationManager();
+
         } else {
             Log.e(TAG, "Unknown application type: " + app.getClass().getName());
             return false;

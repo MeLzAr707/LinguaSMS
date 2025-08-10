@@ -49,7 +49,7 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         setContentView(R.layout.activity_search);
 
         // Get service instances from OptimizedTranslatorApp
-        OptimizedTranslatorApp app = (OptimizedTranslatorApp) getApplication();
+        TranslatorApp app = (TranslatorApp) getApplication();
         messageService = app.getMessageService();
         translationCache = app.getTranslationCache();
 
