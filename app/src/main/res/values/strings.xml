@@ -379,4 +379,39 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <!-- Missing strings for offline models functionality -->
+    <string name="offline_models_description">Download language models to enable offline translation when internet is unavailable</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="offline_models_title">Available Offline Models</string>
+    <string name="no_offline_models_available">No offline models available for download</string>
+    <string name="model_not_downloaded">Model not downloaded</string>
+    <string name="download_model">Download Model</string>
+    <string name="model_downloading">Downloading model...</string>
+
+    <!-- Missing strings for translation preferences -->
+    <string name="pref_category_translation">Translation Settings</string>
+    <string name="pref_translation_mode">Translation Mode</string>
+    <string name="pref_translation_mode_summary">Choose how translations are performed</string>
+    <string name="pref_prefer_offline">Prefer Offline Translation</string>
+    <string name="pref_prefer_offline_summary">Use offline models when available to save data</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
+    <string name="pref_category_offline_models">Offline Translation</string>
+    <string name="enable_offline_translation_summary">Use downloaded models for offline translation</string>
+
+    <!-- Translation mode arrays -->
+    <string-array name="translation_mode_names">
+        <item>Online Only</item>
+        <item>Offline Preferred</item>
+        <item>Offline Only</item>
+        <item>Automatic</item>
+    </string-array>
+
+    <string-array name="translation_mode_values">
+        <item>online</item>
+        <item>offline_preferred</item>
+        <item>offline_only</item>
+        <item>automatic</item>
+    </string-array>
 </resources>
