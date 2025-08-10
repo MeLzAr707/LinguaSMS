@@ -18,17 +18,17 @@ public class OptimizedTranslatorApp extends Application {
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
-    private GoogleTranslationService googleTranslationService;
     private UserPreferences userPreferences;
     
     @Override
     public void onCreate() {
         super.onCreate();
         
-        // Initialize services
+        // Initialize user preferences
         userPreferences = new UserPreferences(this);
-        googleTranslationService = new GoogleTranslationService(userPreferences.getApiKey());
-        translationManager = new TranslationManager(this, googleTranslationService, userPreferences);
+        
+        // Initialize services
+        translationManager = new TranslationManager(this);
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
         
@@ -154,20 +154,11 @@ public class OptimizedTranslatorApp extends Application {
     }
     
     /**
-     * Gets the message service.
+     * Gets the user preferences.
      *
-     * @return The message service
+     * @return The user preferences
      */
-    public MessageService getMessageService() {
-        return messageService;
-    }
-    
-    /**
-     * Gets the translation cache.
-     *
-     * @return The translation cache
-     */
-    public TranslationCache getTranslationCache() {
-        return translationManager != null ? translationManager.getTranslationCache() : null;
+    public UserPreferences getUserPreferences() {
+        return userPreferences;
     }
 }

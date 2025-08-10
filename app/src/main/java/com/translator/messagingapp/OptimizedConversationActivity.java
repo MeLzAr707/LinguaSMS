@@ -86,17 +86,41 @@ public class OptimizedConversationActivity extends BaseActivity {
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
+            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.OnMessageClickListener() {
                 @Override
-                public void onMessageClick(Message message) {
+                public void onMessageClick(Message message, int position) {
                     // Handle message click
                     Toast.makeText(OptimizedConversationActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
-                public void onMessageLongClick(Message message) {
+                public void onMessageLongClick(Message message, int position) {
                     // Handle message long click
                     showMessageOptions(message);
+                }
+
+                @Override
+                public void onTranslateClick(Message message, int position) {
+                    // Handle translate click
+                    handleTranslateMessage(message);
+                }
+
+                @Override
+                public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
+                    // Handle attachment click
+                    // TODO: Implement attachment viewing
+                }
+
+                @Override
+                public void onReactionClick(Message message, int position) {
+                    // Handle reaction click
+                    // TODO: Implement reaction handling
+                }
+
+                @Override
+                public void onAddReactionClick(Message message, int position) {
+                    // Handle add reaction click
+                    // TODO: Implement add reaction functionality
                 }
             });
             messagesRecyclerView.setAdapter(adapter);
@@ -121,6 +145,16 @@ public class OptimizedConversationActivity extends BaseActivity {
     private void showMessageOptions(Message message) {
         // Implementation for showing message options
         Toast.makeText(this, "Message options", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Handles translate message action.
+     *
+     * @param message The message to translate
+     */
+    private void handleTranslateMessage(Message message) {
+        // Implementation for translating message
+        Toast.makeText(this, "Translating message", Toast.LENGTH_SHORT).show();
     }
 
     /**
