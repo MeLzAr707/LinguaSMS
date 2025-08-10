@@ -576,11 +576,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
 
-            // Try to find date text with either ID
-            dateText = itemView.findViewById(R.id.date_text);
-            if (dateText == null) {
-                dateText = itemView.findViewById(R.id.message_date);
-            }
+            dateText = itemView.findViewById(R.id.message_date);
 
             translateButton = itemView.findViewById(R.id.translate_button);
 
@@ -609,11 +605,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
 
-            // Try to find date text with either ID
-            dateText = itemView.findViewById(R.id.date_text);
-            if (dateText == null) {
-                dateText = itemView.findViewById(R.id.message_date);
-            }
+            dateText = itemView.findViewById(R.id.message_date);
 
             messageStatus = itemView.findViewById(R.id.message_status);
             translateButton = itemView.findViewById(R.id.translate_button);
@@ -644,11 +636,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
 
-            // Try to find date text with either ID
-            dateText = itemView.findViewById(R.id.date_text);
-            if (dateText == null) {
-                dateText = itemView.findViewById(R.id.message_date);
-            }
+            dateText = itemView.findViewById(R.id.message_date);
 
             translateButton = itemView.findViewById(R.id.translate_button);
             mediaContainer = itemView.findViewById(R.id.media_container);
@@ -681,11 +669,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
 
-            // Try to find date text with either ID
-            dateText = itemView.findViewById(R.id.date_text);
-            if (dateText == null) {
-                dateText = itemView.findViewById(R.id.message_date);
-            }
+            dateText = itemView.findViewById(R.id.message_date);
 
             messageStatus = itemView.findViewById(R.id.message_status);
             translateButton = itemView.findViewById(R.id.translate_button);

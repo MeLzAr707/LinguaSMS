@@ -75,7 +75,7 @@
 
             <!-- Message timestamp -->
             <TextView
-                android:id="@+id/date_text"
+                android:id="@+id/message_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
