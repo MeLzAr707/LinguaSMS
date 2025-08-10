@@ -380,27 +380,12 @@
         <item>3</item>
     </string-array>
 
-    <!-- Missing string resources for translation preferences -->
-    <string name="pref_category_translation">Translation</string>
-    <string name="pref_translation_mode">Translation Mode</string>
-    <string name="pref_translation_mode_summary">Choose how messages are translated</string>
-    <string name="pref_prefer_offline">Prefer Offline Translation</string>
-    <string name="pref_prefer_offline_summary">Use offline translation when available</string>
-    <string name="pref_manage_offline_models">Manage Offline Models</string>
-    <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
-    <string name="pref_category_offline_models">Offline Models</string>
-    <string name="enable_offline_translation_summary">Enable offline translation for supported languages</string>
-
-    <!-- Translation mode arrays -->
-    <string-array name="translation_mode_names">
-        <item>Online Only</item>
-        <item>Offline Preferred</item>
-        <item>Hybrid Mode</item>
-    </string-array>
-
-    <string-array name="translation_mode_values">
-        <item>online</item>
-        <item>offline</item>
-        <item>hybrid</item>
-    </string-array>
+    <!-- Offline Translation Models -->
+    <string name="offline_models_description">Download language models for offline translation. This allows you to translate messages even without an internet connection.</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="offline_models_title">Offline Translation Models</string>
+    <string name="no_offline_models_available">No offline models available for download</string>
+    <string name="model_not_downloaded">Model not downloaded</string>
+    <string name="download_model">Download Model</string>
+    <string name="model_downloading">Downloading model…</string>
 </resources>
