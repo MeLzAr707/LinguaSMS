@@ -45,6 +45,9 @@
     <string name="add_attachment">Add attachment</string>
     <string name="translate_message">Translate message</string>
     <string name="translated_message">Translated message</string>
+    <string name="translate_input_message">Translate input message</string>
+    <string name="translate_outgoing_message">Translate outgoing message</string>
+    <string name="add_emoji">Add emoji</string>
 
     <!-- New Message -->
     <string name="title_activity_new_message">New Message</string>
@@ -385,6 +388,8 @@
     <string name="debug_check_button">Check</string>
     <string name="debug_open_button">Open</string>
     <string name="debug_direct_open_button">Direct Open</string>
+    <string name="please_enter_address">Please enter an address</string>
+    <string name="error_debug">Debug error: %1$s</string>
 
     <!-- Message Layout Strings -->
     <string name="message_status_description">Message status</string>

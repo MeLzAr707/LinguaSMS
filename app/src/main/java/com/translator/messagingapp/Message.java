@@ -6,6 +6,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -48,6 +49,8 @@ public class Message {
     public static final int TYPE_OUTBOX = 4;
     public static final int TYPE_FAILED = 5;
     public static final int TYPE_QUEUED = 6;
+    public static final int TYPE_ALL = 0; // Show all message types
+    public static final int TYPE_SMS = 7; // SMS message type
     // Constants for message types
     public static final int TYPE_MMS = 128; // Or any value that doesn't conflict with existing types
 
@@ -99,6 +102,20 @@ public class Message {
         this.id = id;
     }
 
+    /**
+     * Sets the message ID from a String.
+     *
+     * @param id The message ID as a String
+     */
+    public void setId(String id) {
+        try {
+            this.id = id != null ? Long.parseLong(id) : -1;
+        } catch (NumberFormatException e) {
+            Log.w(TAG, "Invalid ID format: " + id, e);
+            this.id = -1;
+        }
+    }
+
     public String getBody() {
         return body;
     }
@@ -145,6 +162,20 @@ public class Message {
 
     public void setThreadId(long threadId) {
         this.threadId = threadId;
+    }
+
+    /**
+     * Sets the thread ID from a String.
+     *
+     * @param threadId The thread ID as a String
+     */
+    public void setThreadId(String threadId) {
+        try {
+            this.threadId = threadId != null ? Long.parseLong(threadId) : -1;
+        } catch (NumberFormatException e) {
+            Log.w(TAG, "Invalid thread ID format: " + threadId, e);
+            this.threadId = -1;
+        }
     }
 
     public String getContactName() {
@@ -424,6 +455,58 @@ public class Message {
      */
     public boolean isRcs() {
         return messageType == MESSAGE_TYPE_RCS;
+    }
+
+    /**
+     * Sets whether the message has been translated.
+     *
+     * @param translated true if the message has been translated, false otherwise
+     */
+    public void setTranslated(boolean translated) {
+        // This method updates the internal state to reflect translation status
+        if (translated) {
+            // If marking as translated but no translated text exists, 
+            // this indicates the original text should be shown as translated
+            if (translatedText == null || translatedText.isEmpty()) {
+                translatedText = body; // Use original body as translated text
+            }
+        } else {
+            // Clear translation when marking as not translated
+            translatedText = null;
+            showTranslation = false;
+        }
+    }
+
+    /**
+     * Checks if the message has been delivered.
+     *
+     * @return true if the message has been delivered, false otherwise
+     */
+    public boolean isDelivered() {
+        // A message is considered delivered if it's sent, queued, or in outbox
+        return type == TYPE_SENT || type == TYPE_QUEUED || type == TYPE_OUTBOX;
+    }
+
+    /**
+     * Checks if the message is translatable.
+     *
+     * @return true if the message can be translated, false otherwise
+     */
+    public boolean isTranslatable() {
+        // A message is translatable if it has text content and is not empty
+        return body != null && !body.trim().isEmpty() && !body.matches("^[\\s\\p{Punct}]*$");
+    }
+
+    /**
+     * Gets the reactions for this message.
+     *
+     * @return A list of message reactions
+     */
+    public List<MessageReaction> getReactions() {
+        if (reactionManager != null) {
+            return reactionManager.getAllReactions();
+        }
+        return new ArrayList<>(); // Return empty list if no reactions
     }
 
     @Override

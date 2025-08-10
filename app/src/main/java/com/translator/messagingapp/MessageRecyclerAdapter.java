@@ -261,33 +261,45 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             mediaContainer.setVisibility(View.VISIBLE);
             
             // Get the first attachment
-            MmsMessage.Attachment attachment = message.getAttachments().get(0);
+            if (message instanceof MmsMessage) {
+                MmsMessage mmsMessage = (MmsMessage) message;
+                List<Attachment> attachmentObjects = mmsMessage.getAttachmentObjects();
+                if (!attachmentObjects.isEmpty()) {
+                    Attachment attachment = attachmentObjects.get(0);
             
-            // Check if it's an image
-            if (attachment.isImage()) {
-                // Load image with Glide
-                Glide.with(context)
-                        .load(attachment.getUri())
-                        .placeholder(R.drawable.ic_attachment)
-                        .error(R.drawable.ic_attachment)
-                        .into(mediaIcon);
+                    // Check if it's an image
+                    if (attachment.isImage()) {
+                        // Load image with Glide
+                        Glide.with(context)
+                                .load(attachment.getUri())
+                                .placeholder(R.drawable.ic_attachment)
+                                .error(R.drawable.ic_attachment)
+                                .into(mediaIcon);
+                    } else {
+                        // Show generic attachment icon
+                        mediaIcon.setImageResource(R.drawable.ic_attachment);
+                    }
+            
+                    // Set click listener for attachment
+                    mediaIcon.setOnClickListener(v -> {
+                        if (clickListener != null) {
+                            clickListener.onAttachmentClick(attachment.getUri(), position);
+                        }
+                    });
+                } else {
+                    // No attachments, show default icon
+                    mediaIcon.setImageResource(R.drawable.ic_attachment);
+                }
             } else {
-                // Show generic attachment icon
+                // Not an MMS message, show default icon
                 mediaIcon.setImageResource(R.drawable.ic_attachment);
             }
-            
-            // Set click listener for attachment
-            mediaIcon.setOnClickListener(v -> {
-                if (clickListener != null) {
-                    clickListener.onAttachmentClick(attachment, position);
-                }
-            });
         } else {
             mediaContainer.setVisibility(View.GONE);
         }
     }
 
-    private void setupMessageClickListeners(View itemView, View translateButton, Message message, int position) {
+    private void setupMessageClickListeners(View itemView, ImageView translateButton, Message message, int position) {
         // Set click listener for the whole message
         itemView.setOnClickListener(v -> {
             if (clickListener != null) {
@@ -396,7 +408,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView dateText;
-        View translateButton;
+        ImageView translateButton;
         LinearLayout reactionsLayout;
         View addReactionButton;
 
@@ -417,7 +429,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView messageText;
         TextView dateText;
         ImageView messageStatus;
-        View translateButton;
+        ImageView translateButton;
         LinearLayout reactionsLayout;
         View addReactionButton;
 
@@ -438,7 +450,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     static class IncomingMediaMessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
         TextView dateText;
-        View translateButton;
+        ImageView translateButton;
         ViewGroup mediaContainer;
         ImageView mediaIcon;
         LinearLayout reactionsLayout;
@@ -463,7 +475,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView messageText;
         TextView dateText;
         ImageView messageStatus;
-        View translateButton;
+        ImageView translateButton;
         ViewGroup mediaContainer;
         ImageView mediaIcon;
         LinearLayout reactionsLayout;

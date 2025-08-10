@@ -25,6 +25,15 @@ public class MmsMessage extends Message {
     private String transactionId;
 
     /**
+     * Creates a new MMS message with default values.
+     */
+    public MmsMessage() {
+        super();
+        this.attachments = new ArrayList<>();
+        setMessageType(MESSAGE_TYPE_MMS);
+    }
+
+    /**
      * Creates a new MMS message.
      *
      * @param id The message ID

@@ -10,6 +10,9 @@ public class Attachment {
     private String contentType;
     private String fileName;
     private long size;
+    private String data;     // For text data
+    private String text;     // For text content
+    private String partId;   // For MMS part ID
 
     /**
      * Creates a new attachment.
@@ -96,6 +99,78 @@ public class Attachment {
      */
     public boolean isText() {
         return contentType != null && contentType.startsWith("text/");
+    }
+
+    /**
+     * Sets the content type of this attachment.
+     *
+     * @param contentType The content type to set
+     */
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
+    }
+
+    /**
+     * Sets the file name of this attachment.
+     *
+     * @param fileName The file name to set  
+     */
+    public void setName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    /**
+     * Sets the data content of this attachment.
+     *
+     * @param data The data content to set
+     */
+    public void setData(String data) {
+        this.data = data;
+    }
+
+    /**
+     * Gets the data content of this attachment.
+     *
+     * @return The data content
+     */
+    public String getData() {
+        return data;
+    }
+
+    /**
+     * Sets the text content of this attachment.
+     *
+     * @param text The text content to set
+     */
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    /**
+     * Gets the text content of this attachment.
+     *
+     * @return The text content
+     */
+    public String getText() {
+        return text;
+    }
+
+    /**
+     * Sets the part ID of this attachment.
+     *
+     * @param partId The part ID to set
+     */
+    public void setPartId(String partId) {
+        this.partId = partId;
+    }
+
+    /**
+     * Gets the part ID of this attachment.
+     *
+     * @return The part ID
+     */
+    public String getPartId() {
+        return partId;
     }
 }
 

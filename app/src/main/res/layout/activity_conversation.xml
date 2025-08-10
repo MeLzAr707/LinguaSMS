@@ -117,6 +117,24 @@
                     android:minHeight="48dp"
                     android:padding="12dp" />
 
+                <ImageButton
+                    android:id="@+id/translate_input_button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/translate_input_message"
+                    android:src="@drawable/ic_translate"
+                    app:tint="?attr/colorPrimary" />
+
+                <ImageButton
+                    android:id="@+id/emoji_button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/add_emoji"
+                    android:src="@drawable/ic_emoji_emotions"
+                    app:tint="?attr/colorPrimary" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

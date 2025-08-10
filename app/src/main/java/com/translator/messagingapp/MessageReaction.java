@@ -81,6 +81,17 @@ public class MessageReaction {
     }
 
     /**
+     * Gets the count of this specific reaction.
+     * For individual reactions, this is always 1.
+     * For grouped reactions, this should be overridden.
+     *
+     * @return The count (always 1 for individual reactions)
+     */
+    public int getCount() {
+        return 1;
+    }
+
+    /**
      * Utility class for managing reactions to a message.
      */
     public static class ReactionManager {

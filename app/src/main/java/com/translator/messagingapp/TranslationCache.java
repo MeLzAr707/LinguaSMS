@@ -241,6 +241,28 @@ public class TranslationCache {
     }
 
     /**
+     * Saves a translation for a specific message.
+     *
+     * @param messageId The message ID
+     * @param translatedText The translated text
+     */
+    public void saveTranslation(long messageId, String translatedText) {
+        String key = "msg_" + messageId + "_translation";
+        put(key, translatedText);
+    }
+
+    /**
+     * Gets a translation for a specific message.
+     *
+     * @param messageId The message ID
+     * @return The translated text, or null if not found
+     */
+    public String getTranslation(long messageId) {
+        String key = "msg_" + messageId + "_translation";
+        return get(key);
+    }
+
+    /**
      * Clears the cache.
      */
     public void clear() {
