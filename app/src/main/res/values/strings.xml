@@ -331,6 +331,29 @@
     <string name="pref_debug_mode_summary">Enable additional logging and debug features</string>
     <string name="debug">debug</string>
     <string name="search">Search</string>
+    
+    <!-- Offline Models -->
+    <string name="pref_category_offline_models">Offline Translation Models</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
+    
+    <string name="offline_models_title">Offline Translation Models</string>
+    <string name="offline_models_description">Download language models for offline translation when no internet connection is available.</string>
+    <string name="model_downloaded">Downloaded</string>
+    <string name="model_not_downloaded">Not Downloaded</string>
+    <string name="model_downloading">Downloading...</string>
+    <string name="model_download_failed">Download Failed</string>
+    <string name="download_model">Download</string>
+    <string name="delete_model">Delete</string>
+    <string name="model_size">Size: %1$s</string>
+    <string name="download_progress">Downloading: %1$d%%</string>
+    <string name="model_download_success">Model downloaded successfully</string>
+    <string name="model_delete_success">Model deleted successfully</string>
+    <string name="model_download_error">Error downloading model: %1$s</string>
+    <string name="model_delete_error">Error deleting model: %1$s</string>
+    <string name="no_offline_models_available">No offline models available</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="enable_offline_translation_summary">Use offline models when available</string>
 
     <!-- Offline Translation Settings -->
     <string name="pref_translation_mode">Translation Mode</string>

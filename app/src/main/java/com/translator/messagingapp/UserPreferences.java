@@ -28,13 +28,7 @@ public class UserPreferences {
     private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_API_SERVICE = "api_service";
-    private static final String KEY_TRANSLATION_MODE = "translation_mode";
-    private static final String KEY_PREFER_OFFLINE = "prefer_offline";
-    
-    // Translation mode constants
-    public static final int TRANSLATION_MODE_ONLINE_ONLY = 0;
-    public static final int TRANSLATION_MODE_OFFLINE_ONLY = 1;
-    public static final int TRANSLATION_MODE_AUTO = 2; // Try offline first, fallback to online
+    private static final String KEY_ENABLE_OFFLINE_TRANSLATION = "enable_offline_translation";
     
     // Default values
     private static final boolean DEFAULT_AUTO_TRANSLATE = false;
@@ -43,8 +37,7 @@ public class UserPreferences {
     private static final int DEFAULT_THEME_ID = THEME_SYSTEM; // System default
     private static final boolean DEFAULT_DEBUG_MODE = false;
     private static final String DEFAULT_API_SERVICE = "google";
-    private static final int DEFAULT_TRANSLATION_MODE = TRANSLATION_MODE_AUTO;
-    private static final boolean DEFAULT_PREFER_OFFLINE = true;
+    private static final boolean DEFAULT_ENABLE_OFFLINE_TRANSLATION = false;
     
     private final SharedPreferences preferences;
     private final Context context;
@@ -366,59 +359,32 @@ public class UserPreferences {
     }
     
     /**
-     * Gets the translation mode preference.
+     * Checks if offline translation is enabled.
      *
-     * @return the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     * @return true if offline translation is enabled, false otherwise
      */
-    public int getTranslationMode() {
+    public boolean isOfflineTranslationEnabled() {
         try {
-            return preferences.getInt(KEY_TRANSLATION_MODE, DEFAULT_TRANSLATION_MODE);
+            return preferences.getBoolean(KEY_ENABLE_OFFLINE_TRANSLATION, DEFAULT_ENABLE_OFFLINE_TRANSLATION);
         } catch (Exception e) {
-            Log.e(TAG, "Error getting translation mode", e);
-            return DEFAULT_TRANSLATION_MODE;
+            Log.e(TAG, "Error getting offline translation preference", e);
+            return DEFAULT_ENABLE_OFFLINE_TRANSLATION;
         }
     }
     
     /**
-     * Sets the translation mode preference.
+     * Sets the offline translation preference.
      *
-     * @param mode the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     * @param enabled true to enable offline translation, false to disable
      */
-    public void setTranslationMode(int mode) {
+    public void setOfflineTranslationEnabled(boolean enabled) {
         try {
-            preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
+            preferences.edit().putBoolean(KEY_ENABLE_OFFLINE_TRANSLATION, enabled).apply();
         } catch (Exception e) {
-            Log.e(TAG, "Error setting translation mode", e);
+            Log.e(TAG, "Error setting offline translation preference", e);
         }
     }
-    
-    /**
-     * Gets whether to prefer offline translation when both are available.
-     *
-     * @return true if offline translation is preferred, false otherwise
-     */
-    public boolean getPreferOfflineTranslation() {
-        try {
-            return preferences.getBoolean(KEY_PREFER_OFFLINE, DEFAULT_PREFER_OFFLINE);
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting prefer offline preference", e);
-            return DEFAULT_PREFER_OFFLINE;
-        }
-    }
-    
-    /**
-     * Sets whether to prefer offline translation when both are available.
-     *
-     * @param prefer true to prefer offline translation, false otherwise
-     */
-    public void setPreferOfflineTranslation(boolean prefer) {
-        try {
-            preferences.edit().putBoolean(KEY_PREFER_OFFLINE, prefer).apply();
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting prefer offline preference", e);
-        }
-    }
-    
+
     /**
      * Clears all preferences.
      */
