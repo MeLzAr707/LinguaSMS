@@ -257,6 +257,15 @@ public class Message {
     public boolean hasReactions() {
         return reactionManager != null && reactionManager.getTotalReactionCount() > 0;
     }
+    
+    /**
+     * Gets all reactions for this message.
+     * 
+     * @return The list of reactions
+     */
+    public List<MessageReaction> getReactions() {
+        return getReactionManager().getAllReactions();
+    }
 
     /**
      * Gets the message type (SMS or MMS).
@@ -312,6 +321,16 @@ public class Message {
     public boolean isTranslated() {
         return translatedText != null && !translatedText.isEmpty();
     }
+    
+    /**
+     * Checks if the message can be translated.
+     *
+     * @return true if the message can be translated, false otherwise
+     */
+    public boolean isTranslatable() {
+        // A message is translatable if it has non-empty body text
+        return body != null && !body.trim().isEmpty();
+    }
 
     /**
      * Checks if the message is incoming.
@@ -320,6 +339,25 @@ public class Message {
      */
     public boolean isIncoming() {
         return type == TYPE_INBOX;
+    }
+    
+    /**
+     * Checks if the message has been delivered.
+     *
+     * @return true if the message has been delivered, false otherwise
+     */
+    public boolean isDelivered() {
+        // A message is considered delivered if it's sent and not failed
+        return type == TYPE_SENT || (type == TYPE_OUTBOX && !isFailed());
+    }
+    
+    /**
+     * Checks if the message failed to send.
+     *
+     * @return true if the message failed to send, false otherwise
+     */
+    public boolean isFailed() {
+        return type == TYPE_FAILED;
     }
 
     /**
