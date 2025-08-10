@@ -23,8 +23,14 @@ public class OptimizedTranslatorApp extends Application {
     public void onCreate() {
         super.onCreate();
         
-        // Initialize services
-        translationManager = new TranslationManager(this);
+        // Initialize user preferences first
+        UserPreferences userPreferences = new UserPreferences(this);
+        
+        // Initialize translation service
+        GoogleTranslationService translationService = new GoogleTranslationService(userPreferences.getApiKey());
+        
+        // Initialize translation manager with all required parameters
+        translationManager = new TranslationManager(this, translationService, userPreferences);
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
         
@@ -147,5 +153,14 @@ public class OptimizedTranslatorApp extends Application {
      */
     public TranslationManager getTranslationManager() {
         return translationManager;
+    }
+    
+    /**
+     * Gets the message service.
+     *
+     * @return The message service
+     */
+    public MessageService getMessageService() {
+        return messageService;
     }
 }
