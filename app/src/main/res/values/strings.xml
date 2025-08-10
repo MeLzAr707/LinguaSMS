@@ -138,6 +138,9 @@
     <!-- Errors -->
     <string name="error_generic">An error occurred</string>
     <string name="error_no_internet">No internet connection</string>
+    <string name="error_no_recipient">Please enter a recipient</string>
+    <string name="error_no_message">Please enter a message</string>
+    <string name="error_sending_message">Error sending message</string>
     <string name="error_translation_failed">Translation failed</string>
     <string name="error_send_failed">Failed to send message</string>
     <string name="error_load_failed">Failed to load messages</string>
@@ -270,11 +273,23 @@
     <string name="translated_to_format">Translated to %1$s: %2$s</string>
     <string name="hide_translation">Hide Translation</string>
     <string name="translate">Translate</string>
-
-    <!-- Search Functionality -->
-    <string name="search_messages">Search Messages</string>
+    <!-- Missing string resources -->
+    <string name="error_deleting_message">Error deleting message</string>
+    <string name="message_deleted">Message deleted</string>
+    <string name="delete_message_confirmation">Are you sure you want to delete this message? This action cannot be undone.</string>
+    <string name="error_copying_to_clipboard">Error copying to clipboard</string>
+    <string name="add_reaction">Add Reaction</string>
+    <string name="reaction_added">Reaction added</string>
+    <string name="reaction_removed">Reaction removed</string>
+    <string name="insert_emoji">Insert Emoji</string>
+    <string name="no_recent_emojis">No recently used emojis</string>
+    <!-- Additional missing strings from error messages -->
     <string name="search_hint">Enter search text</string>
     <string name="clear_search">Clear search</string>
+    <string name="recently_used">Recently Used</string>
+
+    <!-- Other potentially missing strings -->
+    <string name="search_messages">Search Messages</string>
     <string name="no_search_results">No messages found matching your search</string>
     <string name="search_error">Error searching messages</string>
     <string name="search_in_progress">Searching messages…</string>
@@ -286,10 +301,6 @@
     <string name="search_results_count">%1$d results found</string>
     <string name="search_all_messages">Search all messages</string>
     <string name="search_all_conversations">Search all conversations</string>
-    <!-- Emoji Reactions -->
-    <string name="add_reaction">Add Reaction</string>
-    <string name="remove_reaction">Remove Reaction</string>
-    <string name="recently_used">Recently Used</string>
     <string name="emoji_picker">Emoji Picker</string>
     <string name="emoji_categories">Categories</string>
     <string name="emoji_category_smileys">Smileys &amp; Emotion</string>
@@ -301,9 +312,80 @@
     <string name="emoji_category_objects">Objects</string>
     <string name="emoji_category_symbols">Symbols</string>
     <string name="emoji_category_flags">Flags</string>
-    <string name="no_recent_emojis">No recently used emojis</string>
-    <string name="reaction_added">Reaction added</string>
-    <string name="reaction_removed">Reaction removed</string>
-    <string name="insert_emoji">Insert Emoji</string>
+    <string name="remove_reaction">Remove Reaction</string>
+    <!--  Added missing strings  -->
+    <string name="translate_input">Translate input text</string>
 
+    <!-- Settings Preferences -->
+    <string name="pref_category_general">General</string>
+    <string name="pref_category_appearance">Appearance</string>
+    <string name="pref_category_api">API Settings</string>
+    <string name="pref_category_advanced">Advanced</string>
+
+    <string name="pref_auto_translate">Auto-Translate Messages</string>
+    <string name="pref_auto_translate_summary">Automatically translate incoming messages</string>
+
+    <string name="pref_preferred_language">Preferred Language</string>
+    <string name="pref_preferred_language_summary">Language to translate incoming messages to</string>
+
+    <string name="pref_preferred_outgoing_language">Outgoing Language</string>
+    <string name="pref_preferred_outgoing_language_summary">Language to translate outgoing messages to</string>
+
+    <string name="pref_theme">Theme</string>
+    <string name="pref_theme_summary">Change app appearance</string>
+
+    <string name="pref_api_key">API Key</string>
+    <string name="pref_api_key_summary">Enter your translation API key</string>
+    <string name="api_key_set">API key is set</string>
+
+    <string name="pref_api_service">API Service</string>
+    <string name="pref_api_service_summary">Select translation service provider</string>
+
+    <string name="pref_debug_mode">Debug Mode</string>
+    <string name="pref_debug_mode_summary">Enable additional logging and debug features</string>
+    <string name="debug">debug</string>
+    <string name="search">Search</string>
+
+    <string name="pref_preferred_incoming_language">Preferred Incoming Language</string>
+    <string name="pref_preferred_incoming_language_summary">Language to translate incoming messages to</string>
+
+    <!-- Error and UI messages -->
+    <string name="error">Error</string>
+    <string name="settings_error">Settings Error</string>
+    <string name="settings_error_message">Unable to load settings. Please try again.</string>
+    <string name="go_back">Go Back</string>
+    <string name="unknown_contact">Unknown Contact</string>
+    <string name="error_loading_conversation">Error loading conversation</string>
+
+    <!-- Default SMS app dialog -->
+    <string name="default_sms_title">Set as Default SMS App</string>
+    <string name="default_sms_message">This app needs to be set as the default SMS app to send and receive messages. Would you like to set it as the default SMS app now?</string>
+    <string name="set_default">Set as Default</string>
+    <string name="not_now">Not Now</string>
+    <string name="default_set_success">Successfully set as default SMS app</string>
+    <string name="default_set_failed">Failed to set as default SMS app</string>
+
+    <!-- Arrays for theme and API services -->
+    <string-array name="theme_names">
+        <item>Light</item>
+        <item>Dark</item>
+        <item>Black Glass</item>
+        <item>System Default</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <!-- Offline Translation Model Strings -->
+    <string name="offline_models_title">Offline Translation Models</string>
+    <string name="offline_models_description">Download and manage translation models for offline use</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="no_offline_models_available">No offline models available</string>
+    <string name="model_not_downloaded">Model not downloaded</string>
+    <string name="download_model">Download Model</string>
+    <string name="model_downloading">Downloading model...</string>
 </resources>
