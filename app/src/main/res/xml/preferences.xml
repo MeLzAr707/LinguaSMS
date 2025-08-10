@@ -36,6 +36,15 @@
             android:defaultValue="3" />
     </PreferenceCategory>
     
+    <PreferenceCategory android:title="@string/pref_category_api">
+        <EditTextPreference
+            android:key="api_key"
+            android:title="@string/pref_api_key"
+            android:summary="@string/pref_api_key_summary"
+            android:dialogTitle="@string/enter_api_key"
+            android:inputType="textPassword" />
+    </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/pref_category_translation">
         <ListPreference
             android:key="translation_mode"
@@ -43,7 +52,7 @@
             android:summary="@string/pref_translation_mode_summary"
             android:entries="@array/translation_mode_names"
             android:entryValues="@array/translation_mode_values"
-            android:defaultValue="online" />
+            android:defaultValue="hybrid_online" />
             
         <SwitchPreferenceCompat
             android:key="prefer_offline"
@@ -57,13 +66,12 @@
             android:summary="@string/pref_manage_offline_models_summary" />
     </PreferenceCategory>
     
-    <PreferenceCategory android:title="@string/pref_category_api">
-        <EditTextPreference
-            android:key="api_key"
-            android:title="@string/pref_api_key"
-            android:summary="@string/pref_api_key_summary"
-            android:dialogTitle="@string/enter_api_key"
-            android:inputType="textPassword" />
+    <PreferenceCategory android:title="@string/pref_category_advanced">
+        <SwitchPreferenceCompat
+            android:key="debug_mode"
+            android:title="@string/pref_debug_mode"
+            android:summary="@string/pref_debug_mode_summary"
+            android:defaultValue="false" />
     </PreferenceCategory>
     
     <PreferenceCategory android:title="@string/pref_category_offline_models">
@@ -74,16 +82,8 @@
             android:defaultValue="false" />
             
         <Preference
-            android:key="manage_offline_models_advanced"
+            android:key="manage_offline_models_section"
             android:title="@string/pref_manage_offline_models"
             android:summary="@string/pref_manage_offline_models_summary" />
-    </PreferenceCategory>
-    
-    <PreferenceCategory android:title="@string/pref_category_advanced">
-        <SwitchPreferenceCompat
-            android:key="debug_mode"
-            android:title="@string/pref_debug_mode"
-            android:summary="@string/pref_debug_mode_summary"
-            android:defaultValue="false" />
     </PreferenceCategory>
 </PreferenceScreen>
