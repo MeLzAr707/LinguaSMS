@@ -380,39 +380,38 @@
         <item>3</item>
     </string-array>
 
-    <!-- Debug Activity Strings -->
-    <string name="debug_check_button">Check</string>
-    <string name="debug_open_button">Open</string>
-    <string name="debug_direct_open_button">Direct Open</string>
-    <string name="debug_phone_number_hint">Enter phone number</string>
+    <!-- Missing strings for offline models functionality -->
+    <string name="offline_models_description">Download language models to enable offline translation when internet is unavailable</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="offline_models_title">Available Offline Models</string>
+    <string name="no_offline_models_available">No offline models available for download</string>
+    <string name="model_not_downloaded">Model not downloaded</string>
+    <string name="download_model">Download Model</string>
+    <string name="model_downloading">Downloading model...</string>
 
-    <!-- Message Layout Placeholders -->
-    <string name="message_text_placeholder">Message text</string>
-    <string name="time_placeholder">12:34</string>
+    <!-- Missing strings for translation preferences -->
+    <string name="pref_category_translation">Translation Settings</string>
+    <string name="pref_translation_mode">Translation Mode</string>
+    <string name="pref_translation_mode_summary">Choose how translations are performed</string>
+    <string name="pref_prefer_offline">Prefer Offline Translation</string>
+    <string name="pref_prefer_offline_summary">Use offline models when available to save data</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
+    <string name="pref_category_offline_models">Offline Translation</string>
+    <string name="enable_offline_translation_summary">Use downloaded models for offline translation</string>
 
-    <!-- Toast Messages -->
-    <string name="message_clicked">Message clicked</string>
-    <string name="error_initializing_conversation">Error initializing conversation</string>
-    <string name="message_options">Message options</string>
-    <string name="error_initializing_ui">Error initializing UI components</string>
-    <string name="send_message_toast">Send message</string>
+    <!-- Translation mode arrays -->
+    <string-array name="translation_mode_names">
+        <item>Online Only</item>
+        <item>Offline Preferred</item>
+        <item>Offline Only</item>
+        <item>Automatic</item>
+    </string-array>
 
-    <!-- Additional Accessibility Strings -->
-    <string name="message_status_description">Message status</string>
-    <string name="received_message_background">Received message background</string>
-    <string name="sent_message_background">Sent message background</string>
-
-    <!-- Additional Debug and Development Strings -->
-    <string name="debug_result">Debug Result</string>
-    <string name="debug_address_label">Debug Address</string>
-    <string name="debug_sms_title">Debug SMS</string>
-
-    <!-- PhoneUtils Toast Messages -->
-    <string name="features_limited">Some features will be limited</string>
-    <string name="error_requesting_sms_permissions">Error requesting SMS permissions: %1$s</string>
-    <string name="error_making_call">Error making call: %1$s</string>
-
-    <!-- DebugActivity Messages -->
-    <string name="please_enter_address">Please enter an address</string>
-    <string name="error_debug">Error: %1$s</string>
+    <string-array name="translation_mode_values">
+        <item>online</item>
+        <item>offline_preferred</item>
+        <item>offline_only</item>
+        <item>automatic</item>
+    </string-array>
 </resources>
