@@ -15,9 +15,10 @@ public class OptimizedTranslatorApp extends Application {
     private static final String TAG = "OptimizedTranslatorApp";
     
     private ExecutorService prefetchExecutor;
-    private OptimizedMessageService optimizedMessageService;
     private MessageService messageService;
+    private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
+    private GoogleTranslationService googleTranslationService;
     private UserPreferences userPreferences;
     
     @Override
@@ -25,7 +26,9 @@ public class OptimizedTranslatorApp extends Application {
         super.onCreate();
         
         // Initialize services
-        translationManager = new TranslationManager(this);
+        userPreferences = new UserPreferences(this);
+        googleTranslationService = new GoogleTranslationService(userPreferences.getApiKey());
+        translationManager = new TranslationManager(this, googleTranslationService, userPreferences);
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
         
@@ -150,19 +153,21 @@ public class OptimizedTranslatorApp extends Application {
         return translationManager;
     }
     
+    /**
+     * Gets the message service.
+     *
+     * @return The message service
+     */
     public MessageService getMessageService() {
         return messageService;
     }
     
-    public OptimizedMessageService getOptimizedMessageService() {
-        return optimizedMessageService;
-    }
-    
-    public UserPreferences getUserPreferences() {
-        // Initialize if not already done
-        if (userPreferences == null) {
-            userPreferences = new UserPreferences(this);
-        }
-        return userPreferences;
+    /**
+     * Gets the translation cache.
+     *
+     * @return The translation cache
+     */
+    public TranslationCache getTranslationCache() {
+        return translationManager != null ? translationManager.getTranslationCache() : null;
     }
 }

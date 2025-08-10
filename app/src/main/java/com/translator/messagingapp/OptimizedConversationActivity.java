@@ -34,7 +34,7 @@ public class OptimizedConversationActivity extends BaseActivity {
 
     // UI components
     private RecyclerView messagesRecyclerView;
-    private OptimizedMessageRecyclerAdapter adapter;
+    private MessageRecyclerAdapter adapter;
     private EditText messageInput;
     private ImageButton sendButton;
     private ImageButton translateButton;
@@ -76,7 +76,8 @@ public class OptimizedConversationActivity extends BaseActivity {
             }
 
             // Initialize services
-            translationManager = getTranslationManager();
+            TranslatorApp app = (TranslatorApp) getApplication();
+            translationManager = app.getTranslationManager();
             messageService = new MessageService(this, translationManager);
             optimizedMessageService = new OptimizedMessageService(this, translationManager);
 
@@ -85,7 +86,7 @@ public class OptimizedConversationActivity extends BaseActivity {
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new OptimizedMessageRecyclerAdapter(this, messages, new OptimizedMessageRecyclerAdapter.MessageClickListener() {
+            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
                 @Override
                 public void onMessageClick(Message message) {
                     // Handle message click
@@ -379,10 +380,10 @@ public class OptimizedConversationActivity extends BaseActivity {
             // Set up other UI components
             messageInput = findViewById(R.id.message_input);
             sendButton = findViewById(R.id.send_button);
-            translateButton = findViewById(R.id.translate_button);
+            translateButton = findViewById(R.id.translate_input_button);
             progressBar = findViewById(R.id.progress_bar);
-            emptyStateTextView = findViewById(R.id.empty_state_text);
-            loadingIndicator = findViewById(R.id.loading_indicator);
+            emptyStateTextView = findViewById(R.id.empty_state_text_view);
+            loadingIndicator = findViewById(R.id.progress_bar);
 
             // Set up click listeners
             if (sendButton != null) {

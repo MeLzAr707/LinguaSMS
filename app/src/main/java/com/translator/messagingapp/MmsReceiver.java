@@ -17,14 +17,15 @@ public class MmsReceiver extends BroadcastReceiver {
         Log.d(TAG, "MMS received: " + intent.getAction());
 
         // Get the MessageService from the application
-        OptimizedTranslatorApp app = (OptimizedTranslatorApp) context.getApplicationContext();
+        TranslatorApp app = (TranslatorApp) context.getApplicationContext();
         MessageService messageService = app.getMessageService();
 
         if (messageService != null) {
             // Handle the MMS message
+            // For now, we'll just log it
             Log.d(TAG, "Passing MMS to MessageService");
 
-            // Handle the incoming MMS
+            // You can add more sophisticated MMS handling here
             messageService.handleIncomingMms(intent);
         } else {
             Log.e(TAG, "MessageService is null, cannot process MMS");

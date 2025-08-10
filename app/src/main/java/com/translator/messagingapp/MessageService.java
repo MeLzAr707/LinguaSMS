@@ -915,6 +915,29 @@ public class MessageService {
     }
 
     /**
+     * Handles an incoming MMS.
+     *
+     * @param intent The intent containing the MMS data
+     */
+    public void handleIncomingMms(Intent intent) {
+        Log.d(TAG, "Handling incoming MMS: " + (intent != null ? intent.getAction() : "null intent"));
+        
+        if (intent == null) {
+            Log.e(TAG, "MMS intent is null");
+            return;
+        }
+        
+        // For now, just log the MMS. In a full implementation, you would:
+        // 1. Extract MMS data from the intent
+        // 2. Parse the MMS message
+        // 3. Store it in the database
+        // 4. Possibly translate it if auto-translate is enabled
+        // 5. Show a notification
+        
+        Log.d(TAG, "MMS processing completed");
+    }
+
+    /**
      * Loads messages for a conversation.
      *
      * @param threadId The thread ID
