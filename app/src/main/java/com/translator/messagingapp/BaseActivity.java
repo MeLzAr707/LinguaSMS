@@ -27,7 +27,7 @@ public class BaseActivity extends AppCompatActivity {
      */
     private void applyTheme() {
         try {
-            TranslatorApp app = (TranslatorApp) getApplication();
+            OptimizedTranslatorApp app = (OptimizedTranslatorApp) getApplication();
             if (app != null) {
                 UserPreferences userPreferences = app.getUserPreferences();
                 int themeId = userPreferences.getThemeId();

@@ -18,10 +18,14 @@ public class OptimizedTranslatorApp extends Application {
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
+    private UserPreferences userPreferences;
     
     @Override
     public void onCreate() {
         super.onCreate();
+        
+        // Initialize user preferences
+        userPreferences = new UserPreferences(this);
         
         // Initialize services
         translationManager = new TranslationManager(this);
@@ -147,5 +151,14 @@ public class OptimizedTranslatorApp extends Application {
      */
     public TranslationManager getTranslationManager() {
         return translationManager;
+    }
+    
+    /**
+     * Gets the user preferences.
+     *
+     * @return The user preferences
+     */
+    public UserPreferences getUserPreferences() {
+        return userPreferences;
     }
 }
