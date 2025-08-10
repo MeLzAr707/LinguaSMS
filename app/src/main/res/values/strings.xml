@@ -379,4 +379,30 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <!-- Translation settings strings -->
+    <string name="pref_category_translation">Translation</string>
+    <string name="pref_translation_mode">Translation Mode</string>
+    <string name="pref_translation_mode_summary">Choose how translation should work</string>
+    <string name="pref_prefer_offline">Prefer Offline Translation</string>
+    <string name="pref_prefer_offline_summary">Use offline translation when available</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
+    <string name="pref_category_offline_models">Offline Translation Models</string>
+    <string name="enable_offline_translation_summary">Enable offline translation for selected languages</string>
+
+    <!-- Translation mode arrays -->
+    <string-array name="translation_mode_names">
+        <item>Online Only</item>
+        <item>Offline Only</item>
+        <item>Hybrid (Prefer Offline)</item>
+        <item>Hybrid (Prefer Online)</item>
+    </string-array>
+
+    <string-array name="translation_mode_values">
+        <item>online</item>
+        <item>offline</item>
+        <item>hybrid_offline</item>
+        <item>hybrid_online</item>
+    </string-array>
 </resources>

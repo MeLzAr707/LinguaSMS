@@ -45,11 +45,45 @@
             android:inputType="textPassword" />
     </PreferenceCategory>
     
+    <PreferenceCategory android:title="@string/pref_category_translation">
+        <ListPreference
+            android:key="translation_mode"
+            android:title="@string/pref_translation_mode"
+            android:summary="@string/pref_translation_mode_summary"
+            android:entries="@array/translation_mode_names"
+            android:entryValues="@array/translation_mode_values"
+            android:defaultValue="hybrid_online" />
+            
+        <SwitchPreferenceCompat
+            android:key="prefer_offline"
+            android:title="@string/pref_prefer_offline"
+            android:summary="@string/pref_prefer_offline_summary"
+            android:defaultValue="false" />
+            
+        <Preference
+            android:key="manage_offline_models"
+            android:title="@string/pref_manage_offline_models"
+            android:summary="@string/pref_manage_offline_models_summary" />
+    </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/pref_category_advanced">
         <SwitchPreferenceCompat
             android:key="debug_mode"
             android:title="@string/pref_debug_mode"
             android:summary="@string/pref_debug_mode_summary"
             android:defaultValue="false" />
+    </PreferenceCategory>
+    
+    <PreferenceCategory android:title="@string/pref_category_offline_models">
+        <SwitchPreferenceCompat
+            android:key="enable_offline_translation"
+            android:title="@string/pref_prefer_offline"
+            android:summary="@string/enable_offline_translation_summary"
+            android:defaultValue="false" />
+            
+        <Preference
+            android:key="manage_offline_models_section"
+            android:title="@string/pref_manage_offline_models"
+            android:summary="@string/pref_manage_offline_models_summary" />
     </PreferenceCategory>
 </PreferenceScreen>
