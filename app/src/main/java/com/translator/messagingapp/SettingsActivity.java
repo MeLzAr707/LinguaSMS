@@ -99,6 +99,10 @@ public class SettingsActivity extends BaseActivity {
                 // Setup debug mode preference
                 setupDebugModePreference(userPreferences);
                 
+                // Setup offline translation preferences
+                setupOfflineTranslationPreference(userPreferences);
+                setupOfflineModelsPreference();
+                
                 Log.d(TAG, "Preferences setup complete");
             } catch (Exception e) {
                 Log.e(TAG, "Error setting up preferences", e);
@@ -287,6 +291,48 @@ public class SettingsActivity extends BaseActivity {
             }
             
             return "English"; // Default if not found
+        }
+        
+        private void setupOfflineTranslationPreference(UserPreferences userPreferences) {
+            SwitchPreferenceCompat offlineTranslationPreference = findPreference("enable_offline_translation");
+            if (offlineTranslationPreference != null) {
+                try {
+                    offlineTranslationPreference.setChecked(userPreferences.isOfflineTranslationEnabled());
+                    offlineTranslationPreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                        try {
+                            boolean enabled = (Boolean) newValue;
+                            userPreferences.setOfflineTranslationEnabled(enabled);
+                            return true;
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error setting offline translation preference", e);
+                            return false;
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing offline translation preference", e);
+                }
+            }
+        }
+        
+        private void setupOfflineModelsPreference() {
+            Preference offlineModelsPreference = findPreference("manage_offline_models");
+            if (offlineModelsPreference != null) {
+                try {
+                    offlineModelsPreference.setOnPreferenceClickListener(preference -> {
+                        try {
+                            android.content.Intent intent = new android.content.Intent(getActivity(), OfflineModelsActivity.class);
+                            startActivity(intent);
+                            return true;
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error opening offline models activity", e);
+                            Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            return false;
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing offline models preference", e);
+                }
+            }
         }
     }
 }

@@ -45,6 +45,19 @@
             android:inputType="textPassword" />
     </PreferenceCategory>
     
+    <PreferenceCategory android:title="@string/pref_category_offline_models">
+        <SwitchPreferenceCompat
+            android:key="enable_offline_translation"
+            android:title="@string/enable_offline_translation"
+            android:summary="@string/enable_offline_translation_summary"
+            android:defaultValue="false" />
+            
+        <Preference
+            android:key="manage_offline_models"
+            android:title="@string/pref_manage_offline_models"
+            android:summary="@string/pref_manage_offline_models_summary" />
+    </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/pref_category_advanced">
         <SwitchPreferenceCompat
             android:key="debug_mode"

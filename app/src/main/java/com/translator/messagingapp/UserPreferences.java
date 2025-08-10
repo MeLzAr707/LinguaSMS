@@ -28,6 +28,7 @@ public class UserPreferences {
     private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_API_SERVICE = "api_service";
+    private static final String KEY_ENABLE_OFFLINE_TRANSLATION = "enable_offline_translation";
     
     // Default values
     private static final boolean DEFAULT_AUTO_TRANSLATE = false;
@@ -36,6 +37,7 @@ public class UserPreferences {
     private static final int DEFAULT_THEME_ID = THEME_SYSTEM; // System default
     private static final boolean DEFAULT_DEBUG_MODE = false;
     private static final String DEFAULT_API_SERVICE = "google";
+    private static final boolean DEFAULT_ENABLE_OFFLINE_TRANSLATION = false;
     
     private final SharedPreferences preferences;
     private final Context context;
@@ -356,6 +358,33 @@ public class UserPreferences {
         }
     }
     
+    /**
+     * Checks if offline translation is enabled.
+     *
+     * @return true if offline translation is enabled, false otherwise
+     */
+    public boolean isOfflineTranslationEnabled() {
+        try {
+            return preferences.getBoolean(KEY_ENABLE_OFFLINE_TRANSLATION, DEFAULT_ENABLE_OFFLINE_TRANSLATION);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting offline translation preference", e);
+            return DEFAULT_ENABLE_OFFLINE_TRANSLATION;
+        }
+    }
+    
+    /**
+     * Sets the offline translation preference.
+     *
+     * @param enabled true to enable offline translation, false to disable
+     */
+    public void setOfflineTranslationEnabled(boolean enabled) {
+        try {
+            preferences.edit().putBoolean(KEY_ENABLE_OFFLINE_TRANSLATION, enabled).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting offline translation preference", e);
+        }
+    }
+
     /**
      * Clears all preferences.
      */
