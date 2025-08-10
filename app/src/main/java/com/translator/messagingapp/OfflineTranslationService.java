@@ -1,0 +1,355 @@
+package com.translator.messagingapp;
+
+import android.content.Context;
+import android.util.Log;
+
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.nl.translate.TranslateLanguage;
+import com.google.mlkit.nl.translate.Translation;
+import com.google.mlkit.nl.translate.Translator;
+import com.google.mlkit.nl.translate.TranslatorOptions;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+/**
+ * Service for offline translation using Google MLKit.
+ * Provides offline translation capabilities with downloadable language models.
+ */
+public class OfflineTranslationService {
+    private static final String TAG = "OfflineTranslationService";
+    private static final int OPERATION_TIMEOUT_SECONDS = 30;
+
+    private final Context context;
+    private final UserPreferences userPreferences;
+    private final Set<String> downloadedModels;
+
+    /**
+     * Interface for translation callbacks.
+     */
+    public interface OfflineTranslationCallback {
+        void onTranslationComplete(boolean success, String translatedText, String errorMessage);
+    }
+
+    /**
+     * Interface for model download callbacks.
+     */
+    public interface ModelDownloadCallback {
+        void onDownloadComplete(boolean success, String languageCode, String errorMessage);
+        void onDownloadProgress(String languageCode, int progress);
+    }
+
+    /**
+     * Creates a new OfflineTranslationService.
+     *
+     * @param context The application context
+     * @param userPreferences The user preferences
+     */
+    public OfflineTranslationService(Context context, UserPreferences userPreferences) {
+        this.context = context.getApplicationContext();
+        this.userPreferences = userPreferences;
+        this.downloadedModels = new HashSet<>();
+        
+        // Load list of downloaded models from preferences
+        loadDownloadedModels();
+    }
+
+    /**
+     * Checks if offline translation is available for the given language pair.
+     *
+     * @param sourceLanguage The source language code
+     * @param targetLanguage The target language code
+     * @return true if offline translation is available, false otherwise
+     */
+    public boolean isOfflineTranslationAvailable(String sourceLanguage, String targetLanguage) {
+        if (sourceLanguage == null || targetLanguage == null) {
+            return false;
+        }
+
+        // Convert language codes to MLKit format if needed
+        String sourceMLKit = convertToMLKitLanguageCode(sourceLanguage);
+        String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
+
+        if (sourceMLKit == null || targetMLKit == null) {
+            return false;
+        }
+
+        // Check if both language models are downloaded
+        return downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
+    }
+
+    /**
+     * Translates text using offline models.
+     *
+     * @param text The text to translate
+     * @param sourceLanguage The source language code
+     * @param targetLanguage The target language code
+     * @param callback The callback to receive the result
+     */
+    public void translateOffline(String text, String sourceLanguage, String targetLanguage, 
+                               OfflineTranslationCallback callback) {
+        if (text == null || text.trim().isEmpty()) {
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, "No text to translate");
+            }
+            return;
+        }
+
+        // Convert language codes to MLKit format
+        String sourceMLKit = convertToMLKitLanguageCode(sourceLanguage);
+        String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
+
+        if (sourceMLKit == null || targetMLKit == null) {
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, "Unsupported language pair");
+            }
+            return;
+        }
+
+        // Check if models are available
+        if (!isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, "Language models not downloaded");
+            }
+            return;
+        }
+
+        // Create translator
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(sourceMLKit)
+                .setTargetLanguage(targetMLKit)
+                .build();
+
+        Translator translator = Translation.getClient(options);
+
+        // Perform translation
+        translator.translate(text)
+                .addOnSuccessListener(translatedText -> {
+                    Log.d(TAG, "Offline translation successful");
+                    if (callback != null) {
+                        callback.onTranslationComplete(true, translatedText, null);
+                    }
+                })
+                .addOnFailureListener(exception -> {
+                    Log.e(TAG, "Offline translation failed", exception);
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, exception.getMessage());
+                    }
+                });
+    }
+
+    /**
+     * Downloads a language model for offline translation.
+     *
+     * @param languageCode The language code
+     * @param callback The callback to receive download progress and result
+     */
+    public void downloadLanguageModel(String languageCode, ModelDownloadCallback callback) {
+        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        if (mlkitLanguageCode == null) {
+            if (callback != null) {
+                callback.onDownloadComplete(false, languageCode, "Unsupported language");
+            }
+            return;
+        }
+
+        Log.d(TAG, "Starting download for language model: " + mlkitLanguageCode);
+
+        // Create a translator to trigger model download
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(TranslateLanguage.ENGLISH) // Use English as default source
+                .setTargetLanguage(mlkitLanguageCode)
+                .build();
+
+        Translator translator = Translation.getClient(options);
+
+        // Download the model
+        translator.downloadModelIfNeeded()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Language model downloaded successfully: " + mlkitLanguageCode);
+                    downloadedModels.add(mlkitLanguageCode);
+                    saveDownloadedModels();
+                    if (callback != null) {
+                        callback.onDownloadComplete(true, languageCode, null);
+                    }
+                })
+                .addOnFailureListener(exception -> {
+                    Log.e(TAG, "Failed to download language model: " + mlkitLanguageCode, exception);
+                    if (callback != null) {
+                        callback.onDownloadComplete(false, languageCode, exception.getMessage());
+                    }
+                });
+    }
+
+    /**
+     * Deletes a downloaded language model.
+     *
+     * @param languageCode The language code
+     */
+    public void deleteLanguageModel(String languageCode) {
+        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        if (mlkitLanguageCode == null) {
+            return;
+        }
+
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(TranslateLanguage.ENGLISH)
+                .setTargetLanguage(mlkitLanguageCode)
+                .build();
+
+        Translator translator = Translation.getClient(options);
+        translator.close();
+
+        downloadedModels.remove(mlkitLanguageCode);
+        saveDownloadedModels();
+        Log.d(TAG, "Language model deleted: " + mlkitLanguageCode);
+    }
+
+    /**
+     * Gets the list of supported languages for offline translation.
+     *
+     * @return Array of supported language codes
+     */
+    public String[] getSupportedLanguages() {
+        return new String[]{
+                "en", "ar", "bg", "bn", "ca", "cs", "cy", "da", "de", "el", "eo", "es", "et", "fa", "fi", "fr", "ga", "gl", "gu", "he", "hi", "hr", "hu", "id", "is", "it", "ja", "ka", "kn", "ko", "lt", "lv", "mk", "mr", "ms", "mt", "nl", "no", "pl", "pt", "ro", "ru", "sk", "sl", "sq", "sv", "sw", "ta", "te", "th", "tl", "tr", "uk", "ur", "vi", "zh"
+        };
+    }
+
+    /**
+     * Gets the list of downloaded language models.
+     *
+     * @return Set of downloaded language codes (MLKit format)
+     */
+    public Set<String> getDownloadedModels() {
+        return new HashSet<>(downloadedModels);
+    }
+
+    /**
+     * Checks if a specific language model is downloaded.
+     *
+     * @param languageCode The language code
+     * @return true if the model is downloaded, false otherwise
+     */
+    public boolean isLanguageModelDownloaded(String languageCode) {
+        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        return mlkitLanguageCode != null && downloadedModels.contains(mlkitLanguageCode);
+    }
+
+    /**
+     * Converts standard language codes to MLKit language codes.
+     *
+     * @param languageCode The standard language code
+     * @return The MLKit language code, or null if not supported
+     */
+    private String convertToMLKitLanguageCode(String languageCode) {
+        if (languageCode == null) {
+            return null;
+        }
+
+        // Remove region code if present (e.g., "en-US" -> "en")
+        String baseCode = languageCode.split("-")[0].toLowerCase();
+
+        // Map common language codes to MLKit codes
+        switch (baseCode) {
+            case "en": return TranslateLanguage.ENGLISH;
+            case "es": return TranslateLanguage.SPANISH;
+            case "fr": return TranslateLanguage.FRENCH;
+            case "de": return TranslateLanguage.GERMAN;
+            case "it": return TranslateLanguage.ITALIAN;
+            case "pt": return TranslateLanguage.PORTUGUESE;
+            case "ru": return TranslateLanguage.RUSSIAN;
+            case "zh": return TranslateLanguage.CHINESE;
+            case "ja": return TranslateLanguage.JAPANESE;
+            case "ko": return TranslateLanguage.KOREAN;
+            case "ar": return TranslateLanguage.ARABIC;
+            case "hi": return TranslateLanguage.HINDI;
+            case "nl": return TranslateLanguage.DUTCH;
+            case "sv": return TranslateLanguage.SWEDISH;
+            case "da": return TranslateLanguage.DANISH;
+            case "no": return TranslateLanguage.NORWEGIAN;
+            case "fi": return TranslateLanguage.FINNISH;
+            case "pl": return TranslateLanguage.POLISH;
+            case "cs": return TranslateLanguage.CZECH;
+            case "sk": return TranslateLanguage.SLOVAK;
+            case "hu": return TranslateLanguage.HUNGARIAN;
+            case "ro": return TranslateLanguage.ROMANIAN;
+            case "bg": return TranslateLanguage.BULGARIAN;
+            case "hr": return TranslateLanguage.CROATIAN;
+            case "sl": return TranslateLanguage.SLOVENIAN;
+            case "et": return TranslateLanguage.ESTONIAN;
+            case "lv": return TranslateLanguage.LATVIAN;
+            case "lt": return TranslateLanguage.LITHUANIAN;
+            case "th": return TranslateLanguage.THAI;
+            case "vi": return TranslateLanguage.VIETNAMESE;
+            case "id": return TranslateLanguage.INDONESIAN;
+            case "ms": return TranslateLanguage.MALAY;
+            case "tl": return TranslateLanguage.TAGALOG;
+            case "sw": return TranslateLanguage.SWAHILI;
+            case "tr": return TranslateLanguage.TURKISH;
+            case "he": return TranslateLanguage.HEBREW;
+            case "fa": return TranslateLanguage.PERSIAN;
+            case "ur": return TranslateLanguage.URDU;
+            case "bn": return TranslateLanguage.BENGALI;
+            case "gu": return TranslateLanguage.GUJARATI;
+            case "kn": return TranslateLanguage.KANNADA;
+            case "ml": return TranslateLanguage.MALAYALAM;
+            case "mr": return TranslateLanguage.MARATHI;
+            case "ta": return TranslateLanguage.TAMIL;
+            case "te": return TranslateLanguage.TELUGU;
+            default: return null; // Unsupported language
+        }
+    }
+
+    /**
+     * Loads the list of downloaded models from preferences.
+     */
+    private void loadDownloadedModels() {
+        try {
+            String modelsString = userPreferences.getString("downloaded_offline_models", "");
+            if (!modelsString.isEmpty()) {
+                String[] models = modelsString.split(",");
+                for (String model : models) {
+                    if (!model.trim().isEmpty()) {
+                        downloadedModels.add(model.trim());
+                    }
+                }
+            }
+            Log.d(TAG, "Loaded " + downloadedModels.size() + " downloaded models");
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading downloaded models", e);
+        }
+    }
+
+    /**
+     * Saves the list of downloaded models to preferences.
+     */
+    private void saveDownloadedModels() {
+        try {
+            StringBuilder modelsString = new StringBuilder();
+            for (String model : downloadedModels) {
+                if (modelsString.length() > 0) {
+                    modelsString.append(",");
+                }
+                modelsString.append(model);
+            }
+            userPreferences.setString("downloaded_offline_models", modelsString.toString());
+            Log.d(TAG, "Saved " + downloadedModels.size() + " downloaded models");
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving downloaded models", e);
+        }
+    }
+
+    /**
+     * Cleanup resources.
+     */
+    public void cleanup() {
+        // Clean up any resources if needed
+        Log.d(TAG, "OfflineTranslationService cleanup complete");
+    }
+}

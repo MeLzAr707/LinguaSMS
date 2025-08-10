@@ -28,6 +28,13 @@ public class UserPreferences {
     private static final String KEY_DEBUG_MODE = "debug_mode";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_API_SERVICE = "api_service";
+    private static final String KEY_TRANSLATION_MODE = "translation_mode";
+    private static final String KEY_PREFER_OFFLINE = "prefer_offline";
+    
+    // Translation mode constants
+    public static final int TRANSLATION_MODE_ONLINE_ONLY = 0;
+    public static final int TRANSLATION_MODE_OFFLINE_ONLY = 1;
+    public static final int TRANSLATION_MODE_AUTO = 2; // Try offline first, fallback to online
     
     // Default values
     private static final boolean DEFAULT_AUTO_TRANSLATE = false;
@@ -36,6 +43,8 @@ public class UserPreferences {
     private static final int DEFAULT_THEME_ID = THEME_SYSTEM; // System default
     private static final boolean DEFAULT_DEBUG_MODE = false;
     private static final String DEFAULT_API_SERVICE = "google";
+    private static final int DEFAULT_TRANSLATION_MODE = TRANSLATION_MODE_AUTO;
+    private static final boolean DEFAULT_PREFER_OFFLINE = true;
     
     private final SharedPreferences preferences;
     private final Context context;
@@ -353,6 +362,60 @@ public class UserPreferences {
             preferences.edit().putInt(key, value).apply();
         } catch (Exception e) {
             Log.e(TAG, "Error setting int preference: " + key, e);
+        }
+    }
+    
+    /**
+     * Gets the translation mode preference.
+     *
+     * @return the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     */
+    public int getTranslationMode() {
+        try {
+            return preferences.getInt(KEY_TRANSLATION_MODE, DEFAULT_TRANSLATION_MODE);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting translation mode", e);
+            return DEFAULT_TRANSLATION_MODE;
+        }
+    }
+    
+    /**
+     * Sets the translation mode preference.
+     *
+     * @param mode the translation mode (TRANSLATION_MODE_ONLINE_ONLY, TRANSLATION_MODE_OFFLINE_ONLY, or TRANSLATION_MODE_AUTO)
+     */
+    public void setTranslationMode(int mode) {
+        try {
+            preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting translation mode", e);
+        }
+    }
+    
+    /**
+     * Gets whether to prefer offline translation when both are available.
+     *
+     * @return true if offline translation is preferred, false otherwise
+     */
+    public boolean getPreferOfflineTranslation() {
+        try {
+            return preferences.getBoolean(KEY_PREFER_OFFLINE, DEFAULT_PREFER_OFFLINE);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting prefer offline preference", e);
+            return DEFAULT_PREFER_OFFLINE;
+        }
+    }
+    
+    /**
+     * Sets whether to prefer offline translation when both are available.
+     *
+     * @param prefer true to prefer offline translation, false otherwise
+     */
+    public void setPreferOfflineTranslation(boolean prefer) {
+        try {
+            preferences.edit().putBoolean(KEY_PREFER_OFFLINE, prefer).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting prefer offline preference", e);
         }
     }
     

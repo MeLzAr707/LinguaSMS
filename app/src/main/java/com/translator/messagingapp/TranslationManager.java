@@ -38,6 +38,7 @@ public class TranslationManager {
 
     private final Context context;
     private final GoogleTranslationService translationService;
+    private final OfflineTranslationService offlineTranslationService;
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
@@ -53,6 +54,7 @@ public class TranslationManager {
     public TranslationManager(Context context, GoogleTranslationService translationService, UserPreferences userPreferences) {
         this.context = context.getApplicationContext(); // Use application context to prevent leaks
         this.translationService = translationService;
+        this.offlineTranslationService = new OfflineTranslationService(context, userPreferences);
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context.getApplicationContext());
@@ -73,6 +75,15 @@ public class TranslationManager {
      */
     public TranslationCache getTranslationCache() {
         return translationCache;
+    }
+
+    /**
+     * Gets the offline translation service instance.
+     *
+     * @return The OfflineTranslationService instance
+     */
+    public OfflineTranslationService getOfflineTranslationService() {
+        return offlineTranslationService;
     }
 
     /**
@@ -127,16 +138,9 @@ public class TranslationManager {
             return;
         }
 
-        // Check if translation service is available
-        if (translationService == null || !translationService.hasApiKey()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null, "Translation service not available");
-            }
-            return;
-        }
-
-        // Check rate limiting
-        if (!checkRateLimiting()) {
+        // Check rate limiting for online translations only
+        int translationMode = userPreferences.getTranslationMode();
+        if (translationMode != UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY && !checkRateLimiting()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
@@ -155,7 +159,7 @@ public class TranslationManager {
             return;
         }
 
-        // Translate in background
+        // Translate based on user preference
         if (isShuttingDown || executorService.isShutdown()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation service is shutting down");
@@ -165,8 +169,8 @@ public class TranslationManager {
         
         executorService.execute(() -> {
             try {
-                // Detect language
-                String detectedLanguage = translationService.detectLanguage(text);
+                // Detect language first (needed for both online and offline)
+                String detectedLanguage = detectLanguage(text);
                 if (detectedLanguage == null) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null, "Could not detect language");
@@ -174,7 +178,7 @@ public class TranslationManager {
                     return;
                 }
 
-                // Skip if already in target language (comparing base language codes)
+                // Skip if already in target language
                 String baseDetected = detectedLanguage.split("-")[0];
                 String baseTarget = targetLanguage.split("-")[0];
 
@@ -185,27 +189,16 @@ public class TranslationManager {
                     return;
                 }
 
-                // Translate
-                String translatedText = translationService.translate(text, detectedLanguage, targetLanguage);
-                if (translatedText == null) {
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null, "Translation failed");
-                    }
-                    return;
-                }
-
-                // Cache the translation
-                translationCache.put(cacheKey, translatedText);
-
-                // Update translation counters
-                updateTranslationCounters();
-
-                // Return result
-                if (callback != null) {
-                    callback.onTranslationComplete(true, translatedText, null);
+                // Determine which translation method to use
+                boolean useOffline = shouldUseOfflineTranslation(detectedLanguage, targetLanguage);
+                
+                if (useOffline) {
+                    translateWithOffline(text, detectedLanguage, targetLanguage, cacheKey, callback);
+                } else {
+                    translateWithOnline(text, detectedLanguage, targetLanguage, cacheKey, callback);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error translating text", e);
+                Log.e(TAG, "Error in translation flow", e);
                 if (callback != null) {
                     callback.onTranslationComplete(false, null, e.getMessage());
                 }
@@ -654,6 +647,136 @@ public class TranslationManager {
             translationCache.close();
         }
         
+        if (offlineTranslationService != null) {
+            offlineTranslationService.cleanup();
+        }
+        
         Log.d(TAG, "TranslationManager resources cleaned up");
+    }
+
+    /**
+     * Determines whether to use offline translation based on user preferences and availability.
+     */
+    private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
+        int translationMode = userPreferences.getTranslationMode();
+        
+        switch (translationMode) {
+            case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
+                return true;
+            case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
+                return false;
+            case UserPreferences.TRANSLATION_MODE_AUTO:
+            default:
+                // In auto mode, check if offline is available and preferred
+                boolean offlineAvailable = offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
+                if (offlineAvailable && userPreferences.getPreferOfflineTranslation()) {
+                    return true;
+                }
+                // Also use offline if online service is not available
+                return offlineAvailable && (translationService == null || !translationService.hasApiKey());
+        }
+    }
+
+    /**
+     * Performs translation using offline service.
+     */
+    private void translateWithOffline(String text, String sourceLanguage, String targetLanguage, 
+                                     String cacheKey, TranslationCallback callback) {
+        offlineTranslationService.translateOffline(text, sourceLanguage, targetLanguage, 
+            new OfflineTranslationService.OfflineTranslationCallback() {
+                @Override
+                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                    if (success && translatedText != null) {
+                        // Cache the translation
+                        translationCache.put(cacheKey, translatedText);
+                        
+                        if (callback != null) {
+                            callback.onTranslationComplete(true, translatedText, null);
+                        }
+                    } else {
+                        // If offline fails and we're in auto mode, try online as fallback
+                        int translationMode = userPreferences.getTranslationMode();
+                        if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO) {
+                            Log.d(TAG, "Offline translation failed, trying online as fallback");
+                            translateWithOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                        } else {
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, errorMessage != null ? errorMessage : "Offline translation failed");
+                            }
+                        }
+                    }
+                }
+            });
+    }
+
+    /**
+     * Performs translation using online service.
+     */
+    private void translateWithOnline(String text, String sourceLanguage, String targetLanguage, 
+                                    String cacheKey, TranslationCallback callback) {
+        // Check if online translation service is available
+        if (translationService == null || !translationService.hasApiKey()) {
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, "Online translation service not available");
+            }
+            return;
+        }
+
+        try {
+            // Translate using online service
+            String translatedText = translationService.translate(text, sourceLanguage, targetLanguage);
+            if (translatedText == null) {
+                // If online fails and we're in auto mode, try offline as fallback
+                int translationMode = userPreferences.getTranslationMode();
+                if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
+                    offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                    Log.d(TAG, "Online translation failed, trying offline as fallback");
+                    translateWithOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                } else {
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, "Online translation failed");
+                    }
+                }
+                return;
+            }
+
+            // Cache the translation
+            translationCache.put(cacheKey, translatedText);
+
+            // Update translation counters for online translations
+            updateTranslationCounters();
+
+            // Return result
+            if (callback != null) {
+                callback.onTranslationComplete(true, translatedText, null);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error with online translation", e);
+            
+            // If online fails and we're in auto mode, try offline as fallback
+            int translationMode = userPreferences.getTranslationMode();
+            if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
+                offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                Log.d(TAG, "Online translation error, trying offline as fallback");
+                translateWithOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+            } else {
+                if (callback != null) {
+                    callback.onTranslationComplete(false, null, e.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Detects the language of the given text.
+     * Uses online service if available, otherwise returns a default.
+     */
+    private String detectLanguage(String text) {
+        if (translationService != null && translationService.hasApiKey()) {
+            return translationService.detectLanguage(text);
+        }
+        // For offline-only mode, we could implement basic language detection
+        // For now, return English as default (could be enhanced later)
+        return "en";
     }
 }
