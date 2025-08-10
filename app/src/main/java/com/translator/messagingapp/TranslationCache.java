@@ -367,26 +367,36 @@ public class TranslationCache {
             // Begin transaction for better performance
             db.beginTransaction();
 
-            // 1. Remove expired entries
+            // 1. Remove expired entries first
             long expiryThreshold = System.currentTimeMillis() - CACHE_EXPIRY_MS;
+            int expiredCount = db.delete(
+                    TranslationDbHelper.TABLE_TRANSLATIONS,
+                    TranslationDbHelper.COLUMN_TIMESTAMP + " < ?",
+                    new String[]{String.valueOf(expiryThreshold)});
+
+            // 2. Trim cache if it exceeds maximum size
+            int trimCount = 0;
+            try (Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TranslationDbHelper.TABLE_TRANSLATIONS, null)) {
+                if (cursor.moveToFirst()) {
+                    int currentSize = cursor.getInt(0);
+                    if (currentSize > MAX_CACHE_SIZE) {
+                        int entriesToRemove = currentSize - MAX_CACHE_SIZE;
+                        // Delete oldest entries
+                        String deleteOldest = "DELETE FROM " + TranslationDbHelper.TABLE_TRANSLATIONS + 
+                                " WHERE " + TranslationDbHelper.COLUMN_CACHE_KEY + " IN (" +
+                                "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
+                                " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
+                                " ORDER BY " + TranslationDbHelper.COLUMN_TIMESTAMP + 
+                                " ASC LIMIT ?)";
+                        
+                        SQLiteStatement statement = db.compileStatement(deleteOldest);
+                        statement.bindLong(1, entriesToRemove);
+                        trimCount = statement.executeUpdateDelete();
+                    }
+                }
+            }
             
-            // Use a single SQL statement to delete expired entries and trim the cache
-            String sql = "DELETE FROM " + TranslationDbHelper.TABLE_TRANSLATIONS + 
-                    " WHERE " + TranslationDbHelper.COLUMN_CACHE_KEY + " IN (" +
-                    "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
-                    " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
-                    " WHERE " + TranslationDbHelper.COLUMN_TIMESTAMP + " < ? " +
-                    "UNION ALL " +
-                    "SELECT " + TranslationDbHelper.COLUMN_CACHE_KEY + 
-                    " FROM " + TranslationDbHelper.TABLE_TRANSLATIONS +
-                    " ORDER BY " + TranslationDbHelper.COLUMN_TIMESTAMP + 
-                    " ASC LIMIT MAX(0, (SELECT COUNT(*) FROM " + 
-                    TranslationDbHelper.TABLE_TRANSLATIONS + ") - ?))";
-            
-            SQLiteStatement statement = db.compileStatement(sql);
-            statement.bindLong(1, expiryThreshold);
-            statement.bindLong(2, MAX_CACHE_SIZE);
-            int deletedCount = statement.executeUpdateDelete();
+            int deletedCount = expiredCount + trimCount;
 
             // Commit the transaction
             db.setTransactionSuccessful();
