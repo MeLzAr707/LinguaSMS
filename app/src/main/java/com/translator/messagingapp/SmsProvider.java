@@ -1,5 +1,6 @@
 package com.translator.messagingapp;
 
+import android.app.Application;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;
@@ -53,10 +54,21 @@ public class SmsProvider extends ContentProvider {
     public boolean onCreate() {
         Log.d(TAG, "SmsProvider created");
 
-        // Get service instances from TranslatorApp
-        TranslatorApp app = (TranslatorApp) getContext().getApplicationContext();
-        messageService = app.getMessageService();
-        translationManager = app.getTranslationManager();
+        // Get service instances from the application context
+        Application app = getContext().getApplicationContext();
+        
+        if (app instanceof TranslatorApp) {
+            TranslatorApp translatorApp = (TranslatorApp) app;
+            messageService = translatorApp.getMessageService();
+            translationManager = translatorApp.getTranslationManager();
+        } else if (app instanceof OptimizedTranslatorApp) {
+            OptimizedTranslatorApp optimizedApp = (OptimizedTranslatorApp) app;
+            messageService = optimizedApp.getMessageService();
+            translationManager = optimizedApp.getTranslationManager();
+        } else {
+            Log.e(TAG, "Unknown application type: " + app.getClass().getName());
+            return false;
+        }
 
         return true;
     }

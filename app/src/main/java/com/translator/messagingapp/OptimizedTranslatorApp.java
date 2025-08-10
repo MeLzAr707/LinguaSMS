@@ -18,27 +18,19 @@ public class OptimizedTranslatorApp extends Application {
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
-    private TranslationCache translationCache;
-    private GoogleTranslationService translationService;
-    private UserPreferences userPreferences;
     
     @Override
     public void onCreate() {
         super.onCreate();
         
         // Initialize user preferences first
-        userPreferences = new UserPreferences(this);
-        
-        // Initialize translation cache
-        translationCache = new TranslationCache(getApplicationContext());
+        UserPreferences userPreferences = new UserPreferences(this);
         
         // Initialize translation service
-        translationService = new GoogleTranslationService(userPreferences.getApiKey());
+        GoogleTranslationService translationService = new GoogleTranslationService(userPreferences.getApiKey());
         
-        // Initialize translation manager with required dependencies
+        // Initialize translation manager with all required parameters
         translationManager = new TranslationManager(this, translationService, userPreferences);
-        
-        // Initialize services
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
         
@@ -151,15 +143,16 @@ public class OptimizedTranslatorApp extends Application {
             prefetchExecutor.shutdown();
         }
         
-        // Clean up resources
-        if (translationCache != null) {
-            translationCache.close();
-        }
-        if (translationManager != null) {
-            translationManager.cleanup();
-        }
-        
         super.onTerminate();
+    }
+    
+    /**
+     * Gets the translation manager.
+     *
+     * @return The translation manager
+     */
+    public TranslationManager getTranslationManager() {
+        return translationManager;
     }
     
     /**
@@ -169,41 +162,5 @@ public class OptimizedTranslatorApp extends Application {
      */
     public MessageService getMessageService() {
         return messageService;
-    }
-    
-    /**
-     * Gets the translation cache.
-     *
-     * @return The translation cache
-     */
-    public TranslationCache getTranslationCache() {
-        return translationCache;
-    }
-    
-    /**
-     * Gets the translation service.
-     *
-     * @return The translation service
-     */
-    public GoogleTranslationService getTranslationService() {
-        return translationService;
-    }
-    
-    /**
-     * Gets the user preferences.
-     *
-     * @return The user preferences
-     */
-    public UserPreferences getUserPreferences() {
-        return userPreferences;
-    }
-
-    /**
-     * Gets the translation manager.
-     *
-     * @return The translation manager
-     */
-    public TranslationManager getTranslationManager() {
-        return translationManager;
     }
 }
