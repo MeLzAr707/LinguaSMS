@@ -23,7 +23,6 @@ public class TranslatorApp extends Application {
     private GoogleTranslationService translationService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
-    private RcsService rcsService;
 
     @Override
     public void onCreate() {
@@ -49,9 +48,6 @@ public class TranslatorApp extends Application {
 
         // Initialize default SMS app manager
         defaultSmsAppManager = new DefaultSmsAppManager(this);
-        
-        // Initialize RCS service
-        rcsService = new RcsService(this);
 
         // Schedule periodic cache maintenance
         schedulePeriodicCacheMaintenance();
@@ -79,10 +75,6 @@ public class TranslatorApp extends Application {
 
     public UserPreferences getUserPreferences() {
         return userPreferences;
-    }
-    
-    public RcsService getRcsService() {
-        return rcsService;
     }
 
     /**
@@ -121,9 +113,6 @@ public class TranslatorApp extends Application {
         }
         if (translationManager != null) {
             translationManager.cleanup();
-        }
-        if (rcsService != null) {
-            rcsService.cleanup();
         }
         super.onTerminate();
     }
