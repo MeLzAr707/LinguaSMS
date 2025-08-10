@@ -708,25 +708,58 @@ public class MessageService {
             return false;
         }
 
+        Log.d(TAG, "Sending SMS to " + address + ": " + body);
+
         try {
+            // Check if we should translate outgoing message
+            UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
+            String finalMessageBody = body;
+            
+            if (userPrefs != null && userPrefs.isAutoTranslateEnabled() && translationManager != null) {
+                String outgoingLanguage = userPrefs.getPreferredOutgoingLanguage();
+                if (!TextUtils.isEmpty(outgoingLanguage) && !outgoingLanguage.equals("en")) {
+                    Log.d(TAG, "Auto-translate enabled for outgoing messages, target language: " + outgoingLanguage);
+                    
+                    // Synchronously check if translation is needed
+                    String detectedLanguage = translationManager.getTranslationCache() != null && 
+                                              ((TranslatorApp) context.getApplicationContext()).getTranslationService() != null ?
+                        ((TranslatorApp) context.getApplicationContext()).getTranslationService().detectLanguage(body) : "en";
+                    
+                    if (!detectedLanguage.equals(outgoingLanguage)) {
+                        // Check cache first for quick translation
+                        String cacheKey = body + "_" + outgoingLanguage;
+                        String cachedTranslation = translationManager.getTranslationCache() != null ? 
+                            translationManager.getTranslationCache().get(cacheKey) : null;
+                        
+                        if (cachedTranslation != null) {
+                            finalMessageBody = cachedTranslation;
+                            Log.d(TAG, "Using cached translation for outgoing message: " + finalMessageBody);
+                        } else {
+                            Log.d(TAG, "No cached translation available, sending original message");
+                        }
+                    }
+                }
+            }
+
             // Get SMS manager
             SmsManager smsManager = SmsManager.getDefault();
 
             // Check if message needs to be split
-            if (body.length() > 160) {
+            if (finalMessageBody.length() > 160) {
                 // Split message
-                ArrayList<String> parts = smsManager.divideMessage(body);
+                ArrayList<String> parts = smsManager.divideMessage(finalMessageBody);
 
                 // Send message parts
                 smsManager.sendMultipartTextMessage(address, null, parts, null, null);
             } else {
                 // Send single message
-                smsManager.sendTextMessage(address, null, body, null, null);
+                smsManager.sendTextMessage(address, null, finalMessageBody, null, null);
             }
 
             // Create message object
             SmsMessage message = new SmsMessage();
-            message.setBody(body);
+            message.setBody(finalMessageBody);
+            message.setOriginalText(body); // Store original text
             message.setAddress(address);
             message.setDate(System.currentTimeMillis());
             message.setType(Message.TYPE_SENT);
@@ -739,7 +772,7 @@ public class MessageService {
             // Insert message into database
             ContentValues values = new ContentValues();
             values.put(Telephony.Sms.ADDRESS, address);
-            values.put(Telephony.Sms.BODY, body);
+            values.put(Telephony.Sms.BODY, finalMessageBody);
             values.put(Telephony.Sms.DATE, System.currentTimeMillis());
             values.put(Telephony.Sms.READ, 1);
             values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT);
@@ -787,6 +820,7 @@ public class MessageService {
                     callback.onMessageSent(message);
                 }
 
+                Log.d(TAG, "SMS sent successfully to " + address);
                 return true;
             } else {
                 Log.e(TAG, "Failed to insert SMS into database");
@@ -911,7 +945,91 @@ public class MessageService {
      * @param intent The intent containing the SMS data
      */
     public void handleIncomingSms(Intent intent) {
-        // Implementation
+        Log.d(TAG, "Handling incoming SMS: " + intent.getAction());
+        
+        if (intent == null) {
+            Log.e(TAG, "Intent is null, cannot handle SMS");
+            return;
+        }
+
+        try {
+            // Extract SMS messages from the intent
+            android.telephony.SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+            if (messages == null || messages.length == 0) {
+                Log.w(TAG, "No SMS messages found in intent");
+                return;
+            }
+
+            StringBuilder fullMessage = new StringBuilder();
+            String sender = null;
+            long timestamp = 0;
+
+            // Concatenate message parts if it's a multi-part message
+            for (android.telephony.SmsMessage sms : messages) {
+                if (sender == null) {
+                    sender = sms.getOriginatingAddress();
+                    timestamp = sms.getTimestampMillis();
+                }
+                fullMessage.append(sms.getMessageBody());
+            }
+
+            String messageBody = fullMessage.toString();
+            Log.d(TAG, "Received SMS from " + sender + ": " + messageBody);
+
+            // Create our internal SmsMessage object
+            SmsMessage message = new SmsMessage();
+            message.setBody(messageBody);
+            message.setOriginalText(messageBody);
+            message.setAddress(sender);
+            message.setDate(timestamp);
+            message.setType(Message.TYPE_INBOX);
+            message.setRead(false);
+            message.setMessageType(Message.MESSAGE_TYPE_SMS);
+
+            // Clear cache to ensure fresh data
+            if (messageCache != null) {
+                messageCache.clearAllCaches();
+            }
+
+            // Check if auto-translate is enabled and we have a translation manager
+            if (translationManager != null) {
+                UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
+                
+                if (userPrefs != null && userPrefs.isAutoTranslateEnabled()) {
+                    Log.d(TAG, "Auto-translate is enabled, attempting to translate incoming message");
+                    
+                    // Translate the message asynchronously
+                    translationManager.translateSmsMessage(message, new TranslationManager.SmsTranslationCallback() {
+                        @Override
+                        public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
+                            if (success && translatedMessage != null) {
+                                Log.d(TAG, "Translation successful for incoming SMS from " + sender);
+                                Log.d(TAG, "Original: " + messageBody);
+                                Log.d(TAG, "Translated: " + translatedMessage.getTranslatedText());
+                                
+                                // Store the translation result
+                                if (translationCache != null) {
+                                    String cacheKey = messageBody + "_" + userPrefs.getPreferredLanguage();
+                                    translationCache.put(cacheKey, translatedMessage.getTranslatedText());
+                                }
+                                
+                                // Optionally notify the UI or other components about the translation
+                                notifyTranslationComplete(translatedMessage);
+                            } else {
+                                Log.w(TAG, "Translation failed for incoming SMS from " + sender);
+                            }
+                        }
+                    });
+                } else {
+                    Log.d(TAG, "Auto-translate is disabled or translation manager not available");
+                }
+            } else {
+                Log.w(TAG, "Translation manager is null, cannot translate incoming SMS");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling incoming SMS", e);
+        }
     }
 
     /**
@@ -1512,5 +1630,39 @@ public class MessageService {
                 }
             };
         }
+    }
+
+    /**
+     * Notifies components about a completed translation.
+     * This method can be overridden or extended to integrate with UI components
+     * or other parts of the application that need to be informed about translation results.
+     *
+     * @param translatedMessage The message with translation data
+     */
+    private void notifyTranslationComplete(SmsMessage translatedMessage) {
+        Log.d(TAG, "Translation completed for message from " + translatedMessage.getAddress());
+        
+        // In a real application, this could:
+        // 1. Update the UI if visible
+        // 2. Send a broadcast intent
+        // 3. Update notification with translated text
+        // 4. Store translation state in database
+        
+        // For now, we'll just ensure the translation is cached
+        if (translationCache != null && translatedMessage.getTranslatedText() != null) {
+            UserPreferences userPrefs = ((TranslatorApp) context.getApplicationContext()).getUserPreferences();
+            if (userPrefs != null) {
+                String cacheKey = translatedMessage.getOriginalText() + "_" + userPrefs.getPreferredLanguage();
+                translationCache.put(cacheKey, translatedMessage.getTranslatedText());
+                Log.d(TAG, "Translation cached for future use");
+            }
+        }
+        
+        // You could add additional notification logic here
+        // For example, sending a local broadcast:
+        // Intent intent = new Intent("com.translator.messagingapp.TRANSLATION_COMPLETE");
+        // intent.putExtra("message_id", translatedMessage.getId());
+        // intent.putExtra("translated_text", translatedMessage.getTranslatedText());
+        // context.sendBroadcast(intent);
     }
 }

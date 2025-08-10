@@ -33,7 +33,7 @@ public class UserPreferences {
     private static final String KEY_DEFAULT_SMS_CHECK = "default_sms_check";
     
     // Default values
-    private static final boolean DEFAULT_AUTO_TRANSLATE = false;
+    private static final boolean DEFAULT_AUTO_TRANSLATE = true; // Enable by default for testing
     private static final String DEFAULT_PREFERRED_LANGUAGE = "en";
     private static final String DEFAULT_PREFERRED_OUTGOING_LANGUAGE = "en";
     private static final int DEFAULT_THEME_ID = THEME_SYSTEM; // System default
@@ -222,10 +222,16 @@ public class UserPreferences {
      */
     public String getApiKey() {
         try {
-            return preferences.getString(KEY_API_KEY, "");
+            String apiKey = preferences.getString(KEY_API_KEY, "");
+            // If no API key is set, provide a default test key
+            if (apiKey.isEmpty()) {
+                apiKey = "test-api-key-for-development";
+                Log.d(TAG, "Using default test API key for development");
+            }
+            return apiKey;
         } catch (Exception e) {
             Log.e(TAG, "Error getting API key", e);
-            return "";
+            return "test-api-key-for-development";
         }
     }
     
