@@ -48,6 +48,7 @@ public class Message {
     public static final int TYPE_OUTBOX = 4;
     public static final int TYPE_FAILED = 5;
     public static final int TYPE_QUEUED = 6;
+    public static final int TYPE_ALL = 0; // Used to represent all message types
     // Constants for message types
     public static final int TYPE_MMS = 128; // Or any value that doesn't conflict with existing types
 
