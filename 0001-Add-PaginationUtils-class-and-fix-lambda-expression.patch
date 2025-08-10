@@ -1,0 +1,91 @@
+From f4003c72acb5fcd33399c87a36074c309a48b496 Mon Sep 17 00:00:00 2001
+From: NinjaTech AI <ninjatechai@example.com>
+Date: Sun, 10 Aug 2025 22:44:21 +0000
+Subject: [PATCH] Add PaginationUtils class and fix lambda expression
+
+---
+ .../messagingapp/PaginationUtils.java         | 71 +++++++++++++++++++
+ 1 file changed, 71 insertions(+)
+ create mode 100644 app/src/main/java/com/translator/messagingapp/PaginationUtils.java
+
+diff --git a/app/src/main/java/com/translator/messagingapp/PaginationUtils.java b/app/src/main/java/com/translator/messagingapp/PaginationUtils.java
+new file mode 100644
+index 0000000..4f0c59c
+--- /dev/null
++++ b/app/src/main/java/com/translator/messagingapp/PaginationUtils.java
+@@ -0,0 +1,71 @@
++package com.translator.messagingapp;
++
++import android.view.View;
++import androidx.recyclerview.widget.LinearLayoutManager;
++import androidx.recyclerview.widget.RecyclerView;
++
++/**
++ * Utility class for handling pagination in RecyclerView.
++ */
++public class PaginationUtils {
++
++    /**
++     * Interface for pagination loading complete callback.
++     */
++    public interface OnLoadingCompleteCallback {
++        /**
++         * Called when loading is complete.
++         */
++        void onLoadingComplete();
++    }
++
++    /**
++     * Sets up pagination for a RecyclerView.
++     *
++     * @param recyclerView The RecyclerView to set up pagination for
++     * @param layoutManager The LinearLayoutManager for the RecyclerView
++     * @param loadMoreCallback The callback to invoke when more items need to be loaded
++     * @param threshold The number of items from the end to trigger loading more
++     * @param loadingIndicator The loading indicator view
++     */
++    public static void setupPagination(
++            RecyclerView recyclerView,
++            LinearLayoutManager layoutManager,
++            OnLoadingCompleteCallback loadMoreCallback,
++            int threshold,
++            View loadingIndicator) {
++
++        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
++            private boolean isLoading = false;
++
++            @Override
++            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
++                super.onScrolled(recyclerView, dx, dy);
++
++                int totalItemCount = layoutManager.getItemCount();
++                int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
++
++                if (!isLoading && totalItemCount <= (lastVisibleItem + threshold)) {
++                    // Show loading indicator
++                    if (loadingIndicator != null) {
++                        loadingIndicator.setVisibility(View.VISIBLE);
++                    }
++
++                    isLoading = true;
++
++                    // Load more data
++                    if (loadMoreCallback != null) {
++                        loadMoreCallback.onLoadingComplete();
++                    }
++
++                    // Hide loading indicator
++                    if (loadingIndicator != null) {
++                        loadingIndicator.setVisibility(View.GONE);
++                    }
++
++                    isLoading = false;
++                }
++            }
++        });
++    }
++}
+\ No newline at end of file
+-- 
+2.39.5
+
