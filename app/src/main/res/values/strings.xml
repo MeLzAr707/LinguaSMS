@@ -379,4 +379,13 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <!-- Offline Translation Model Strings -->
+    <string name="offline_models_title">Offline Translation Models</string>
+    <string name="offline_models_description">Download and manage translation models for offline use</string>
+    <string name="enable_offline_translation">Enable Offline Translation</string>
+    <string name="no_offline_models_available">No offline models available</string>
+    <string name="model_not_downloaded">Model not downloaded</string>
+    <string name="download_model">Download Model</string>
+    <string name="model_downloading">Downloading model...</string>
 </resources>
