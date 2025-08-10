@@ -87,7 +87,7 @@
             app:cardElevation="2dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/translate_input_button"
+            app:layout_constraintEnd_toStartOf="@+id/translate_outgoing_button"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -105,16 +105,6 @@
                     android:src="@drawable/ic_attachment"
                     app:tint="?attr/colorPrimary" />
 
-                <!-- Added emoji button -->
-                <ImageButton
-                    android:id="@+id/emoji_button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/insert_emoji"
-                    android:src="@android:drawable/ic_menu_gallery"
-                    app:tint="?attr/colorPrimary" />
-
                 <EditText
                     android:id="@+id/message_input"
                     android:layout_width="0dp"
@@ -129,20 +119,6 @@
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-
-        <!-- Added translate input button -->
-        <ImageButton
-            android:id="@+id/translate_input_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/translate_input"
-            android:src="@drawable/ic_translate"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/translate_outgoing_button"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="?attr/colorPrimary" />
 
         <!-- Translation Button -->
         <ImageButton
@@ -175,3 +151,4 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+

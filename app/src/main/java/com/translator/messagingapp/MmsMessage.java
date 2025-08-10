@@ -25,15 +25,6 @@ public class MmsMessage extends Message {
     private String transactionId;
 
     /**
-     * Default constructor.
-     */
-    public MmsMessage() {
-        super();
-        this.attachments = new ArrayList<>();
-        setMessageType(MESSAGE_TYPE_MMS);
-    }
-
-    /**
      * Creates a new MMS message.
      *
      * @param id The message ID
@@ -81,17 +72,6 @@ public class MmsMessage extends Message {
      */
     public List<Attachment> getAttachmentObjects() {
         return attachments;
-    }
-
-    /**
-     * Sets the attachments for this MMS message.
-     *
-     * @param attachments The list of attachments to set
-     */
-    public void setAttachmentObjects(List<Attachment> attachments) {
-        if (attachments != null) {
-            this.attachments = attachments;
-        }
     }
 
     /**
@@ -196,17 +176,6 @@ public class MmsMessage extends Message {
         private String contentType;
         private String fileName;
         private long size;
-        private String name;
-        private String data;
-        private String text;
-        private String partId;
-
-        /**
-         * Default constructor.
-         */
-        public Attachment() {
-            // Default constructor
-        }
 
         /**
          * Creates a new attachment.
@@ -233,30 +202,12 @@ public class MmsMessage extends Message {
         }
 
         /**
-         * Sets the URI of the attachment content.
-         *
-         * @param uri The URI
-         */
-        public void setUri(Uri uri) {
-            this.uri = uri;
-        }
-
-        /**
          * Gets the MIME type of the attachment.
          *
          * @return The MIME type
          */
         public String getContentType() {
             return contentType;
-        }
-
-        /**
-         * Sets the MIME type of the attachment.
-         *
-         * @param contentType The MIME type
-         */
-        public void setContentType(String contentType) {
-            this.contentType = contentType;
         }
 
         /**
@@ -269,102 +220,12 @@ public class MmsMessage extends Message {
         }
 
         /**
-         * Sets the file name of the attachment.
-         *
-         * @param fileName The file name
-         */
-        public void setFileName(String fileName) {
-            this.fileName = fileName;
-        }
-
-        /**
          * Gets the size of the attachment in bytes.
          *
          * @return The size in bytes
          */
         public long getSize() {
             return size;
-        }
-
-        /**
-         * Sets the size of the attachment in bytes.
-         *
-         * @param size The size in bytes
-         */
-        public void setSize(long size) {
-            this.size = size;
-        }
-
-        /**
-         * Gets the name of the attachment.
-         *
-         * @return The name
-         */
-        public String getName() {
-            return name;
-        }
-
-        /**
-         * Sets the name of the attachment.
-         *
-         * @param name The name
-         */
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        /**
-         * Gets the data of the attachment.
-         *
-         * @return The data
-         */
-        public String getData() {
-            return data;
-        }
-
-        /**
-         * Sets the data of the attachment.
-         *
-         * @param data The data
-         */
-        public void setData(String data) {
-            this.data = data;
-        }
-
-        /**
-         * Gets the text of the attachment.
-         *
-         * @return The text
-         */
-        public String getText() {
-            return text;
-        }
-
-        /**
-         * Sets the text of the attachment.
-         *
-         * @param text The text
-         */
-        public void setText(String text) {
-            this.text = text;
-        }
-
-        /**
-         * Gets the part ID of the attachment.
-         *
-         * @return The part ID
-         */
-        public String getPartId() {
-            return partId;
-        }
-
-        /**
-         * Sets the part ID of the attachment.
-         *
-         * @param partId The part ID
-         */
-        public void setPartId(String partId) {
-            this.partId = partId;
         }
 
         /**
@@ -395,4 +256,3 @@ public class MmsMessage extends Message {
         }
     }
 }
-

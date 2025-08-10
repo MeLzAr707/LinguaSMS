@@ -10,14 +10,14 @@
     android:gravity="center">
 
     <TextView
-        android:id="@+id/emoji_text"
+        android:id="@+id/reaction_emoji"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="16sp"
         tools:text="👍" />
 
     <TextView
-        android:id="@+id/count_text"
+        android:id="@+id/reaction_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="2dp"

@@ -1,292 +1,296 @@
 package com.translator.messagingapp;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioGroup;
+import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
-import androidx.preference.EditTextPreference;
-import androidx.preference.ListPreference;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.SwitchPreferenceCompat;
 
-/**
- * Activity for app settings.
- * CORRECTED VERSION: Updates preference titles and removes API service
- */
+import java.util.Locale;
+
 public class SettingsActivity extends BaseActivity {
     private static final String TAG = "SettingsActivity";
 
+    private EditText apiKeyInput;
+    private Button selectIncomingLanguageButton;
+    private Button selectOutgoingLanguageButton;
+    private Button testApiKeyButton;
+    private Button saveButton;
+    private Switch autoTranslateSwitch;
+    private RadioGroup themeRadioGroup;
+    private TextView incomingLanguageText;
+    private TextView outgoingLanguageText;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // BaseActivity will handle theme application and userPreferences initialization
         super.onCreate(savedInstanceState);
-        
-        try {
-            setContentView(R.layout.activity_settings);
-            
-            // Add logging
-            Log.d(TAG, "onCreate called");
-            
-            // Setup toolbar
-            Toolbar toolbar = findViewById(R.id.toolbar);
-            setSupportActionBar(toolbar);
-            if (getSupportActionBar() != null) {
-                getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-                getSupportActionBar().setTitle(R.string.settings);
-            }
-            
-            // If using PreferenceFragment, make sure it's added correctly
-            if (savedInstanceState == null) {
-                getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.settings_container, new SettingsFragment())
-                    .commit();
-                
-                Log.d(TAG, "SettingsFragment added to container");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error in onCreate", e);
-            // Show a simple layout with error message if the preferences setup fails
-            setContentView(R.layout.error_layout);
-            Toast.makeText(this, R.string.settings_error_message, Toast.LENGTH_LONG).show();
+        setContentView(R.layout.activity_settings);
+
+        // Simple toolbar setup without setSupportActionBar
+        setupToolbar();
+
+        // Find and initialize all UI components
+        findViews();
+
+        // Set up click listeners
+        setupClickListeners();
+
+        // Load saved preferences
+        loadPreferences();
+    }
+
+    private void setupToolbar() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            // Set title directly on toolbar
+            toolbar.setTitle(R.string.settings);
+
+            // Set up back button
+            toolbar.setNavigationIcon(android.R.drawable.ic_menu_close_clear_cancel);
+            toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish(); // Close activity when back button is pressed
+                }
+            });
         }
     }
-    
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
-            return true;
+
+    private void findViews() {
+        apiKeyInput = findViewById(R.id.api_key_input);
+        selectIncomingLanguageButton = findViewById(R.id.select_incoming_language_button);
+        selectOutgoingLanguageButton = findViewById(R.id.select_outgoing_language_button);
+        testApiKeyButton = findViewById(R.id.test_api_key_button);
+        saveButton = findViewById(R.id.save_button);
+        autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
+        themeRadioGroup = findViewById(R.id.theme_radio_group);
+        incomingLanguageText = findViewById(R.id.incoming_language_text);
+        outgoingLanguageText = findViewById(R.id.outgoing_language_text);
+    }
+
+    private void setupClickListeners() {
+        // Set up incoming language button
+        selectIncomingLanguageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SettingsActivity.this, "Opening language selection...", Toast.LENGTH_SHORT).show();
+                showLanguageSelectionDialog("incoming");
+            }
+        });
+
+        // Set up outgoing language button
+        selectOutgoingLanguageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SettingsActivity.this, "Opening language selection...", Toast.LENGTH_SHORT).show();
+                showLanguageSelectionDialog("outgoing");
+            }
+        });
+
+        // Set up test API key button
+        testApiKeyButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SettingsActivity.this, "Testing API key...", Toast.LENGTH_SHORT).show();
+                testApiKey();
+            }
+        });
+
+        // Set up save button
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SettingsActivity.this, "Saving settings...", Toast.LENGTH_SHORT).show();
+                saveSettings();
+            }
+        });
+    }
+
+    private void loadPreferences() {
+        // Load API key
+        apiKeyInput.setText(userPreferences.getApiKey());
+
+        // Load language preferences
+        String incomingLanguage = userPreferences.getPreferredIncomingLanguage();
+        if (!TextUtils.isEmpty(incomingLanguage)) {
+            incomingLanguageText.setText(getLanguageName(incomingLanguage));
+            incomingLanguageText.setVisibility(View.VISIBLE);
+        } else {
+            incomingLanguageText.setVisibility(View.GONE);
         }
-        return super.onOptionsItemSelected(item);
+
+        String outgoingLanguage = userPreferences.getPreferredOutgoingLanguage();
+        if (!TextUtils.isEmpty(outgoingLanguage)) {
+            outgoingLanguageText.setText(getLanguageName(outgoingLanguage));
+            outgoingLanguageText.setVisibility(View.VISIBLE);
+        } else {
+            outgoingLanguageText.setVisibility(View.GONE);
+        }
+
+        // Load auto-translate setting
+        autoTranslateSwitch.setChecked(userPreferences.isAutoTranslateEnabled());
+
+        // Load theme setting
+        int themeId = userPreferences.getThemeId();
+        int radioButtonId;
+        switch (themeId) {
+            case UserPreferences.THEME_DARK:
+                radioButtonId = R.id.radio_dark;
+                break;
+            case UserPreferences.THEME_BLACK_GLASS:
+                radioButtonId = R.id.radio_black_glass;
+                break;
+            case UserPreferences.THEME_SYSTEM:
+                radioButtonId = R.id.radio_system;
+                break;
+            case UserPreferences.THEME_LIGHT:
+            default:
+                radioButtonId = R.id.radio_light;
+                break;
+        }
+        themeRadioGroup.check(radioButtonId);
+    }
+
+    private void showLanguageSelectionDialog(final String selectionType) {
+        // Define language options
+        final String[] languageCodes = {
+                "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi"
+        };
+
+        final String[] languageNames = {
+                "English", "Spanish", "French", "German", "Italian", "Portuguese",
+                "Russian", "Chinese", "Japanese", "Korean", "Arabic", "Hindi"
+        };
+
+        // Create dialog builder
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Select Language");
+
+        // Set items
+        builder.setItems(languageNames, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String selectedCode = languageCodes[which];
+                String selectedName = languageNames[which];
+
+                // Save the selected language
+                if ("incoming".equals(selectionType)) {
+                    userPreferences.setPreferredIncomingLanguage(selectedCode);
+                    incomingLanguageText.setText(selectedName);
+                    incomingLanguageText.setVisibility(View.VISIBLE);
+                    Toast.makeText(SettingsActivity.this, "Incoming language set to " + selectedName, Toast.LENGTH_SHORT).show();
+                } else {
+                    userPreferences.setPreferredOutgoingLanguage(selectedCode);
+                    outgoingLanguageText.setText(selectedName);
+                    outgoingLanguageText.setVisibility(View.VISIBLE);
+                    Toast.makeText(SettingsActivity.this, "Outgoing language set to " + selectedName, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        // Show dialog
+        builder.show();
+    }
+
+    private String getLanguageName(String languageCode) {
+        try {
+            Locale locale = new Locale(languageCode);
+            return locale.getDisplayLanguage();
+        } catch (Exception e) {
+            return languageCode;
+        }
+    }
+
+    private void testApiKey() {
+        // Get API key from input field
+        String apiKey = apiKeyInput.getText().toString().trim();
+
+        if (TextUtils.isEmpty(apiKey)) {
+            Toast.makeText(this, "Please enter an API key", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Get translation service
+        GoogleTranslationService translationService =
+                ((TranslatorApp) getApplication()).getTranslationService();
+
+        if (translationService != null) {
+            translationService.setApiKey(apiKey);
+
+            // Simple synchronous test
+            boolean isValid = translationService.testApiKey();
+
+            if (isValid) {
+                Toast.makeText(this, "API key is valid", Toast.LENGTH_SHORT).show();
+                userPreferences.setApiKey(apiKey);
+            } else {
+                Toast.makeText(this, "Invalid API key", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "Translation service not available", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void saveSettings() {
+        // Save API key
+        String apiKey = apiKeyInput.getText().toString().trim();
+        userPreferences.setApiKey(apiKey);
+
+        // Update translation service
+        GoogleTranslationService translationService =
+                ((TranslatorApp) getApplication()).getTranslationService();
+        if (translationService != null) {
+            translationService.setApiKey(apiKey);
+        }
+
+        // Check if theme is changing
+        int checkedId = themeRadioGroup.getCheckedRadioButtonId();
+        int newThemeId;
+        if (checkedId == R.id.radio_dark) {
+            newThemeId = UserPreferences.THEME_DARK;
+        } else if (checkedId == R.id.radio_black_glass) {
+            newThemeId = UserPreferences.THEME_BLACK_GLASS;
+        } else if (checkedId == R.id.radio_system) {
+            newThemeId = UserPreferences.THEME_SYSTEM;
+        } else {
+            newThemeId = UserPreferences.THEME_LIGHT;
+        }
+        
+        // Check if theme has changed
+        boolean themeChanged = (newThemeId != userPreferences.getThemeId());
+        
+        // Save theme setting after checking for changes
+        userPreferences.setThemeId(newThemeId);
+        
+        // Save auto-translate setting
+        userPreferences.setAutoTranslateEnabled(autoTranslateSwitch.isChecked());
+
+        // Show success message
+        Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
+
+        // Apply theme changes with a smooth transition if needed
+        if (themeChanged) {
+            // Use a fade animation for smoother transition
+            recreateWithFade();
+        }
     }
     
     /**
-     * Fragment for displaying preferences.
+     * Recreate the activity with a fade animation for smoother theme transitions
      */
-    public static class SettingsFragment extends PreferenceFragmentCompat {
-        private static final String TAG = "SettingsFragment";
-        
-        @Override
-        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-            try {
-                Log.d(TAG, "onCreatePreferences called");
-                setPreferencesFromResource(R.xml.preferences, rootKey);
-                
-                // Get user preferences
-                UserPreferences userPreferences = ((TranslatorApp) requireActivity().getApplication()).getUserPreferences();
-                
-                // Setup auto-translate preference
-                setupAutoTranslatePreference(userPreferences);
-                
-                // Setup preferred incoming language preference
-                setupPreferredLanguagePreference(userPreferences);
-                
-                // Setup preferred outgoing language preference
-                setupPreferredOutgoingLanguagePreference(userPreferences);
-                
-                // Setup theme preference
-                setupThemePreference(userPreferences);
-                
-                // Setup API key preference
-                setupApiKeyPreference(userPreferences);
-                
-                // Setup debug mode preference
-                setupDebugModePreference(userPreferences);
-                
-                Log.d(TAG, "Preferences setup complete");
-            } catch (Exception e) {
-                Log.e(TAG, "Error setting up preferences", e);
-                Toast.makeText(getContext(), R.string.settings_error_message, Toast.LENGTH_LONG).show();
-            }
-        }
-        
-        private void setupAutoTranslatePreference(UserPreferences userPreferences) {
-            SwitchPreferenceCompat autoTranslatePreference = findPreference("auto_translate");
-            if (autoTranslatePreference != null) {
-                try {
-                    autoTranslatePreference.setChecked(userPreferences.isAutoTranslateEnabled());
-                    autoTranslatePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            boolean enabled = (Boolean) newValue;
-                            userPreferences.setAutoTranslateEnabled(enabled);
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting auto translate preference", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing auto translate preference", e);
-                }
-            }
-        }
-        
-        private void setupPreferredLanguagePreference(UserPreferences userPreferences) {
-            ListPreference preferredLanguagePreference = findPreference("preferred_language");
-            if (preferredLanguagePreference != null) {
-                try {
-                    String currentLanguage = userPreferences.getPreferredLanguage();
-                    preferredLanguagePreference.setValue(currentLanguage);
-                    preferredLanguagePreference.setSummary(getLanguageName(currentLanguage));
-                    preferredLanguagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            String language = (String) newValue;
-                            userPreferences.setPreferredLanguage(language);
-                            preference.setSummary(getLanguageName(language));
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting preferred language", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing preferred language preference", e);
-                }
-            }
-        }
-        
-        private void setupPreferredOutgoingLanguagePreference(UserPreferences userPreferences) {
-            ListPreference preferredOutgoingLanguagePreference = findPreference("preferred_outgoing_language");
-            if (preferredOutgoingLanguagePreference != null) {
-                try {
-                    // Get current outgoing language or default to English if not set
-                    String currentLanguage = userPreferences.getPreferredOutgoingLanguage();
-                    if (TextUtils.isEmpty(currentLanguage)) {
-                        currentLanguage = "en";
-                    }
-                    
-                    preferredOutgoingLanguagePreference.setValue(currentLanguage);
-                    preferredOutgoingLanguagePreference.setSummary(getLanguageName(currentLanguage));
-                    preferredOutgoingLanguagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            String language = (String) newValue;
-                            userPreferences.setPreferredOutgoingLanguage(language);
-                            preference.setSummary(getLanguageName(language));
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting preferred outgoing language", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing preferred outgoing language preference", e);
-                }
-            }
-        }
-        
-        private void setupThemePreference(UserPreferences userPreferences) {
-            ListPreference themePreference = findPreference("theme");
-            if (themePreference != null) {
-                try {
-                    themePreference.setValue(String.valueOf(userPreferences.getThemeId()));
-                    themePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            int themeId = Integer.parseInt((String) newValue);
-                            userPreferences.setThemeId(themeId);
-                            
-                            // Refresh the current activity and then recreate to apply new theme
-                            requireActivity().runOnUiThread(() -> {
-                                try {
-                                    // First recreate the settings activity
-                                    requireActivity().recreate();
-                                    
-                                    // Also request refresh of main activity if it exists
-                                    if (requireActivity().getParent() != null) {
-                                        requireActivity().getParent().recreate();
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error recreating activities for theme change", e);
-                                }
-                            });
-                            
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting theme", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing theme preference", e);
-                }
-            }
-        }
-        
-        private void setupApiKeyPreference(UserPreferences userPreferences) {
-            EditTextPreference apiKeyPreference = findPreference("api_key");
-            if (apiKeyPreference != null) {
-                try {
-                    String currentApiKey = userPreferences.getApiKey();
-                    if (!TextUtils.isEmpty(currentApiKey)) {
-                        apiKeyPreference.setSummary(R.string.api_key_set);
-                    }
-                    
-                    apiKeyPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            String apiKey = (String) newValue;
-                            userPreferences.setApiKey(apiKey);
-                            
-                            if (!TextUtils.isEmpty(apiKey)) {
-                                preference.setSummary(R.string.api_key_set);
-                            } else {
-                                preference.setSummary(R.string.pref_api_key_summary);
-                            }
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting API key", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing API key preference", e);
-                }
-            }
-        }
-        
-        private void setupDebugModePreference(UserPreferences userPreferences) {
-            SwitchPreferenceCompat debugModePreference = findPreference("debug_mode");
-            if (debugModePreference != null) {
-                try {
-                    debugModePreference.setChecked(userPreferences.isDebugModeEnabled());
-                    debugModePreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                        try {
-                            boolean enabled = (Boolean) newValue;
-                            userPreferences.setDebugModeEnabled(enabled);
-                            return true;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error setting debug mode", e);
-                            return false;
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing debug mode preference", e);
-                }
-            }
-        }
-        
-        /**
-         * Helper method to get language name from code
-         */
-        private String getLanguageName(String languageCode) {
-            if (TextUtils.isEmpty(languageCode)) {
-                return "English"; // Default
-            }
-            
-            String[] languageCodes = getResources().getStringArray(R.array.language_codes);
-            String[] languageNames = getResources().getStringArray(R.array.language_names);
-            
-            for (int i = 0; i < languageCodes.length; i++) {
-                if (languageCodes[i].equals(languageCode)) {
-                    return languageNames[i];
-                }
-            }
-            
-            return "English"; // Default if not found
-        }
+    private void recreateWithFade() {
+        // Use a fade animation for smoother transition
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        recreate();
     }
 }

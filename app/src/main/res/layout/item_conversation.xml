@@ -1,90 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?android:attr/selectableItemBackground"
-    android:padding="16dp">
+    android:padding="12dp">
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/contact_avatar"
+    <FrameLayout
+        android:id="@+id/contact_image_container"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:src="@drawable/circle_background"
-        app:civ_border_color="@color/colorAccent"
-        app:civ_border_width="1dp" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-    <View
-        android:id="@+id/unread_indicator"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
-        android:layout_alignEnd="@id/contact_avatar"
-        android:layout_alignBottom="@id/contact_avatar"
-        android:background="@drawable/unread_count_background"
-        android:visibility="gone"
-        tools:visibility="visible" />
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/contact_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:civ_border_width="0dp" />
+
+        <TextView
+            android:id="@+id/contact_initials"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/contact_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/timestamp"
+        app:layout_constraintStart_toEndOf="@+id/contact_image_container"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/last_message"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toStartOf="@+id/unread_count"
+        app:layout_constraintStart_toEndOf="@+id/contact_image_container"
+        app:layout_constraintTop_toBottomOf="@+id/contact_name" />
+
+    <TextView
+        android:id="@+id/timestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/unread_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignEnd="@id/contact_avatar"
-        android:layout_alignBottom="@id/contact_avatar"
         android:background="@drawable/unread_count_background"
         android:gravity="center"
-        android:minWidth="20dp"
-        android:minHeight="20dp"
+        android:minWidth="24dp"
+        android:minHeight="24dp"
         android:padding="2dp"
         android:textColor="@android:color/white"
         android:textSize="12sp"
         android:visibility="gone"
-        tools:text="3"
-        tools:visibility="visible" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/timestamp" />
 
-    <TextView
-        android:id="@+id/contact_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="8dp"
-        android:layout_toStartOf="@id/date"
-        android:layout_toEndOf="@id/contact_avatar"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textAppearance="?attr/textAppearanceSubtitle1"
-        android:textStyle="bold"
-        tools:text="John Doe" />
-
-    <TextView
-        android:id="@+id/snippet"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/contact_name"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="8dp"
-        android:layout_toStartOf="@id/date"
-        android:layout_toEndOf="@id/contact_avatar"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:textAppearance="?attr/textAppearanceBody2"
-        tools:text="This is a sample message snippet that might be a bit longer than expected and should be truncated." />
-
-    <TextView
-        android:id="@+id/date"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:textAppearance="?attr/textAppearanceCaption"
-        android:textColor="?android:attr/textColorSecondary"
-        tools:text="10:30 AM" />
-
-</RelativeLayout>
-
+</androidx.constraintlayout.widget.ConstraintLayout>
 
 
 

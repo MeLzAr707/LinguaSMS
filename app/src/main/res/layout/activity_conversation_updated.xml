@@ -30,7 +30,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Progress bar -->
+    <!-- Added missing progress_bar -->
     <ProgressBar
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"
@@ -41,7 +41,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Empty state text view -->
+    <!-- Renamed empty_view to empty_state_text_view -->
     <TextView
         android:id="@+id/empty_state_text_view"
         android:layout_width="0dp"
@@ -87,7 +87,7 @@
             app:cardElevation="2dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/translate_input_button"
+            app:layout_constraintEnd_toStartOf="@+id/translate_outgoing_button"
             app:layout_constraintTop_toTopOf="parent">
 
             <LinearLayout
@@ -105,7 +105,7 @@
                     android:src="@drawable/ic_attachment"
                     app:tint="?attr/colorPrimary" />
 
-                <!-- Emoji button -->
+                <!-- Added emoji button -->
                 <ImageButton
                     android:id="@+id/emoji_button"
                     android:layout_width="48dp"
@@ -130,14 +130,14 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Translation Button - Only one translate button now -->
+        <!-- Translation Button -->
         <ImageButton
-            android:id="@+id/translate_input_button"
+            android:id="@+id/translate_outgoing_button"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/translate_input"
+            android:contentDescription="@string/translate_outgoing_message"
             android:src="@drawable/ic_translate"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/send_button"

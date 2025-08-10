@@ -12,7 +12,6 @@ public class MessageReaction {
     private String emoji;
     private String userId;
     private long timestamp;
-    private int count = 1; // Default count is 1 for a single reaction
 
     /**
      * Creates a new message reaction.
@@ -79,24 +78,6 @@ public class MessageReaction {
      */
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
-    }
-
-    /**
-     * Gets the count of this reaction.
-     *
-     * @return The count
-     */
-    public int getCount() {
-        return count;
-    }
-
-    /**
-     * Sets the count of this reaction.
-     *
-     * @param count The count
-     */
-    public void setCount(int count) {
-        this.count = count;
     }
 
     /**

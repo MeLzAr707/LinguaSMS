@@ -1,180 +1,137 @@
 package com.translator.messagingapp;
 
+import android.content.ContentResolver;
 import android.content.Context;
-import android.text.TextUtils;
+import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
-import de.hdodenhof.circleimageview.CircleImageView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+
 /**
- * Adapter for displaying conversations in a RecyclerView.
- * FIXED VERSION: Adds proper error handling and logging for contact display
+ * RecyclerView adapter for displaying conversations.
  */
 public class ConversationRecyclerAdapter extends RecyclerView.Adapter<ConversationRecyclerAdapter.ViewHolder> {
-    private static final String TAG = "ConversationAdapter";
+    private static final String TAG = "ConversationRecyclerAdapter";
+
     private final Context context;
-    private List<Conversation> conversations;
-    private ConversationClickListener conversationClickListener;
+    private final List<Conversation> conversations;
+    private final SimpleDateFormat dateFormat;
+    private final SimpleDateFormat timeFormat;
+    private final SimpleDateFormat fullDateFormat;
+    private ConversationClickListener clickListener;
 
     /**
-     * Constructor.
-     *
-     * @param context The context
-     * @param conversations The list of conversations
+     * Interface for conversation click events.
      */
+    public interface ConversationClickListener {
+        void onConversationClick(Conversation conversation, int position);
+        void onConversationLongClick(Conversation conversation, int position);
+    }
+
     public ConversationRecyclerAdapter(Context context, List<Conversation> conversations) {
         this.context = context;
         this.conversations = conversations;
-        
-        // Log conversations for debugging
-        logConversations();
+        this.dateFormat = new SimpleDateFormat("MMM d", Locale.getDefault());
+        this.timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        this.fullDateFormat = new SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault());
     }
 
-    /**
-     * Sets the conversation click listener.
-     *
-     * @param conversationClickListener The listener
-     */
-    public void setConversationClickListener(ConversationClickListener conversationClickListener) {
-        this.conversationClickListener = conversationClickListener;
-    }
-
-    /**
-     * Updates the conversations list.
-     *
-     * @param conversations The new list of conversations
-     */
-    public void updateConversations(List<Conversation> conversations) {
-        this.conversations = conversations;
-        logConversations();
-        notifyDataSetChanged();
-    }
-
-    /**
-     * Logs the conversations for debugging.
-     */
-    private void logConversations() {
-        if (conversations == null) {
-            Log.e(TAG, "Conversations list is null");
-            return;
-        }
-        
-        Log.d(TAG, "Conversations count: " + conversations.size());
-        for (int i = 0; i < conversations.size(); i++) {
-            Conversation conversation = conversations.get(i);
-            if (conversation == null) {
-                Log.e(TAG, "Conversation at position " + i + " is null");
-                continue;
-            }
-            
-            Log.d(TAG, "Conversation[" + i + "]: " +
-                  "threadId=" + conversation.getThreadId() +
-                  ", address=" + conversation.getAddress() +
-                  ", contactName=" + conversation.getContactName() +
-                  ", snippet=" + conversation.getSnippet() +
-                  ", date=" + conversation.getDate() +
-                  ", messageCount=" + conversation.getMessageCount() +
-                  ", read=" + conversation.isRead());
-        }
+    public void setConversationClickListener(ConversationClickListener listener) {
+        this.clickListener = listener;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_conversation, parent, false);
+        View view = LayoutInflater.from(context).inflate(R.layout.item_conversation, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        try {
-            if (conversations == null || position >= conversations.size()) {
-                Log.e(TAG, "Invalid position or null conversations: " + position);
-                holder.contactNameTextView.setText(R.string.error_loading_conversation);
-                return;
-            }
-            
-            Conversation conversation = conversations.get(position);
-            if (conversation == null) {
-                Log.e(TAG, "Conversation at position " + position + " is null");
-                holder.contactNameTextView.setText(R.string.error_loading_conversation);
-                return;
-            }
-            
-            // Set contact name or phone number with improved fallback logic
-            String displayName = getDisplayName(conversation);
-            holder.contactNameTextView.setText(displayName);
-            
-            // Initialize contact avatar with error handling
-            initializeContactAvatar(holder, conversation);
-            
-            // Log for debugging
-            Log.d(TAG, "Displaying conversation: name='" + conversation.getContactName() + 
-                      "', address='" + conversation.getAddress() + 
-                      "', displayName='" + displayName + "'");
-            
-            // Set snippet
-            String snippet = conversation.getSnippet();
-            if (!TextUtils.isEmpty(snippet)) {
-                holder.snippetTextView.setText(snippet);
-                holder.snippetTextView.setVisibility(View.VISIBLE);
-            } else {
-                holder.snippetTextView.setVisibility(View.GONE);
-            }
-            
-            // Set date
-            Date date = conversation.getDate();
-            if (date != null) {
-                holder.dateTextView.setText(formatDate(date));
-                holder.dateTextView.setVisibility(View.VISIBLE);
-            } else {
-                holder.dateTextView.setVisibility(View.GONE);
-            }
-            
-            // Set unread indicator
-            boolean isRead = conversation.isRead();
-            holder.unreadIndicator.setVisibility(isRead ? View.INVISIBLE : View.VISIBLE);
-            
-            // Set unread count
-            int unreadCount = conversation.getUnreadCount();
-            if (unreadCount > 0) {
-                holder.unreadCountTextView.setText(String.valueOf(unreadCount));
-                holder.unreadCountTextView.setVisibility(View.VISIBLE);
-            } else {
-                holder.unreadCountTextView.setVisibility(View.GONE);
-            }
-            
-            // Set click listeners
-            holder.itemView.setOnClickListener(v -> {
-                if (conversationClickListener != null) {
-                    conversationClickListener.onConversationClick(conversation);
-                }
-            });
-            
-            holder.itemView.setOnLongClickListener(v -> {
-                if (conversationClickListener != null) {
-                    conversationClickListener.onConversationLongClick(conversation);
-                    return true;
-                }
-                return false;
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error binding conversation at position " + position, e);
-            holder.contactNameTextView.setText(R.string.error_loading_conversation);
+        final Conversation conversation = conversations.get(position);
+
+        // Set the contact name
+        String displayName = conversation.getContactName();
+        if (displayName == null || displayName.isEmpty() || displayName.equals("null")) {
+            displayName = formatPhoneNumber(conversation.getAddress());
         }
+        holder.contactName.setText(displayName);
+
+        // Set the last message
+        String lastMessage = conversation.getLastMessage();
+        if (lastMessage != null && !lastMessage.isEmpty()) {
+            holder.lastMessage.setText(lastMessage);
+            holder.lastMessage.setVisibility(View.VISIBLE);
+        } else {
+            holder.lastMessage.setText("No messages");
+            holder.lastMessage.setVisibility(View.VISIBLE);
+        }
+
+
+        // Set the timestamp
+        Date date = conversation.getDate();
+        if (date != null && date.getTime() > 0) {
+            holder.timestamp.setText(formatTimestamp(date));
+        } else {
+            // Use current time as fallback if date is null or invalid
+            holder.timestamp.setText(formatTimestamp(new Date()));
+        }
+
+        // Set unread count
+        int unreadCount = conversation.getUnreadCount();
+        if (unreadCount > 0) {
+            holder.unreadCount.setText(String.valueOf(unreadCount));
+            holder.unreadCount.setVisibility(View.VISIBLE);
+        } else {
+            holder.unreadCount.setVisibility(View.GONE);
+        }
+
+        // Safely set the contact image
+        setContactImageSafely(holder, conversation.getAddress(), displayName);
+
+        // Set click listeners
+        final int finalPosition = position;
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) {
+                clickListener.onConversationClick(conversation, finalPosition);
+            }
+        });
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (clickListener != null) {
+                clickListener.onConversationLongClick(conversation, finalPosition);
+                return true;
+            }
+            return false;
+        });
     }
 
     @Override
@@ -183,200 +140,204 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
-     * Gets the display name for a conversation with proper fallback logic.
-     *
-     * @param conversation The conversation
-     * @return The display name to show
+     * Format a phone number for display
      */
-    private String getDisplayName(Conversation conversation) {
-        if (conversation == null) {
-            return context.getString(R.string.unknown_contact);
+    private String formatPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return "Unknown";
         }
-        
-        String contactName = conversation.getContactName();
-        String address = conversation.getAddress();
-        String threadId = conversation.getThreadId();
-        
-        // Safety check: never display threadId as the contact name
-        if (!TextUtils.isEmpty(contactName) && contactName.equals(threadId)) {
-            Log.e(TAG, "WARNING: Contact name equals threadId (" + threadId + ") - this should not happen!");
-            contactName = null; // Force fallback logic
-        }
-        
-        // First priority: Non-empty contact name that's not just the phone number
-        if (!TextUtils.isEmpty(contactName) && !contactName.equals(address)) {
-            return contactName;
-        }
-        
-        // Second priority: Phone number/address
-        if (!TextUtils.isEmpty(address)) {
-            // Additional safety check: make sure address is not threadId
-            if (address.equals(threadId)) {
-                Log.e(TAG, "WARNING: Address equals threadId (" + threadId + ") - this should not happen!");
-                return context.getString(R.string.unknown_contact);
+
+        // Simple formatting for display
+        if (phoneNumber.length() == 10) {
+            // Format as (XXX) XXX-XXXX for 10-digit US numbers
+            return String.format("(%s) %s-%s",
+                    phoneNumber.substring(0, 3),
+                    phoneNumber.substring(3, 6),
+                    phoneNumber.substring(6));
+        } else if (phoneNumber.length() > 10) {
+            // For international numbers, add a + if not present
+            if (!phoneNumber.startsWith("+")) {
+                return "+" + phoneNumber;
             }
-            return address;
         }
-        
-        // Third priority: Contact name even if it might be a phone number
-        if (!TextUtils.isEmpty(contactName)) {
-            return contactName;
-        }
-        
-        // Last resort: Unknown contact
-        return context.getString(R.string.unknown_contact);
+
+        return phoneNumber;
     }
 
     /**
-     * Formats the date for display.
-     *
-     * @param date The date to format
-     * @return The formatted date
+     * Format a timestamp for display
      */
-    private String formatDate(Date date) {
-        try {
-            Date now = new Date();
-            
-            // If the message is from today, show only the time
-            if (isSameDay(date, now)) {
-                SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
-                return timeFormat.format(date);
-            } else {
-                SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.getDefault());
-                return dateFormat.format(date);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error formatting date", e);
+    private String formatTimestamp(Date date) {
+        if (date == null) {
             return "";
         }
-    }
 
-    /**
-     * Checks if two dates are on the same day.
-     *
-     * @param date1 The first date
-     * @param date2 The second date
-     * @return true if the dates are on the same day, false otherwise
-     */
-    private boolean isSameDay(Date date1, Date date2) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
-        return dateFormat.format(date1).equals(dateFormat.format(date2));
-    }
+        Calendar now = Calendar.getInstance();
+        Calendar then = Calendar.getInstance();
+        then.setTime(date);
 
-    /**
-     * Initialize contact avatar with proper error handling to prevent bitmap creation errors.
-     * 
-     * @param holder The ViewHolder containing the avatar view
-     * @param conversation The conversation data
-     */
-    private void initializeContactAvatar(ViewHolder holder, Conversation conversation) {
-        if (holder.contactAvatarImageView == null) {
-            return;
+        // Today
+        if (now.get(Calendar.YEAR) == then.get(Calendar.YEAR) &&
+                now.get(Calendar.DAY_OF_YEAR) == then.get(Calendar.DAY_OF_YEAR)) {
+            return timeFormat.format(date);
         }
 
-        try {
-            // Ensure the view is visible and has proper dimensions
-            holder.contactAvatarImageView.setVisibility(View.VISIBLE);
-            
-            // Check if view has been measured and has valid dimensions
-            int width = holder.contactAvatarImageView.getWidth();
-            int height = holder.contactAvatarImageView.getHeight();
-            
-            // If dimensions are not available yet (view not measured), use layout params
-            if (width <= 0 || height <= 0) {
-                ViewGroup.LayoutParams params = holder.contactAvatarImageView.getLayoutParams();
-                if (params != null) {
-                    width = params.width;
-                    height = params.height;
-                }
-            }
-            
-            // Log dimensions for debugging
-            Log.d(TAG, "Avatar dimensions: width=" + width + ", height=" + height);
-            
-            // Always set a default image to prevent bitmap creation issues
-            // This ensures the CircleImageView has a valid drawable to work with
-            holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
-            
-            // TODO: In the future, you could add logic here to:
-            // 1. Load actual contact photos
-            // 2. Generate initials-based avatars
-            // 3. Use Glide or similar library for image loading
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting up contact avatar for position", e);
-            // Fallback: ensure the view is visible but with default image
+        // This week
+        if (now.get(Calendar.YEAR) == then.get(Calendar.YEAR) &&
+                now.get(Calendar.WEEK_OF_YEAR) == then.get(Calendar.WEEK_OF_YEAR)) {
+            return new SimpleDateFormat("EEE", Locale.getDefault()).format(date);
+        }
+
+        // This year
+        if (now.get(Calendar.YEAR) == then.get(Calendar.YEAR)) {
+            return dateFormat.format(date);
+        }
+
+        // Older
+        return new SimpleDateFormat("MM/dd/yy", Locale.getDefault()).format(date);
+    }
+
+    /**
+     * Safely set the contact image with fallback to initials
+     */
+    private void setContactImageSafely(ViewHolder holder, String address, String displayName) {
+        // Create a default colored background based on the address or name
+        int backgroundColor = generateColor(address != null ? address : displayName);
+        ColorDrawable defaultBackground = new ColorDrawable(backgroundColor);
+
+        // First, set the default background to avoid null drawables
+        holder.contactImage.setImageDrawable(defaultBackground);
+
+        // Set up initials as a fallback
+        String initials = getInitials(displayName);
+        holder.contactInitials.setText(initials);
+        holder.contactInitials.setVisibility(View.VISIBLE);
+
+        // Try to load contact photo if available
+        if (address != null && !address.isEmpty()) {
             try {
-                holder.contactAvatarImageView.setImageResource(R.drawable.circle_background);
-                holder.contactAvatarImageView.setVisibility(View.VISIBLE);
-            } catch (Exception fallbackException) {
-                Log.e(TAG, "Fallback avatar setup also failed", fallbackException);
-                // Last resort: hide the avatar to prevent crashes
-                holder.contactAvatarImageView.setVisibility(View.GONE);
+                Uri photoUri = getContactPhotoUri(address);
+                if (photoUri != null) {
+                    // Use Glide to load the image
+                    Glide.with(context)
+                            .load(photoUri)
+                            .apply(new RequestOptions()
+                                    .placeholder(defaultBackground)
+                                    .error(defaultBackground)
+                                    .diskCacheStrategy(DiskCacheStrategy.ALL))
+                            .listener(new RequestListener<>() {
+                                @Override
+                                public boolean onLoadFailed(@Nullable GlideException e, Object model,
+                                                            Target<Drawable> target, boolean isFirstResource) {
+                                    // Show initials on failure
+                                    holder.contactInitials.setVisibility(View.VISIBLE);
+                                    return false;
+                                }
+
+                                @Override
+                                public boolean onResourceReady(Drawable resource, Object model,
+                                                               Target<Drawable> target, DataSource dataSource,
+                                                               boolean isFirstResource) {
+                                    // Hide initials when image is loaded
+                                    holder.contactInitials.setVisibility(View.GONE);
+                                    return false;
+                                }
+                            })
+                            .into(holder.contactImage);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading contact photo", e);
+                // Fallback to initials
+                holder.contactInitials.setVisibility(View.VISIBLE);
             }
         }
     }
 
     /**
-     * ViewHolder for conversation items.
+     * Get the contact photo URI for a phone number
      */
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        CircleImageView contactAvatarImageView;
-        TextView contactNameTextView;
-        TextView snippetTextView;
-        TextView dateTextView;
-        View unreadIndicator;
-        TextView unreadCountTextView;
+    private Uri getContactPhotoUri(String phoneNumber) {
+        ContentResolver contentResolver = context.getContentResolver();
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
 
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-            contactAvatarImageView = itemView.findViewById(R.id.contact_avatar);
-            contactNameTextView = itemView.findViewById(R.id.contact_name);
-            snippetTextView = itemView.findViewById(R.id.snippet);
-            dateTextView = itemView.findViewById(R.id.date);
-            unreadIndicator = itemView.findViewById(R.id.unread_indicator);
-            unreadCountTextView = itemView.findViewById(R.id.unread_count);
-            
-            // Initialize CircleImageView with proper error handling to prevent bitmap creation issues
-            initializeContactAvatar();
-        }
-        
-        /**
-         * Initialize the contact avatar with proper error handling.
-         * This prevents bitmap creation errors when dimensions are invalid.
-         */
-        private void initializeContactAvatar() {
-            if (contactAvatarImageView != null) {
-                try {
-                    // Set a default background to ensure the view has proper dimensions
-                    contactAvatarImageView.setImageResource(R.drawable.circle_background);
-                    
-                    // Ensure the view has proper layout parameters
-                    ViewGroup.LayoutParams params = contactAvatarImageView.getLayoutParams();
-                    if (params != null) {
-                        // Ensure minimum dimensions to prevent bitmap creation errors
-                        if (params.width <= 0) {
-                            params.width = 48; // 48dp converted to pixels would be handled by the system
-                        }
-                        if (params.height <= 0) {
-                            params.height = 48;
-                        }
-                        contactAvatarImageView.setLayoutParams(params);
+        try (Cursor cursor = contentResolver.query(uri,
+                new String[]{ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.PHOTO_URI},
+                null, null, null)) {
+
+            if (cursor != null && cursor.moveToFirst()) {
+                int photoUriIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+                if (photoUriIndex >= 0) {
+                    String photoUriString = cursor.getString(photoUriIndex);
+                    if (photoUriString != null) {
+                        return Uri.parse(photoUriString);
                     }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initializing contact avatar", e);
-                    // Fallback: hide the avatar if there's an error
-                    contactAvatarImageView.setVisibility(View.GONE);
                 }
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting contact photo URI", e);
         }
+
+        return null;
     }
 
     /**
-     * Interface for conversation click events.
+     * Generate a consistent color based on a string
      */
-    public interface ConversationClickListener {
-        void onConversationClick(Conversation conversation);
-        void onConversationLongClick(Conversation conversation);
+    private int generateColor(String key) {
+        if (key == null || key.isEmpty()) {
+            return Color.LTGRAY;
+        }
+
+        // Use the hash code of the string to generate a consistent color
+        int hash = key.hashCode();
+        float hue = Math.abs(hash % 360);
+        return Color.HSVToColor(new float[]{hue, 0.6f, 0.8f});
+    }
+
+    /**
+     * Get the initials from a name
+     */
+    private String getInitials(String name) {
+        if (name == null || name.isEmpty() || name.equals("null")) {
+            return "#";
+        }
+
+        StringBuilder initials = new StringBuilder();
+        String[] parts = name.split("\\s+");
+
+        for (int i = 0; i < Math.min(2, parts.length); i++) {
+            if (!parts[i].isEmpty()) {
+                initials.append(parts[i].charAt(0));
+            }
+        }
+
+        // If we couldn't extract initials, use the first character
+        if (initials.length() == 0 && !name.isEmpty()) {
+            initials.append(name.charAt(0));
+        }
+
+        return initials.toString().toUpperCase();
+    }
+
+    /**
+     * ViewHolder pattern class
+     */
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView contactName;
+        TextView lastMessage;
+        TextView timestamp;
+        TextView unreadCount;
+        CircleImageView contactImage;
+        TextView contactInitials;
+
+        ViewHolder(View itemView) {
+            super(itemView);
+            contactName = itemView.findViewById(R.id.contact_name);
+            lastMessage = itemView.findViewById(R.id.last_message);
+            timestamp = itemView.findViewById(R.id.timestamp);
+            unreadCount = itemView.findViewById(R.id.unread_count);
+            contactImage = itemView.findViewById(R.id.contact_image);
+            contactInitials = itemView.findViewById(R.id.contact_initials);
+        }
     }
 }

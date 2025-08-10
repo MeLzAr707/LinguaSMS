@@ -47,9 +47,6 @@ public class SplashActivity extends AppCompatActivity {
                 userPreferences.setBoolean("is_first_run", false);
                 String deviceLanguage = getResources().getConfiguration().locale.getLanguage();
                 userPreferences.setPreferredLanguage(deviceLanguage);
-                
-                // On first run, ensure default SMS request will happen
-                userPreferences.setBoolean("should_request_default_sms", true);
             }
 
         } catch (Exception e) {

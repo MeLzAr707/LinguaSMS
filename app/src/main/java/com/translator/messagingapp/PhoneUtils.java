@@ -339,21 +339,6 @@ public class PhoneUtils {
     /**
      * Check if the device has telephony features
      */
-    /**
-     * Formats a phone number by removing non-digit characters.
-     *
-     * @param phoneNumber The phone number to format
-     * @return The formatted phone number
-     */
-    public static String formatPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null) {
-            return "";
-        }
-
-        // Remove all non-digit characters
-        return phoneNumber.replaceAll("[^0-9+]", "");
-    }
-
     public static boolean hasTelephonyFeature(Context context) {
         PackageManager packageManager = context.getPackageManager();
         return packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
@@ -373,10 +358,6 @@ public class PhoneUtils {
         }
     }
 }
-
-
-
-
 
 
 

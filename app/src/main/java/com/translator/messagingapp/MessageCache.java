@@ -31,16 +31,6 @@ public class MessageCache {
     }
 
     /**
-     * Gets messages for a thread (alias for getCachedMessages).
-     *
-     * @param threadId The thread ID
-     * @return The list of messages, or null if not in cache
-     */
-    public List<Message> getMessages(String threadId) {
-        return getCachedMessages(threadId);
-    }
-
-    /**
      * Caches messages for a thread.
      *
      * @param threadId The thread ID
@@ -83,22 +73,6 @@ public class MessageCache {
      *
      * @param threadId The thread ID to clear from cache
      */
-    public void clearCache(String threadId) {
-        clearCacheForThread(threadId);
-    }
-
-    /**
-     * Clears all caches.
-     */
-    public void clearAllCaches() {
-        clearCache();
-    }
-
-    /**
-     * Clears the cache for a specific thread.
-     *
-     * @param threadId The thread ID to clear from cache
-     */
     public static void clearCacheForThread(String threadId) {
         if (threadId == null || threadId.isEmpty()) {
             return;
@@ -110,5 +84,6 @@ public class MessageCache {
         }
     }
 }
+
 
 

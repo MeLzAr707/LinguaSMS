@@ -80,20 +80,6 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:theme="@style/AppTheme.NoActionBar" />
-
-        <!-- Added SearchActivity -->
-        <activity
-            android:name=".SearchActivity"
-            android:exported="false"
-            android:label="@string/search"
-            android:theme="@style/AppTheme.NoActionBar" />
-
-        <!-- Added DebugActivity -->
-        <activity
-            android:name=".DebugActivity"
-            android:exported="false"
-            android:label="@string/debug"
             android:theme="@style/AppTheme" />
 
         <!-- Receivers -->
@@ -151,7 +137,6 @@
         </provider>
     </application>
 </manifest>
-
 
 
 
