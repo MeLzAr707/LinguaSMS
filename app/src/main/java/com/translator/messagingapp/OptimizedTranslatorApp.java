@@ -18,13 +18,21 @@ public class OptimizedTranslatorApp extends Application {
     private MessageService messageService;
     private OptimizedMessageService optimizedMessageService;
     private TranslationManager translationManager;
+    private GoogleTranslationService translationService;
+    private UserPreferences userPreferences;
     
     @Override
     public void onCreate() {
         super.onCreate();
         
-        // Initialize services
-        translationManager = new TranslationManager(this);
+        // Initialize user preferences
+        userPreferences = new UserPreferences(this);
+        
+        // Initialize translation service
+        translationService = new GoogleTranslationService(userPreferences.getApiKey());
+        
+        // Initialize translation manager with proper parameters
+        translationManager = new TranslationManager(this, translationService, userPreferences);
         messageService = new MessageService(this, translationManager);
         optimizedMessageService = new OptimizedMessageService(this, translationManager);
         
@@ -147,5 +155,41 @@ public class OptimizedTranslatorApp extends Application {
      */
     public TranslationManager getTranslationManager() {
         return translationManager;
+    }
+    
+    /**
+     * Gets the translation service.
+     *
+     * @return The Google translation service
+     */
+    public GoogleTranslationService getTranslationService() {
+        return translationService;
+    }
+    
+    /**
+     * Gets the user preferences.
+     *
+     * @return The user preferences
+     */
+    public UserPreferences getUserPreferences() {
+        return userPreferences;
+    }
+    
+    /**
+     * Gets the message service.
+     *
+     * @return The message service
+     */
+    public MessageService getMessageService() {
+        return messageService;
+    }
+    
+    /**
+     * Gets the optimized message service.
+     *
+     * @return The optimized message service
+     */
+    public OptimizedMessageService getOptimizedMessageService() {
+        return optimizedMessageService;
     }
 }
