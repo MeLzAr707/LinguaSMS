@@ -19,6 +19,8 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.translator.messagingapp.PaginationUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -127,18 +129,18 @@ public class OptimizedConversationActivity extends BaseActivity {
      */
     private void setupPagination() {
         LinearLayoutManager layoutManager = (LinearLayoutManager) messagesRecyclerView.getLayoutManager();
-        
+
         paginationScrollListener = (PaginationUtils.PaginationScrollListener) PaginationUtils.setupPagination(
-            messagesRecyclerView,
-            onLoadingComplete -> {
-                // Load next page
-                int nextPage = currentPage + 1;
-                int offset = nextPage * PAGE_SIZE;
-                
-                loadMessagesOptimized(offset, PAGE_SIZE, onLoadingComplete);
-            },
-            10, // threshold - start loading when 10 items from the end
-            loadingIndicator
+                messagesRecyclerView,
+                onLoadingComplete -> {
+                    // Load next page
+                    int nextPage = currentPage + 1;
+                    int offset = nextPage * PAGE_SIZE;
+
+                    loadMessagesOptimized(offset, PAGE_SIZE, onLoadingComplete);
+                },
+                10, // threshold - start loading when 10 items from the end
+                loadingIndicator
         );
     }
 
@@ -186,24 +188,24 @@ public class OptimizedConversationActivity extends BaseActivity {
         // Use the appropriate method based on available data
         if (!TextUtils.isEmpty(threadId)) {
             Log.d(TAG, "Loading messages by thread ID: " + threadId + ", offset: " + offset + ", limit: " + limit);
-            
+
             optimizedMessageService.getMessagesByThreadIdPaginated(threadId, offset, limit, loadedMessages -> {
                 handleLoadedMessages(loadedMessages, offset, onLoadingComplete);
             });
         } else if (!TextUtils.isEmpty(address)) {
             Log.d(TAG, "Loading messages by address: " + address + ", offset: " + offset + ", limit: " + limit);
-            
+
             // For address-based loading, we'll use the regular service for now
             // In a real implementation, we would create an optimized version for this as well
             backgroundExecutor.execute(() -> {
                 List<Message> loadedMessages = messageService.getMessagesByAddress(address);
-                
+
                 // Apply pagination manually for now
                 int endIndex = Math.min(offset + limit, loadedMessages.size());
-                List<Message> pagedMessages = offset < loadedMessages.size() 
-                    ? loadedMessages.subList(offset, endIndex) 
-                    : new ArrayList<>();
-                
+                List<Message> pagedMessages = offset < loadedMessages.size()
+                        ? loadedMessages.subList(offset, endIndex)
+                        : new ArrayList<>();
+
                 handleLoadedMessages(pagedMessages, offset, onLoadingComplete);
             });
         } else {
@@ -248,7 +250,7 @@ public class OptimizedConversationActivity extends BaseActivity {
                 // Update pagination state
                 currentPage = offset / PAGE_SIZE;
                 hasMoreMessages = !loadedMessages.isEmpty();
-                
+
                 if (paginationScrollListener != null) {
                     paginationScrollListener.setHasMoreItems(hasMoreMessages);
                 }
@@ -258,7 +260,7 @@ public class OptimizedConversationActivity extends BaseActivity {
                     showEmptyState("No messages");
                 } else {
                     showMessagesState();
-                    
+
                     // Scroll to bottom on first load
                     if (offset == 0) {
                         messagesRecyclerView.scrollToPosition(messages.size() - 1);
@@ -270,7 +272,7 @@ public class OptimizedConversationActivity extends BaseActivity {
             } finally {
                 showLoading(false);
                 isLoading = false;
-                
+
                 // Notify that loading is complete
                 if (onLoadingComplete != null) {
                     onLoadingComplete.onLoadingComplete();
@@ -287,10 +289,10 @@ public class OptimizedConversationActivity extends BaseActivity {
     private void updateMessages(List<Message> newMessages) {
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
                 new MessageDiffCallback(messages, newMessages));
-        
+
         messages.clear();
         messages.addAll(newMessages);
-        
+
         diffResult.dispatchUpdatesTo(adapter);
     }
 
@@ -303,7 +305,7 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (newMessages.isEmpty()) {
             return;
         }
-        
+
         int startPosition = messages.size();
         messages.addAll(newMessages);
         adapter.notifyItemRangeInserted(startPosition, newMessages.size());
@@ -329,12 +331,12 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (messagesRecyclerView != null) {
             messagesRecyclerView.setVisibility(View.GONE);
         }
-        
+
         if (emptyStateTextView != null) {
             emptyStateTextView.setText(message);
             emptyStateTextView.setVisibility(View.VISIBLE);
         }
-        
+
         showLoading(false);
     }
 
@@ -345,11 +347,11 @@ public class OptimizedConversationActivity extends BaseActivity {
         if (messagesRecyclerView != null) {
             messagesRecyclerView.setVisibility(View.VISIBLE);
         }
-        
+
         if (emptyStateTextView != null) {
             emptyStateTextView.setVisibility(View.GONE);
         }
-        
+
         showLoading(false);
     }
 

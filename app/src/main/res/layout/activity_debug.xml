@@ -61,8 +61,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:textSize="14sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="monospace"
+                android:textSize="14sp" />
         </ScrollView>
     </LinearLayout>
 </LinearLayout>

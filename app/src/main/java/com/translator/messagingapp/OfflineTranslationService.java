@@ -298,7 +298,6 @@ public class OfflineTranslationService {
             case "bn": return TranslateLanguage.BENGALI;
             case "gu": return TranslateLanguage.GUJARATI;
             case "kn": return TranslateLanguage.KANNADA;
-            case "ml": return TranslateLanguage.MALAYALAM;
             case "mr": return TranslateLanguage.MARATHI;
             case "ta": return TranslateLanguage.TAMIL;
             case "te": return TranslateLanguage.TELUGU;
