@@ -134,7 +134,7 @@ public class PhoneUtils {
                 })
                 .setNegativeButton("No", (dialog, which) -> {
                     incrementDefaultSmsRequestCount(activity);
-                    Toast.makeText(activity, "Some features will be limited", Toast.LENGTH_LONG).show();
+                    Toast.makeText(activity, activity.getString(R.string.features_limited), Toast.LENGTH_LONG).show();
                 })
                 .setCancelable(false)
                 .show();
@@ -161,7 +161,7 @@ public class PhoneUtils {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error requesting default SMS app status", e);
-            Toast.makeText(activity, "Error requesting SMS permissions: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, activity.getString(R.string.error_requesting_sms_permissions, e.getMessage()), Toast.LENGTH_SHORT).show();
             return false;
         }
     }
@@ -369,7 +369,7 @@ public class PhoneUtils {
             activity.startActivity(intent);
         } catch (Exception e) {
             Log.e(TAG, "Error making phone call", e);
-            Toast.makeText(activity, "Error making call: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, activity.getString(R.string.error_making_call, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 }

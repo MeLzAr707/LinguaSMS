@@ -379,4 +379,40 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <!-- Debug Activity Strings -->
+    <string name="debug_check_button">Check</string>
+    <string name="debug_open_button">Open</string>
+    <string name="debug_direct_open_button">Direct Open</string>
+    <string name="debug_phone_number_hint">Enter phone number</string>
+
+    <!-- Message Layout Placeholders -->
+    <string name="message_text_placeholder">Message text</string>
+    <string name="time_placeholder">12:34</string>
+
+    <!-- Toast Messages -->
+    <string name="message_clicked">Message clicked</string>
+    <string name="error_initializing_conversation">Error initializing conversation</string>
+    <string name="message_options">Message options</string>
+    <string name="error_initializing_ui">Error initializing UI components</string>
+    <string name="send_message_toast">Send message</string>
+
+    <!-- Additional Accessibility Strings -->
+    <string name="message_status_description">Message status</string>
+    <string name="received_message_background">Received message background</string>
+    <string name="sent_message_background">Sent message background</string>
+
+    <!-- Additional Debug and Development Strings -->
+    <string name="debug_result">Debug Result</string>
+    <string name="debug_address_label">Debug Address</string>
+    <string name="debug_sms_title">Debug SMS</string>
+
+    <!-- PhoneUtils Toast Messages -->
+    <string name="features_limited">Some features will be limited</string>
+    <string name="error_requesting_sms_permissions">Error requesting SMS permissions: %1$s</string>
+    <string name="error_making_call">Error making call: %1$s</string>
+
+    <!-- DebugActivity Messages -->
+    <string name="please_enter_address">Please enter an address</string>
+    <string name="error_debug">Error: %1$s</string>
 </resources>

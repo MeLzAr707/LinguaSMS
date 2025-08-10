@@ -89,7 +89,7 @@ public class OptimizedConversationActivity extends BaseActivity {
                 @Override
                 public void onMessageClick(Message message) {
                     // Handle message click
-                    Toast.makeText(OptimizedConversationActivity.this, "Message clicked", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(OptimizedConversationActivity.this, getString(R.string.message_clicked), Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
@@ -107,7 +107,7 @@ public class OptimizedConversationActivity extends BaseActivity {
             loadMessagesOptimized(0, PAGE_SIZE);
         } catch (Exception e) {
             Log.e(TAG, "Error in onCreate: " + e.getMessage(), e);
-            Toast.makeText(this, "Error initializing conversation", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.error_initializing_conversation), Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -119,7 +119,7 @@ public class OptimizedConversationActivity extends BaseActivity {
      */
     private void showMessageOptions(Message message) {
         // Implementation for showing message options
-        Toast.makeText(this, "Message options", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.message_options), Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -394,7 +394,7 @@ public class OptimizedConversationActivity extends BaseActivity {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error initializing components: " + e.getMessage(), e);
-            Toast.makeText(this, "Error initializing UI components", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.error_initializing_ui), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -403,7 +403,7 @@ public class OptimizedConversationActivity extends BaseActivity {
      */
     private void sendMessage() {
         // Implementation for sending a message
-        Toast.makeText(this, "Send message", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.send_message_toast), Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -411,7 +411,7 @@ public class OptimizedConversationActivity extends BaseActivity {
      */
     private void translateInputText() {
         // Implementation for translating input text
-        Toast.makeText(this, "Translate input text", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.translate_input), Toast.LENGTH_SHORT).show();
     }
 
     @Override

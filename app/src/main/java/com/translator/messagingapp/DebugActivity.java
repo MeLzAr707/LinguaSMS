@@ -67,7 +67,7 @@ public class DebugActivity extends AppCompatActivity {
     private void checkAddress() {
         String address = addressInput.getText().toString().trim();
         if (address.isEmpty()) {
-            Toast.makeText(this, "Please enter an address", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.please_enter_address), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -100,7 +100,7 @@ public class DebugActivity extends AppCompatActivity {
     private void openConversation() {
         String address = addressInput.getText().toString().trim();
         if (address.isEmpty()) {
-            Toast.makeText(this, "Please enter an address", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.please_enter_address), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -111,7 +111,7 @@ public class DebugActivity extends AppCompatActivity {
 
             Log.d(TAG, "Started ConversationActivity with address: " + address);
         } catch (Exception e) {
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.error_debug, e.getMessage()), Toast.LENGTH_SHORT).show();
             Log.e(TAG, "Error opening conversation", e);
         }
     }
@@ -119,7 +119,7 @@ public class DebugActivity extends AppCompatActivity {
     private void openConversationDirect() {
         String address = addressInput.getText().toString().trim();
         if (address.isEmpty()) {
-            Toast.makeText(this, "Please enter an address", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.please_enter_address), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -137,7 +137,7 @@ public class DebugActivity extends AppCompatActivity {
             Log.d(TAG, "Started ConversationActivity directly with address: " + address +
                     (threadId != null ? " and thread ID: " + threadId : ""));
         } catch (Exception e) {
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.error_debug, e.getMessage()), Toast.LENGTH_SHORT).show();
             Log.e(TAG, "Error opening conversation directly", e);
         }
     }
