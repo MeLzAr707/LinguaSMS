@@ -21,6 +21,15 @@ public class UserPreferences {
     public static final int THEME_DARK = 1;
     public static final int THEME_BLACK_GLASS = 2;
     public static final int THEME_SYSTEM = 3;
+    
+    // Translation mode constants
+    public static final int TRANSLATION_MODE_AUTO = 0;
+    public static final int TRANSLATION_MODE_ONLINE_ONLY = 1;
+    public static final int TRANSLATION_MODE_OFFLINE_ONLY = 2;
+    
+    // Additional preference keys for missing functionality
+    private static final String KEY_TRANSLATION_MODE = "translation_mode";
+    private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
 
     private final SharedPreferences preferences;
 
@@ -193,6 +202,42 @@ public class UserPreferences {
     public boolean isDarkThemeEnabled() {
         int themeId = getThemeId();
         return themeId == THEME_DARK || themeId == THEME_BLACK_GLASS;
+    }
+
+    /**
+     * Gets the translation mode.
+     *
+     * @return The translation mode (AUTO, ONLINE_ONLY, or OFFLINE_ONLY)
+     */
+    public int getTranslationMode() {
+        return preferences.getInt(KEY_TRANSLATION_MODE, TRANSLATION_MODE_AUTO);
+    }
+
+    /**
+     * Sets the translation mode.
+     *
+     * @param mode The translation mode to set
+     */
+    public void setTranslationMode(int mode) {
+        preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
+    }
+
+    /**
+     * Checks if offline translation is preferred.
+     *
+     * @return true if offline translation is preferred, false otherwise
+     */
+    public boolean getPreferOfflineTranslation() {
+        return preferences.getBoolean(KEY_PREFER_OFFLINE_TRANSLATION, false);
+    }
+
+    /**
+     * Sets the preference for offline translation.
+     *
+     * @param prefer true to prefer offline translation, false otherwise
+     */
+    public void setPreferOfflineTranslation(boolean prefer) {
+        preferences.edit().putBoolean(KEY_PREFER_OFFLINE_TRANSLATION, prefer).apply();
     }
 }
 
