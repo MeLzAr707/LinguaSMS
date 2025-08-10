@@ -97,7 +97,7 @@
                     android:layout_height="16dp"
                     android:layout_marginStart="4dp"
                     android:visibility="gone"
-                    android:contentDescription="Message status" />
+                    android:contentDescription="@string/message_status_description" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

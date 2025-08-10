@@ -379,4 +379,15 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <!-- Debug Activity Strings -->
+    <string name="debug_phone_number_hint">Enter phone number</string>
+    <string name="debug_check_button">Check</string>
+    <string name="debug_open_button">Open</string>
+    <string name="debug_direct_open_button">Direct Open</string>
+
+    <!-- Message Layout Strings -->
+    <string name="message_status_description">Message status</string>
+    <string name="message_text_placeholder">Message text</string>
+    <string name="time_placeholder">12:34</string>
 </resources>
