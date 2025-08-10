@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:id="@+id/message_bubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:background="@drawable/bg_message_outgoing"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:maxWidth="240dp">
+
+        <!-- Translation indicator -->
+        <View
+            android:id="@+id/translation_indicator"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:background="@color/colorAccent"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Original message text -->
+            <TextView
+                android:id="@+id/message_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
+
+            <!-- Translation info text -->
+            <TextView
+                android:id="@+id/translation_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:textStyle="italic"
+                android:alpha="0.7"
+                android:visibility="gone" />
+
+            <!-- Translated text -->
+            <TextView
+                android:id="@+id/translation_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:visibility="gone" />
+
+            <!-- Translation button -->
+            <Button
+                android:id="@+id/translate_button"
+                style="@style/Widget.AppCompat.Button.Borderless.Colored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="4dp"
+                android:text="@string/action_translate"
+                android:textSize="12sp" />
+
+            <!-- Message timestamp and status container -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                
+                <!-- Message timestamp -->
+                <TextView
+                    android:id="@+id/message_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="12sp" />
+                
+                <!-- Message status indicator (for RCS) -->
+                <ImageView
+                    android:id="@+id/message_status"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:visibility="gone"
+                    android:contentDescription="Message status" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>

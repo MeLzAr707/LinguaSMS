@@ -1,0 +1,386 @@
+package com.translator.messagingapp;
+
+import android.net.Uri;
+import android.provider.Telephony;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Represents an MMS message with support for attachments.
+ * Extends the base Message class to add MMS-specific functionality.
+ */
+public class MmsMessage extends Message {
+
+    // List of attachment URIs
+    private List<Attachment> attachments;
+
+    // MMS subject (optional)
+    private String subject;
+
+    // Content location for MMS retrieval
+    private String contentLocation;
+
+    // Transaction ID
+    private String transactionId;
+
+    /**
+     * Default constructor.
+     */
+    public MmsMessage() {
+        super();
+        this.attachments = new ArrayList<>();
+        setMessageType(MESSAGE_TYPE_MMS);
+    }
+
+    /**
+     * Creates a new MMS message.
+     *
+     * @param id The message ID
+     * @param body The message body text (can be empty for MMS with only attachments)
+     * @param date The timestamp of the message
+     * @param type The message type (inbox, sent, etc.)
+     */
+    public MmsMessage(String id, String body, long date, int type) {
+        super(id, body, date, type);
+        this.attachments = new ArrayList<>();
+        setMessageType(MESSAGE_TYPE_MMS);
+    }
+
+    /**
+     * Creates a new MMS message with a subject.
+     *
+     * @param id The message ID
+     * @param body The message body text
+     * @param subject The message subject
+     * @param date The timestamp of the message
+     * @param type The message type (inbox, sent, etc.)
+     */
+    public MmsMessage(String id, String body, String subject, long date, int type) {
+        super(id, body, date, type);
+        this.subject = subject;
+        this.attachments = new ArrayList<>();
+        setMessageType(MESSAGE_TYPE_MMS);
+    }
+
+    /**
+     * Adds an attachment to this MMS message.
+     *
+     * @param attachment The attachment to add
+     */
+    public void addAttachment(Attachment attachment) {
+        if (attachment != null) {
+            attachments.add(attachment);
+        }
+    }
+
+    /**
+     * Gets all attachments for this MMS message.
+     *
+     * @return The list of attachments
+     */
+    public List<Attachment> getAttachmentObjects() {
+        return attachments;
+    }
+
+    /**
+     * Gets all attachment URIs for this MMS message.
+     * This overrides the method in the parent class.
+     *
+     * @return The list of attachment URIs
+     */
+    @Override
+    public List<Uri> getAttachments() {
+        List<Uri> uriList = new ArrayList<>();
+        if (attachments != null) {
+            for (Attachment attachment : attachments) {
+                if (attachment != null && attachment.getUri() != null) {
+                    uriList.add(attachment.getUri());
+                }
+            }
+        }
+        return uriList;
+    }
+
+    /**
+     * Checks if this MMS message has any attachments.
+     *
+     * @return True if the message has attachments, false otherwise
+     */
+    @Override
+    public boolean hasAttachments() {
+        return attachments != null && !attachments.isEmpty();
+    }
+
+    /**
+     * Gets the subject of this MMS message.
+     *
+     * @return The subject, or null if not set
+     */
+    public String getSubject() {
+        return subject;
+    }
+
+    /**
+     * Sets the subject of this MMS message.
+     *
+     * @param subject The subject
+     */
+    public void setSubject(String subject) {
+        this.subject = subject;
+    }
+
+    /**
+     * Gets the content location for MMS retrieval.
+     *
+     * @return The content location URL
+     */
+    public String getContentLocation() {
+        return contentLocation;
+    }
+
+    /**
+     * Sets the content location for MMS retrieval.
+     *
+     * @param contentLocation The content location URL
+     */
+    public void setContentLocation(String contentLocation) {
+        this.contentLocation = contentLocation;
+    }
+
+    /**
+     * Gets the transaction ID for this MMS message.
+     *
+     * @return The transaction ID
+     */
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    /**
+     * Sets the transaction ID for this MMS message.
+     *
+     * @param transactionId The transaction ID
+     */
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    /**
+     * Checks if this is an MMS message.
+     * Always returns true for MmsMessage instances.
+     *
+     * @return Always true
+     */
+    @Override
+    public boolean isMms() {
+        return true;
+    }
+
+    /**
+     * Represents an attachment in an MMS message.
+     */
+    public static class Attachment {
+        private Uri uri;
+        private String contentType;
+        private String fileName;
+        private long size;
+        private String name;
+        private String data;
+        private String text;
+        private String partId;
+
+        /**
+         * Default constructor.
+         */
+        public Attachment() {
+            // Default constructor
+        }
+
+        /**
+         * Creates a new attachment.
+         *
+         * @param uri The URI of the attachment content
+         * @param contentType The MIME type of the attachment
+         * @param fileName The file name of the attachment
+         * @param size The size of the attachment in bytes
+         */
+        public Attachment(Uri uri, String contentType, String fileName, long size) {
+            this.uri = uri;
+            this.contentType = contentType;
+            this.fileName = fileName;
+            this.size = size;
+        }
+
+        /**
+         * Gets the URI of the attachment content.
+         *
+         * @return The URI
+         */
+        public Uri getUri() {
+            return uri;
+        }
+
+        /**
+         * Sets the URI of the attachment content.
+         *
+         * @param uri The URI
+         */
+        public void setUri(Uri uri) {
+            this.uri = uri;
+        }
+
+        /**
+         * Gets the MIME type of the attachment.
+         *
+         * @return The MIME type
+         */
+        public String getContentType() {
+            return contentType;
+        }
+
+        /**
+         * Sets the MIME type of the attachment.
+         *
+         * @param contentType The MIME type
+         */
+        public void setContentType(String contentType) {
+            this.contentType = contentType;
+        }
+
+        /**
+         * Gets the file name of the attachment.
+         *
+         * @return The file name
+         */
+        public String getFileName() {
+            return fileName;
+        }
+
+        /**
+         * Sets the file name of the attachment.
+         *
+         * @param fileName The file name
+         */
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        /**
+         * Gets the size of the attachment in bytes.
+         *
+         * @return The size in bytes
+         */
+        public long getSize() {
+            return size;
+        }
+
+        /**
+         * Sets the size of the attachment in bytes.
+         *
+         * @param size The size in bytes
+         */
+        public void setSize(long size) {
+            this.size = size;
+        }
+
+        /**
+         * Gets the name of the attachment.
+         *
+         * @return The name
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * Sets the name of the attachment.
+         *
+         * @param name The name
+         */
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        /**
+         * Gets the data of the attachment.
+         *
+         * @return The data
+         */
+        public String getData() {
+            return data;
+        }
+
+        /**
+         * Sets the data of the attachment.
+         *
+         * @param data The data
+         */
+        public void setData(String data) {
+            this.data = data;
+        }
+
+        /**
+         * Gets the text of the attachment.
+         *
+         * @return The text
+         */
+        public String getText() {
+            return text;
+        }
+
+        /**
+         * Sets the text of the attachment.
+         *
+         * @param text The text
+         */
+        public void setText(String text) {
+            this.text = text;
+        }
+
+        /**
+         * Gets the part ID of the attachment.
+         *
+         * @return The part ID
+         */
+        public String getPartId() {
+            return partId;
+        }
+
+        /**
+         * Sets the part ID of the attachment.
+         *
+         * @param partId The part ID
+         */
+        public void setPartId(String partId) {
+            this.partId = partId;
+        }
+
+        /**
+         * Checks if this attachment is an image.
+         *
+         * @return True if the attachment is an image, false otherwise
+         */
+        public boolean isImage() {
+            return contentType != null && contentType.startsWith("image/");
+        }
+
+        /**
+         * Checks if this attachment is a video.
+         *
+         * @return True if the attachment is a video, false otherwise
+         */
+        public boolean isVideo() {
+            return contentType != null && contentType.startsWith("video/");
+        }
+
+        /**
+         * Checks if this attachment is audio.
+         *
+         * @return True if the attachment is audio, false otherwise
+         */
+        public boolean isAudio() {
+            return contentType != null && contentType.startsWith("audio/");
+        }
+    }
+}

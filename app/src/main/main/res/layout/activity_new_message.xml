@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".NewMessageActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/AppTheme.AppBarOverlay">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:popupTheme="@style/AppTheme.PopupOverlay"
+            app:title="@string/new_message" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- Recipient input container -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/to"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="8dp" />
+
+            <EditText
+                android:id="@+id/recipient_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/recipient_hint"
+                android:inputType="phone"
+                android:importantForAutofill="no" />
+
+            <ImageButton
+                android:id="@+id/contact_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/select_contact"
+                android:src="@android:drawable/ic_menu_add"
+                app:tint="?attr/colorPrimary" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Message input -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/message"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/message_input"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/message_input_background"
+            android:gravity="top|start"
+            android:hint="@string/type_message"
+            android:inputType="textMultiLine|textCapSentences"
+            android:padding="12dp"
+            android:scrollbars="vertical"
+            android:importantForAutofill="no" />
+
+        <!-- Action buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="16dp">
+
+            <ImageButton
+                android:id="@+id/translate_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/translate_message"
+                android:src="@android:drawable/ic_menu_sort_alphabetically"
+                app:tint="?attr/colorPrimary" />
+
+            <Button
+                android:id="@+id/send_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/send"
+                android:textColor="@android:color/white"
+                app:icon="@android:drawable/ic_menu_send"
+                style="@style/Widget.MaterialComponents.Button" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Translation status indicator -->
+    <TextView
+        android:id="@+id/translation_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorPrimary"
+        android:padding="8dp"
+        android:text="@string/translating"
+        android:textColor="@android:color/white"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_anchor="@id/toolbar"
+        app:layout_anchorGravity="bottom" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
