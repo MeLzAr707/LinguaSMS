@@ -257,6 +257,24 @@ public class Message {
     public boolean hasReactions() {
         return reactionManager != null && reactionManager.getTotalReactionCount() > 0;
     }
+    
+    /**
+     * Gets the reactions to this message.
+     *
+     * @return List of message reactions
+     */
+    public List<MessageReaction> getReactions() {
+        return reactionManager != null ? reactionManager.getAllReactions() : new ArrayList<>();
+    }
+    
+    /**
+     * Gets the reactions to this message.
+     *
+     * @return List of message reactions
+     */
+    public List<MessageReaction> getReactions() {
+        return reactionManager != null ? reactionManager.getAllReactions() : new ArrayList<>();
+    }
 
     /**
      * Gets the message type (SMS or MMS).
@@ -311,6 +329,19 @@ public class Message {
      */
     public boolean isTranslated() {
         return translatedText != null && !translatedText.isEmpty();
+    }
+    
+    /**
+     * Sets whether the message has been translated.
+     *
+     * @param translated true if the message has been translated, false otherwise
+     */
+    public void setTranslated(boolean translated) {
+        // This is a helper method that doesn't actually store the state
+        // The translated state is determined by the presence of translatedText
+        if (!translated) {
+            this.translatedText = null;
+        }
     }
 
     /**

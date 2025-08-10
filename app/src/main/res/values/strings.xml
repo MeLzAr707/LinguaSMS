@@ -412,6 +412,26 @@
         <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
         <string name="pref_category_offline_models">Offline Translation</string>
         <string name="enable_offline_translation_summary">Use downloaded models for offline translation</string>
+        
+        <!-- Missing strings for offline models -->
+        <string name="model_size">Model size: %1$s</string>
+        <string name="download_progress">Download progress: %1$d%%</string>
+        <string name="model_downloaded">Model downloaded</string>
+        <string name="delete_model">Delete model</string>
+        <string name="model_download_success">Model downloaded successfully</string>
+        <string name="model_download_error">Error downloading model: %1$s</string>
+        <string name="model_delete_success">Model deleted successfully</string>
+        <string name="model_delete_error">Error deleting model: %1$s</string>
+        
+        <!-- Missing strings for UI messages -->
+        <string name="message_clicked">Message clicked</string>
+        <string name="error_initializing_conversation">Error initializing conversation</string>
+        <string name="message_options">Message options</string>
+        <string name="error_initializing_ui">Error initializing UI</string>
+        <string name="send_message_toast">Message sent</string>
+        <string name="features_limited">Some features are limited without permissions</string>
+        <string name="error_requesting_sms_permissions">Error requesting SMS permissions: %1$s</string>
+        <string name="error_making_call">Error making call: %1$s</string>
 
         <!-- Translation mode arrays -->
         <string-array name="translation_mode_names">

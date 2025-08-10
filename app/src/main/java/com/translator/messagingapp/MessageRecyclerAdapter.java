@@ -45,9 +45,19 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         void onMessageClick(Message message, int position);
         void onMessageLongClick(Message message, int position);
         void onTranslateClick(Message message, int position);
-        void onAttachmentClick(MmsMessage.Attachment attachment, int position);
+        void onAttachmentClick(Uri attachmentUri, int position);
         void onReactionClick(Message message, int position);
         void onAddReactionClick(Message message, int position);
+    }
+    
+    /**
+     * Legacy interface for message click events.
+     * @deprecated Use OnMessageClickListener instead
+     */
+    @Deprecated
+    public interface MessageClickListener {
+        void onMessageClick(Message message);
+        void onMessageLongClick(Message message);
     }
 
     /**
@@ -279,7 +289,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             // Set click listener for attachment
             mediaIcon.setOnClickListener(v -> {
                 if (clickListener != null) {
-                    clickListener.onAttachmentClick(attachment, position);
+                    clickListener.onAttachmentClick(attachment.getUri(), position);
                 }
             });
         } else {
@@ -291,14 +301,22 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         // Set click listener for the whole message
         itemView.setOnClickListener(v -> {
             if (clickListener != null) {
-                clickListener.onMessageClick(message, position);
+                if (clickListener instanceof OnMessageClickListener) {
+                    ((OnMessageClickListener) clickListener).onMessageClick(message, position);
+                } else if (clickListener instanceof MessageClickListener) {
+                    ((MessageClickListener) clickListener).onMessageClick(message);
+                }
             }
         });
         
         // Set long click listener for the whole message
         itemView.setOnLongClickListener(v -> {
             if (clickListener != null) {
-                clickListener.onMessageLongClick(message, position);
+                if (clickListener instanceof OnMessageClickListener) {
+                    ((OnMessageClickListener) clickListener).onMessageLongClick(message, position);
+                } else if (clickListener instanceof MessageClickListener) {
+                    ((MessageClickListener) clickListener).onMessageLongClick(message);
+                }
                 return true;
             }
             return false;

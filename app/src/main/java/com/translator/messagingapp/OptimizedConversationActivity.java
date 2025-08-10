@@ -78,8 +78,8 @@ public class OptimizedConversationActivity extends BaseActivity {
             }
 
             // Initialize services
-            messageService = new MessageService(this, getTranslationManager());
-            translationManager = getTranslationManager();
+            translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
+            messageService = new MessageService(this, translationManager);
             optimizedMessageService = new OptimizedMessageService(this, translationManager);
 
             // Initialize UI components
@@ -87,17 +87,37 @@ public class OptimizedConversationActivity extends BaseActivity {
 
             // Initialize data
             messages = new ArrayList<>();
-            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.MessageClickListener() {
+            adapter = new MessageRecyclerAdapter(this, messages, new MessageRecyclerAdapter.OnMessageClickListener() {
                 @Override
-                public void onMessageClick(Message message) {
+                public void onMessageClick(Message message, int position) {
                     // Handle message click
                     Toast.makeText(OptimizedConversationActivity.this, getString(R.string.message_clicked), Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
-                public void onMessageLongClick(Message message) {
+                public void onMessageLongClick(Message message, int position) {
                     // Handle message long click
                     showMessageOptions(message);
+                }
+                
+                @Override
+                public void onTranslateClick(Message message, int position) {
+                    // Handle translate click
+                }
+                
+                @Override
+                public void onAttachmentClick(Uri attachmentUri, int position) {
+                    // Handle attachment click
+                }
+                
+                @Override
+                public void onReactionClick(Message message, int position) {
+                    // Handle reaction click
+                }
+                
+                @Override
+                public void onAddReactionClick(Message message, int position) {
+                    // Handle add reaction click
                 }
             });
             messagesRecyclerView.setAdapter(adapter);
@@ -198,7 +218,9 @@ public class OptimizedConversationActivity extends BaseActivity {
             // For address-based loading, we'll use the regular service for now
             // In a real implementation, we would create an optimized version for this as well
             backgroundExecutor.execute(() -> {
-                List<Message> loadedMessages = messageService.getMessagesByAddress(address);
+                // Use thread ID instead of address for compatibility
+                String threadId = messageService.getThreadIdForAddress(address);
+                List<Message> loadedMessages = threadId != null ? messageService.loadMessages(threadId) : new ArrayList<>();
 
                 // Apply pagination manually for now
                 int endIndex = Math.min(offset + limit, loadedMessages.size());
@@ -383,8 +405,8 @@ public class OptimizedConversationActivity extends BaseActivity {
             sendButton = findViewById(R.id.send_button);
             translateButton = findViewById(R.id.translate_button);
             progressBar = findViewById(R.id.progress_bar);
-            emptyStateTextView = findViewById(R.id.empty_state_text);
-            loadingIndicator = findViewById(R.id.loading_indicator);
+            emptyStateTextView = findViewById(R.id.empty_state_text_view);
+            loadingIndicator = findViewById(R.id.progress_bar); // Assuming progress_bar is the loading indicator
 
             // Set up click listeners
             if (sendButton != null) {
