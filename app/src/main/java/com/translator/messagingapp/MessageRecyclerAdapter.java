@@ -215,7 +215,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         // Set up media
-        setupMedia(holder.mediaContainer, holder.mediaIcon, message, position);
+        setupMedia(holder.mediaContainer, holder.mediaIcon, holder.mediaImage, message, position);
 
         // Set up click listeners
         setupMessageClickListeners(holder.itemView, holder.translateButton, message, position);
@@ -245,7 +245,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         // Set up media
-        setupMedia(holder.mediaContainer, holder.mediaIcon, message, position);
+        setupMedia(holder.mediaContainer, holder.mediaIcon, holder.mediaImage, message, position);
 
         // Set up click listeners
         setupMessageClickListeners(holder.itemView, holder.translateButton, message, position);
@@ -352,10 +352,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     }
 
     /**
-     * Fixed method for handling media attachments
+     * Enhanced method for handling media attachments with proper image display and video thumbnails
      */
-    private void setupMedia(ViewGroup mediaContainer, ImageView mediaIcon, Message message, int position) {
-        if (mediaContainer == null || mediaIcon == null || message == null) {
+    private void setupMedia(ViewGroup mediaContainer, ImageView mediaIcon, ImageView mediaImage, Message message, int position) {
+        if (mediaContainer == null || message == null) {
             return;
         }
 
@@ -372,34 +372,17 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         return;
                     }
 
-                    // Check if it's an image
+                    // Handle different attachment types
                     if (attachment.isImage() && attachment.getUri() != null) {
-                        // Load image with Glide with error handling
-                        try {
-                            RequestOptions options = new RequestOptions()
-                                    .placeholder(R.drawable.ic_attachment)
-                                    .error(R.drawable.ic_attachment)
-                                    .diskCacheStrategy(DiskCacheStrategy.ALL);
-
-                            Glide.with(context)
-                                    .load(attachment.getUri())
-                                    .apply(options)
-                                    .into(mediaIcon);
-                        } catch (Exception e) {
-                            // If Glide fails, show generic attachment icon
-                            mediaIcon.setImageResource(R.drawable.ic_attachment);
-                        }
+                        // Show image in media_image view
+                        displayImage(mediaImage, mediaIcon, attachment, position);
+                    } else if (attachment.isVideo() && attachment.getUri() != null) {
+                        // Show video thumbnail in media_image view
+                        displayVideoThumbnail(mediaImage, mediaIcon, attachment, position);
                     } else {
-                        // Show generic attachment icon
-                        mediaIcon.setImageResource(R.drawable.ic_attachment);
+                        // Show generic attachment icon in media_icon view
+                        displayGenericAttachment(mediaImage, mediaIcon, attachment, position);
                     }
-
-                    // Set click listener for attachment
-                    mediaIcon.setOnClickListener(v -> {
-                        if (clickListener != null) {
-                            clickListener.onAttachmentClick(attachment, position);
-                        }
-                    });
                 } else {
                     mediaContainer.setVisibility(View.GONE);
                 }
@@ -407,7 +390,116 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 mediaContainer.setVisibility(View.GONE);
             }
         } catch (Exception e) {
+            android.util.Log.e(TAG, "Error setting up media: " + e.getMessage(), e);
             mediaContainer.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Display an image attachment
+     */
+    private void displayImage(ImageView mediaImage, ImageView mediaIcon, MmsMessage.Attachment attachment, int position) {
+        if (mediaImage == null) {
+            return;
+        }
+
+        try {
+            // Show image view, hide icon view
+            if (mediaIcon != null) {
+                mediaIcon.setVisibility(View.GONE);
+            }
+            mediaImage.setVisibility(View.VISIBLE);
+
+            // Load image with Glide
+            RequestOptions options = new RequestOptions()
+                    .placeholder(R.drawable.ic_attachment)
+                    .error(R.drawable.ic_attachment)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .centerCrop();
+
+            Glide.with(context)
+                    .load(attachment.getUri())
+                    .apply(options)
+                    .into(mediaImage);
+
+            // Set click listener for attachment
+            mediaImage.setOnClickListener(v -> {
+                if (clickListener != null) {
+                    clickListener.onAttachmentClick(attachment, position);
+                }
+            });
+
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error displaying image: " + e.getMessage(), e);
+            // Fallback to generic icon
+            displayGenericAttachment(mediaImage, mediaIcon, attachment, position);
+        }
+    }
+
+    /**
+     * Display a video thumbnail
+     */
+    private void displayVideoThumbnail(ImageView mediaImage, ImageView mediaIcon, MmsMessage.Attachment attachment, int position) {
+        if (mediaImage == null) {
+            return;
+        }
+
+        try {
+            // Show image view, hide icon view
+            if (mediaIcon != null) {
+                mediaIcon.setVisibility(View.GONE);
+            }
+            mediaImage.setVisibility(View.VISIBLE);
+
+            // Load video thumbnail with Glide
+            RequestOptions options = new RequestOptions()
+                    .placeholder(R.drawable.ic_attachment)
+                    .error(R.drawable.ic_attachment)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .centerCrop()
+                    .frame(1000000); // Get frame at 1 second
+
+            Glide.with(context)
+                    .load(attachment.getUri())
+                    .apply(options)
+                    .into(mediaImage);
+
+            // Set click listener for attachment
+            mediaImage.setOnClickListener(v -> {
+                if (clickListener != null) {
+                    clickListener.onAttachmentClick(attachment, position);
+                }
+            });
+
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error displaying video thumbnail: " + e.getMessage(), e);
+            // Fallback to generic icon
+            displayGenericAttachment(mediaImage, mediaIcon, attachment, position);
+        }
+    }
+
+    /**
+     * Display a generic attachment icon
+     */
+    private void displayGenericAttachment(ImageView mediaImage, ImageView mediaIcon, MmsMessage.Attachment attachment, int position) {
+        try {
+            // Hide image view, show icon view
+            if (mediaImage != null) {
+                mediaImage.setVisibility(View.GONE);
+            }
+            if (mediaIcon != null) {
+                mediaIcon.setVisibility(View.VISIBLE);
+                mediaIcon.setImageResource(R.drawable.ic_attachment);
+
+                // Set click listener for attachment
+                mediaIcon.setOnClickListener(v -> {
+                    if (clickListener != null) {
+                        clickListener.onAttachmentClick(attachment, position);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error displaying generic attachment: " + e.getMessage(), e);
         }
     }
 
@@ -629,6 +721,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         View translateButton;
         ViewGroup mediaContainer;
         ImageView mediaIcon;
+        ImageView mediaImage; // Add reference to media_image
         LinearLayout reactionsLayout;
         View addReactionButton;
 
@@ -641,6 +734,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             translateButton = itemView.findViewById(R.id.translate_button);
             mediaContainer = itemView.findViewById(R.id.media_container);
             mediaIcon = itemView.findViewById(R.id.media_icon);
+            mediaImage = itemView.findViewById(R.id.media_image); // Add reference to media_image
 
             // Try to find reactions layout with either ID
             reactionsLayout = itemView.findViewById(R.id.reactions_layout);
@@ -662,6 +756,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         View translateButton;
         ViewGroup mediaContainer;
         ImageView mediaIcon;
+        ImageView mediaImage; // Add reference to media_image
         LinearLayout reactionsLayout;
         View addReactionButton;
 
@@ -675,6 +770,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             translateButton = itemView.findViewById(R.id.translate_button);
             mediaContainer = itemView.findViewById(R.id.media_container);
             mediaIcon = itemView.findViewById(R.id.media_icon);
+            mediaImage = itemView.findViewById(R.id.media_image); // Add reference to media_image
 
             // Try to find reactions layout with either ID
             reactionsLayout = itemView.findViewById(R.id.reactions_layout);
