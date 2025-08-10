@@ -693,6 +693,51 @@ public class MessageService {
     }
 
     /**
+     * Sends an SMS message with callback support.
+     *
+     * @param address The recipient address
+     * @param body The message body
+     * @param sentIntent The sent intent (can be null)
+     * @param successCallback The success callback (can be null)
+     * @return True if the message was sent successfully
+     */
+    public boolean sendSmsMessage(String address, String body, android.app.PendingIntent sentIntent, Runnable successCallback) {
+        try {
+            SmsManager smsManager = SmsManager.getDefault();
+
+            if (body.length() > MAX_SMS_LENGTH) {
+                // Split the message into parts
+                ArrayList<String> parts = smsManager.divideMessage(body);
+                smsManager.sendMultipartTextMessage(address, null, parts, null, null);
+            } else {
+                // Send a single message
+                smsManager.sendTextMessage(address, null, body, sentIntent, null);
+            }
+
+            // Add the message to the sent folder
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Sms.ADDRESS, address);
+            values.put(Telephony.Sms.BODY, body);
+            values.put(Telephony.Sms.DATE, System.currentTimeMillis());
+            values.put(Telephony.Sms.READ, 1);
+            values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT);
+
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = contentResolver.insert(Telephony.Sms.CONTENT_URI, values);
+
+            // Execute callback if provided
+            if (successCallback != null) {
+                successCallback.run();
+            }
+
+            return uri != null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending SMS message", e);
+            return false;
+        }
+    }
+
+    /**
      * Sends an MMS message.
      *
      * @param address The recipient address

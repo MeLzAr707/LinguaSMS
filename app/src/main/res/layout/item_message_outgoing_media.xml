@@ -138,6 +138,25 @@
                     android:visibility="gone"
                     android:contentDescription="@string/message_status_description" />
             </LinearLayout>
+
+            <!-- Additional date text field for compatibility -->
+            <TextView
+                android:id="@+id/date_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <!-- Reactions layout -->
+            <LinearLayout
+                android:id="@+id/reactions_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 

@@ -84,8 +84,8 @@ public class MessageDiffCallback extends DiffUtil.Callback {
             MmsMessage oldMms = (MmsMessage) oldMessage;
             MmsMessage newMms = (MmsMessage) newMessage;
 
-            List<MmsMessage.Attachment> oldAttachments = oldMms.getAttachmentObjects();
-            List<MmsMessage.Attachment> newAttachments = newMms.getAttachmentObjects();
+            List<Attachment> oldAttachments = oldMms.getAttachmentObjects();
+            List<Attachment> newAttachments = newMms.getAttachmentObjects();
 
             // Check if both are null or non-null
             if ((oldAttachments == null) != (newAttachments == null)) {
@@ -98,8 +98,8 @@ public class MessageDiffCallback extends DiffUtil.Callback {
                 }
                 // For simplicity, we'll just check the first attachment
                 else if (!oldAttachments.isEmpty()) {
-                    MmsMessage.Attachment oldAttachment = oldAttachments.get(0);
-                    MmsMessage.Attachment newAttachment = newAttachments.get(0);
+                    Attachment oldAttachment = oldAttachments.get(0);
+                    Attachment newAttachment = newAttachments.get(0);
                     sameAttachments = equals(oldAttachment.getContentType(), newAttachment.getContentType()) &&
                             equals(oldAttachment.getPartId(), newAttachment.getPartId());
                 }
