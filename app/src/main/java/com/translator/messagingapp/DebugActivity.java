@@ -23,6 +23,8 @@ public class DebugActivity extends AppCompatActivity {
     private Button checkButton;
     private Button openButton;
     private Button directOpenButton;
+    private Button translationStatusButton;
+    private Button testTranslationButton;
     private TextView resultText;
 
     @Override
@@ -43,12 +45,16 @@ public class DebugActivity extends AppCompatActivity {
         checkButton = findViewById(R.id.debug_check_button);
         openButton = findViewById(R.id.debug_open_button);
         directOpenButton = findViewById(R.id.debug_direct_open_button);
+        translationStatusButton = findViewById(R.id.debug_translation_status_button);
+        testTranslationButton = findViewById(R.id.debug_test_translation_button);
         resultText = findViewById(R.id.debug_result_text);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
         directOpenButton.setOnClickListener(v -> openConversationDirect());
+        translationStatusButton.setOnClickListener(v -> checkTranslationStatus());
+        testTranslationButton.setOnClickListener(v -> testOfflineTranslation());
 
         // Check if we were launched with an address
         String launchedAddress = getIntent().getStringExtra("address");
@@ -466,6 +472,62 @@ public class DebugActivity extends AppCompatActivity {
         }
 
         return null;
+    }
+    
+    private void checkTranslationStatus() {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            UserPreferences userPreferences = app.getUserPreferences();
+            
+            String status = OfflineTranslationDemo.demonstrateOfflineTranslation(this, userPreferences);
+            resultText.setText("=== OFFLINE TRANSLATION STATUS ===\n\n" + status);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking translation status", e);
+            resultText.setText("Error checking translation status: " + e.getMessage());
+        }
+    }
+    
+    private void testOfflineTranslation() {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            UserPreferences userPreferences = app.getUserPreferences();
+            
+            resultText.setText("=== TESTING OFFLINE TRANSLATION ===\n\nTesting English to Spanish translation...\n");
+            
+            OfflineTranslationDemo.testOfflineTranslation(this, userPreferences, 
+                new OfflineTranslationService.OfflineTranslationCallback() {
+                    @Override
+                    public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                        runOnUiThread(() -> {
+                            String result = "=== TRANSLATION TEST RESULT ===\n\n";
+                            result += "Original: Hello, how are you?\n";
+                            result += "Target Language: Spanish (es)\n";
+                            result += "Success: " + success + "\n";
+                            
+                            if (success && translatedText != null) {
+                                result += "Translation: " + translatedText + "\n";
+                                result += "\n✅ Offline translation is working!";
+                            } else {
+                                result += "Error: " + (errorMessage != null ? errorMessage : "Unknown error") + "\n";
+                                result += "\n❌ Offline translation failed. You may need to download language models first.";
+                            }
+                            
+                            result += "\n\nTo download language models:\n";
+                            result += "1. Go to Settings\n";
+                            result += "2. Find 'Translation' section\n";
+                            result += "3. Tap 'Manage Offline Models'\n";
+                            result += "4. Download English and Spanish models";
+                            
+                            resultText.setText(result);
+                        });
+                    }
+                });
+                
+        } catch (Exception e) {
+            Log.e(TAG, "Error testing offline translation", e);
+            resultText.setText("Error testing offline translation: " + e.getMessage());
+        }
     }
 }
 
