@@ -99,6 +99,15 @@ public class SettingsActivity extends BaseActivity {
                 // Setup debug mode preference
                 setupDebugModePreference(userPreferences);
                 
+                // Setup translation mode preference
+                setupTranslationModePreference(userPreferences);
+                
+                // Setup prefer offline preference
+                setupPreferOfflinePreference(userPreferences);
+                
+                // Setup manage offline models preference
+                setupManageOfflineModelsPreference();
+                
                 Log.d(TAG, "Preferences setup complete");
             } catch (Exception e) {
                 Log.e(TAG, "Error setting up preferences", e);
@@ -269,6 +278,73 @@ public class SettingsActivity extends BaseActivity {
             }
         }
         
+        private void setupTranslationModePreference(UserPreferences userPreferences) {
+            ListPreference translationModePreference = findPreference("translation_mode");
+            if (translationModePreference != null) {
+                try {
+                    String currentMode = String.valueOf(userPreferences.getTranslationMode());
+                    translationModePreference.setValue(currentMode);
+                    translationModePreference.setSummary(getTranslationModeName(userPreferences.getTranslationMode()));
+                    translationModePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                        try {
+                            int mode = Integer.parseInt((String) newValue);
+                            userPreferences.setTranslationMode(mode);
+                            preference.setSummary(getTranslationModeName(mode));
+                            return true;
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error setting translation mode", e);
+                            return false;
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing translation mode preference", e);
+                }
+            }
+        }
+        
+        private void setupPreferOfflinePreference(UserPreferences userPreferences) {
+            SwitchPreferenceCompat preferOfflinePreference = findPreference("prefer_offline");
+            if (preferOfflinePreference != null) {
+                try {
+                    preferOfflinePreference.setChecked(userPreferences.getPreferOfflineTranslation());
+                    preferOfflinePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+                        try {
+                            boolean prefer = (Boolean) newValue;
+                            userPreferences.setPreferOfflineTranslation(prefer);
+                            return true;
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error setting prefer offline preference", e);
+                            return false;
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing prefer offline preference", e);
+                }
+            }
+        }
+        
+        private void setupManageOfflineModelsPreference() {
+            Preference manageModelsPreference = findPreference("manage_offline_models");
+            if (manageModelsPreference != null) {
+                try {
+                    manageModelsPreference.setOnPreferenceClickListener(preference -> {
+                        try {
+                            // Open offline models management activity
+                            android.content.Intent intent = new android.content.Intent(getContext(), OfflineModelsActivity.class);
+                            startActivity(intent);
+                            return true;
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error opening offline models manager", e);
+                            Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
+                            return false;
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing manage offline models preference", e);
+                }
+            }
+        }
+        
         /**
          * Helper method to get language name from code
          */
@@ -287,6 +363,17 @@ public class SettingsActivity extends BaseActivity {
             }
             
             return "English"; // Default if not found
+        }
+        
+        /**
+         * Helper method to get translation mode name from mode value
+         */
+        private String getTranslationModeName(int mode) {
+            String[] modeNames = getResources().getStringArray(R.array.translation_mode_names);
+            if (mode >= 0 && mode < modeNames.length) {
+                return modeNames[mode];
+            }
+            return modeNames[2]; // Default to Auto mode
         }
     }
 }

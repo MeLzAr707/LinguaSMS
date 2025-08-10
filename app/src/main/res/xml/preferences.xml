@@ -36,6 +36,27 @@
             android:defaultValue="3" />
     </PreferenceCategory>
     
+    <PreferenceCategory android:title="@string/pref_category_translation">
+        <ListPreference
+            android:key="translation_mode"
+            android:title="@string/pref_translation_mode"
+            android:summary="@string/pref_translation_mode_summary"
+            android:entries="@array/translation_mode_names"
+            android:entryValues="@array/translation_mode_values"
+            android:defaultValue="2" />
+            
+        <SwitchPreferenceCompat
+            android:key="prefer_offline"
+            android:title="@string/pref_prefer_offline"
+            android:summary="@string/pref_prefer_offline_summary"
+            android:defaultValue="true" />
+            
+        <Preference
+            android:key="manage_offline_models"
+            android:title="@string/pref_manage_offline_models"
+            android:summary="@string/pref_manage_offline_models_summary" />
+    </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/pref_category_api">
         <EditTextPreference
             android:key="api_key"

@@ -320,6 +320,7 @@
     <string name="pref_category_general">General</string>
     <string name="pref_category_appearance">Appearance</string>
     <string name="pref_category_api">API Settings</string>
+    <string name="pref_category_translation">Translation</string>
     <string name="pref_category_advanced">Advanced</string>
 
     <string name="pref_auto_translate">Auto-Translate Messages</string>
@@ -345,6 +346,40 @@
     <string name="pref_debug_mode_summary">Enable additional logging and debug features</string>
     <string name="debug">debug</string>
     <string name="search">Search</string>
+
+    <!-- Offline Translation Settings -->
+    <string name="pref_translation_mode">Translation Mode</string>
+    <string name="pref_translation_mode_summary">Choose how translation is performed</string>
+    <string name="pref_prefer_offline">Prefer Offline Translation</string>
+    <string name="pref_prefer_offline_summary">Use offline translation when available</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models_summary">Download and manage offline language models</string>
+    
+    <!-- Translation Mode Options -->
+    <string-array name="translation_mode_names">
+        <item>Online Only</item>
+        <item>Offline Only</item>
+        <item>Auto (Prefer Offline)</item>
+    </string-array>
+    
+    <string-array name="translation_mode_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    
+    <!-- Offline Translation Messages -->
+    <string name="offline_translation_available">Offline translation available</string>
+    <string name="offline_translation_unavailable">Offline translation unavailable</string>
+    <string name="downloading_language_model">Downloading language model…</string>
+    <string name="download_complete">Download complete</string>
+    <string name="download_failed">Download failed</string>
+    <string name="delete_language_model">Delete language model</string>
+    <string name="language_model_deleted">Language model deleted</string>
+    <string name="manage_offline_models">Manage Offline Models</string>
+    <string name="download_language_model">Download language model</string>
+    <string name="no_offline_models">No offline models downloaded</string>
+    <string name="download_models_message">Download language models for offline translation</string>
 
     <string name="pref_preferred_incoming_language">Preferred Incoming Language</string>
     <string name="pref_preferred_incoming_language_summary">Language to translate incoming messages to</string>
