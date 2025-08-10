@@ -259,16 +259,10 @@
     <string name="test_message_added">Test message added</string>
     <string name="test_message_failed">Failed to add test message</string>
     <string name="api_key_required">Please set your Google Translate API key in Settings first</string>
-    <string name="english_to_spanish">English to Spanish</string>
-    <string name="spanish_to_english">Spanish to English</string>
-    <string name="auto_detect">Auto-detect</string>
-    <string name="translating_text">Translating: %1$s</string>
     <string name="translation_result">Translation Result</string>
     <string name="original_text_format">Original (%1$s): %2$s</string>
     <string name="translated_text_format">Translated (%1$s): %2$s</string>
     <string name="unknown_error">Unknown error</string>
-    <string name="auto_detecting_text">Auto-detecting and translating: %1$s</string>
-    <string name="auto_detect_result">Auto-Detect Translation Result</string>
     <string name="original_text">Original</string>
     <string name="translated_to_format">Translated to %1$s: %2$s</string>
     <string name="hide_translation">Hide Translation</string>
@@ -302,16 +296,6 @@
     <string name="search_all_messages">Search all messages</string>
     <string name="search_all_conversations">Search all conversations</string>
     <string name="emoji_picker">Emoji Picker</string>
-    <string name="emoji_categories">Categories</string>
-    <string name="emoji_category_smileys">Smileys &amp; Emotion</string>
-    <string name="emoji_category_people">People &amp; Body</string>
-    <string name="emoji_category_animals">Animals &amp; Nature</string>
-    <string name="emoji_category_food">Food &amp; Drink</string>
-    <string name="emoji_category_travel">Travel &amp; Places</string>
-    <string name="emoji_category_activities">Activities</string>
-    <string name="emoji_category_objects">Objects</string>
-    <string name="emoji_category_symbols">Symbols</string>
-    <string name="emoji_category_flags">Flags</string>
     <string name="remove_reaction">Remove Reaction</string>
     <!--  Added missing strings  -->
     <string name="translate_input">Translate input text</string>
