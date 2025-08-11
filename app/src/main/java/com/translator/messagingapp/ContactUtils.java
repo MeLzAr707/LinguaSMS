@@ -199,6 +199,106 @@ public class ContactUtils {
 
         return colors[index];
     }
+    /**
+     * Class to hold contact information including name and photo URI.
+     */
+    public static class ContactInfo {
+        private final String name;
+        private final String photoUri;
+
+        /**
+         * Creates a new ContactInfo.
+         *
+         * @param name The contact name
+         * @param photoUri The photo URI as a string
+         */
+        public ContactInfo(String name, String photoUri) {
+            this.name = name;
+            this.photoUri = photoUri;
+        }
+
+        /**
+         * Gets the contact name.
+         *
+         * @return The contact name
+         */
+        public String getName() {
+            return name;
+        }
+
+        /**
+         * Gets the photo URI as a string.
+         *
+         * @return The photo URI string
+         */
+        public String getPhotoUri() {
+            return photoUri;
+        }
+
+        /**
+         * Gets the photo URI.
+         *
+         * @return The photo URI, or null if not available
+         */
+        public Uri getPhotoUriObject() {
+            return photoUri != null ? Uri.parse(photoUri) : null;
+        }
+
+        /**
+         * Checks if this contact has a photo.
+         *
+         * @return True if the contact has a photo, false otherwise
+         */
+        public boolean hasPhoto() {
+            return photoUri != null && !photoUri.isEmpty();
+        }
+    }
+    /**
+     * Gets contact information for a phone number.
+     *
+     * @param context The context
+     * @param phoneNumber The phone number
+     * @return The ContactInfo object, or a ContactInfo with null values if not found
+     */
+    public static ContactInfo getContactInfo(Context context, String phoneNumber) {
+        if (context == null || TextUtils.isEmpty(phoneNumber)) {
+            return new ContactInfo(null, null);
+        }
+
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = contentResolver.query(
+                    uri,
+                    new String[]{
+                            ContactsContract.PhoneLookup.DISPLAY_NAME,
+                            ContactsContract.PhoneLookup.PHOTO_URI
+                    },
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                        int photoUriIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+
+                        String name = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+                        String photoUri = photoUriIndex >= 0 ? cursor.getString(photoUriIndex) : null;
+
+                        return new ContactInfo(name, photoUri);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting contact info for " + phoneNumber, e);
+        }
+
+        return new ContactInfo(null, null);
+    }
 }
 
 

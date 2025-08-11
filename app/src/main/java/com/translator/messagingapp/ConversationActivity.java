@@ -5,6 +5,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.text.TextUtils;
@@ -108,7 +109,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_input_button);
+        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
         emojiButton = findViewById(R.id.emoji_button);
 
         // Set up RecyclerView
@@ -370,7 +371,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                         // Save to cache
                         if (translationCache != null) {
-                            translationCache.saveTranslation(message.getId(), translatedText);
+                            // Use the put method instead of saveTranslation
+                            String cacheKey = "msg_" + message.getId() + "_translation";
+                            translationCache.put(cacheKey, translatedText);
                         }
 
                         // Update UI
@@ -540,8 +543,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
         // Handle attachment click
-        // You'll need to implement this method to handle attachment clicks
         Toast.makeText(this, "Attachment clicked", Toast.LENGTH_SHORT).show();
+    }
+    
+    // Add the missing method to fix the compilation error
+    @Override
+    public void onAttachmentClick(Uri uri, int position) {
+        // Handle attachment click for URI
+        Toast.makeText(this, "Attachment clicked: " + uri.toString(), Toast.LENGTH_SHORT).show();
     }
     
     @Override

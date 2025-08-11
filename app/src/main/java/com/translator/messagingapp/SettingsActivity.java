@@ -265,13 +265,13 @@ public class SettingsActivity extends BaseActivity {
         } else {
             newThemeId = UserPreferences.THEME_LIGHT;
         }
-        
+
         // Check if theme has changed
         boolean themeChanged = (newThemeId != userPreferences.getThemeId());
-        
+
         // Save theme setting after checking for changes
         userPreferences.setThemeId(newThemeId);
-        
+
         // Save auto-translate setting
         userPreferences.setAutoTranslateEnabled(autoTranslateSwitch.isChecked());
 
@@ -284,11 +284,11 @@ public class SettingsActivity extends BaseActivity {
             recreateWithFade();
         }
     }
-    
+
     /**
      * Recreate the activity with a fade animation for smoother theme transitions
      */
-    private void recreateWithFade() {
+    public void recreateWithFade() {
         // Use a fade animation for smoother transition
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         recreate();

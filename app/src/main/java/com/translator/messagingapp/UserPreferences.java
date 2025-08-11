@@ -15,18 +15,19 @@ public class UserPreferences {
     private static final String KEY_FIRST_RUN = "first_run";
     private static final String KEY_LAST_TRANSLATION_DATE = "last_translation_date";
     private static final String KEY_TRANSLATIONS_TODAY = "translations_today";
+    private static final String KEY_OFFLINE_TRANSLATION_ENABLED = "offline_translation_enabled";
 
     // Theme constants
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
     public static final int THEME_BLACK_GLASS = 2;
     public static final int THEME_SYSTEM = 3;
-    
+
     // Translation mode constants
     public static final int TRANSLATION_MODE_AUTO = 0;
     public static final int TRANSLATION_MODE_ONLINE_ONLY = 1;
     public static final int TRANSLATION_MODE_OFFLINE_ONLY = 2;
-    
+
     // Additional preference keys for missing functionality
     private static final String KEY_TRANSLATION_MODE = "translation_mode";
     private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
@@ -239,7 +240,47 @@ public class UserPreferences {
     public void setPreferOfflineTranslation(boolean prefer) {
         preferences.edit().putBoolean(KEY_PREFER_OFFLINE_TRANSLATION, prefer).apply();
     }
+
+    /**
+     * Checks if offline translation is enabled.
+     *
+     * @return true if offline translation is enabled, false otherwise
+     */
+    public boolean isOfflineTranslationEnabled() {
+        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, false);
+    }
+
+    /**
+     * Sets whether offline translation is enabled.
+     *
+     * @param enabled true to enable offline translation, false otherwise
+     */
+    public void setOfflineTranslationEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Gets a string preference.
+     *
+     * @param key The preference key
+     * @param defaultValue The default value
+     * @return The preference value
+     */
+    public String getString(String key, String defaultValue) {
+        return preferences.getString(key, defaultValue);
+    }
+
+    /**
+     * Sets a string preference.
+     *
+     * @param key The preference key
+     * @param value The preference value
+     */
+    public void setString(String key, String value) {
+        preferences.edit().putString(key, value).apply();
+    }
 }
+
 
 
 

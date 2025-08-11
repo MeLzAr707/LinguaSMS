@@ -25,15 +25,6 @@ public class MmsMessage extends Message {
     private String transactionId;
 
     /**
-     * Creates a new MMS message with default values.
-     */
-    public MmsMessage() {
-        super();
-        this.attachments = new ArrayList<>();
-        setMessageType(MESSAGE_TYPE_MMS);
-    }
-
-    /**
      * Creates a new MMS message.
      *
      * @param id The message ID
@@ -262,6 +253,16 @@ public class MmsMessage extends Message {
          */
         public boolean isAudio() {
             return contentType != null && contentType.startsWith("audio/");
+        }
+
+        /**
+         * Gets the part ID of this attachment.
+         *
+         * @return The part ID
+         */
+        public String getPartId() {
+            // Using the URI as a unique identifier for the part
+            return uri != null ? uri.getLastPathSegment() : null;
         }
     }
 }

@@ -209,9 +209,23 @@ public class RcsMessage extends Message {
     /**
      * Gets the reactions to this message.
      *
+     * @return List of message reactions
+     */
+    @Override
+    public List<MessageReaction> getReactions() {
+        // Convert URI reactions to MessageReaction objects
+        List<MessageReaction> messageReactions = new ArrayList<>();
+        // Implementation would convert URIs to MessageReaction objects
+        // This is a placeholder implementation
+        return messageReactions;
+    }
+    
+    /**
+     * Gets the raw reaction URIs to this message.
+     *
      * @return List of reaction URIs
      */
-    public List<Uri> getReactions() {
+    public List<Uri> getReactionUris() {
         return reactions;
     }
     

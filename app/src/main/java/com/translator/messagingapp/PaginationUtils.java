@@ -1,73 +1,200 @@
 package com.translator.messagingapp;
 
-import android.widget.ProgressBar;
-import androidx.annotation.NonNull;
+import android.view.View;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+/**
+ * Utility class for handling pagination in RecyclerView.
+ */
 public class PaginationUtils {
 
+    /**
+     * Interface for pagination loading complete callback.
+     */
     public interface OnLoadingCompleteCallback {
+        /**
+         * Called when loading is complete.
+         */
         void onLoadingComplete();
     }
 
-    public static abstract class PaginationScrollListener extends RecyclerView.OnScrollListener {
+    /**
+     * Scroll listener for pagination.
+     */
+    public static class PaginationScrollListener extends RecyclerView.OnScrollListener {
+        private boolean isLoading = false;
+        private final LinearLayoutManager layoutManager;
+        private final OnLoadingCompleteCallback loadMoreCallback;
+        private final int threshold;
+        private final View loadingIndicator;
+
+        /**
+         * Creates a new PaginationScrollListener.
+         *
+         * @param layoutManager The LinearLayoutManager for the RecyclerView
+         * @param loadMoreCallback The callback to invoke when more items need to be loaded
+         * @param threshold The number of items from the end to trigger loading more
+         * @param loadingIndicator The loading indicator view
+         */
+        public PaginationScrollListener(
+                LinearLayoutManager layoutManager,
+                OnLoadingCompleteCallback loadMoreCallback,
+                int threshold,
+                View loadingIndicator) {
+            this.layoutManager = layoutManager;
+            this.loadMoreCallback = loadMoreCallback;
+            this.threshold = threshold;
+            this.loadingIndicator = loadingIndicator;
+        }
+
+        @Override
+        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+            super.onScrolled(recyclerView, dx, dy);
+
+            int totalItemCount = layoutManager.getItemCount();
+            int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
+
+            if (!isLoading && totalItemCount <= (lastVisibleItem + threshold)) {
+                // Show loading indicator
+                if (loadingIndicator != null) {
+                    loadingIndicator.setVisibility(View.VISIBLE);
+                }
+
+                isLoading = true;
+
+                // Load more data
+                if (loadMoreCallback != null) {
+                    loadMoreCallback.onLoadingComplete();
+                }
+
+                // Hide loading indicator
+                if (loadingIndicator != null) {
+                    loadingIndicator.setVisibility(View.GONE);
+                }
+
+                isLoading = false;
+            }
+        }
+
         private boolean hasMoreItems = true;
 
+        /**
+         * Sets the loading state.
+         *
+         * @param loading The loading state
+         */
+        public void setLoading(boolean loading) {
+            isLoading = loading;
+        }
+
+        /**
+         * Gets the loading state.
+         *
+         * @return The loading state
+         */
+        public boolean isLoading() {
+            return isLoading;
+        }
+
+        /**
+         * Sets whether there are more items to load.
+         *
+         * @param hasMoreItems True if there are more items to load
+         */
         public void setHasMoreItems(boolean hasMoreItems) {
             this.hasMoreItems = hasMoreItems;
         }
 
-        public boolean getHasMoreItems() {
+        /**
+         * Gets whether there are more items to load.
+         *
+         * @return True if there are more items to load
+         */
+        public boolean hasMoreItems() {
             return hasMoreItems;
         }
-
-        public abstract void loadMoreItems();
-        public abstract boolean isLoading();
     }
 
+    /**
+     * Sets up pagination for a RecyclerView.
+     *
+     * @param recyclerView The RecyclerView to set up pagination for
+     * @param layoutManager The LinearLayoutManager for the RecyclerView
+     * @param loadMoreCallback The callback to invoke when more items need to be loaded
+     * @param threshold The number of items from the end to trigger loading more
+     * @param loadingIndicator The loading indicator view
+     * @return The PaginationScrollListener
+     */
     public static PaginationScrollListener setupPagination(
             RecyclerView recyclerView,
-            OnLoadingCompleteCallback onLoadingComplete,
+            LinearLayoutManager layoutManager,
+            OnLoadingCompleteCallback loadMoreCallback,
             int threshold,
-            ProgressBar loadingIndicator) {
+            View loadingIndicator) {
+
+        PaginationScrollListener scrollListener = new PaginationScrollListener(
+                layoutManager, loadMoreCallback, threshold, loadingIndicator);
+        recyclerView.addOnScrollListener(scrollListener);
+        return scrollListener;
+    }
+
+    /**
+     * Sets up pagination for a RecyclerView with a lambda callback.
+     *
+     * @param recyclerView The RecyclerView to set up pagination for
+     * @param loadMoreCallback The lambda callback to invoke when more items need to be loaded
+     * @param threshold The number of items from the end to trigger loading more
+     * @param loadingIndicator The loading indicator view
+     * @return The PaginationScrollListener
+     */
+    public static PaginationScrollListener setupPagination(
+            RecyclerView recyclerView,
+            Runnable loadMoreCallback,
+            int threshold,
+            View loadingIndicator) {
+
         LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-        PaginationScrollListener listener = new PaginationScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
+        if (layoutManager == null) {
+            throw new IllegalStateException("RecyclerView must have a LinearLayoutManager");
+        }
 
-                if (dy < 0) { // only trigger on scroll down
-                    return;
-                }
-
-                int visibleItemCount = layoutManager.getChildCount();
-                int totalItemCount = layoutManager.getItemCount();
-                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
-
-                if (!isLoading() && getHasMoreItems()) {
-                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
-                            && firstVisibleItemPosition >= 0
-                            && totalItemCount >= threshold) {
-                        loadMoreItems();
-                    }
-                }
-            }
-
-            @Override
-            public void loadMoreItems() {
-                if (loadingIndicator != null) {
-                    loadingIndicator.setVisibility(ProgressBar.VISIBLE);
-                }
-                onLoadingComplete.onLoadingComplete();
-            }
-
-            @Override
-            public boolean isLoading() {
-                return loadingIndicator != null && loadingIndicator.getVisibility() == ProgressBar.VISIBLE;
+        OnLoadingCompleteCallback callback = () -> {
+            if (loadMoreCallback != null) {
+                loadMoreCallback.run();
             }
         };
-        recyclerView.addOnScrollListener(listener);
-        return listener;
+
+        return setupPagination(recyclerView, layoutManager, callback, threshold, loadingIndicator);
+    }
+
+    /**
+     * Sets up pagination for a RecyclerView with a lambda callback.
+     * This overload is used by OptimizedConversationActivity.
+     *
+     * @param recyclerView The RecyclerView to set up pagination for
+     * @param loadMoreCallback The lambda callback to invoke when more items need to be loaded
+     * @param threshold The number of items from the end to trigger loading more
+     * @param loadingIndicator The loading indicator view (as a ProgressBar)
+     * @return The PaginationScrollListener
+     */
+    public static PaginationScrollListener setupPagination(
+            RecyclerView recyclerView,
+            Runnable loadMoreCallback,
+            int threshold,
+            android.widget.ProgressBar loadingIndicator) {
+
+        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+        if (layoutManager == null) {
+            throw new IllegalStateException("RecyclerView must have a LinearLayoutManager");
+        }
+
+        OnLoadingCompleteCallback callback = () -> {
+            if (loadMoreCallback != null) {
+                loadMoreCallback.run();
+            }
+        };
+
+        return setupPagination(recyclerView, layoutManager, callback, threshold, loadingIndicator);
     }
 }

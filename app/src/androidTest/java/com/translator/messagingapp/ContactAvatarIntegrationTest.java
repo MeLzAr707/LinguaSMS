@@ -51,11 +51,11 @@ public class ContactAvatarIntegrationTest {
     @Test
     public void testContactInfo_creation() {
         ContactUtils.ContactInfo info = new ContactUtils.ContactInfo("John Doe", "content://photo/1");
-        assertEquals("John Doe", info.name);
-        assertEquals("content://photo/1", info.photoUri);
-        
+        assertEquals("John Doe", info.getName());
+        assertEquals("content://photo/1", info.getPhotoUri());
+
         ContactUtils.ContactInfo emptyInfo = new ContactUtils.ContactInfo(null, null);
-        assertNull(emptyInfo.name);
-        assertNull(emptyInfo.photoUri);
+        assertNull(emptyInfo.getName());
+        assertNull(emptyInfo.getPhotoUri());
     }
 }

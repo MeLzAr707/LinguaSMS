@@ -74,13 +74,15 @@ public class NotificationTestHelper {
             java.util.List<Message> messages = new java.util.ArrayList<>();
             
             // Create a sample message
-            SmsMessage message = new SmsMessage();
-            message.setBody("This is a test conversation notification");
-            message.setDate(System.currentTimeMillis());
-            message.setType(Message.TYPE_INBOX);
-            message.setAddress("+15551234567");
+            SmsMessage message = new SmsMessage("+15551234567", "This is a test conversation notification");
+            // Convert SmsMessage to Message for the notification
+            Message notificationMessage = new Message();
+            notificationMessage.setBody(message.getOriginalText());
+            notificationMessage.setDate(System.currentTimeMillis());
+            notificationMessage.setType(Message.TYPE_INBOX);
+            notificationMessage.setAddress(message.getAddress());
             
-            messages.add(message);
+            messages.add(notificationMessage);
             
             notificationHelper.showConversationNotification(
                 "+15551234567",

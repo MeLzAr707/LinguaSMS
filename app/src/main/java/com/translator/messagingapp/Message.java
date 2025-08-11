@@ -6,6 +6,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -34,10 +35,10 @@ public class Message {
     private String originalLanguage;
     private String translatedLanguage;
     private boolean showTranslation;
-    
+
     // Search-related fields
     private String searchQuery;
-    
+
     // Reaction-related fields
     private MessageReaction.ReactionManager reactionManager;
 
@@ -48,9 +49,10 @@ public class Message {
     public static final int TYPE_OUTBOX = 4;
     public static final int TYPE_FAILED = 5;
     public static final int TYPE_QUEUED = 6;
-    public static final int TYPE_ALL = 0; // Used to represent all message types
     // Constants for message types
     public static final int TYPE_MMS = 128; // Or any value that doesn't conflict with existing types
+    // Add the missing TYPE_ALL constant
+    public static final int TYPE_ALL = 0;  // Represents all message types
 
     /**
      * Default constructor.
@@ -187,37 +189,37 @@ public class Message {
     public void setShowTranslation(boolean showTranslation) {
         this.showTranslation = showTranslation;
     }
-    
+
     /**
      * Gets the search query used to find this message.
-     * 
+     *
      * @return The search query
      */
     public String getSearchQuery() {
         return searchQuery;
     }
-    
+
     /**
      * Sets the search query used to find this message.
-     * 
+     *
      * @param searchQuery The search query
      */
     public void setSearchQuery(String searchQuery) {
         this.searchQuery = searchQuery;
     }
-    
+
     /**
      * Checks if this message has a search query.
-     * 
+     *
      * @return true if the message has a search query, false otherwise
      */
     public boolean hasSearchQuery() {
         return searchQuery != null && !searchQuery.isEmpty();
     }
-    
+
     /**
      * Gets the reaction manager for this message.
-     * 
+     *
      * @return The reaction manager
      */
     public MessageReaction.ReactionManager getReactionManager() {
@@ -226,10 +228,10 @@ public class Message {
         }
         return reactionManager;
     }
-    
+
     /**
      * Adds a reaction to this message.
-     * 
+     *
      * @param emoji The emoji to add
      * @param userId The user ID who reacted
      * @return True if the reaction was added, false if it already exists
@@ -238,10 +240,10 @@ public class Message {
         MessageReaction reaction = new MessageReaction(emoji, userId, System.currentTimeMillis());
         return getReactionManager().addReaction(reaction);
     }
-    
+
     /**
      * Removes a reaction from this message.
-     * 
+     *
      * @param emoji The emoji to remove
      * @param userId The user ID who reacted
      * @return True if the reaction was removed, false if it doesn't exist
@@ -249,23 +251,23 @@ public class Message {
     public boolean removeReaction(String emoji, String userId) {
         return getReactionManager().removeReaction(userId, emoji);
     }
-    
+
     /**
      * Checks if this message has any reactions.
-     * 
+     *
      * @return true if the message has reactions, false otherwise
      */
     public boolean hasReactions() {
         return reactionManager != null && reactionManager.getTotalReactionCount() > 0;
     }
-    
+
     /**
-     * Gets all reactions for this message.
-     * 
-     * @return The list of reactions
+     * Gets the reactions to this message.
+     *
+     * @return List of message reactions
      */
     public List<MessageReaction> getReactions() {
-        return getReactionManager().getAllReactions();
+        return reactionManager != null ? reactionManager.getAllReactions() : new ArrayList<>();
     }
 
     /**
@@ -322,15 +324,18 @@ public class Message {
     public boolean isTranslated() {
         return translatedText != null && !translatedText.isEmpty();
     }
-    
+
     /**
-     * Checks if the message can be translated.
+     * Sets whether the message has been translated.
      *
-     * @return true if the message can be translated, false otherwise
+     * @param translated true if the message has been translated, false otherwise
      */
-    public boolean isTranslatable() {
-        // A message is translatable if it has non-empty body text
-        return body != null && !body.trim().isEmpty();
+    public void setTranslated(boolean translated) {
+        // This is a helper method that doesn't actually store the state
+        // The translated state is determined by the presence of translatedText
+        if (!translated) {
+            this.translatedText = null;
+        }
     }
 
     /**
@@ -340,25 +345,6 @@ public class Message {
      */
     public boolean isIncoming() {
         return type == TYPE_INBOX;
-    }
-    
-    /**
-     * Checks if the message has been delivered.
-     *
-     * @return true if the message has been delivered, false otherwise
-     */
-    public boolean isDelivered() {
-        // A message is considered delivered if it's sent and not failed
-        return type == TYPE_SENT || (type == TYPE_OUTBOX && !isFailed());
-    }
-    
-    /**
-     * Checks if the message failed to send.
-     *
-     * @return true if the message failed to send, false otherwise
-     */
-    public boolean isFailed() {
-        return type == TYPE_FAILED;
     }
 
     /**
@@ -455,7 +441,7 @@ public class Message {
         return type == TYPE_MMS || messageType == MESSAGE_TYPE_MMS ||
                 (getClass() == MmsMessage.class);
     }
-    
+
     /**
      * Checks if the message is an RCS message.
      *
@@ -465,20 +451,37 @@ public class Message {
         return messageType == MESSAGE_TYPE_RCS;
     }
 
+    /**
+     * Checks if the message is deliverable.
+     *
+     * @return true if the message is deliverable, false otherwise
+     */
+    public boolean isDelivered() {
+        // Default implementation - override in subclasses if needed
+        return type == TYPE_SENT;
+    }
+
+    /**
+     * Checks if the message is translatable.
+     *
+     * @return true if the message is translatable, false otherwise
+     */
+    public boolean isTranslatable() {
+        // Most messages are translatable if they have text content
+        return body != null && !body.isEmpty();
+    }
+
     @Override
     public String toString() {
         return "Message{" +
                 "id=" + id +
-                ", body='" + body + '\'' +
+                ", body='" + body + "'" +
                 ", date=" + date +
                 ", type=" + type +
                 ", read=" + read +
-                ", address='" + address + '\'' +
+                ", address='" + address + "'" +
                 ", threadId=" + threadId +
                 '}';
     }
 }
-
-
-
 

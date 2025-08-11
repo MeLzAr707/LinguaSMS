@@ -1,124 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
+    android:paddingStart="60dp"
+    android:paddingLeft="60dp"
+    android:paddingEnd="8dp"
+    android:paddingRight="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
-    <LinearLayout
-        android:id="@+id/message_bubble"
+    <androidx.cardview.widget.CardView
+        android:id="@+id/message_card"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:background="@drawable/bg_message_outgoing"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:maxWidth="240dp">
-
-        <!-- Translation indicator -->
-        <View
-            android:id="@+id/translation_indicator"
-            android:layout_width="4dp"
-            android:layout_height="match_parent"
-            android:background="@color/colorAccent"
-            android:layout_marginEnd="4dp"
-            android:visibility="gone" />
+        app:cardCornerRadius="12dp"
+        app:cardElevation="1dp"
+        app:cardBackgroundColor="@color/colorPrimary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="8dp">
 
-            <!-- Original message text -->
             <TextView
                 android:id="@+id/message_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="16sp" />
-
-            <!-- Translation info text -->
-            <TextView
-                android:id="@+id/translation_info"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@android:color/white"
-                android:textSize="12sp"
-                android:textStyle="italic"
-                android:alpha="0.7"
-                android:visibility="gone" />
-
-            <!-- Translated text -->
-            <TextView
-                android:id="@+id/translation_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@android:color/white"
+                android:textColor="@color/white"
                 android:textSize="16sp"
-                android:visibility="gone" />
+                tools:text="This is an outgoing message" />
 
-            <!-- Translation button -->
-            <Button
-                android:id="@+id/translate_button"
-                style="@style/Widget.AppCompat.Button.Borderless.Colored"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:padding="4dp"
-                android:text="@string/action_translate"
-                android:textSize="12sp" />
-
-            <!-- Message timestamp and status container -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="end"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
-                
-                <!-- Message timestamp -->
+                android:layout_marginTop="4dp"
+                android:layout_gravity="end">
+
                 <TextView
                     android:id="@+id/message_date"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@android:color/darker_gray"
-                    android:textSize="12sp" />
-                
-                <!-- Message status indicator (for RCS) -->
-                <ImageView
-                    android:id="@+id/message_status"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginStart="4dp"
-                    android:visibility="gone"
-                    android:contentDescription="@string/message_status_description" />
+                    android:textColor="@color/white"
+                    android:alpha="0.7"
+                    android:textSize="12sp"
+                    tools:text="12:34 PM" />
+
+                <ImageButton
+                    android:id="@+id/translate_button"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/translate"
+                    android:src="@drawable/ic_translate"
+                    android:tint="@color/white" />
             </LinearLayout>
-
-            <!-- Additional date text field for compatibility -->
-            <TextView
-                android:id="@+id/date_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="12sp"
-                android:visibility="gone" />
-
-            <!-- Reactions layout -->
-            <LinearLayout
-                android:id="@+id/reactions_layout"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="horizontal"
-                android:visibility="gone" />
         </LinearLayout>
-    </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
-</RelativeLayout>
+    <HorizontalScrollView
+        android:id="@+id/reactions_scroll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        app:layout_constraintEnd_toEndOf="@id/message_card"
+        app:layout_constraintTop_toBottomOf="@id/message_card"
+        android:layout_marginTop="2dp">
+
+        <LinearLayout
+            android:id="@+id/reactions_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+            <!-- Reaction items will be added here dynamically -->
+        </LinearLayout>
+    </HorizontalScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

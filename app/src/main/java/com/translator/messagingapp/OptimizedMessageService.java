@@ -1,3 +1,4 @@
+
 package com.translator.messagingapp;
 
 import android.content.ContentResolver;
@@ -18,15 +19,42 @@ public class OptimizedMessageService {
     private final TranslationManager translationManager;
     private final Executor backgroundExecutor = Executors.newSingleThreadExecutor();
 
+    /**
+     * Default constructor
+     */
+    public OptimizedMessageService() {
+        this.context = null;
+        this.translationManager = null;
+    }
+
+    /**
+     * Creates a new optimized message service.
+     *
+     * @param context The context
+     * @param translationManager The translation manager
+     */
     public OptimizedMessageService(Context context, TranslationManager translationManager) {
         this.context = context;
         this.translationManager = translationManager;
     }
 
+    /**
+     * Callback interface for asynchronous operations.
+     *
+     * @param <T> The result type
+     */
     public interface Callback<T> {
         void onResult(T result);
     }
 
+    /**
+     * Gets messages by thread ID with pagination.
+     *
+     * @param threadId The thread ID
+     * @param offset The offset
+     * @param limit The limit
+     * @param callback The callback to invoke with the result
+     */
     public void getMessagesByThreadIdPaginated(String threadId, int offset, int limit, Callback<List<Message>> callback) {
         backgroundExecutor.execute(() -> {
             List<Message> messages = new ArrayList<>();
@@ -44,8 +72,8 @@ public class OptimizedMessageService {
                 if (cursor != null && cursor.moveToFirst()) {
                     do {
                         Message message = new Message();
-                        message.setId(cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)));
-                        message.setThreadId(threadId);
+                        message.setId(Long.parseLong(cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))));
+                        message.setThreadId(Long.parseLong(threadId));
                         message.setAddress(cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)));
                         message.setBody(cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)));
                         message.setDate(cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)));

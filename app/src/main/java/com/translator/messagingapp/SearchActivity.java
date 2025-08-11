@@ -1,6 +1,7 @@
 package com.translator.messagingapp;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -11,6 +12,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
@@ -97,7 +99,7 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 // Show/hide clear button based on text
                 clearSearchButton.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
-                
+
                 // Perform search if text is at least 2 characters
                 if (s.length() >= 2) {
                     performSearch(s.toString());
@@ -118,10 +120,10 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
             searchEditText.setText("");
             clearSearchResults();
         });
-        
+
         // Initially hide clear button
         clearSearchButton.setVisibility(View.GONE);
-        
+
         // Show initial empty state
         showEmptyState(R.string.search_hint);
     }
@@ -129,24 +131,24 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
     private void performSearch(String query) {
         // Show loading indicator
         showLoadingIndicator();
-        
+
         // Cancel any previous search
         executorService.shutdownNow();
         executorService = Executors.newCachedThreadPool();
-        
+
         // Perform search in background
         executorService.execute(() -> {
             try {
                 // Search messages using MessageService
                 List<Message> results = messageService.searchMessages(query);
-                
+
                 // Restore translation states for search results
                 if (translationCache != null) {
                     for (Message message : results) {
                         message.restoreTranslationState(translationCache);
                     }
                 }
-                
+
                 // Update UI on main thread
                 runOnUiThread(() -> {
                     // Update search results
@@ -158,7 +160,7 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
                     } else {
                         showEmptyState(R.string.no_search_results);
                     }
-                    
+
                     // Hide loading indicator
                     hideLoadingIndicator();
                 });
@@ -226,13 +228,20 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
     public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
         // Not implemented for search results
     }
-    
+
+    // Add the missing method to fix the compilation error
+    @Override
+    public void onAttachmentClick(Uri uri, int position) {
+        // Not implemented for search results
+        Toast.makeText(this, "Attachment viewing not supported in search results", Toast.LENGTH_SHORT).show();
+    }
+
     @Override
     public void onReactionClick(Message message, int position) {
         // Not implemented for search results
         // Reactions are not supported in search results view
     }
-    
+
     @Override
     public void onAddReactionClick(Message message, int position) {
         // Not implemented for search results
@@ -244,18 +253,18 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         Intent intent = new Intent(this, ConversationActivity.class);
         intent.putExtra("thread_id", String.valueOf(message.getThreadId()));
         intent.putExtra("address", message.getAddress());
-        
+
         // Try to get contact name
         String contactName = ContactUtils.getContactName(this, message.getAddress());
         intent.putExtra("contact_name", contactName);
-        
+
         startActivity(intent);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
+
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();

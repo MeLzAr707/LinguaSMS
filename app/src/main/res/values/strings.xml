@@ -45,9 +45,6 @@
     <string name="add_attachment">Add attachment</string>
     <string name="translate_message">Translate message</string>
     <string name="translated_message">Translated message</string>
-    <string name="translate_input_message">Translate input message</string>
-    <string name="translate_outgoing_message">Translate outgoing message</string>
-    <string name="add_emoji">Add emoji</string>
 
     <!-- New Message -->
     <string name="title_activity_new_message">New Message</string>
@@ -214,6 +211,7 @@
     <string name="accessibility_new_message">Create new message</string>
 
     <!-- Add these to your existing strings.xml file -->
+    <string name="translate_outgoing_message">Translate outgoing message</string>
     <string name="translating_outgoing">Translating message…</string>
     <string name="translation_ready">Translation ready</string>
     <string name="translation_error">Translation failed</string>
@@ -387,8 +385,6 @@
     <string name="debug_check_button">Check</string>
     <string name="debug_open_button">Open</string>
     <string name="debug_direct_open_button">Direct Open</string>
-    <string name="please_enter_address">Please enter an address</string>
-    <string name="error_debug">Debug error: %1$s</string>
 
     <!-- Message Layout Strings -->
     <string name="message_status_description">Message status</string>
@@ -416,6 +412,26 @@
         <string name="pref_manage_offline_models_summary">Download and manage offline translation models</string>
         <string name="pref_category_offline_models">Offline Translation</string>
         <string name="enable_offline_translation_summary">Use downloaded models for offline translation</string>
+        
+        <!-- Missing strings for offline models -->
+        <string name="model_size">Model size: %1$s</string>
+        <string name="download_progress">Download progress: %1$d%%</string>
+        <string name="model_downloaded">Model downloaded</string>
+        <string name="delete_model">Delete model</string>
+        <string name="model_download_success">Model downloaded successfully</string>
+        <string name="model_download_error">Error downloading model: %1$s</string>
+        <string name="model_delete_success">Model deleted successfully</string>
+        <string name="model_delete_error">Error deleting model: %1$s</string>
+        
+        <!-- Missing strings for UI messages -->
+        <string name="message_clicked">Message clicked</string>
+        <string name="error_initializing_conversation">Error initializing conversation</string>
+        <string name="message_options">Message options</string>
+        <string name="error_initializing_ui">Error initializing UI</string>
+        <string name="send_message_toast">Message sent</string>
+        <string name="features_limited">Some features are limited without permissions</string>
+        <string name="error_requesting_sms_permissions">Error requesting SMS permissions: %1$s</string>
+        <string name="error_making_call">Error making call: %1$s</string>
 
         <!-- Translation mode arrays -->
         <string-array name="translation_mode_names">
@@ -431,5 +447,86 @@
             <item>offline_only</item>
             <item>automatic</item>
         </string-array>
+
+
+
+        <!-- Common -->
+
+        <string name="share">Share</string>
+        <string name="copy">Copy</string>
+
+        <string name="help">Help</string>
+
+        <!-- Error messages -->
+        <string name="error_general">An error occurred</string>
+        <string name="error_debug">Debug error: %1$s</string>
+        <string name="error_translation">Translation failed</string>
+        <string name="error_message_send">Failed to send message</string>
+        <string name="error_message_load">Failed to load messages</string>
+        <string name="error_conversation_load">Failed to load conversations</string>
+        <string name="error_attachment">Failed to load attachment</string>
+
+        <!-- Input validation -->
+        <string name="please_enter_address">Please enter a phone number</string>
+        <string name="please_enter_message">Please enter a message</string>
+        <string name="please_enter_search_query">Please enter a search query</string>
+
+        <!-- Conversation -->
+        <string name="reply">Reply</string>
+        <string name="message_copied">Message copied to clipboard</string>
+        <string name="message_sending">Sending message...</string>
+        <string name="message_delivered">Message delivered</string>
+        <string name="message_read">Message read</string>
+
+        <string name="delete_conversation_confirm">Are you sure you want to delete this conversation?</string>
+        <string name="mark_as_read">Mark as Read</string>
+        <string name="mark_as_unread">Mark as Unread</string>
+        <string name="conversation_marked_read">Conversation marked as read</string>
+
+        <!-- Translation -->
+        <string name="translation_complete">Translation complete</string>
+        <string name="translation_not_available">Translation not available</string>
+        <string name="translation_language">Translation Language</string>
+        <string name="translation_target_language">Target Language</string>
+        <string name="translation_source_language">Source Language</string>
+        <string name="translation_auto_detect">Auto-detect</string>
+        <string name="translation_offline">Offline Translation</string>
+        <string name="translation_offline_description">Use offline translation models when available</string>
+        <string name="translation_offline_models">Offline Translation Models</string>
+        <string name="translation_offline_models_description">Download and manage offline translation models</string>
+        <string name="translation_offline_models_download">Download Models</string>
+        <string name="translation_offline_models_delete">Delete Models</string>
+        <string name="translation_offline_models_downloading">Downloading model...</string>
+        <string name="translation_offline_models_downloaded">Model downloaded</string>
+        <string name="translation_offline_models_download_failed">Model download failed</string>
+        <string name="translation_offline_models_delete_confirm">Are you sure you want to delete this model?</string>
+        <string name="translation_offline_models_deleted">Model deleted</string>
+        <string name="translation_offline_models_no_models">No models available</string>
+        <string name="translate_input_button">Translate Input</string>
+
+        <!-- Debug -->
+        <string name="debug_mode">Debug Mode</string>
+        <string name="debug_mode_description">Enable debug features</string>
+        <string name="debug_add_test_message">Add Test Message</string>
+        <string name="debug_test_message_added">Test message added</string>
+        <string name="debug_test_message_failed">Failed to add test message</string>
+        <string name="debug_clear_cache">Clear Cache</string>
+        <string name="debug_cache_cleared">Cache cleared</string>
+        <string name="debug_log">Debug Log</string>
+        <string name="debug_log_cleared">Debug log cleared</string>
+        <string name="debug_log_empty">Debug log is empty</string>
+        <string name="debug_opengl_info">OpenGL Info</string>
+        <string name="debug_opengl_info_description">View OpenGL information</string>
+        <string name="debug_opengl_info_title">OpenGL Information</string>
+        <string name="debug_opengl_known_issues">Known OpenGL Issues</string>
+        <string name="debug_opengl_known_issues_description">Your device has known OpenGL rendering issues</string>
+        <string name="debug_opengl_no_issues">No known OpenGL issues</string>
+
+        <!-- Layout IDs -->
+        <string name="date_text">Date</string>
+        <string name="reactions_layout">Reactions</string>
+        <string name="emoji_text">Emoji</string>
+        <string name="count_text">Count</string>
+
 
 </resources>
