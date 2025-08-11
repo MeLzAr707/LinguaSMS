@@ -115,7 +115,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
+        translateInputButton = findViewById(R.id.translate_outgoing_button);
         emojiButton = findViewById(R.id.emoji_button);
 
         // Set up RecyclerView
@@ -139,13 +139,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         messagesRecyclerView.setAdapter(adapter);
 
         // Set up send button
-        sendButton.setOnClickListener(v -> sendMessage());
+        if (sendButton != null) {
+            sendButton.setOnClickListener(v -> sendMessage());
+        }
 
         // Set up translate input button
-        translateInputButton.setOnClickListener(v -> translateInput());
+        if (translateInputButton != null) {
+            translateInputButton.setOnClickListener(v -> translateInput());
+        }
         
         // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
+        if (emojiButton != null) {
+            emojiButton.setOnClickListener(v -> showEmojiPicker());
+        }
 
         // Update UI based on theme
         updateUIForTheme();
@@ -217,10 +223,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
-                        emptyStateTextView.setText(R.string.no_messages);
-                        emptyStateTextView.setVisibility(View.VISIBLE);
+                        if (emptyStateTextView != null) {
+                            emptyStateTextView.setText(R.string.no_messages);
+                            emptyStateTextView.setVisibility(View.VISIBLE);
+                        }
                     } else {
-                        emptyStateTextView.setVisibility(View.GONE);
+                        if (emptyStateTextView != null) {
+                            emptyStateTextView.setVisibility(View.GONE);
+                        }
                     }
 
                     // Mark thread as read
@@ -233,8 +243,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             getString(R.string.error_loading_messages) + ": " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                     hideLoadingIndicator();
-                    emptyStateTextView.setText(R.string.error_loading_messages);
-                    emptyStateTextView.setVisibility(View.VISIBLE);
+                    if (emptyStateTextView != null) {
+                        emptyStateTextView.setText(R.string.error_loading_messages);
+                        emptyStateTextView.setVisibility(View.VISIBLE);
+                    }
                 });
             }
         });
@@ -253,6 +265,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void sendMessage() {
+        if (messageInput == null) {
+            return;
+        }
+        
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
             return;
@@ -300,11 +316,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void showLoadingIndicator() {
-        progressBar.setVisibility(View.VISIBLE);
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
     }
 
     private void hideLoadingIndicator() {
-        progressBar.setVisibility(View.GONE);
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     private void showProgressDialog(String message) {
@@ -332,6 +352,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void translateInput() {
+        if (messageInput == null) {
+            return;
+        }
+        
         String inputText = messageInput.getText().toString().trim();
         if (inputText.isEmpty()) {
             Toast.makeText(this, "Please enter text to translate", Toast.LENGTH_SHORT).show();
@@ -358,8 +382,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     if (success && translatedText != null) {
                         // Replace input text with translated text
-                        messageInput.setText(translatedText);
-                        messageInput.setSelection(translatedText.length());
+                        if (messageInput != null) {
+                            messageInput.setText(translatedText);
+                            messageInput.setSelection(translatedText.length());
+                        }
                     } else {
                         Toast.makeText(ConversationActivity.this,
                                 getString(R.string.translation_error) + ": " +
@@ -442,9 +468,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Shows the emoji picker dialog for inserting emojis into the message input.
      */
     private void showEmojiPicker() {
+        if (messageInput == null) {
+            return;
+        }
+        
         EmojiPickerDialog.show(this, emoji -> {
             // Insert the selected emoji at the current cursor position
-            EmojiUtils.insertEmoji(messageInput, emoji);
+            if (messageInput != null) {
+                EmojiUtils.insertEmoji(messageInput, emoji);
+            }
         }, false); // false indicates this is for emoji input, not reactions
     }
     
@@ -507,8 +539,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages left
                     if (messages.isEmpty()) {
-                        emptyStateTextView.setText(R.string.no_messages);
-                        emptyStateTextView.setVisibility(View.VISIBLE);
+                        if (emptyStateTextView != null) {
+                            emptyStateTextView.setText(R.string.no_messages);
+                            emptyStateTextView.setVisibility(View.VISIBLE);
+                        }
                     }
                 });
             } catch (Exception e) {
