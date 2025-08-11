@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Blue theme (default) -->
+    <color name="theme_blue_primary">@color/colorPrimary_blue</color>
+    <color name="theme_blue_primary_dark">@color/colorPrimaryDark_blue</color>
+    <color name="theme_blue_accent">@color/colorAccent_blue</color>
+    <color name="theme_blue_background">@color/white</color>
+    <color name="theme_blue_surface">@color/white</color>
+    <color name="theme_blue_error">#B00020</color>
+    <color name="theme_blue_text_primary">@color/black</color>
+    <color name="theme_blue_text_secondary">@color/gray_dark</color>
+
+    <!-- Green theme -->
+    <color name="theme_green_primary">@color/colorPrimary_green</color>
+    <color name="theme_green_primary_dark">@color/colorPrimaryDark_green</color>
+    <color name="theme_green_accent">@color/colorAccent_green</color>
+    <color name="theme_green_background">@color/white</color>
+    <color name="theme_green_surface">@color/white</color>
+    <color name="theme_green_error">#B00020</color>
+    <color name="theme_green_text_primary">@color/black</color>
+    <color name="theme_green_text_secondary">@color/gray_dark</color>
+
+    <!-- Purple theme -->
+    <color name="theme_purple_primary">@color/colorPrimary_purple</color>
+    <color name="theme_purple_primary_dark">@color/colorPrimaryDark_purple</color>
+    <color name="theme_purple_accent">@color/colorAccent_purple</color>
+    <color name="theme_purple_background">@color/white</color>
+    <color name="theme_purple_surface">@color/white</color>
+    <color name="theme_purple_error">#B00020</color>
+    <color name="theme_purple_text_primary">@color/black</color>
+    <color name="theme_purple_text_secondary">@color/gray_dark</color>
+
+    <!-- Red theme -->
+    <color name="theme_red_primary">@color/colorPrimary_red</color>
+    <color name="theme_red_primary_dark">@color/colorPrimaryDark_red</color>
+    <color name="theme_red_accent">@color/colorAccent_red</color>
+    <color name="theme_red_background">@color/white</color>
+    <color name="theme_red_surface">@color/white</color>
+    <color name="theme_red_error">#B00020</color>
+    <color name="theme_red_text_primary">@color/black</color>
+    <color name="theme_red_text_secondary">@color/gray_dark</color>
+
+    <!-- Orange theme -->
+    <color name="theme_orange_primary">@color/colorPrimary_orange</color>
+    <color name="theme_orange_primary_dark">@color/colorPrimaryDark_orange</color>
+    <color name="theme_orange_accent">@color/colorAccent_orange</color>
+    <color name="theme_orange_background">@color/white</color>
+    <color name="theme_orange_surface">@color/white</color>
+    <color name="theme_orange_error">#B00020</color>
+    <color name="theme_orange_text_primary">@color/black</color>
+    <color name="theme_orange_text_secondary">@color/gray_dark</color>
+
+    <!-- Dark theme -->
+    <color name="theme_dark_primary">@color/colorPrimary_dark</color>
+    <color name="theme_dark_primary_dark">@color/colorPrimaryDark_dark</color>
+    <color name="theme_dark_accent">@color/colorAccent_dark</color>
+    <color name="theme_dark_background">@color/background_dark</color>
+    <color name="theme_dark_surface">@color/surface_dark</color>
+    <color name="theme_dark_error">#CF6679</color>
+    <color name="theme_dark_text_primary">@color/text_primary_dark</color>
+    <color name="theme_dark_text_secondary">@color/text_secondary_dark</color>
+</resources>

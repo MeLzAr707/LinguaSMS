@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="8dp">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/message_card"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="48dp"
+        android:layout_marginEnd="8dp"
+        app:cardBackgroundColor="@color/colorPrimary"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/message_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                tools:text="This is a sample message" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="4dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/date_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    tools:text="12:34 PM" />
+
+                <ImageView
+                    android:id="@+id/status_icon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="Message status"
+                    android:src="@android:drawable/ic_dialog_info" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:id="@+id/actions_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="@id/message_card"
+        app:layout_constraintTop_toBottomOf="@id/message_card">
+
+        <View
+            android:id="@+id/translate_button"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Translate message" />
+
+        <View
+            android:id="@+id/react_button"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="React to message" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/reactions_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@android:color/white"
+        android:elevation="2dp"
+        android:orientation="horizontal"
+        android:padding="4dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/message_card"
+        app:layout_constraintTop_toBottomOf="@id/actions_layout"
+        tools:visibility="visible">
+
+        <!-- Reaction items will be added here dynamically -->
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

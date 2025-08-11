@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="action_settings" type="id" />
+    <item name="action_refresh" type="id" />
+    <item name="action_search" type="id" />
+    <item name="action_debug" type="id" />
+    <item name="action_add_test" type="id" />
+    <item name="action_set_default" type="id" />
+</resources>
