@@ -47,6 +47,9 @@ public class BaseActivity extends AppCompatActivity {
                 recreateWithFade();
             }
         }
+        
+        // Also invalidate options menu to refresh theme-dependent menu items
+        invalidateOptionsMenu();
     }
     
     /**
@@ -166,6 +169,32 @@ public class BaseActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error handling uncaught exception", e);
         }
+    }
+    
+    /**
+     * Force update theme without recreating activity (for menu and other UI elements)
+     * Call this when theme changes and you want immediate visual feedback
+     */
+    protected void updateThemeImmediately() {
+        // Update the current theme ID
+        if (userPreferences != null) {
+            currentThemeId = userPreferences.getThemeId();
+        }
+        
+        // Invalidate options menu to apply theme changes
+        invalidateOptionsMenu();
+        
+        // Notify subclasses to update their UI
+        onThemeChanged();
+    }
+    
+    /**
+     * Override this method in subclasses to handle immediate theme changes
+     * without activity recreation
+     */
+    protected void onThemeChanged() {
+        // Default implementation does nothing
+        // Subclasses can override to update their UI elements
     }
 }
 
