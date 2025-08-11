@@ -573,7 +573,11 @@ public class MainActivity extends AppCompatActivity
             return true;
         } else if (id == R.id.action_default_sms) {
             // Request to be the default SMS app
-            defaultSmsAppManager.requestDefaultSmsApp(this, SMS_REQUEST_CODE);
+            if (defaultSmsAppManager != null) {
+                defaultSmsAppManager.requestDefaultSmsApp(this, SMS_REQUEST_CODE);
+            } else {
+                Toast.makeText(this, "SMS manager unavailable", Toast.LENGTH_SHORT).show();
+            }
             return true;
         } else if (id == R.id.action_search) {
             // Open search activity
@@ -666,7 +670,11 @@ public class MainActivity extends AppCompatActivity
             showAboutDialog();
         } else if (id == R.id.nav_default_sms) {
             // Request to be the default SMS app
-            defaultSmsAppManager.requestDefaultSmsApp(this, SMS_REQUEST_CODE);
+            if (defaultSmsAppManager != null) {
+                defaultSmsAppManager.requestDefaultSmsApp(this, SMS_REQUEST_CODE);
+            } else {
+                Toast.makeText(this, "SMS manager unavailable", Toast.LENGTH_SHORT).show();
+            }
         } else if (id == R.id.nav_test_translation) {
             // Show translation test dialog
             showTranslationTestDialog();
@@ -726,6 +734,11 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void testTranslation(String text, String sourceLanguage, String targetLanguage) {
+        if (translationManager == null) {
+            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Toast.makeText(this, getString(R.string.translating_text, text), Toast.LENGTH_SHORT).show();
 
         // Use TranslationManager to translate
@@ -753,6 +766,11 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void testAutoDetectTranslation(String text) {
+        if (translationManager == null) {
+            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Toast.makeText(this, getString(R.string.auto_detecting_text, text), Toast.LENGTH_SHORT).show();
 
         // Get preferred language
@@ -798,7 +816,7 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "Received result from default SMS app request: " + resultCode);
 
             // Check if we're now the default SMS app
-            if (defaultSmsAppManager.isDefaultSmsApp()) {
+            if (defaultSmsAppManager != null && defaultSmsAppManager.isDefaultSmsApp()) {
                 Toast.makeText(this, "Successfully set as default SMS app", Toast.LENGTH_SHORT).show();
                 loadConversations();
             } else {
@@ -817,7 +835,7 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         super.onResume();
         // Check if we're the default SMS app
-        if (!defaultSmsAppManager.isDefaultSmsApp()) {
+        if (defaultSmsAppManager == null || !defaultSmsAppManager.isDefaultSmsApp()) {
             checkDefaultSmsAppStatus();
         } else {
             // Refresh conversations when returning to the activity
