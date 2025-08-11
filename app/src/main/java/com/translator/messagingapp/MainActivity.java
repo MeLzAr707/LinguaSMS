@@ -62,6 +62,9 @@ public class MainActivity extends AppCompatActivity
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
 
+    // Theme configuration
+    protected boolean useNoActionBar = true; // Default to true since we're using NoActionBar theme
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Apply a standard theme
@@ -104,6 +107,14 @@ public class MainActivity extends AppCompatActivity
      */
     private void checkDefaultSmsAppStatus() {
         defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE);
+    }
+
+    /**
+     * Set whether this activity should use a NoActionBar theme
+     * @param useNoActionBar true to use NoActionBar theme, false otherwise
+     */
+    protected void setUseNoActionBar(boolean useNoActionBar) {
+        this.useNoActionBar = useNoActionBar;
     }
 
     private void initializeComponents() {
