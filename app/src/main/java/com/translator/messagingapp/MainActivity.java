@@ -64,18 +64,24 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Apply a standard theme
-        setTheme(R.style.AppTheme_NoActionBar);
-
+        // Set to use NoActionBar variant since we use custom toolbar
+        setUseNoActionBar(true);
+        
         super.onCreate(savedInstanceState);
 
-        // Initialize UserPreferences
+        // Initialize UserPreferences - done in BaseActivity
         userPreferences = new UserPreferences(this);
 
-        // Get service instances from TranslatorApp
-        messageService = ((TranslatorApp) getApplication()).getMessageService();
-        defaultSmsAppManager = ((TranslatorApp) getApplication()).getDefaultSmsAppManager();
-        translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
+        // Get service instances from TranslatorApp with null checks
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            messageService = app.getMessageService();
+            defaultSmsAppManager = app.getDefaultSmsAppManager();
+            translationManager = app.getTranslationManager();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting service instances", e);
+            // Services may be null, will be handled in individual operations
+        }
 
         // Set content view
         setContentView(R.layout.activity_main);
@@ -103,7 +109,11 @@ public class MainActivity extends AppCompatActivity
      * Check if we're the default SMS app and request if needed
      */
     private void checkDefaultSmsAppStatus() {
-        defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE);
+        if (defaultSmsAppManager != null) {
+            defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE);
+        } else {
+            Log.w(TAG, "DefaultSmsAppManager is null, cannot check default SMS app status");
+        }
     }
 
     private void initializeComponents() {
@@ -236,6 +246,18 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadConversations() {
+        // Check if messageService is available
+        if (messageService == null) {
+            Log.e(TAG, "MessageService is null, cannot load conversations");
+            runOnUiThread(() -> {
+                hideLoadingIndicator();
+                emptyStateTextView.setText("Service unavailable");
+                emptyStateTextView.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+
         // Only show the center progress bar if SwipeRefreshLayout isn't already refreshing
         if (!swipeRefreshLayout.isRefreshing()) {
             showLoadingIndicator(false);
@@ -565,6 +587,17 @@ public class MainActivity extends AppCompatActivity
 
     private void addTestMessage() {
         try {
+            // Check if services are available
+            if (defaultSmsAppManager == null) {
+                Toast.makeText(this, "SMS manager unavailable", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (messageService == null) {
+                Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             // Check if we're the default SMS app
             if (!defaultSmsAppManager.isDefaultSmsApp()) {
                 Toast.makeText(this,

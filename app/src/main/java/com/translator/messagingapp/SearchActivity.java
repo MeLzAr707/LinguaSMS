@@ -50,10 +50,15 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
 
-        // Get service instances from OptimizedTranslatorApp
-        TranslatorApp app = (TranslatorApp) getApplication();
-        messageService = app.getMessageService();
-        translationCache = app.getTranslationCache();
+        // Get service instances from TranslatorApp with null checks
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            messageService = app.getMessageService();
+            translationCache = app.getTranslationCache();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting service instances", e);
+            // Services may be null, will be handled in individual operations
+        }
 
         // Initialize executor service
         executorService = Executors.newCachedThreadPool();
@@ -132,6 +137,17 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         // Show loading indicator
         showLoadingIndicator();
 
+        // Check if messageService is available
+        if (messageService == null) {
+            Log.e(TAG, "MessageService is null, cannot perform search");
+            runOnUiThread(() -> {
+                showEmptyState(R.string.search_error);
+                hideLoadingIndicator();
+                Toast.makeText(this, "Search service unavailable", Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+
         // Cancel any previous search
         executorService.shutdownNow();
         executorService = Executors.newCachedThreadPool();
@@ -169,6 +185,8 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
                 runOnUiThread(() -> {
                     showEmptyState(R.string.search_error);
                     hideLoadingIndicator();
+                    Toast.makeText(SearchActivity.this, 
+                        "Search error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         });

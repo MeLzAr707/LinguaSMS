@@ -64,10 +64,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation_updated);
 
-        // Get service instances from TranslatorApp
-        messageService = ((TranslatorApp) getApplication()).getMessageService();
-        translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
-        translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
+        // Get service instances from TranslatorApp with null checks
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            messageService = app.getMessageService();
+            translationManager = app.getTranslationManager();
+            translationCache = app.getTranslationCache();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting service instances", e);
+            // Services may be null, will be handled in individual operations
+        }
         userPreferences = new UserPreferences(this);
 
         // Get thread ID and address from intent
@@ -174,6 +180,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Show loading indicator
         showLoadingIndicator();
 
+        // Check if messageService is available
+        if (messageService == null) {
+            Log.e(TAG, "MessageService is null, cannot load messages");
+            runOnUiThread(() -> {
+                hideLoadingIndicator();
+                emptyStateTextView.setText("Service unavailable");
+                emptyStateTextView.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
@@ -223,18 +241,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void markThreadAsRead() {
-        executorService.execute(() -> {
-            try {
-                messageService.markThreadAsRead(threadId);
-            } catch (Exception e) {
-                Log.e(TAG, "Error marking thread as read", e);
-            }
-        });
+        if (messageService != null) {
+            executorService.execute(() -> {
+                try {
+                    messageService.markThreadAsRead(threadId);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error marking thread as read", e);
+                }
+            });
+        }
     }
 
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
+            return;
+        }
+
+        // Check if messageService is available
+        if (messageService == null) {
+            Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -599,5 +625,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (executorService != null) {
             executorService.shutdownNow();
         }
+    }
+    
+    @Override
+    protected void onThemeChanged() {
+        // Update UI for theme changes without recreating the activity
+        updateUIForTheme();
     }
 }
