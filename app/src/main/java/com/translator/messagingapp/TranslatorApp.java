@@ -92,22 +92,65 @@ public class TranslatorApp extends Application {
     }
 
     public TranslationCache getTranslationCache() {
+        if (translationCache == null) {
+            try {
+                translationCache = new TranslationCache(getApplicationContext());
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback TranslationCache", e);
+            }
+        }
         return translationCache;
     }
 
     public TranslationManager getTranslationManager() {
+        if (translationManager == null) {
+            try {
+                // Try to create a minimal translation manager if possible
+                if (translationService != null && userPreferences != null) {
+                    translationManager = new TranslationManager(
+                            getApplicationContext(),
+                            translationService,
+                            userPreferences);
+                }
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback TranslationManager", e);
+            }
+        }
         return translationManager;
     }
 
     public MessageService getMessageService() {
+        if (messageService == null) {
+            try {
+                // Try to create a minimal message service if possible
+                messageService = new MessageService(this, getTranslationManager());
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback MessageService", e);
+            }
+        }
         return messageService;
     }
 
     public GoogleTranslationService getTranslationService() {
+        if (translationService == null) {
+            try {
+                translationService = new GoogleTranslationService(
+                    userPreferences != null ? userPreferences.getApiKey() : "");
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback GoogleTranslationService", e);
+            }
+        }
         return translationService;
     }
 
     public DefaultSmsAppManager getDefaultSmsAppManager() {
+        if (defaultSmsAppManager == null) {
+            try {
+                defaultSmsAppManager = new DefaultSmsAppManager(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback DefaultSmsAppManager", e);
+            }
+        }
         return defaultSmsAppManager;
     }
 

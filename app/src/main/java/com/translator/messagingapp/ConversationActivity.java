@@ -338,6 +338,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
+        // Check if translationManager is available
+        if (translationManager == null) {
+            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         // Show translation in progress
         showProgressDialog("Translating...");
 
@@ -367,6 +373,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     private void translateMessage(Message message, int position) {
         if (message == null || message.getBody() == null) {
+            return;
+        }
+
+        // Check if translationManager is available
+        if (translationManager == null) {
+            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
