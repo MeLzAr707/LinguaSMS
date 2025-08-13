@@ -1,6 +1,7 @@
 package com.translator.messagingapp;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -25,6 +26,7 @@ public class SettingsActivity extends BaseActivity {
     private Button selectOutgoingLanguageButton;
     private Button testApiKeyButton;
     private Button saveButton;
+    private Button manageOfflineModelsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
@@ -72,6 +74,7 @@ public class SettingsActivity extends BaseActivity {
         selectOutgoingLanguageButton = findViewById(R.id.select_outgoing_language_button);
         testApiKeyButton = findViewById(R.id.test_api_key_button);
         saveButton = findViewById(R.id.save_button);
+        manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
@@ -112,6 +115,14 @@ public class SettingsActivity extends BaseActivity {
             public void onClick(View v) {
                 Toast.makeText(SettingsActivity.this, "Saving settings...", Toast.LENGTH_SHORT).show();
                 saveSettings();
+            }
+        });
+
+        // Set up manage offline models button
+        manageOfflineModelsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openOfflineModelsActivity();
             }
         });
     }
@@ -292,5 +303,13 @@ public class SettingsActivity extends BaseActivity {
         // Use a fade animation for smoother transition
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         recreate();
+    }
+
+    /**
+     * Opens the offline models management activity.
+     */
+    private void openOfflineModelsActivity() {
+        Intent intent = new Intent(this, OfflineModelsActivity.class);
+        startActivity(intent);
     }
 }
