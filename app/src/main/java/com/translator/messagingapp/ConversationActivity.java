@@ -109,8 +109,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
+        translateInputButton = findViewById(R.id.translate_outgoing_button); // Match updated layout
         emojiButton = findViewById(R.id.emoji_button);
+
+        // Check for missing views to prevent crashes
+        if (messagesRecyclerView == null || messageInput == null || sendButton == null) {
+            Log.e(TAG, "Critical views missing from layout - activity will finish");
+            Toast.makeText(this, "Layout error - unable to load conversation", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -135,11 +143,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up send button
         sendButton.setOnClickListener(v -> sendMessage());
 
-        // Set up translate input button
-        translateInputButton.setOnClickListener(v -> translateInput());
+        // Set up translate input button (optional)
+        if (translateInputButton != null) {
+            translateInputButton.setOnClickListener(v -> translateInput());
+        }
         
-        // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
+        // Set up emoji button (optional)
+        if (emojiButton != null) {
+            emojiButton.setOnClickListener(v -> showEmojiPicker());
+        }
 
         // Update UI based on theme
         updateUIForTheme();

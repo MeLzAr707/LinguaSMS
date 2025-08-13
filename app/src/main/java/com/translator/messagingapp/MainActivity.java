@@ -398,16 +398,24 @@ public class MainActivity extends AppCompatActivity
 
     private void startNewMessageActivity() {
         Intent intent = new Intent(this, NewMessageActivity.class);
-        startActivity(intent);
+        if (!ReflectionUtils.safeStartActivity(this, intent)) {
+            Toast.makeText(this, "Unable to create new message", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void openConversation(Conversation conversation) {
-        // Open the conversation
+        // Open the conversation with safe activity starting
         Intent intent = new Intent(this, ConversationActivity.class);
         intent.putExtra("thread_id", conversation.getThreadId());
         intent.putExtra("address", conversation.getAddress());
         intent.putExtra("contact_name", conversation.getContactName());
-        startActivity(intent);
+        
+        // Use safe activity starting to prevent crashes
+        if (!ReflectionUtils.safeStartActivity(this, intent)) {
+            // Fallback if safe start fails
+            Toast.makeText(this, "Unable to open conversation", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to open conversation for: " + conversation.getAddress());
+        }
     }
 
     private void showConversationOptions(Conversation conversation, int position) {
