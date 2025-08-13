@@ -64,16 +64,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation_updated);
 
-        // Get service instances from TranslatorApp with null checks
-        try {
-            TranslatorApp app = (TranslatorApp) getApplication();
-            messageService = app.getMessageService();
-            translationManager = app.getTranslationManager();
-            translationCache = app.getTranslationCache();
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting service instances", e);
-            // Services may be null, will be handled in individual operations
-        }
+        // Get service instances from TranslatorApp
+        messageService = ((TranslatorApp) getApplication()).getMessageService();
+        translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
+        translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
 
         // Get thread ID and address from intent
@@ -115,8 +109,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_outgoing_button);
+        translateInputButton = findViewById(R.id.translate_outgoing_button); // Match updated layout
         emojiButton = findViewById(R.id.emoji_button);
+
+        // Check for missing views to prevent crashes
+        if (messagesRecyclerView == null || messageInput == null || sendButton == null) {
+            Log.e(TAG, "Critical views missing from layout - activity will finish");
+            Toast.makeText(this, "Layout error - unable to load conversation", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -139,16 +141,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         messagesRecyclerView.setAdapter(adapter);
 
         // Set up send button
-        if (sendButton != null) {
-            sendButton.setOnClickListener(v -> sendMessage());
-        }
+        sendButton.setOnClickListener(v -> sendMessage());
 
-        // Set up translate input button
+        // Set up translate input button (optional)
         if (translateInputButton != null) {
             translateInputButton.setOnClickListener(v -> translateInput());
         }
         
-        // Set up emoji button
+        // Set up emoji button (optional)
         if (emojiButton != null) {
             emojiButton.setOnClickListener(v -> showEmojiPicker());
         }
@@ -186,18 +186,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Show loading indicator
         showLoadingIndicator();
 
-        // Check if messageService is available
-        if (messageService == null) {
-            Log.e(TAG, "MessageService is null, cannot load messages");
-            runOnUiThread(() -> {
-                hideLoadingIndicator();
-                emptyStateTextView.setText("Service unavailable");
-                emptyStateTextView.setVisibility(View.VISIBLE);
-                Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
-            });
-            return;
-        }
-
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
@@ -223,14 +211,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
-                        if (emptyStateTextView != null) {
-                            emptyStateTextView.setText(R.string.no_messages);
-                            emptyStateTextView.setVisibility(View.VISIBLE);
-                        }
+                        emptyStateTextView.setText(R.string.no_messages);
+                        emptyStateTextView.setVisibility(View.VISIBLE);
                     } else {
-                        if (emptyStateTextView != null) {
-                            emptyStateTextView.setVisibility(View.GONE);
-                        }
+                        emptyStateTextView.setVisibility(View.GONE);
                     }
 
                     // Mark thread as read
@@ -243,40 +227,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             getString(R.string.error_loading_messages) + ": " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                     hideLoadingIndicator();
-                    if (emptyStateTextView != null) {
-                        emptyStateTextView.setText(R.string.error_loading_messages);
-                        emptyStateTextView.setVisibility(View.VISIBLE);
-                    }
+                    emptyStateTextView.setText(R.string.error_loading_messages);
+                    emptyStateTextView.setVisibility(View.VISIBLE);
                 });
             }
         });
     }
 
     private void markThreadAsRead() {
-        if (messageService != null) {
-            executorService.execute(() -> {
-                try {
-                    messageService.markThreadAsRead(threadId);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error marking thread as read", e);
-                }
-            });
-        }
+        executorService.execute(() -> {
+            try {
+                messageService.markThreadAsRead(threadId);
+            } catch (Exception e) {
+                Log.e(TAG, "Error marking thread as read", e);
+            }
+        });
     }
 
     private void sendMessage() {
-        if (messageInput == null) {
-            return;
-        }
-        
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
-            return;
-        }
-
-        // Check if messageService is available
-        if (messageService == null) {
-            Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -316,15 +286,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void showLoadingIndicator() {
-        if (progressBar != null) {
-            progressBar.setVisibility(View.VISIBLE);
-        }
+        progressBar.setVisibility(View.VISIBLE);
     }
 
     private void hideLoadingIndicator() {
-        if (progressBar != null) {
-            progressBar.setVisibility(View.GONE);
-        }
+        progressBar.setVisibility(View.GONE);
     }
 
     private void showProgressDialog(String message) {
@@ -352,19 +318,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void translateInput() {
-        if (messageInput == null) {
-            return;
-        }
-        
         String inputText = messageInput.getText().toString().trim();
         if (inputText.isEmpty()) {
             Toast.makeText(this, "Please enter text to translate", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Check if translationManager is available
-        if (translationManager == null) {
-            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -382,10 +338,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     if (success && translatedText != null) {
                         // Replace input text with translated text
-                        if (messageInput != null) {
-                            messageInput.setText(translatedText);
-                            messageInput.setSelection(translatedText.length());
-                        }
+                        messageInput.setText(translatedText);
+                        messageInput.setSelection(translatedText.length());
                     } else {
                         Toast.makeText(ConversationActivity.this,
                                 getString(R.string.translation_error) + ": " +
@@ -399,12 +353,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     private void translateMessage(Message message, int position) {
         if (message == null || message.getBody() == null) {
-            return;
-        }
-
-        // Check if translationManager is available
-        if (translationManager == null) {
-            Toast.makeText(this, "Translation service unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -468,15 +416,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Shows the emoji picker dialog for inserting emojis into the message input.
      */
     private void showEmojiPicker() {
-        if (messageInput == null) {
-            return;
-        }
-        
         EmojiPickerDialog.show(this, emoji -> {
             // Insert the selected emoji at the current cursor position
-            if (messageInput != null) {
-                EmojiUtils.insertEmoji(messageInput, emoji);
-            }
+            EmojiUtils.insertEmoji(messageInput, emoji);
         }, false); // false indicates this is for emoji input, not reactions
     }
     
@@ -539,10 +481,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages left
                     if (messages.isEmpty()) {
-                        if (emptyStateTextView != null) {
-                            emptyStateTextView.setText(R.string.no_messages);
-                            emptyStateTextView.setVisibility(View.VISIBLE);
-                        }
+                        emptyStateTextView.setText(R.string.no_messages);
+                        emptyStateTextView.setVisibility(View.VISIBLE);
                     }
                 });
             } catch (Exception e) {
@@ -671,11 +611,5 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (executorService != null) {
             executorService.shutdownNow();
         }
-    }
-    
-    @Override
-    protected void onThemeChanged() {
-        // Update UI for theme changes without recreating the activity
-        updateUIForTheme();
     }
 }
