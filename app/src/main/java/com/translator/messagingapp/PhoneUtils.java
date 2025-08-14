@@ -72,74 +72,7 @@ public class PhoneUtils {
         return prefs.getInt(PREF_DEFAULT_SMS_REQUESTED, 0);
     }
 
-    /**
-     * Check if the app should be the default SMS app and show a dialog if needed
-     *
-     * @param activity The activity context
-     * @param requestCode The request code to use for the activity result
-     * @param callback Optional callback to run after the user makes a choice
-     * @return true if a dialog was shown, false otherwise
-     */
-    public static boolean checkAndRequestDefaultSmsApp(Activity activity, int requestCode, Runnable callback) {
-        // Only proceed if we haven't asked too many times
-        if (!shouldRequestDefaultSmsApp(activity)) {
-            Log.d(TAG, "Already asked to be default SMS app " + getDefaultSmsRequestCount(activity) +
-                    " times, not asking again");
-            return false;
-        }
 
-        if (!isDefaultSmsApp(activity)) {
-            // Show a dialog asking the user to set the app as default
-            new AlertDialog.Builder(activity)
-                    .setTitle("Set as Default SMS App")
-                    .setMessage("This app needs to be set as the default SMS app to access and send messages. Would you like to set it as the default SMS app now?")
-                    .setPositiveButton("Yes", (dialog, which) -> {
-                        incrementDefaultSmsRequestCount(activity);
-                        requestDefaultSmsApp(activity, requestCode);
-                        if (callback != null) callback.run();
-                    })
-                    .setNegativeButton("No", (dialog, which) -> {
-                        incrementDefaultSmsRequestCount(activity);
-                        Toast.makeText(activity,
-                                "App functionality will be limited without default SMS permissions",
-                                Toast.LENGTH_LONG).show();
-                        if (callback != null) callback.run();
-                    })
-                    .setCancelable(false)
-                    .show();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Show a dialog explaining why the app needs to be the default SMS app
-     *
-     * @param activity The activity context
-     * @param requestCode The request code to use for the activity result
-     * @return true if a dialog was shown, false otherwise
-     */
-    public static boolean showDefaultSmsExplanationDialog(Activity activity, int requestCode) {
-        // Only show if we haven't asked too many times
-        if (!shouldRequestDefaultSmsApp(activity)) {
-            return false;
-        }
-
-        new AlertDialog.Builder(activity)
-                .setTitle("Default SMS App Required")
-                .setMessage("This app needs to be set as the default SMS app to function properly. Would you like to try again?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    incrementDefaultSmsRequestCount(activity);
-                    requestDefaultSmsApp(activity, requestCode);
-                })
-                .setNegativeButton("No", (dialog, which) -> {
-                    incrementDefaultSmsRequestCount(activity);
-                    Toast.makeText(activity, activity.getString(R.string.features_limited), Toast.LENGTH_LONG).show();
-                })
-                .setCancelable(false)
-                .show();
-        return true;
-    }
 
     /**
      * Request to be the default SMS app using the most appropriate API for the device's Android version
@@ -276,65 +209,7 @@ public class PhoneUtils {
         }
     }
 
-    /**
-     * Handle the result of a default SMS app request
-     *
-     * @param activity The activity that received the result
-     * @param requestCode The request code that was used
-     * @param resultCode The result code
-     * @param successCallback Callback to run if the app is successfully set as default
-     * @param failureCallback Callback to run if the app is not set as default
-     */
-    public static void handleDefaultSmsAppResult(Activity activity, int requestCode, int resultCode,
-                                                 int expectedRequestCode, Runnable successCallback,
-                                                 Runnable failureCallback) {
-        if (requestCode != expectedRequestCode) {
-            return;
-        }
 
-        Log.d(TAG, "SMS request result: " + resultCode);
-
-        // Give the system time to process the change
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (isDefaultSmsApp(activity)) {
-                Log.d(TAG, "Successfully set as default SMS app");
-                if (successCallback != null) {
-                    successCallback.run();
-                }
-            } else {
-                Log.d(TAG, "Not set as default SMS app yet");
-
-                // If the result was OK but we're still not the default, try to force it
-                if (resultCode == Activity.RESULT_OK) {
-                    Log.d(TAG, "Result was OK but app is not default yet, trying to force update");
-                    forceDefaultSmsAppUpdate(activity);
-
-                    // Check again after a short delay
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (isDefaultSmsApp(activity)) {
-                            Log.d(TAG, "Force update successful");
-                            if (successCallback != null) {
-                                successCallback.run();
-                            }
-                        } else {
-                            Log.d(TAG, "Force update failed, trying direct setting");
-                            tryDirectDefaultSmsAppSetting(activity);
-
-                            if (failureCallback != null) {
-                                failureCallback.run();
-                            }
-                        }
-                    }, 1000);
-                } else if (shouldRequestDefaultSmsApp(activity)) {
-                    // User declined but we haven't asked too many times
-                    showDefaultSmsExplanationDialog(activity, expectedRequestCode);
-                } else if (failureCallback != null) {
-                    // We've asked too many times
-                    failureCallback.run();
-                }
-            }
-        }, 1500);
-    }
 
     /**
      * Check if the device has telephony features
