@@ -177,15 +177,28 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
-                // Load messages using MessageService
-                List<Message> loadedMessages = messageService.loadMessages(threadId);
+                List<Message> loadedMessages = new ArrayList<>();
+
+                // Try loading messages by thread ID first
+                if (!TextUtils.isEmpty(threadId)) {
+                    loadedMessages = messageService.loadMessages(threadId);
+                }
+
+                // If no messages found by thread ID, try loading by address
+                if (loadedMessages.isEmpty() && !TextUtils.isEmpty(address)) {
+                    Log.d(TAG, "No messages found by thread ID, trying by address: " + address);
+                    loadedMessages = messageService.getMessagesByAddress(address);
+                }
+
+                // Final list to use
+                final List<Message> finalMessages = loadedMessages;
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
                     // Clear existing messages and add loaded ones
                     messages.clear();
-                    if (loadedMessages != null) {
-                        messages.addAll(loadedMessages);
+                    if (finalMessages != null) {
+                        messages.addAll(finalMessages);
                     }
 
                     // Update UI
