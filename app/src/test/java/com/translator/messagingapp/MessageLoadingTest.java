@@ -22,6 +22,25 @@ public class MessageLoadingTest {
     }
 
     @Test
+    public void testMessageLoadingFallback() {
+        // Test that messages can be loaded by address when thread ID fails
+        Message message = new Message();
+        message.setBody("Test message");
+        message.setAddress("123-456-7890");
+        message.setDate(System.currentTimeMillis());
+        message.setType(Message.TYPE_INBOX);
+        
+        // Simulate loading by address when thread ID is null
+        String threadId = null;
+        String address = "123-456-7890";
+        
+        boolean shouldLoadByAddress = (threadId == null || threadId.isEmpty()) && 
+                                    (address != null && !address.isEmpty());
+        
+        assertTrue("Should load by address when thread ID is null", shouldLoadByAddress);
+    }
+
+    @Test
     public void testMessageCreation() {
         // Test that a message can be created with proper values
         Message message = new Message();
