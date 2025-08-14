@@ -197,12 +197,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         messagesRecyclerView.scrollToPosition(messages.size() - 1);
                     }
 
-                    // Show empty state if no messages
+                    // Show appropriate state based on message count
                     if (messages.isEmpty()) {
-                        emptyStateTextView.setText(R.string.no_messages);
-                        emptyStateTextView.setVisibility(View.VISIBLE);
+                        showEmptyState(getString(R.string.no_messages));
                     } else {
-                        emptyStateTextView.setVisibility(View.GONE);
+                        showMessagesState();
                     }
 
                     // Mark thread as read
@@ -215,8 +214,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             getString(R.string.error_loading_messages) + ": " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                     hideLoadingIndicator();
-                    emptyStateTextView.setText(R.string.error_loading_messages);
-                    emptyStateTextView.setVisibility(View.VISIBLE);
+                    showEmptyState(getString(R.string.error_loading_messages));
                 });
             }
         });
@@ -469,8 +467,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages left
                     if (messages.isEmpty()) {
-                        emptyStateTextView.setText(R.string.no_messages);
-                        emptyStateTextView.setVisibility(View.VISIBLE);
+                        showEmptyState(getString(R.string.no_messages));
                     }
                 });
             } catch (Exception e) {
@@ -590,6 +587,35 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     }
                 })
                 .show();
+    }
+
+    /**
+     * Shows the empty state with a message and hides the RecyclerView.
+     *
+     * @param message The message to display
+     */
+    private void showEmptyState(String message) {
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(View.GONE);
+        }
+
+        if (emptyStateTextView != null) {
+            emptyStateTextView.setText(message);
+            emptyStateTextView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * Shows the messages state and hides the empty state.
+     */
+    private void showMessagesState() {
+        if (messagesRecyclerView != null) {
+            messagesRecyclerView.setVisibility(View.VISIBLE);
+        }
+
+        if (emptyStateTextView != null) {
+            emptyStateTextView.setVisibility(View.GONE);
+        }
     }
 
     @Override
