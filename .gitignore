@@ -4,3 +4,7 @@
 .idea/
 local.properties
 .DS_Store
+
+# Compiled class files
+*.class
+app/src/main/java/**/*.class
