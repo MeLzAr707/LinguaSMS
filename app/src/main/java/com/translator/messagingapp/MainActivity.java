@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private static final String TAG = "MainActivity";
@@ -64,12 +64,13 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Apply a standard theme
-        setTheme(R.style.AppTheme_NoActionBar);
-
+        // Set flag to use NoActionBar themes since MainActivity uses NavigationDrawer
+        setUseNoActionBar(true);
+        
+        // BaseActivity will handle theme application
         super.onCreate(savedInstanceState);
 
-        // Initialize UserPreferences
+        // Initialize UserPreferences (BaseActivity already does this, but keeping for clarity)
         userPreferences = new UserPreferences(this);
 
         // Get service instances from TranslatorApp
