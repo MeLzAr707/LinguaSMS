@@ -345,7 +345,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                 Toast.LENGTH_LONG).show();
                     }
                 });
-            });
+            }, true);
         });
     }
 
