@@ -35,6 +35,12 @@ import java.util.concurrent.Executors;
  */
 public class ConversationActivity extends BaseActivity implements MessageRecyclerAdapter.OnMessageClickListener {
     private static final String TAG = "ConversationActivity";
+    
+    // Request codes for file picking activities
+    private static final int REQUEST_PICK_IMAGE = 1001;
+    private static final int REQUEST_PICK_VIDEO = 1002;
+    private static final int REQUEST_PICK_CONTACT = 1003;
+    private static final int REQUEST_PICK_FILE = 1004;
 
     // UI components
     private RecyclerView messagesRecyclerView;
