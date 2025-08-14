@@ -95,6 +95,18 @@ public class TranslationManager {
      * @param callback The callback to receive the result
      */
     public void translateText(String text, String targetLanguage, TranslationCallback callback) {
+        translateText(text, targetLanguage, callback, false);
+    }
+
+    /**
+     * Translates text from one language to another.
+     *
+     * @param text The text to translate
+     * @param targetLanguage The target language code
+     * @param callback The callback to receive the result
+     * @param forceTranslation If true, skip language comparison and always attempt translation
+     */
+    public void translateText(String text, String targetLanguage, TranslationCallback callback, boolean forceTranslation) {
         if (text == null || text.isEmpty()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "No text to translate");
@@ -143,14 +155,17 @@ public class TranslationManager {
                 }
 
                 // Skip if already in target language (comparing base language codes)
-                String baseDetected = detectedLanguage.split("-")[0];
-                String baseTarget = targetLanguage.split("-")[0];
+                // Unless forceTranslation is true (for outgoing message scenarios)
+                if (!forceTranslation) {
+                    String baseDetected = detectedLanguage.split("-")[0];
+                    String baseTarget = targetLanguage.split("-")[0];
 
-                if (baseDetected.equals(baseTarget)) {
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null, "Text is already in " + getLanguageName(baseTarget));
+                    if (baseDetected.equals(baseTarget)) {
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Text is already in " + getLanguageName(baseTarget));
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 // Translate
