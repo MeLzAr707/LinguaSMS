@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <!-- Allow cleartext traffic to your local server -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.0.165</domain>
-        <!-- Add other local IP addresses or domains as needed -->
-    </domain-config>
-</network-security-config>
