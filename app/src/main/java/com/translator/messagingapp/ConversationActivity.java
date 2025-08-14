@@ -7,12 +7,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.provider.Telephony;
+import android.text.InputType;
 import android.text.TextUtils;
+import android.text.method.TextKeyListener;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -44,7 +49,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
-    private ImageButton emojiButton;
+    private ImageButton attachmentButton;
 
     // Data
     private String threadId;
@@ -109,8 +114,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
-        emojiButton = findViewById(R.id.emoji_button);
+        translateInputButton = findViewById(R.id.translate_button);
+        if (translateInputButton == null) {
+            translateInputButton = findViewById(R.id.translate_outgoing_button);
+        }
+        
+        // Try to find attachment button with different possible IDs
+        attachmentButton = findViewById(R.id.attachment_button);
+        if (attachmentButton == null) {
+            attachmentButton = findViewById(R.id.attach_button);
+        }
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -138,8 +151,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up translate input button
         translateInputButton.setOnClickListener(v -> translateInput());
         
-        // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
+        // Set up attachment button
+        if (attachmentButton != null) {
+            attachmentButton.setOnClickListener(v -> showAttachmentOptions());
+        }
+        
+        // Configure EditText for emoji keyboard support
+        configureEmojiSupport(messageInput);
 
         // Update UI based on theme
         updateUIForTheme();
@@ -401,13 +419,75 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Shows the emoji picker dialog for inserting emojis into the message input.
+     * Configures EditText for proper emoji keyboard support.
      */
-    private void showEmojiPicker() {
-        EmojiPickerDialog.show(this, emoji -> {
-            // Insert the selected emoji at the current cursor position
-            EmojiUtils.insertEmoji(messageInput, emoji);
-        }, false); // false indicates this is for emoji input, not reactions
+    private void configureEmojiSupport(EditText editText) {
+        editText.setInputType(InputType.TYPE_CLASS_TEXT 
+            | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            | InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE);
+        editText.setImeOptions(EditorInfo.IME_ACTION_NONE);
+        editText.setKeyListener(TextKeyListener.getInstance());
+    }
+    
+    /**
+     * Shows attachment options dialog for MMS.
+     */
+    private void showAttachmentOptions() {
+        String[] options = {"Image", "Video", "Contact", "Document"};
+        
+        new AlertDialog.Builder(this)
+                .setTitle("Add Attachment")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            pickImage();
+                            break;
+                        case 1:
+                            pickVideo();
+                            break;
+                        case 2:
+                            pickContact();
+                            break;
+                        case 3:
+                            pickDocument();
+                            break;
+                    }
+                })
+                .show();
+    }
+    
+    /**
+     * Opens image picker for attachment.
+     */
+    private void pickImage() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_PICK_IMAGE);
+    }
+    
+    /**
+     * Opens video picker for attachment.
+     */
+    private void pickVideo() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_PICK_VIDEO);
+    }
+    
+    /**
+     * Opens contact picker for attachment.
+     */
+    private void pickContact() {
+        Intent intent = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+        startActivityForResult(intent, REQUEST_PICK_CONTACT);
+    }
+    
+    /**
+     * Opens document picker for attachment.
+     */
+    private void pickDocument() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, REQUEST_PICK_FILE);
     }
     
     /**
@@ -590,6 +670,63 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     }
                 })
                 .show();
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (resultCode == RESULT_OK && data != null) {
+            Uri selectedUri = data.getData();
+            if (selectedUri != null) {
+                handleAttachment(selectedUri, requestCode);
+            }
+        }
+    }
+    
+    /**
+     * Handles the selected attachment.
+     */
+    private void handleAttachment(Uri uri, int requestCode) {
+        String messageText = messageInput.getText().toString().trim();
+        
+        // Show progress
+        showLoadingIndicator();
+        
+        // Send MMS with attachment in background
+        executorService.execute(() -> {
+            try {
+                List<Uri> attachments = new ArrayList<>();
+                attachments.add(uri);
+                
+                boolean success = messageService.sendMmsMessage(address, null, messageText, attachments);
+                
+                runOnUiThread(() -> {
+                    hideLoadingIndicator();
+                    
+                    if (success) {
+                        // Clear input
+                        messageInput.setText("");
+                        // Refresh messages
+                        loadMessages();
+                        Toast.makeText(ConversationActivity.this, 
+                                "Message with attachment sent", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ConversationActivity.this,
+                                R.string.error_sending_message,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending MMS", e);
+                runOnUiThread(() -> {
+                    hideLoadingIndicator();
+                    Toast.makeText(ConversationActivity.this,
+                            getString(R.string.error_sending_message) + ": " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     @Override
