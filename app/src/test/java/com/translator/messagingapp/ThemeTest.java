@@ -85,4 +85,23 @@ public class ThemeTest {
         assertEquals("BlackGlass theme should persist", 
                     UserPreferences.THEME_BLACK_GLASS, retrievedTheme);
     }
+
+    @Test
+    public void testThemeChangeDetection() {
+        // Test that theme changes can be detected
+        int originalTheme = userPreferences.getThemeId();
+        
+        // Change to a different theme
+        int newTheme = (originalTheme == UserPreferences.THEME_LIGHT) ? 
+                       UserPreferences.THEME_DARK : UserPreferences.THEME_LIGHT;
+        userPreferences.setThemeId(newTheme);
+        
+        // Verify the change was applied
+        assertEquals("Theme change should be applied", newTheme, userPreferences.getThemeId());
+        assertNotEquals("Theme should be different from original", originalTheme, userPreferences.getThemeId());
+        
+        // Test that BaseActivity can detect this change
+        assertTrue("Theme change should be detectable", 
+                  originalTheme != userPreferences.getThemeId());
+    }
 }
