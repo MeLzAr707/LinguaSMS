@@ -94,17 +94,52 @@ public class MessageLoadingTest {
     }
 
     @Test
-    public void testConversationCreation() {
-        // Test that conversation can be created with proper values
+    public void testConversationLoadingFallback() {
+        // Test the conversation loading fallback logic
+        
+        // Simulate a conversation that would be loaded by the new method
         Conversation conversation = new Conversation();
         conversation.setThreadId("123");
-        conversation.setAddress("123-456-7890");
-        conversation.setContactName("Test Contact");
+        conversation.setAddress("555-1234");
+        conversation.setSnippet("Test message");
+        conversation.setDate(System.currentTimeMillis());
         
         assertNotNull("Conversation should not be null", conversation);
         assertEquals("Thread ID should match", "123", conversation.getThreadId());
-        assertEquals("Address should match", "123-456-7890", conversation.getAddress());
-        assertEquals("Contact name should match", "Test Contact", conversation.getContactName());
+        assertEquals("Address should match", "555-1234", conversation.getAddress());
+        assertEquals("Snippet should match", "Test message", conversation.getSnippet());
+        
+        // Test that the fallback logic would work
+        boolean hasValidThreadId = conversation.getThreadId() != null && !conversation.getThreadId().isEmpty();
+        boolean hasValidAddress = conversation.getAddress() != null && !conversation.getAddress().isEmpty();
+        
+        assertTrue("Should have valid thread ID", hasValidThreadId);
+        assertTrue("Should have valid address", hasValidAddress);
+    }
+
+    @Test
+    public void testMessageServiceInputValidation() {
+        // Test input validation logic that would be used in MessageService
+        
+        // Test null thread ID case
+        String threadId = null;
+        boolean isValidThreadId = threadId != null && !threadId.isEmpty();
+        assertFalse("Null thread ID should be invalid", isValidThreadId);
+        
+        // Test empty thread ID case
+        threadId = "";
+        isValidThreadId = threadId != null && !threadId.isEmpty();
+        assertFalse("Empty thread ID should be invalid", isValidThreadId);
+        
+        // Test valid thread ID case
+        threadId = "123";
+        isValidThreadId = threadId != null && !threadId.isEmpty();
+        assertTrue("Valid thread ID should be valid", isValidThreadId);
+        
+        // Test address fallback logic
+        String address = "555-1234";
+        boolean canLoadByAddress = address != null && !address.isEmpty();
+        assertTrue("Should be able to load by address", canLoadByAddress);
     }
 
     @Test

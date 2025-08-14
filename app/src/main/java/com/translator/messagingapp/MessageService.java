@@ -142,25 +142,23 @@ public class MessageService {
     private List<Conversation> loadConversationsFromSms(ContentResolver contentResolver) {
         List<Conversation> conversations = new ArrayList<>();
         
-        // Query SMS messages grouped by thread_id
+        // Query SMS messages to find distinct thread IDs
         Uri uri = Uri.parse("content://sms");
-        String[] projection = new String[] {
-                "thread_id",
-                "MAX(date) as latest_date",
-                "address"
-        };
-        String groupBy = "thread_id";
-        String sortOrder = "latest_date DESC";
+        String sortOrder = "date DESC";
 
-        try (Cursor cursor = contentResolver.query(uri, projection, null, null, sortOrder)) {
+        try (Cursor cursor = contentResolver.query(uri, null, null, null, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
+                List<String> seenThreadIds = new ArrayList<>();
                 do {
                     int threadIdIndex = cursor.getColumnIndex("thread_id");
                     if (threadIdIndex >= 0) {
                         String threadId = cursor.getString(threadIdIndex);
-                        Conversation conversation = loadConversationDetails(threadId);
-                        if (conversation != null) {
-                            conversations.add(conversation);
+                        if (threadId != null && !seenThreadIds.contains(threadId)) {
+                            seenThreadIds.add(threadId);
+                            Conversation conversation = loadConversationDetails(threadId);
+                            if (conversation != null) {
+                                conversations.add(conversation);
+                            }
                         }
                     }
                 } while (cursor.moveToNext());
@@ -176,24 +174,23 @@ public class MessageService {
     private List<Conversation> loadConversationsFromMms(ContentResolver contentResolver) {
         List<Conversation> conversations = new ArrayList<>();
         
-        // Query MMS messages grouped by thread_id
+        // Query MMS messages to find distinct thread IDs
         Uri uri = Uri.parse("content://mms");
-        String[] projection = new String[] {
-                "thread_id",
-                "MAX(date) as latest_date"
-        };
-        String groupBy = "thread_id";
-        String sortOrder = "latest_date DESC";
+        String sortOrder = "date DESC";
 
-        try (Cursor cursor = contentResolver.query(uri, projection, null, null, sortOrder)) {
+        try (Cursor cursor = contentResolver.query(uri, null, null, null, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
+                List<String> seenThreadIds = new ArrayList<>();
                 do {
                     int threadIdIndex = cursor.getColumnIndex("thread_id");
                     if (threadIdIndex >= 0) {
                         String threadId = cursor.getString(threadIdIndex);
-                        Conversation conversation = loadMmsConversationDetails(threadId);
-                        if (conversation != null) {
-                            conversations.add(conversation);
+                        if (threadId != null && !seenThreadIds.contains(threadId)) {
+                            seenThreadIds.add(threadId);
+                            Conversation conversation = loadMmsConversationDetails(threadId);
+                            if (conversation != null) {
+                                conversations.add(conversation);
+                            }
                         }
                     }
                 } while (cursor.moveToNext());
@@ -310,6 +307,10 @@ public class MessageService {
      * @return The address
      */
     public String getMmsAddress(ContentResolver contentResolver, String messageId, int messageBox) {
+        if (messageId == null || messageId.isEmpty()) {
+            return null;
+        }
+
         String address = null;
 
         // Query the addr table to get the address
@@ -318,7 +319,10 @@ public class MessageService {
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, null, null)) {
             if (cursor != null && cursor.moveToFirst()) {
-                address = cursor.getString(cursor.getColumnIndexOrThrow("address"));
+                int addressIndex = cursor.getColumnIndex("address");
+                if (addressIndex >= 0) {
+                    address = cursor.getString(addressIndex);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting MMS address for message " + messageId, e);
@@ -335,6 +339,10 @@ public class MessageService {
      * @return The text content
      */
     public String getMmsText(ContentResolver contentResolver, String messageId) {
+        if (messageId == null || messageId.isEmpty()) {
+            return null;
+        }
+
         String text = null;
 
         // Query the part table to get the text parts
@@ -343,17 +351,28 @@ public class MessageService {
         try (Cursor cursor = contentResolver.query(uri, null, null, null, null)) {
             if (cursor != null && cursor.moveToFirst()) {
                 do {
-                    String contentType = cursor.getString(cursor.getColumnIndexOrThrow("ct"));
-                    if (contentType != null && contentType.startsWith("text/plain")) {
-                        String data = cursor.getString(cursor.getColumnIndexOrThrow("_data"));
-                        if (data != null) {
-                            // Text is stored in a file
-                            text = getMmsTextFromFile(contentResolver, data);
-                        } else {
-                            // Text is stored directly in the table
-                            text = cursor.getString(cursor.getColumnIndexOrThrow("text"));
+                    int contentTypeIndex = cursor.getColumnIndex("ct");
+                    if (contentTypeIndex >= 0) {
+                        String contentType = cursor.getString(contentTypeIndex);
+                        if (contentType != null && contentType.startsWith("text/plain")) {
+                            int dataIndex = cursor.getColumnIndex("_data");
+                            int textIndex = cursor.getColumnIndex("text");
+                            
+                            if (dataIndex >= 0) {
+                                String data = cursor.getString(dataIndex);
+                                if (data != null) {
+                                    // Text is stored in a file
+                                    text = getMmsTextFromFile(contentResolver, data);
+                                }
+                            } else if (textIndex >= 0) {
+                                // Text is stored directly in the table
+                                text = cursor.getString(textIndex);
+                            }
+                            
+                            if (text != null) {
+                                break;
+                            }
                         }
-                        break;
                     }
                 } while (cursor.moveToNext());
             }
