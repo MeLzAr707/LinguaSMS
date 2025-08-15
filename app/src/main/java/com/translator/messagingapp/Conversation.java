@@ -82,7 +82,8 @@ public class Conversation {
     public void setLastMessage(String lastMessage) {
         this.lastMessage = lastMessage;
         // Update snippet when lastMessage is set for backward compatibility
-        if (!TextUtils.isEmpty(lastMessage)) {
+        // Only if snippet is currently empty
+        if (!TextUtils.isEmpty(lastMessage) && TextUtils.isEmpty(this.snippet)) {
             this.snippet = lastMessage;
         }
     }

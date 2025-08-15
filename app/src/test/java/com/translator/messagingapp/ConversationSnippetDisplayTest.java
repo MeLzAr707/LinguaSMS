@@ -41,19 +41,24 @@ public class ConversationSnippetDisplayTest {
     public void testSetLastMessageUpdatesSnippet() {
         Conversation conversation = new Conversation();
         
-        // Test that setting lastMessage updates snippet
+        // Test that setting lastMessage updates snippet when snippet is empty
         conversation.setLastMessage("New message");
-        assertEquals("Snippet should be updated when lastMessage is set", "New message", conversation.getSnippet());
+        assertEquals("Snippet should be updated when lastMessage is set and snippet is empty", "New message", conversation.getSnippet());
+        
+        // Test that setting lastMessage doesn't override existing snippet
+        conversation.setSnippet("Existing snippet");
+        conversation.setLastMessage("Different message");
+        assertEquals("Setting lastMessage should not override existing snippet", "Existing snippet", conversation.getSnippet());
         
         // Test that empty lastMessage doesn't override existing snippet
-        conversation.setSnippet("Existing snippet");
+        conversation.setSnippet("Another snippet");
         conversation.setLastMessage("");
-        assertEquals("Empty lastMessage should not override existing snippet", "Existing snippet", conversation.getSnippet());
+        assertEquals("Empty lastMessage should not override existing snippet", "Another snippet", conversation.getSnippet());
         
         // Test that null lastMessage doesn't override existing snippet
-        conversation.setSnippet("Another snippet");
+        conversation.setSnippet("Yet another snippet");
         conversation.setLastMessage(null);
-        assertEquals("Null lastMessage should not override existing snippet", "Another snippet", conversation.getSnippet());
+        assertEquals("Null lastMessage should not override existing snippet", "Yet another snippet", conversation.getSnippet());
     }
 
     @Test
@@ -84,10 +89,12 @@ public class ConversationSnippetDisplayTest {
         assertEquals("Explicit snippet should take precedence", "Explicit snippet", conversation.getSnippet());
         
         // Test that updating lastMessage doesn't override explicit snippet
-        String originalSnippet = conversation.getSnippet();
         conversation.setLastMessage("New last message");
-        // The snippet should be updated since lastMessage was set
-        assertEquals("Setting lastMessage should update snippet", "New last message", conversation.getSnippet());
+        assertEquals("Setting lastMessage should not override existing snippet", "Explicit snippet", conversation.getSnippet());
+        
+        // Test that clearing snippet allows lastMessage to be used again
+        conversation.setSnippet(null);
+        assertEquals("After clearing snippet, should fallback to lastMessage", "New last message", conversation.getSnippet());
     }
 
     @Test
