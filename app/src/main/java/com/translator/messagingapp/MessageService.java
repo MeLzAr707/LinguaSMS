@@ -342,9 +342,11 @@ public class MessageService {
         // Load MMS messages
         loadMmsMessages(contentResolver, threadId, messages);
 
-        // Sort by date (newest first)
-        Collections.sort(messages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
+        // Sort by date (oldest first for chat display)
+        Collections.sort(messages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
 
+        Log.d(TAG, "Total loaded messages for thread " + threadId + ": " + messages.size());
+        
         return messages;
     }
 
@@ -359,8 +361,9 @@ public class MessageService {
         Uri uri = Uri.parse("content://sms");
         String selection = "thread_id = ?";
         String[] selectionArgs = new String[] { threadId };
-        String sortOrder = "date DESC";
+        String sortOrder = "date ASC"; // Changed to ASC for consistent ordering
 
+        int initialCount = messages.size();
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
                 do {
@@ -383,6 +386,9 @@ public class MessageService {
 
                     messages.add(message);
                 } while (cursor.moveToNext());
+                
+                int smsCount = messages.size() - initialCount;
+                Log.d(TAG, "Found " + smsCount + " SMS messages for thread " + threadId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading SMS messages for thread " + threadId, e);
@@ -400,8 +406,9 @@ public class MessageService {
         Uri uri = Uri.parse("content://mms");
         String selection = "thread_id = ?";
         String[] selectionArgs = new String[] { threadId };
-        String sortOrder = "date DESC";
+        String sortOrder = "date ASC"; // Changed to ASC for consistent ordering
 
+        int initialCount = messages.size();
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
                 do {
@@ -422,6 +429,9 @@ public class MessageService {
 
                     messages.add(message);
                 } while (cursor.moveToNext());
+                
+                int mmsCount = messages.size() - initialCount;
+                Log.d(TAG, "Found " + mmsCount + " MMS messages for thread " + threadId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading MMS messages for thread " + threadId, e);

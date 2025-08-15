@@ -179,6 +179,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             try {
                 // Load messages using MessageService
                 List<Message> loadedMessages = messageService.loadMessages(threadId);
+                Log.d(TAG, "ConversationActivity: Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages for thread " + threadId);
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
@@ -186,23 +187,28 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     messages.clear();
                     if (loadedMessages != null) {
                         messages.addAll(loadedMessages);
+                        Log.d(TAG, "ConversationActivity: Added " + messages.size() + " messages to UI list");
                     }
 
                     // Update UI
                     adapter.notifyDataSetChanged();
+                    Log.d(TAG, "ConversationActivity: Notified adapter of data change");
                     hideLoadingIndicator();
 
                     // Scroll to bottom
                     if (!messages.isEmpty()) {
                         messagesRecyclerView.scrollToPosition(messages.size() - 1);
+                        Log.d(TAG, "ConversationActivity: Scrolled to position " + (messages.size() - 1));
                     }
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
                         emptyStateTextView.setText(R.string.no_messages);
                         emptyStateTextView.setVisibility(View.VISIBLE);
+                        Log.d(TAG, "ConversationActivity: Showing empty state");
                     } else {
                         emptyStateTextView.setVisibility(View.GONE);
+                        Log.d(TAG, "ConversationActivity: Hiding empty state");
                     }
 
                     // Mark thread as read
