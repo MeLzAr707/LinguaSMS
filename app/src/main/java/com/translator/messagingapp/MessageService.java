@@ -333,6 +333,8 @@ public class MessageService {
      * @return A list of messages
      */
     public List<Message> loadMessages(String threadId) {
+        Log.d(TAG, "Loading messages for threadId: " + threadId);
+        
         List<Message> messages = new ArrayList<>();
         ContentResolver contentResolver = context.getContentResolver();
 
@@ -342,9 +344,12 @@ public class MessageService {
         // Load MMS messages
         loadMmsMessages(contentResolver, threadId, messages);
 
-        // Sort by date (newest first)
-        Collections.sort(messages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
+        Log.d(TAG, "Loaded " + messages.size() + " messages before sorting");
 
+        // Sort by date (oldest first for conversation display)
+        Collections.sort(messages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+
+        Log.d(TAG, "Returning " + messages.size() + " messages");
         return messages;
     }
 

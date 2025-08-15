@@ -80,6 +80,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
+        // If threadId is empty but address is provided, try to get threadId from address
+        if (TextUtils.isEmpty(threadId) && !TextUtils.isEmpty(address)) {
+            threadId = messageService.getThreadIdForAddress(address);
+            Log.d(TAG, "Retrieved threadId from address: " + threadId);
+        }
+
         // Initialize executor service
         executorService = Executors.newCachedThreadPool();
 
@@ -172,11 +178,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Show loading indicator
         showLoadingIndicator();
 
+        // Debug logging
+        Log.d(TAG, "Loading messages for threadId: " + threadId + ", address: " + address);
+
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
                 // Load messages using MessageService
                 List<Message> loadedMessages = messageService.loadMessages(threadId);
+
+                Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
@@ -185,6 +196,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     if (loadedMessages != null) {
                         messages.addAll(loadedMessages);
                     }
+
+                    Log.d(TAG, "Messages list size after update: " + messages.size());
 
                     // Update UI
                     adapter.notifyDataSetChanged();
@@ -197,9 +210,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
+                        Log.d(TAG, "No messages found, showing empty state");
                         emptyStateTextView.setText(R.string.no_messages);
                         emptyStateTextView.setVisibility(View.VISIBLE);
                     } else {
+                        Log.d(TAG, "Messages found, hiding empty state");
                         emptyStateTextView.setVisibility(View.GONE);
                     }
 
