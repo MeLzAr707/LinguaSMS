@@ -44,7 +44,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
-    private ImageButton emojiButton;
 
     // Data
     private String threadId;
@@ -109,8 +108,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
-        emojiButton = findViewById(R.id.emoji_button);
+        translateInputButton = findViewById(R.id.translate_outgoing_button);
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -138,8 +136,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up translate input button
         translateInputButton.setOnClickListener(v -> translateInput());
         
-        // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
+        // Configure EditText for emoji support
+        configureEmojiSupport(messageInput);
 
         // Update UI based on theme
         updateUIForTheme();
@@ -401,13 +399,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Shows the emoji picker dialog for inserting emojis into the message input.
+     * Configures the EditText for proper emoji support from keyboard input.
      */
-    private void showEmojiPicker() {
-        EmojiPickerDialog.show(this, emoji -> {
-            // Insert the selected emoji at the current cursor position
-            EmojiUtils.insertEmoji(messageInput, emoji);
-        }, false); // false indicates this is for emoji input, not reactions
+    private void configureEmojiSupport(EditText editText) {
+        // Set appropriate input type flags for emoji support
+        editText.setInputType(android.text.InputType.TYPE_CLASS_TEXT 
+            | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            | android.text.InputType.TYPE_TEXT_VARIATION_SHORT_MESSAGE);
+            
+        // Configure IME options to allow emoji keyboards
+        editText.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NONE);
+        
+        // Set TextKeyListener to support Unicode emoji characters
+        editText.setKeyListener(android.text.method.TextKeyListener.getInstance());
     }
     
     /**
