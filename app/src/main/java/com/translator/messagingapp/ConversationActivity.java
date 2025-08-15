@@ -178,7 +178,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         executorService.execute(() -> {
             try {
                 // Load messages using MessageService
-                List<Message> loadedMessages = messageService.loadMessages(threadId);
+                final List<Message> loadedMessages = messageService.loadMessages(threadId);
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
@@ -186,6 +186,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     messages.clear();
                     if (loadedMessages != null) {
                         messages.addAll(loadedMessages);
+                        Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
                     }
 
                     // Update UI
