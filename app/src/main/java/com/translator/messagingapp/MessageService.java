@@ -333,18 +333,28 @@ public class MessageService {
      * @return A list of messages
      */
     public List<Message> loadMessages(String threadId) {
+        Log.d(TAG, "loadMessages called with threadId: " + threadId);
+        
+        if (threadId == null || threadId.trim().isEmpty()) {
+            Log.e(TAG, "threadId is null or empty, cannot load messages");
+            return new ArrayList<>();
+        }
+        
         List<Message> messages = new ArrayList<>();
         ContentResolver contentResolver = context.getContentResolver();
 
         // Load SMS messages
         loadSmsMessages(contentResolver, threadId, messages);
+        Log.d(TAG, "After loading SMS messages, total count: " + messages.size());
 
         // Load MMS messages
         loadMmsMessages(contentResolver, threadId, messages);
+        Log.d(TAG, "After loading MMS messages, total count: " + messages.size());
 
         // Sort by date (newest first)
         Collections.sort(messages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
 
+        Log.d(TAG, "Returning " + messages.size() + " messages for threadId: " + threadId);
         return messages;
     }
 
@@ -356,33 +366,60 @@ public class MessageService {
      * @param messages The list to add messages to
      */
     private void loadSmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
+        Log.d(TAG, "loadSmsMessages called for threadId: " + threadId);
+        
         Uri uri = Uri.parse("content://sms");
         String selection = "thread_id = ?";
         String[] selectionArgs = new String[] { threadId };
         String sortOrder = "date DESC";
 
+        Log.d(TAG, "Querying SMS with URI: " + uri + ", selection: " + selection + ", args: [" + threadId + "]");
+
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
-            if (cursor != null && cursor.moveToFirst()) {
+            if (cursor == null) {
+                Log.e(TAG, "SMS cursor is null for threadId: " + threadId);
+                return;
+            }
+            
+            Log.d(TAG, "SMS cursor count: " + cursor.getCount() + " for threadId: " + threadId);
+            
+            if (cursor.moveToFirst()) {
+                int messageCount = 0;
                 do {
-                    String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID));
-                    String body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
-                    long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
-                    int type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE));
-                    String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-                    boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
+                    try {
+                        String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID));
+                        String body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                        long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                        int type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE));
+                        String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+                        boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
 
-                    Message message = new Message();
-                    message.setId(Long.parseLong(id));
-                    message.setBody(body);
-                    message.setDate(date);
-                    message.setType(type);
-                    message.setAddress(address);
-                    message.setRead(read);
-                    message.setThreadId(Long.parseLong(threadId));
-                    message.setMessageType(Message.MESSAGE_TYPE_SMS);
+                        Message message = new Message();
+                        message.setId(Long.parseLong(id));
+                        message.setBody(body);
+                        message.setDate(date);
+                        message.setType(type);
+                        message.setAddress(address);
+                        message.setRead(read);
+                        message.setThreadId(Long.parseLong(threadId));
+                        message.setMessageType(Message.MESSAGE_TYPE_SMS);
 
-                    messages.add(message);
+                        messages.add(message);
+                        messageCount++;
+                        
+                        if (messageCount <= 3) { // Log details for first few messages
+                            Log.d(TAG, "Added SMS message " + messageCount + ": id=" + id + ", body=" + 
+                                    (body != null ? body.substring(0, Math.min(body.length(), 50)) + "..." : "null") +
+                                    ", date=" + date + ", type=" + type);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error processing SMS message in cursor", e);
+                    }
                 } while (cursor.moveToNext());
+                
+                Log.d(TAG, "Successfully added " + messageCount + " SMS messages for threadId: " + threadId);
+            } else {
+                Log.w(TAG, "No SMS messages found for threadId: " + threadId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading SMS messages for thread " + threadId, e);

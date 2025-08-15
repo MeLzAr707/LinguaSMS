@@ -171,14 +171,35 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void loadMessages() {
+        Log.d(TAG, "loadMessages called with threadId: " + threadId + ", address: " + address);
+        
+        // If we don't have a threadId but have an address, try to find the threadId
+        if (TextUtils.isEmpty(threadId) && !TextUtils.isEmpty(address)) {
+            Log.d(TAG, "No threadId but have address, trying to find threadId for address: " + address);
+            threadId = messageService.getThreadIdForAddress(address);
+            Log.d(TAG, "Found threadId: " + threadId + " for address: " + address);
+        }
+        
+        if (TextUtils.isEmpty(threadId)) {
+            Log.e(TAG, "Cannot load messages: threadId is null or empty");
+            runOnUiThread(() -> {
+                hideLoadingIndicator();
+                emptyStateTextView.setText("Error: No thread ID available");
+                emptyStateTextView.setVisibility(View.VISIBLE);
+            });
+            return;
+        }
+        
         // Show loading indicator
         showLoadingIndicator();
 
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
+                Log.d(TAG, "Loading messages for threadId: " + threadId);
                 // Load messages using MessageService
                 List<Message> loadedMessages = messageService.loadMessages(threadId);
+                Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
@@ -186,6 +207,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     messages.clear();
                     if (loadedMessages != null) {
                         messages.addAll(loadedMessages);
+                        Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
                     }
 
                     // Update UI
@@ -199,9 +221,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
+                        Log.w(TAG, "No messages to display, showing empty state");
                         emptyStateTextView.setText(R.string.no_messages);
                         emptyStateTextView.setVisibility(View.VISIBLE);
                     } else {
+                        Log.d(TAG, "Hiding empty state, showing " + messages.size() + " messages");
                         emptyStateTextView.setVisibility(View.GONE);
                     }
 
