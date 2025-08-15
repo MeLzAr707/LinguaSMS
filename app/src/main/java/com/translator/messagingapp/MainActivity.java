@@ -130,15 +130,6 @@ public class MainActivity extends BaseActivity
         // Set up RecyclerView
         setupRecyclerView();
 
-        // Set up SwipeRefreshLayout
-        // No need to call showLoadingIndicator here as the SwipeRefreshLayout
-        // automatically shows its spinner when pulled
-        swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
-        swipeRefreshLayout.setColorSchemeResources(
-                R.color.colorPrimary,
-                R.color.colorAccent,
-                R.color.colorPrimaryDark);
-
         // Set up FAB
         newMessageFab.setOnClickListener(v -> startNewMessageActivity());
 
