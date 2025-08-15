@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends BaseActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private static final String TAG = "MainActivity";
@@ -62,18 +62,12 @@ public class MainActivity extends AppCompatActivity
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
 
-    // Theme configuration
-    protected boolean useNoActionBar = true; // Default to true since we're using NoActionBar theme
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Set to use NoActionBar variant since we use custom toolbar
         setUseNoActionBar(true);
         
         super.onCreate(savedInstanceState);
-
-        // Initialize UserPreferences - done in BaseActivity
-        userPreferences = new UserPreferences(this);
 
         // Get service instances from TranslatorApp with null checks
         try {
@@ -117,14 +111,6 @@ public class MainActivity extends AppCompatActivity
         } else {
             Log.w(TAG, "DefaultSmsAppManager is null, cannot check default SMS app status");
         }
-    }
-
-    /**
-     * Set whether this activity should use a NoActionBar theme
-     * @param useNoActionBar true to use NoActionBar theme, false otherwise
-     */
-    protected void setUseNoActionBar(boolean useNoActionBar) {
-        this.useNoActionBar = useNoActionBar;
     }
 
     private void initializeComponents() {
@@ -206,6 +192,10 @@ public class MainActivity extends AppCompatActivity
 
     private void setupStandardToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
+        
+        // Apply theme-specific toolbar colors
+        updateToolbarTheme(toolbar);
+        
         setSupportActionBar(toolbar);
 
         // Set up drawer toggle
@@ -215,6 +205,40 @@ public class MainActivity extends AppCompatActivity
                 R.string.navigation_drawer_close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
+    }
+
+    /**
+     * Update toolbar colors based on current theme
+     */
+    private void updateToolbarTheme(Toolbar toolbar) {
+        if (userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
+            // Use deep dark blue for Black Glass theme
+            toolbar.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
+        } else {
+            // Use default primary color for other themes
+            toolbar.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+        }
+    }
+    
+    @Override
+    protected void onThemeChanged() {
+        super.onThemeChanged();
+        
+        // Update toolbar colors when theme changes
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            updateToolbarTheme(toolbar);
+        }
+        
+        // Update navigation view theme if needed
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        if (navigationView != null && userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
+            // Apply Black Glass theme to navigation view header
+            View headerView = navigationView.getHeaderView(0);
+            if (headerView != null) {
+                headerView.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
+            }
+        }
     }
 
     private void checkPermissions() {

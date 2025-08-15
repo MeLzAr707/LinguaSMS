@@ -16,7 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-public class DebugActivity extends AppCompatActivity {
+public class DebugActivity extends BaseActivity {
     private static final String TAG = "DebugActivity";
 
     private EditText addressInput;
