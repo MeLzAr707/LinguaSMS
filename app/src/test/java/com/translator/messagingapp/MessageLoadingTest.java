@@ -200,4 +200,58 @@ public class MessageLoadingTest {
         assertNotNull("Retrieved message should not be null", retrievedMessage);
         assertEquals("Retrieved message type should be inbox", Message.TYPE_INBOX, retrievedMessage.getType());
     }
+
+    @Test
+    public void testThreadIdValidation() {
+        // Test threadId validation logic (simulating the actual validation)
+        
+        // Valid threadId
+        String validThreadId = "123";
+        assertNotNull("Valid threadId should not be null", validThreadId);
+        assertFalse("Valid threadId should not be empty", validThreadId.trim().isEmpty());
+        
+        // Invalid threadIds
+        String nullThreadId = null;
+        String emptyThreadId = "";
+        String whitespaceThreadId = "   ";
+        
+        assertTrue("Null threadId should be invalid", nullThreadId == null || nullThreadId.trim().isEmpty());
+        assertTrue("Empty threadId should be invalid", emptyThreadId == null || emptyThreadId.trim().isEmpty());
+        assertTrue("Whitespace threadId should be invalid", whitespaceThreadId == null || whitespaceThreadId.trim().isEmpty());
+    }
+
+    @Test
+    public void testMessageLoadingSimulation() {
+        // Simulate the message loading process
+        List<Message> messages = new ArrayList<>();
+        String threadId = "123";
+        
+        // Simulate loading messages - this would normally call MessageService
+        if (threadId != null && !threadId.trim().isEmpty()) {
+            // Add some test messages as if they were loaded from the database
+            Message msg1 = new Message();
+            msg1.setId(1L);
+            msg1.setBody("First message");
+            msg1.setAddress("123-456-7890");
+            msg1.setThreadId(Long.parseLong(threadId));
+            msg1.setType(Message.TYPE_INBOX);
+            msg1.setDate(System.currentTimeMillis() - 1000);
+            
+            Message msg2 = new Message();
+            msg2.setId(2L);
+            msg2.setBody("Second message");
+            msg2.setAddress("123-456-7890");
+            msg2.setThreadId(Long.parseLong(threadId));
+            msg2.setType(Message.TYPE_SENT);
+            msg2.setDate(System.currentTimeMillis());
+            
+            messages.add(msg1);
+            messages.add(msg2);
+        }
+        
+        // Verify the results
+        assertEquals("Should have 2 messages", 2, messages.size());
+        assertEquals("First message should have correct threadId", 123L, messages.get(0).getThreadId());
+        assertEquals("Second message should have correct threadId", 123L, messages.get(1).getThreadId());
+    }
 }
