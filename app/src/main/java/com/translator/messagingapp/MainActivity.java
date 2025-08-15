@@ -136,7 +136,6 @@ public class MainActivity extends AppCompatActivity
 
         // Find views
         conversationsRecyclerView = findViewById(R.id.conversations_recycler_view);
-        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         newMessageFab = findViewById(R.id.new_message_fab);

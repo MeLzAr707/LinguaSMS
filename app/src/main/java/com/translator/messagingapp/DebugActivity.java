@@ -48,13 +48,10 @@ public class DebugActivity extends AppCompatActivity {
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
-        directOpenButton.setOnClickListener(v -> directOpenConversation());
+        directOpenButton.setOnClickListener(v -> openConversationDirect());
         
         // Add a button to check message loading issues
-        Button diagnoseMsgButton = findViewById(R.id.debug_diagnose_msg_button);
-        if (diagnoseMsgButton != null) {
-            diagnoseMsgButton.setOnClickListener(v -> diagnoseMessageLoading());
-        }
+
         directOpenButton.setOnClickListener(v -> openConversationDirect());
 
         // Check if we were launched with an address

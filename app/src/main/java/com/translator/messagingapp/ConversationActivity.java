@@ -110,7 +110,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_button); // Fixed ID
-        emojiButton = findViewById(R.id.emoji_button);
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);

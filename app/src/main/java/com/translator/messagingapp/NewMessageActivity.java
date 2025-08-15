@@ -315,42 +315,43 @@ public class NewMessageActivity extends BaseActivity {
         final String finalTargetLanguage = targetLanguage;
 
         // Use TranslationManager to translate the text with force translation for outgoing messages
-        translationManager.translateText(inputText, targetLanguage, (success, translatedText, errorMessage) -> {
-            isTranslating.set(false);
+        translationManager.translateText(inputText,
+                targetLanguage,
+                (success, translatedText, errorMessage) -> {
+                    isTranslating.set(false);
 
-            if (!success) {
-                runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
-                        "Translation error: " + (errorMessage != null ? errorMessage : "Unknown error"),
-                        Toast.LENGTH_SHORT).show());
-                return;
-            }
+                    if (!success) {
+                        runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
+                                "Translation error: " + (errorMessage != null ? errorMessage : "Unknown error"),
+                                Toast.LENGTH_SHORT).show());
+                        return;
+                    } else {// Use the translatedText parameter directly instead of retrieving from cache
+                        if (translatedText == null) {
+                            runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
+                                    "Translation error: Could not retrieve translated text",
+                                    Toast.LENGTH_SHORT).show());
+                            return;
+                        }
 
-            // Use the translatedText parameter directly instead of retrieving from cache
-            if (translatedText == null) {
-                runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
-                        "Translation error: Could not retrieve translated text",
-                        Toast.LENGTH_SHORT).show());
-                return;
-            }
+                        // Update UI on main thread
+                        runOnUiThread(() -> {
+                            // Update input field with translated text
+                            messageInput.setText(translatedText);
+                            messageInput.setSelection(translatedText.length());
 
-            // Update UI on main thread
-            runOnUiThread(() -> {
-                // Update input field with translated text
-                messageInput.setText(translatedText);
-                messageInput.setSelection(translatedText.length());
+                            // Mark as translated
+                            isComposedTextTranslated = true;
 
-                // Mark as translated
-                isComposedTextTranslated = true;
+                            // Update UI state
+                            updateInputTranslationState();
 
-                // Update UI state
-                updateInputTranslationState();
-
-                // Show toast with language info
-                Toast.makeText(NewMessageActivity.this,
-                        "Translated to " + translationManager.getLanguageName(finalTargetLanguage),
-                        Toast.LENGTH_SHORT).show();
-            });
-        }, true);
+                            // Show toast with language info
+                            Toast.makeText(NewMessageActivity.this,
+                                    "Translated to " + translationManager.getLanguageName(finalTargetLanguage),
+                                    Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
     }
 
     private void updateInputTranslationState() {
@@ -446,7 +447,6 @@ public class NewMessageActivity extends BaseActivity {
         }
     }
 }
-
 
 
 
