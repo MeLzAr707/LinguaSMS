@@ -340,6 +340,12 @@ public class MessageService {
             return new ArrayList<>();
         }
         
+        // First, let's validate that the SMS content provider is accessible
+        if (!isSmsContentProviderAccessible()) {
+            Log.e(TAG, "SMS content provider is not accessible - check permissions");
+            return new ArrayList<>();
+        }
+        
         List<Message> messages = new ArrayList<>();
         ContentResolver contentResolver = context.getContentResolver();
 
@@ -359,6 +365,27 @@ public class MessageService {
     }
 
     /**
+     * Check if the SMS content provider is accessible
+     * @return true if accessible, false otherwise
+     */
+    private boolean isSmsContentProviderAccessible() {
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.parse("content://sms");
+            
+            // Try a simple query to check accessibility
+            try (Cursor cursor = contentResolver.query(uri, new String[]{"_id"}, null, null, "_id LIMIT 1")) {
+                boolean accessible = cursor != null;
+                Log.d(TAG, "SMS content provider accessible: " + accessible);
+                return accessible;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "SMS content provider not accessible", e);
+            return false;
+        }
+    }
+
+    /**
      * Loads SMS messages for a thread.
      *
      * @param contentResolver The content resolver
@@ -367,6 +394,10 @@ public class MessageService {
      */
     private void loadSmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
         Log.d(TAG, "loadSmsMessages called for threadId: " + threadId);
+        
+        // First, let's check if there are any SMS messages at all
+        int totalSmsCount = getTotalSmsCount(contentResolver);
+        Log.d(TAG, "Total SMS messages in database: " + totalSmsCount);
         
         Uri uri = Uri.parse("content://sms");
         String selection = "thread_id = ?";
@@ -420,9 +451,57 @@ public class MessageService {
                 Log.d(TAG, "Successfully added " + messageCount + " SMS messages for threadId: " + threadId);
             } else {
                 Log.w(TAG, "No SMS messages found for threadId: " + threadId);
+                
+                // Let's also check if this thread exists at all
+                checkThreadExists(contentResolver, threadId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading SMS messages for thread " + threadId, e);
+        }
+    }
+
+    /**
+     * Get the total count of SMS messages in the database
+     * @param contentResolver The content resolver
+     * @return The total count
+     */
+    private int getTotalSmsCount(ContentResolver contentResolver) {
+        try (Cursor cursor = contentResolver.query(Uri.parse("content://sms"), 
+                new String[]{"COUNT(*)"}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getInt(0);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting total SMS count", e);
+        }
+        return 0;
+    }
+
+    /**
+     * Check if a thread exists in the conversations table
+     * @param contentResolver The content resolver
+     * @param threadId The thread ID to check
+     */
+    private void checkThreadExists(ContentResolver contentResolver, String threadId) {
+        try {
+            Uri uri = Uri.parse("content://mms-sms/conversations");
+            String selection = "_id = ?";
+            String[] selectionArgs = new String[] { threadId };
+            
+            try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, null)) {
+                if (cursor != null) {
+                    boolean threadExists = cursor.getCount() > 0;
+                    Log.d(TAG, "Thread " + threadId + " exists in conversations table: " + threadExists);
+                    if (cursor.moveToFirst()) {
+                        int messageCount = cursor.getInt(cursor.getColumnIndexOrThrow("message_count"));
+                        Log.d(TAG, "Thread " + threadId + " has message_count: " + messageCount);
+                    }
+                } else {
+                    Log.w(TAG, "Could not query conversations table for thread " + threadId);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking thread existence for " + threadId, e);
         }
     }
 

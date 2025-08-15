@@ -201,6 +201,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 List<Message> loadedMessages = messageService.loadMessages(threadId);
                 Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
+                // If no messages found and we have an address, try loading by address as fallback
+                if ((loadedMessages == null || loadedMessages.isEmpty()) && !TextUtils.isEmpty(address)) {
+                    Log.d(TAG, "No messages found for threadId, trying to load by address: " + address);
+                    loadedMessages = messageService.getMessagesByAddress(address);
+                    Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages by address");
+                }
+
                 // Update UI on main thread
                 runOnUiThread(() -> {
                     // Clear existing messages and add loaded ones
