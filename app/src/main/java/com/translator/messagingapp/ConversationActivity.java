@@ -170,6 +170,30 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     private void loadMessages() {
+        // Check if messageService is available
+        if (messageService == null) {
+            Log.e(TAG, "MessageService is null, cannot load messages");
+            runOnUiThread(() -> {
+                hideLoadingIndicator();
+                emptyStateTextView.setText("Service unavailable");
+                emptyStateTextView.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+
+        // Check if threadId is valid
+        if (TextUtils.isEmpty(threadId)) {
+            Log.e(TAG, "Thread ID is empty, cannot load messages");
+            runOnUiThread(() -> {
+                hideLoadingIndicator();
+                emptyStateTextView.setText("Invalid conversation");
+                emptyStateTextView.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Invalid conversation thread", Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+
         // Show loading indicator
         showLoadingIndicator();
 
@@ -177,15 +201,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         executorService.execute(() -> {
             try {
                 // Load messages using MessageService
+                Log.d(TAG, "Loading messages for thread ID: " + threadId);
                 final List<Message> loadedMessages = messageService.loadMessages(threadId);
+                Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
                     // Clear existing messages and add loaded ones
                     messages.clear();
-                    if (loadedMessages != null) {
+                    if (loadedMessages != null && !loadedMessages.isEmpty()) {
                         messages.addAll(loadedMessages);
                         Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
+                    } else {
+                        Log.d(TAG, "No messages to add to UI list");
                     }
 
                     // Update UI
@@ -199,9 +227,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Show empty state if no messages
                     if (messages.isEmpty()) {
+                        Log.d(TAG, "Displaying empty state - no messages found");
                         emptyStateTextView.setText(R.string.no_messages);
                         emptyStateTextView.setVisibility(View.VISIBLE);
                     } else {
+                        Log.d(TAG, "Hiding empty state - " + messages.size() + " messages displayed");
                         emptyStateTextView.setVisibility(View.GONE);
                     }
 
@@ -209,7 +239,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     markThreadAsRead();
                 });
             } catch (Exception e) {
-                Log.e(TAG, "Error loading messages", e);
+                Log.e(TAG, "Error loading messages for thread " + threadId, e);
                 runOnUiThread(() -> {
                     Toast.makeText(ConversationActivity.this,
                             getString(R.string.error_loading_messages) + ": " + e.getMessage(),
