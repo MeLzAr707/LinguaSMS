@@ -26,7 +26,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
@@ -46,7 +46,6 @@ public class MainActivity extends AppCompatActivity
     // UI components
     private RecyclerView conversationsRecyclerView;
     private ConversationRecyclerAdapter conversationAdapter;
-    private SwipeRefreshLayout swipeRefreshLayout;
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private FloatingActionButton newMessageFab;
@@ -143,15 +142,6 @@ public class MainActivity extends AppCompatActivity
 
         // Set up RecyclerView
         setupRecyclerView();
-
-        // Set up SwipeRefreshLayout
-        // No need to call showLoadingIndicator here as the SwipeRefreshLayout
-        // automatically shows its spinner when pulled
-        swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
-        swipeRefreshLayout.setColorSchemeResources(
-                R.color.colorPrimary,
-                R.color.colorAccent,
-                R.color.colorPrimaryDark);
 
         // Set up FAB
         newMessageFab.setOnClickListener(v -> startNewMessageActivity());
@@ -268,10 +258,8 @@ public class MainActivity extends AppCompatActivity
             return;
         }
 
-        // Only show the center progress bar if SwipeRefreshLayout isn't already refreshing
-        if (!swipeRefreshLayout.isRefreshing()) {
-            showLoadingIndicator(false);
-        }
+        // Show loading indicator for automatic refresh
+        showLoadingIndicator();
         
         // Use a background thread to load conversations
         executorService.execute(() -> {
@@ -400,32 +388,19 @@ public class MainActivity extends AppCompatActivity
         // Clear cache to force reload
         MessageCache.clearCache();
 
-        // No need to show loading indicator here if it's a pull-to-refresh
-        // as the SwipeRefreshLayout already shows its spinner
-
-        // Load conversations
+        // Load conversations with automatic refresh
         loadConversations();
     }
 
     /**
-     * Shows a loading indicator based on the trigger type
-     * @param isUserInitiated true if refresh was initiated by user (pull-to-refresh)
+     * Shows the loading indicator
      */
-    private void showLoadingIndicator(boolean isUserInitiated) {
-        if (isUserInitiated) {
-            // For user-initiated refreshes (pull-to-refresh), use SwipeRefreshLayout
-            swipeRefreshLayout.setRefreshing(true);
-            progressBar.setVisibility(View.GONE);
-        } else {
-            // For automatic/programmatic refreshes, use ProgressBar
-            progressBar.setVisibility(View.VISIBLE);
-            swipeRefreshLayout.setRefreshing(false);
-        }
+    private void showLoadingIndicator() {
+        progressBar.setVisibility(View.VISIBLE);
     }
 
     private void hideLoadingIndicator() {
         progressBar.setVisibility(View.GONE);
-        swipeRefreshLayout.setRefreshing(false);
     }
 
     private void startNewMessageActivity() {
@@ -487,7 +462,7 @@ public class MainActivity extends AppCompatActivity
 
     private void deleteConversation(Conversation conversation, int position) {
         // Show loading indicator
-        showLoadingIndicator(false);
+        showLoadingIndicator();
 
         // Delete conversation in background
         executorService.execute(() -> {
