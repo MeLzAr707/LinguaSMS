@@ -85,10 +85,10 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         }
         holder.contactName.setText(displayName);
 
-        // Set the last message
-        String lastMessage = conversation.getLastMessage();
-        if (lastMessage != null && !lastMessage.isEmpty()) {
-            holder.lastMessage.setText(lastMessage);
+        // Set the last message (use snippet which has proper fallback logic)
+        String snippet = conversation.getSnippet();
+        if (snippet != null && !snippet.isEmpty()) {
+            holder.lastMessage.setText(snippet);
             holder.lastMessage.setVisibility(View.VISIBLE);
         } else {
             holder.lastMessage.setText("No messages");

@@ -230,6 +230,7 @@ public class MessageService {
                 conversation.setThreadId(threadId);
                 conversation.setAddress(address);
                 conversation.setSnippet(snippet);
+                conversation.setLastMessage(snippet); // Also set lastMessage for consistency
                 conversation.setDate(date);
                 conversation.setRead(read);
 
@@ -281,7 +282,9 @@ public class MessageService {
                 Conversation conversation = new Conversation();
                 conversation.setThreadId(threadId);
                 conversation.setAddress(address);
-                conversation.setSnippet(snippet != null ? snippet : "[MMS]");
+                String mmsSnippet = snippet != null ? snippet : "[MMS]";
+                conversation.setSnippet(mmsSnippet);
+                conversation.setLastMessage(mmsSnippet); // Also set lastMessage for consistency
                 conversation.setDate(date);
                 conversation.setRead(read);
 
