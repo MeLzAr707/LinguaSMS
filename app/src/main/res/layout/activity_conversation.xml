@@ -80,7 +80,6 @@
 
 
                 <ImageButton
-                    android:id="@+id/attachment_button"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_gravity="center_vertical"

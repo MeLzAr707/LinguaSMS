@@ -23,58 +23,31 @@
 
     <!-- Other Colors -->
     <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-    <color name="purple_200">#BB86FC</color>
-    <color name="purple_500">#6200EE</color>
-    <color name="purple_700">#3700B3</color>
-    <color name="teal_200">#03DAC5</color>
-    <color name="teal_700">#018786</color>
 
     <!-- Missing Colors - Blue Theme -->
     <color name="colorAccent_blue">#29B6F6</color>
-    <color name="colorPrimary_blue">#2196F3</color>
-    <color name="colorPrimaryDark_blue">#1976D2</color>
 
     <!-- Missing Colors - Dark Theme -->
-    <color name="gray_dark">#424242</color>
-    <color name="colorAccent_dark">#BB86FC</color>
-    <color name="colorPrimary_dark">#121212</color>
-    <color name="colorPrimaryDark_dark">#000000</color>
-    <color name="surface_dark">#121212</color>
-    <color name="text_primary_dark">#FFFFFF</color>
-    <color name="text_secondary_dark">#B3FFFFFF</color>
 
     <!-- Missing Colors - Green Theme -->
-    <color name="colorAccent_green">#69F0AE</color>
-    <color name="colorPrimary_green">#4CAF50</color>
-    <color name="colorPrimaryDark_green">#388E3C</color>
 
     <!-- Missing Colors - Orange Theme -->
-    <color name="colorAccent_orange">#FFAB40</color>
-    <color name="colorPrimary_orange">#FF9800</color>
-    <color name="colorPrimaryDark_orange">#F57C00</color>
 
     <!-- Missing Colors - Purple Theme -->
-    <color name="colorAccent_purple">#E040FB</color>
-    <color name="colorPrimary_purple">#9C27B0</color>
-    <color name="colorPrimaryDark_purple">#7B1FA2</color>
 
     <!-- Missing Colors - Red Theme -->
-    <color name="colorAccent_red">#FF5252</color>
-    <color name="colorPrimary_red">#F44336</color>
-    <color name="colorPrimaryDark_red">#D32F2F</color>
 
     <!-- Glass Theme Colors -->
-    <color name="glassBorder">#33FFFFFF</color>        <!-- 20% white -->
-    <color name="glassHighlight">#26FFFFFF</color>     <!-- 15% white -->
-    <color name="glassSurface">#19FFFFFF</color>       <!-- 10% white -->
-    <color name="glassBackground">#0DFFFFFF</color>    <!-- 5% white -->
-    <color name="colorSelectedItem">#E3F2FD</color> <!-- Light blue for selected items -->
+    <!-- 20% white -->
+    <!-- 15% white -->
+    <!-- 10% white -->
+    <!-- 5% white -->
+    <!-- Light blue for selected items -->
     <!-- Background Colors -->
-    <color name="lightBackground">#FAFAFA</color> <!-- Very light gray for backgrounds -->
+    <!-- Very light gray for backgrounds -->
     <!-- High Visibility Text Colors for Dark Themes -->
-    <color name="bright_text_for_dark_themes">#FFFFFF</color>  <!-- Pure white for maximum visibility -->
-    <color name="bright_accent_for_dark_themes">#82B1FF</color>  <!-- Light blue accent for dark themes -->
+    <!-- Pure white for maximum visibility -->
+    <!-- Light blue accent for dark themes -->
     <!-- Black Glass Theme Colors with Deep Blue Accents -->
     <color name="deep_dark_blue">#0D1A2D</color>  <!-- Deep dark blue for buttons and bars -->
     <color name="deep_dark_blue_lighter">#162A47</color>  <!-- Slightly lighter deep blue for highlights -->

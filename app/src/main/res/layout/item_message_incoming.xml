@@ -63,7 +63,6 @@
     </androidx.cardview.widget.CardView>
 
     <HorizontalScrollView
-        android:id="@+id/reactions_scroll"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:scrollbars="none"

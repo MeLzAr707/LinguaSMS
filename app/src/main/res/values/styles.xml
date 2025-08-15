@@ -54,11 +54,6 @@
     </style>
 
     <!-- Button style -->
-    <style name="AppButton" parent="Widget.MaterialComponents.Button">
-        <item name="android:textColor">@android:color/white</item>
-        <item name="backgroundTint">@color/colorPrimary</item>
-        <item name="android:padding">12dp</item>
-    </style>
 
     <!-- Dark Alert Dialog -->
     <style name="DarkAlertDialog" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
