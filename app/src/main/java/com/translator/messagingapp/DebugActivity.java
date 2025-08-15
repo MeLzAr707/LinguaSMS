@@ -48,6 +48,13 @@ public class DebugActivity extends AppCompatActivity {
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
+        directOpenButton.setOnClickListener(v -> directOpenConversation());
+        
+        // Add a button to check message loading issues
+        Button diagnoseMsgButton = findViewById(R.id.debug_diagnose_msg_button);
+        if (diagnoseMsgButton != null) {
+            diagnoseMsgButton.setOnClickListener(v -> diagnoseMessageLoading());
+        }
         directOpenButton.setOnClickListener(v -> openConversationDirect());
 
         // Check if we were launched with an address
@@ -466,6 +473,160 @@ public class DebugActivity extends AppCompatActivity {
         }
 
         return null;
+    }
+
+    /**
+     * Comprehensive message loading diagnosis
+     */
+    private void diagnoseMessageLoading() {
+        StringBuilder report = new StringBuilder();
+        report.append("=== MESSAGE LOADING DIAGNOSIS ===\n\n");
+        
+        try {
+            // 1. Check SMS content provider accessibility
+            report.append("1. SMS Content Provider Check:\n");
+            try {
+                Uri uri = Uri.parse("content://sms");
+                try (Cursor cursor = getContentResolver().query(uri, new String[]{"_id"}, null, null, "_id LIMIT 1")) {
+                    boolean accessible = cursor != null;
+                    report.append("   Accessible: ").append(accessible).append("\n");
+                    if (accessible) {
+                        report.append("   Test query successful\n");
+                    }
+                }
+            } catch (Exception e) {
+                report.append("   ERROR: ").append(e.getMessage()).append("\n");
+            }
+            
+            // 2. Check total SMS count
+            report.append("\n2. SMS Database Check:\n");
+            try {
+                try (Cursor cursor = getContentResolver().query(Uri.parse("content://sms"), 
+                        new String[]{"COUNT(*) as count"}, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int count = cursor.getInt(0);
+                        report.append("   Total SMS messages: ").append(count).append("\n");
+                    }
+                }
+            } catch (Exception e) {
+                report.append("   ERROR counting SMS: ").append(e.getMessage()).append("\n");
+            }
+            
+            // 3. Check conversations
+            report.append("\n3. Conversations Check:\n");
+            try {
+                Uri uri = Uri.parse("content://mms-sms/conversations");
+                try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                    if (cursor != null) {
+                        int conversationCount = cursor.getCount();
+                        report.append("   Total conversations: ").append(conversationCount).append("\n");
+                        
+                        if (conversationCount > 0 && cursor.moveToFirst()) {
+                            // Show first few conversations
+                            int shown = 0;
+                            do {
+                                if (shown >= 3) break;
+                                
+                                int threadIdIndex = cursor.getColumnIndex("_id");
+                                int messageCountIndex = cursor.getColumnIndex("message_count");
+                                
+                                if (threadIdIndex >= 0) {
+                                    String threadId = cursor.getString(threadIdIndex);
+                                    int messageCount = messageCountIndex >= 0 ? cursor.getInt(messageCountIndex) : -1;
+                                    
+                                    report.append("   Thread ").append(threadId)
+                                            .append(": ").append(messageCount).append(" messages\n");
+                                    
+                                    // Test loading messages for this thread
+                                    testThreadMessageLoading(threadId, report);
+                                }
+                                shown++;
+                            } while (cursor.moveToNext());
+                        }
+                    } else {
+                        report.append("   ERROR: Conversations cursor is null\n");
+                    }
+                }
+            } catch (Exception e) {
+                report.append("   ERROR: ").append(e.getMessage()).append("\n");
+            }
+            
+            // 4. Check specific address if provided
+            String address = addressInput.getText().toString().trim();
+            if (!address.isEmpty()) {
+                report.append("\n4. Address-specific Check (").append(address).append("):\n");
+                try {
+                    String threadId = getThreadIdForAddress(address);
+                    report.append("   Thread ID: ").append(threadId != null ? threadId : "NOT FOUND").append("\n");
+                    
+                    if (threadId != null) {
+                        testThreadMessageLoading(threadId, report);
+                    } else {
+                        // Try direct address query
+                        try (Cursor cursor = getContentResolver().query(Uri.parse("content://sms"), 
+                                null, "address = ?", new String[]{address}, "date DESC LIMIT 5")) {
+                            if (cursor != null) {
+                                int count = cursor.getCount();
+                                report.append("   Direct SMS query for address: ").append(count).append(" messages\n");
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    report.append("   ERROR: ").append(e.getMessage()).append("\n");
+                }
+            }
+            
+        } catch (Exception e) {
+            report.append("\nCRITICAL ERROR: ").append(e.getMessage()).append("\n");
+            Log.e(TAG, "Error in diagnosis", e);
+        }
+        
+        // Display the report
+        resultText.setText(report.toString());
+        Log.d(TAG, "Diagnosis Report:\n" + report.toString());
+        
+        Toast.makeText(this, "Diagnosis complete - check results above", Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * Test message loading for a specific thread
+     */
+    private void testThreadMessageLoading(String threadId, StringBuilder report) {
+        try {
+            report.append("     Testing message loading for thread ").append(threadId).append(":\n");
+            
+            Uri uri = Uri.parse("content://sms");
+            String selection = "thread_id = ?";
+            String[] selectionArgs = new String[]{threadId};
+            
+            try (Cursor cursor = getContentResolver().query(uri, null, selection, selectionArgs, "date DESC")) {
+                if (cursor != null) {
+                    int messageCount = cursor.getCount();
+                    report.append("       SMS messages found: ").append(messageCount).append("\n");
+                    
+                    if (messageCount > 0 && cursor.moveToFirst()) {
+                        // Show first message details
+                        try {
+                            String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID));
+                            String body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                            String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+                            long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                            
+                            report.append("       First message: ID=").append(id)
+                                    .append(", from=").append(address)
+                                    .append(", body=").append(body != null ? body.substring(0, Math.min(body.length(), 30)) + "..." : "null")
+                                    .append("\n");
+                        } catch (Exception e) {
+                            report.append("       ERROR reading message: ").append(e.getMessage()).append("\n");
+                        }
+                    }
+                } else {
+                    report.append("       ERROR: Cursor is null\n");
+                }
+            }
+        } catch (Exception e) {
+            report.append("     ERROR testing thread: ").append(e.getMessage()).append("\n");
+        }
     }
 }
 
