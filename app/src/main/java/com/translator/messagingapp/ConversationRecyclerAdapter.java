@@ -8,6 +8,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.ContactsContract;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -85,14 +86,22 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         }
         holder.contactName.setText(displayName);
 
-        // Set the last message (use snippet which has proper fallback logic)
+        // Set the last message/snippet with proper null checks
         String snippet = conversation.getSnippet();
-        if (snippet != null && !snippet.isEmpty()) {
+        if (!TextUtils.isEmpty(snippet)) {
             holder.lastMessage.setText(snippet);
             holder.lastMessage.setVisibility(View.VISIBLE);
         } else {
-            holder.lastMessage.setText("No messages");
-            holder.lastMessage.setVisibility(View.VISIBLE);
+            // Fallback to last message if snippet is not available
+            String lastMessage = conversation.getLastMessage();
+            if (!TextUtils.isEmpty(lastMessage)) {
+                holder.lastMessage.setText(lastMessage);
+                holder.lastMessage.setVisibility(View.VISIBLE);
+            } else {
+                // If both are empty, show a default message
+                holder.lastMessage.setText("No messages");
+                holder.lastMessage.setVisibility(View.VISIBLE);
+            }
         }
 
 

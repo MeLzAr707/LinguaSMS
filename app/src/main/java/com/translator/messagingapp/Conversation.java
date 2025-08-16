@@ -1,5 +1,6 @@
 package com.translator.messagingapp;
 
+import android.text.TextUtils;
 import java.util.Date;
 
 public class Conversation {
@@ -31,6 +32,8 @@ public class Conversation {
         this.unreadCount = unreadCount;
         this.messageCount = 0;
         this.read = (unreadCount == 0);
+        // Initialize snippet with lastMessage for backward compatibility
+        this.snippet = lastMessage;
     }
 
     /**
@@ -78,6 +81,11 @@ public class Conversation {
 
     public void setLastMessage(String lastMessage) {
         this.lastMessage = lastMessage;
+        // Update snippet when lastMessage is set for backward compatibility
+        // Only if snippet is currently empty
+        if (!TextUtils.isEmpty(lastMessage) && TextUtils.isEmpty(this.snippet)) {
+            this.snippet = lastMessage;
+        }
     }
 
     public Date getDate() {
@@ -124,11 +132,16 @@ public class Conversation {
      * Gets the snippet (preview) of the conversation
      */
     public String getSnippet() {
-        if (snippet != null && !snippet.isEmpty()) {
+        // First check if we have a dedicated snippet
+        if (!TextUtils.isEmpty(snippet)) {
             return snippet;
-        } else if (lastMessage != null && !lastMessage.isEmpty()) {
+        } 
+        // Then check if we have a lastMessage
+        else if (!TextUtils.isEmpty(lastMessage)) {
             return lastMessage;
-        } else {
+        } 
+        // Default message if no content is available
+        else {
             return "No messages";
         }
     }

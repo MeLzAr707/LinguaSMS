@@ -4,70 +4,115 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Unit test for conversation snippet display functionality.
- * Tests the fix for issue #153 where snippets were not displaying properly.
+ * Unit test for Conversation snippet display fixes.
+ * Tests the improved snippet handling and display logic.
  */
 public class ConversationSnippetDisplayTest {
 
     @Test
-    public void testSnippetFallbackLogic() {
-        // Test the snippet fallback logic in Conversation class
+    public void testImprovedGetSnippetMethod() {
         Conversation conversation = new Conversation();
         
-        // Test 1: Both snippet and lastMessage are set
+        // Test with dedicated snippet
         conversation.setSnippet("Test snippet");
-        conversation.setLastMessage("Test last message");
-        assertEquals("Should return snippet when both are set", "Test snippet", conversation.getSnippet());
+        conversation.setLastMessage("Last message");
+        assertEquals("Should return dedicated snippet", "Test snippet", conversation.getSnippet());
         
-        // Test 2: Only lastMessage is set
+        // Test fallback to lastMessage when snippet is null
         conversation.setSnippet(null);
-        conversation.setLastMessage("Only last message");
-        assertEquals("Should return lastMessage when snippet is null", "Only last message", conversation.getSnippet());
+        assertEquals("Should fallback to last message", "Last message", conversation.getSnippet());
         
-        // Test 3: Empty snippet, lastMessage set
+        // Test fallback to lastMessage when snippet is empty
         conversation.setSnippet("");
-        conversation.setLastMessage("Only last message");
-        assertEquals("Should return lastMessage when snippet is empty", "Only last message", conversation.getSnippet());
+        assertEquals("Should fallback to last message when snippet is empty", "Last message", conversation.getSnippet());
         
-        // Test 4: Neither is set
+        // Test default message when both are null
         conversation.setSnippet(null);
         conversation.setLastMessage(null);
-        assertEquals("Should return 'No messages' when both are null", "No messages", conversation.getSnippet());
+        assertEquals("Should show default message", "No messages", conversation.getSnippet());
         
-        // Test 5: Both are empty
+        // Test default message when both are empty
         conversation.setSnippet("");
         conversation.setLastMessage("");
-        assertEquals("Should return 'No messages' when both are empty", "No messages", conversation.getSnippet());
+        assertEquals("Should show default message when both empty", "No messages", conversation.getSnippet());
     }
-    
+
     @Test
-    public void testConversationDisplayConsistency() {
-        // Test that snippet and lastMessage are consistent after being set properly
+    public void testSetLastMessageUpdatesSnippet() {
         Conversation conversation = new Conversation();
         
-        // Simulate what MessageService should do
-        String messageText = "Hello, this is a test message";
-        conversation.setSnippet(messageText);
-        conversation.setLastMessage(messageText);
+        // Test that setting lastMessage updates snippet when snippet is empty
+        conversation.setLastMessage("New message");
+        assertEquals("Snippet should be updated when lastMessage is set and snippet is empty", "New message", conversation.getSnippet());
         
-        // Verify both methods return the same value
-        assertEquals("getSnippet and getLastMessage should return same value", 
-                     conversation.getSnippet(), conversation.getLastMessage());
+        // Test that setting lastMessage doesn't override existing snippet
+        conversation.setSnippet("Existing snippet");
+        conversation.setLastMessage("Different message");
+        assertEquals("Setting lastMessage should not override existing snippet", "Existing snippet", conversation.getSnippet());
         
-        // Verify the snippet display works
-        assertEquals("Should display the actual message text", messageText, conversation.getSnippet());
+        // Test that empty lastMessage doesn't override existing snippet
+        conversation.setSnippet("Another snippet");
+        conversation.setLastMessage("");
+        assertEquals("Empty lastMessage should not override existing snippet", "Another snippet", conversation.getSnippet());
+        
+        // Test that null lastMessage doesn't override existing snippet
+        conversation.setSnippet("Yet another snippet");
+        conversation.setLastMessage(null);
+        assertEquals("Null lastMessage should not override existing snippet", "Yet another snippet", conversation.getSnippet());
     }
-    
+
     @Test
-    public void testMmsSnippetHandling() {
-        // Test MMS snippet handling
+    public void testConstructorInitializesSnippet() {
+        // Test constructor with all fields
+        Conversation conversation = new Conversation("123", "+1234567890", "John Doe", "Hello world", System.currentTimeMillis(), 1, 0);
+        assertEquals("Constructor should initialize snippet with lastMessage", "Hello world", conversation.getSnippet());
+        
+        // Test constructor with null lastMessage
+        Conversation conversation2 = new Conversation("124", "+1234567891", "Jane Doe", null, System.currentTimeMillis(), 1, 0);
+        assertEquals("Constructor with null lastMessage should show default", "No messages", conversation2.getSnippet());
+        
+        // Test constructor with empty lastMessage
+        Conversation conversation3 = new Conversation("125", "+1234567892", "Bob Smith", "", System.currentTimeMillis(), 1, 0);
+        assertEquals("Constructor with empty lastMessage should show default", "No messages", conversation3.getSnippet());
+    }
+
+    @Test
+    public void testBackwardCompatibility() {
         Conversation conversation = new Conversation();
         
-        // Simulate MMS case where snippet might be null
-        conversation.setSnippet("[MMS]");
-        conversation.setLastMessage("[MMS]");
+        // Test that existing code using only setLastMessage still works
+        conversation.setLastMessage("Message from old code");
+        assertEquals("Old code using setLastMessage should still work", "Message from old code", conversation.getSnippet());
         
-        assertEquals("Should display [MMS] for MMS messages", "[MMS]", conversation.getSnippet());
-        assertEquals("Should display [MMS] for MMS messages", "[MMS]", conversation.getLastMessage());
+        // Test that setting snippet explicitly takes precedence
+        conversation.setSnippet("Explicit snippet");
+        assertEquals("Explicit snippet should take precedence", "Explicit snippet", conversation.getSnippet());
+        
+        // Test that updating lastMessage doesn't override explicit snippet
+        conversation.setLastMessage("New last message");
+        assertEquals("Setting lastMessage should not override existing snippet", "Explicit snippet", conversation.getSnippet());
+        
+        // Test that clearing snippet allows lastMessage to be used again
+        conversation.setSnippet(null);
+        assertEquals("After clearing snippet, should fallback to lastMessage", "New last message", conversation.getSnippet());
+    }
+
+    @Test
+    public void testEmptyStringHandling() {
+        Conversation conversation = new Conversation();
+        
+        // Test various empty string scenarios
+        conversation.setSnippet("   ");  // whitespace only
+        conversation.setLastMessage("Valid message");
+        // Note: TextUtils.isEmpty() considers whitespace-only strings as non-empty
+        assertEquals("Whitespace-only snippet should be returned", "   ", conversation.getSnippet());
+        
+        // Test completely empty
+        conversation.setSnippet("");
+        assertEquals("Empty snippet should fallback to lastMessage", "Valid message", conversation.getSnippet());
+        
+        // Test both empty
+        conversation.setLastMessage("");
+        assertEquals("Both empty should show default", "No messages", conversation.getSnippet());
     }
 }
