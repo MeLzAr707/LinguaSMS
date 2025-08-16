@@ -4,13 +4,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class SplashActivity extends AppCompatActivity {
+public class SplashActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Use the regular app theme
-        setTheme(R.style.AppTheme);
-
         super.onCreate(savedInstanceState);
 
         // Initialize app components
@@ -27,21 +24,6 @@ public class SplashActivity extends AppCompatActivity {
     private void initializeApp() {
         // Initialize components that need to be ready before the main activity
         try {
-            // Get user preferences
-            UserPreferences userPreferences = new UserPreferences(this);
-
-            // Apply theme based on user preference
-            int themeId = userPreferences.getThemeId();
-            if (themeId == UserPreferences.THEME_DARK ||
-                    themeId == UserPreferences.THEME_BLACK_GLASS ||
-                    (themeId == UserPreferences.THEME_SYSTEM && userPreferences.isDarkThemeActive(this))) {
-                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-                        androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES);
-            } else {
-                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
-                        androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO);
-            }
-
             // Check if this is the first run
             if (userPreferences.getBoolean("is_first_run", true)) {
                 userPreferences.setBoolean("is_first_run", false);
