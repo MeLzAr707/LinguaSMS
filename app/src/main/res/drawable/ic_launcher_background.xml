@@ -4,7 +4,47 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <defs>
+        <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#66BB6A"/>
+            <stop offset="100%" style="stop-color:#4CAF50"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Main background with gradient -->
     <path
-        android:fillColor="#2196F3"
+        android:fillColor="#4CAF50"
         android:pathData="M0,0h108v108h-108z" />
+    
+    <!-- Gradient overlay for depth -->
+    <path
+        android:fillColor="#66BB6A"
+        android:pathData="M0,0 L108,0 L108,54 L0,54 Z" />
+    
+    <!-- Subtle pattern for texture -->
+    <circle
+        android:fillColor="#81C784"
+        android:fillAlpha="0.3"
+        android:cx="20"
+        android:cy="20"
+        android:radius="3" />
+    <circle
+        android:fillColor="#81C784"
+        android:fillAlpha="0.2"
+        android:cx="88"
+        android:cy="30"
+        android:radius="2" />
+    <circle
+        android:fillColor="#81C784"
+        android:fillAlpha="0.2"
+        android:cx="15"
+        android:cy="85"
+        android:radius="2.5" />
+    <circle
+        android:fillColor="#81C784"
+        android:fillAlpha="0.1"
+        android:cx="90"
+        android:cy="90"
+        android:radius="4" />
 </vector>
