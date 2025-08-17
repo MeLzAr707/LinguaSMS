@@ -110,6 +110,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
 
+        // Check for critical views to prevent null pointer exceptions
+        if (messagesRecyclerView == null) {
+            Log.e(TAG, "messagesRecyclerView not found in layout");
+            finish();
+            return;
+        }
+
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
@@ -131,10 +138,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         messagesRecyclerView.setAdapter(adapter);
 
         // Set up send button
-        sendButton.setOnClickListener(v -> sendMessage());
+        if (sendButton != null) {
+            sendButton.setOnClickListener(v -> sendMessage());
+        }
 
         // Set up translate input button
-        translateInputButton.setOnClickListener(v -> translateInput());
+        if (translateInputButton != null) {
+            translateInputButton.setOnClickListener(v -> translateInput());
+        }
 
         // Update UI based on theme
         updateUIForTheme();
