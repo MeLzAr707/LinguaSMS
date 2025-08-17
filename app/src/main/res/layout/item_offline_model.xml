@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="18dp"
     android:background="?android:attr/selectableItemBackground">
 
     <LinearLayout
@@ -23,24 +23,29 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
 
             <TextView
                 android:id="@+id/text_language_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
-                android:text="English" />
+                android:text="English"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:minWidth="80dp" />
 
             <TextView
                 android:id="@+id/text_language_code"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="en" />
+                android:text="en"
+                android:layout_marginTop="2dp" />
 
         </LinearLayout>
 
@@ -48,35 +53,41 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="end"
+            android:layout_marginStart="8dp">
 
             <TextView
                 android:id="@+id/text_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:text="@string/model_not_downloaded" />
+                android:text="@string/model_not_downloaded"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/text_size"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:text="Size: 25MB"
-                android:visibility="visible" />
+                android:visibility="visible"
+                android:layout_marginTop="2dp" />
 
         </LinearLayout>
 
         <Button
             android:id="@+id/button_action"
             android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:layout_marginStart="16dp"
-            android:minWidth="80dp"
-            android:textSize="12sp"
+            android:layout_height="32dp"
+            android:layout_marginStart="12dp"
+            android:minWidth="75dp"
+            android:textSize="11sp"
             android:text="@string/download_model"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             style="@style/Widget.AppCompat.Button.Colored" />
 
     </LinearLayout>
