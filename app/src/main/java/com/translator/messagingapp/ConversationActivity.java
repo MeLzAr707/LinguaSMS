@@ -109,7 +109,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_button); // Fixed ID
+        translateInputButton = findViewById(R.id.translate_outgoing_button); // Fixed ID mismatch
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -132,13 +132,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         messagesRecyclerView.setAdapter(adapter);
 
         // Set up send button
-        sendButton.setOnClickListener(v -> sendMessage());
+        if (sendButton != null) {
+            sendButton.setOnClickListener(v -> sendMessage());
+        }
 
         // Set up translate input button
-        translateInputButton.setOnClickListener(v -> translateInput());
+        if (translateInputButton != null) {
+            translateInputButton.setOnClickListener(v -> translateInput());
+        }
         
-        // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
+        // Set up emoji button (only if it exists in layout)
+        if (emojiButton != null) {
+            emojiButton.setOnClickListener(v -> showEmojiPicker());
+        }
 
         // Update UI based on theme
         updateUIForTheme();
