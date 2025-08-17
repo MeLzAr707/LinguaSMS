@@ -1157,19 +1157,136 @@ public class MessageService {
             String format = bundle.getString("format");
 
             if (pdus != null) {
+                StringBuilder fullMessageBody = new StringBuilder();
+                String senderAddress = null;
+                long messageTimestamp = 0;
+
+                // Process all PDUs to handle multi-part messages
                 for (Object pdu : pdus) {
                     SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdu, format);
-                    String address = smsMessage.getOriginatingAddress();
-                    String body = smsMessage.getMessageBody();
-                    long timestamp = smsMessage.getTimestampMillis();
+                    if (senderAddress == null) {
+                        senderAddress = smsMessage.getOriginatingAddress();
+                        messageTimestamp = smsMessage.getTimestampMillis();
+                    }
+                    fullMessageBody.append(smsMessage.getMessageBody());
+                }
 
+                if (senderAddress != null && fullMessageBody.length() > 0) {
+                    // Store the message in the SMS database
+                    storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                    
                     // Process the message
-                    Log.d(TAG, "Received SMS from " + address + ": " + body);
+                    Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Notify listeners
-                    // TODO: Implement notification mechanism
+                    // Show notification
+                    showSmsNotification(senderAddress, fullMessageBody.toString());
+                    
+                    // Broadcast message received to refresh UI
+                    broadcastMessageReceived();
                 }
             }
+        }
+    }
+
+    /**
+     * Stores an incoming SMS message in the device's SMS database.
+     *
+     * @param address The sender's address
+     * @param body The message body
+     * @param timestamp The message timestamp
+     */
+    private void storeSmsMessage(String address, String body, long timestamp) {
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Sms.ADDRESS, address);
+            values.put(Telephony.Sms.BODY, body);
+            values.put(Telephony.Sms.DATE, timestamp);
+            values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX);
+            values.put(Telephony.Sms.READ, 0); // Mark as unread
+            values.put(Telephony.Sms.SEEN, 0); // Mark as unseen
+
+            Uri uri = context.getContentResolver().insert(Telephony.Sms.CONTENT_URI, values);
+            if (uri != null) {
+                Log.d(TAG, "Successfully stored SMS message from " + address);
+            } else {
+                Log.e(TAG, "Failed to store SMS message from " + address);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error storing SMS message from " + address, e);
+        }
+    }
+
+    /**
+     * Shows a notification for an incoming SMS message.
+     *
+     * @param address The sender's address
+     * @param body The message body
+     */
+    private void showSmsNotification(String address, String body) {
+        try {
+            // Get thread ID for the notification
+            String threadId = getThreadIdForAddress(address);
+            
+            // Get contact name or use address as fallback
+            String displayName = getContactNameForAddress(address);
+            if (displayName == null || displayName.isEmpty()) {
+                displayName = address;
+            }
+            
+            // Create and show notification
+            NotificationHelper notificationHelper = new NotificationHelper(context);
+            notificationHelper.showSmsReceivedNotification(displayName, body, threadId);
+            
+            Log.d(TAG, "Showed notification for SMS from " + address);
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing SMS notification", e);
+        }
+    }
+
+    /**
+     * Gets the contact name for a given address.
+     *
+     * @param address The phone number or address
+     * @return The contact name, or null if not found
+     */
+    private String getContactNameForAddress(String address) {
+        // This is a simplified implementation - you could enhance it with proper contact lookup
+        return null;
+    }
+
+    /**
+     * Handles an incoming MMS message.
+     *
+     * @param intent The intent containing the MMS message
+     */
+    public void handleIncomingMms(Intent intent) {
+        try {
+            Log.d(TAG, "Processing incoming MMS");
+            
+            // For now, show a simple MMS notification
+            // This could be enhanced to parse MMS content in the future
+            NotificationHelper notificationHelper = new NotificationHelper(context);
+            notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+            
+            // Broadcast message received to refresh UI
+            broadcastMessageReceived();
+            
+            Log.d(TAG, "Showed MMS notification");
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling incoming MMS", e);
+        }
+    }
+
+    /**
+     * Broadcasts that a new message has been received to refresh the UI.
+     */
+    private void broadcastMessageReceived() {
+        try {
+            Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_RECEIVED");
+            context.sendBroadcast(broadcastIntent);
+            Log.d(TAG, "Broadcasted message received event");
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting message received event", e);
         }
     }
 
