@@ -222,6 +222,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 if (cachedMessages != null && !cachedMessages.isEmpty()) {
                     Log.d(TAG, "Found " + cachedMessages.size() + " cached messages");
                     loadedMessages = cachedMessages;
+                    
+                    // For cached messages, we might already have multiple pages
+                    // Set hasMoreMessages based on cache size
+                    hasMoreMessages = cachedMessages.size() >= PAGE_SIZE;
                 } else {
                     // Load first page of messages from MessageService
                     Log.d(TAG, "Loading first page of messages for thread ID: " + threadId);
@@ -408,6 +412,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     hideLoadingIndicator();
 
                     if (success) {
+                        // Clear cache to ensure fresh data
+                        MessageCache.clearCacheForThread(threadId);
+                        
+                        // Reset pagination state
+                        currentPage = 0;
+                        hasMoreMessages = true;
+                        
                         // Refresh messages
                         loadMessages();
                     } else {
