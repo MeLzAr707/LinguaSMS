@@ -1,7 +1,10 @@
 package com.translator.messagingapp;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -60,6 +63,9 @@ public class MainActivity extends BaseActivity
     private DefaultSmsAppManager defaultSmsAppManager;
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
+    
+    // Message refresh broadcast receiver
+    private BroadcastReceiver messageRefreshReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +100,9 @@ public class MainActivity extends BaseActivity
 
             // Check if we're the default SMS app
             checkDefaultSmsAppStatus();
+            
+            // Setup message refresh receiver
+            setupMessageRefreshReceiver();
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing MainActivity", e);
@@ -110,6 +119,29 @@ public class MainActivity extends BaseActivity
         } else {
             Log.w(TAG, "DefaultSmsAppManager is null, cannot check default SMS app status");
         }
+    }
+
+    /**
+     * Sets up the broadcast receiver for message refresh events.
+     */
+    private void setupMessageRefreshReceiver() {
+        messageRefreshReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.translator.messagingapp.MESSAGE_RECEIVED".equals(intent.getAction())) {
+                    Log.d(TAG, "Received message refresh broadcast");
+                    runOnUiThread(() -> {
+                        // Refresh conversations on the main thread
+                        refreshConversations();
+                    });
+                }
+            }
+        };
+        
+        // Register the receiver
+        IntentFilter filter = new IntentFilter("com.translator.messagingapp.MESSAGE_RECEIVED");
+        registerReceiver(messageRefreshReceiver, filter);
+        Log.d(TAG, "Message refresh receiver registered");
     }
 
     private void initializeComponents() {
@@ -863,6 +895,17 @@ public class MainActivity extends BaseActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        
+        // Unregister broadcast receiver
+        if (messageRefreshReceiver != null) {
+            try {
+                unregisterReceiver(messageRefreshReceiver);
+                Log.d(TAG, "Message refresh receiver unregistered");
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering message refresh receiver", e);
+            }
+        }
+        
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
