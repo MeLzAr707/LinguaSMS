@@ -101,6 +101,18 @@ public class TranslationManager {
     }
 
     /**
+     * Translates text from one language to another with force translation option.
+     *
+     * @param text The text to translate
+     * @param targetLanguage The target language code
+     * @param callback The callback to receive the result
+     * @param forceTranslation Whether to force translation even if source and target languages match
+     */
+    public void translateText(String text, String targetLanguage, TranslationCallback callback, boolean forceTranslation) {
+        translateText(text, null, targetLanguage, callback, forceTranslation);
+    }
+
+    /**
      * Translates text from one language to another with source language.
      *
      * @param text The text to translate
@@ -109,6 +121,19 @@ public class TranslationManager {
      * @param callback The callback to receive the result
      */
     public void translateText(String text, String sourceLanguage, String targetLanguage, TranslationCallback callback) {
+        translateText(text, sourceLanguage, targetLanguage, callback, false);
+    }
+
+    /**
+     * Translates text from one language to another with source language and force translation option.
+     *
+     * @param text The text to translate
+     * @param sourceLanguage The source language code (can be null for auto-detect)
+     * @param targetLanguage The target language code
+     * @param callback The callback to receive the result
+     * @param forceTranslation Whether to force translation even if source and target languages match
+     */
+    public void translateText(String text, String sourceLanguage, String targetLanguage, TranslationCallback callback, boolean forceTranslation) {
         if (text == null || text.isEmpty()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "No text to translate");
@@ -168,10 +193,11 @@ public class TranslationManager {
                 }
 
                 // Skip if already in target language (comparing base language codes)
+                // unless forceTranslation is true (for outgoing messages)
                 String baseDetected = finalSourceLanguage.split("-")[0];
                 String baseTarget = targetLanguage.split("-")[0];
 
-                if (baseDetected.equals(baseTarget)) {
+                if (baseDetected.equals(baseTarget) && !forceTranslation) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null, "Text is already in " + getLanguageName(baseTarget));
                     }
