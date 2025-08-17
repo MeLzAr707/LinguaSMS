@@ -316,6 +316,7 @@ public class NewMessageActivity extends BaseActivity {
 
         // Use TranslationManager to translate the text with force translation for outgoing messages
         translationManager.translateText(inputText,
+                null, // auto-detect source language
                 targetLanguage,
                 (success, translatedText, errorMessage) -> {
                     isTranslating.set(false);
