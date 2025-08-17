@@ -351,7 +351,7 @@ public class NewMessageActivity extends BaseActivity {
                                     Toast.LENGTH_SHORT).show();
                         });
                     }
-                });
+                }, true);
     }
 
     private void updateInputTranslationState() {
