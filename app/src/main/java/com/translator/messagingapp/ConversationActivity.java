@@ -44,7 +44,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
-    private ImageButton emojiButton;
 
     // Data
     private String threadId;
@@ -136,9 +135,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Set up translate input button
         translateInputButton.setOnClickListener(v -> translateInput());
-        
-        // Set up emoji button
-        emojiButton.setOnClickListener(v -> showEmojiPicker());
 
         // Update UI based on theme
         updateUIForTheme();
@@ -430,16 +426,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
     }
 
-    /**
-     * Shows the emoji picker dialog for inserting emojis into the message input.
-     */
-    private void showEmojiPicker() {
-        EmojiPickerDialog.show(this, emoji -> {
-            // Insert the selected emoji at the current cursor position
-            EmojiUtils.insertEmoji(messageInput, emoji);
-        }, false); // false indicates this is for emoji input, not reactions
-    }
-    
     /**
      * Shows the reaction picker dialog for a message.
      * 
