@@ -1,7 +1,10 @@
 package com.translator.messagingapp;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -60,6 +63,9 @@ public class MainActivity extends BaseActivity
     private DefaultSmsAppManager defaultSmsAppManager;
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
+    
+    // Message refresh receiver
+    private BroadcastReceiver messageRefreshReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +100,9 @@ public class MainActivity extends BaseActivity
 
             // Check if we're the default SMS app
             checkDefaultSmsAppStatus();
+            
+            // Set up message refresh receiver
+            setupMessageRefreshReceiver();
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing MainActivity", e);
@@ -109,6 +118,73 @@ public class MainActivity extends BaseActivity
             defaultSmsAppManager.checkAndRequestDefaultSmsApp(this, SMS_REQUEST_CODE);
         } else {
             Log.w(TAG, "DefaultSmsAppManager is null, cannot check default SMS app status");
+        }
+    }
+
+    /**
+     * Set up broadcast receiver for message refresh events.
+     * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
+     */
+    private void setupMessageRefreshReceiver() {
+        try {
+            // Create the broadcast receiver
+            messageRefreshReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Log.d(TAG, "Message refresh broadcast received: " + intent.getAction());
+                    
+                    // Handle different refresh actions
+                    if (intent != null && intent.getAction() != null) {
+                        switch (intent.getAction()) {
+                            case "com.translator.messagingapp.REFRESH_MESSAGES":
+                                // Refresh conversations when new messages arrive
+                                refreshConversations();
+                                break;
+                            case "com.translator.messagingapp.MESSAGE_SENT":
+                                // Update UI when message is sent
+                                refreshConversations();
+                                break;
+                            default:
+                                Log.d(TAG, "Unknown refresh action: " + intent.getAction());
+                                break;
+                        }
+                    }
+                }
+            };
+
+            // Create intent filter for message refresh events
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
+            filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
+
+            // Register receiver with proper Android 13+ flags
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED
+                registerReceiver(messageRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                // Pre-Android 13 registration
+                registerReceiver(messageRefreshReceiver, filter);
+            }
+            
+            Log.d(TAG, "Message refresh receiver registered successfully");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up message refresh receiver", e);
+            // Don't throw the exception to prevent app crash
+        }
+    }
+
+    /**
+     * Send a broadcast to refresh messages. This can be called from other components
+     * to trigger UI refresh when messages are updated.
+     */
+    public static void sendMessageRefreshBroadcast(Context context, String action) {
+        try {
+            Intent refreshIntent = new Intent(action);
+            context.sendBroadcast(refreshIntent);
+            Log.d("MainActivity", "Sent message refresh broadcast: " + action);
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error sending message refresh broadcast", e);
         }
     }
 
@@ -866,6 +942,17 @@ public class MainActivity extends BaseActivity
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
+        }
+        
+        // Unregister message refresh receiver
+        if (messageRefreshReceiver != null) {
+            try {
+                unregisterReceiver(messageRefreshReceiver);
+                Log.d(TAG, "Message refresh receiver unregistered");
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering message refresh receiver", e);
+            }
+            messageRefreshReceiver = null;
         }
     }
 }
