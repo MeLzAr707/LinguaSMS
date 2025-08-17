@@ -82,7 +82,14 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (position >= messages.size()) {
+            return; // Safety check for position bounds
+        }
+        
         Message message = messages.get(position);
+        if (message == null) {
+            return; // Safety check for null message
+        }
 
         if (holder instanceof MessageViewHolder) {
             ((MessageViewHolder) holder).bind(message, position);
@@ -127,15 +134,21 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         void bind(final Message message, final int position) {
+            if (message == null) {
+                return; // Safety check for null message
+            }
+            
             // Set message text
             if (message.isShowTranslation() && message.isTranslated()) {
                 messageText.setText(message.getTranslatedText());
             } else {
-                messageText.setText(message.getBody());
+                messageText.setText(message.getBody() != null ? message.getBody() : "");
             }
 
             // Set date
-            dateText.setText(message.getFormattedDate());
+            if (dateText != null) {
+                dateText.setText(message.getFormattedDate());
+            }
 
             // Set up click listeners
             itemView.setOnClickListener(v -> {

@@ -44,7 +44,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
-    private ImageButton emojiButton;
 
     // Data
     private String threadId;
@@ -109,42 +108,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         sendButton = findViewById(R.id.send_button);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
-        translateInputButton = findViewById(R.id.translate_outgoing_button); // Fixed ID mismatch
+        translateInputButton = findViewById(R.id.translate_outgoing_button); // Fixed ID to match layout
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         messagesRecyclerView.setLayoutManager(layoutManager);
         
-        // Try to use the updated adapter class if available
-        try {
-            // Use reflection to check if the updated adapter class exists
-            Class<?> updatedAdapterClass = Class.forName("com.translator.messagingapp.MessageRecyclerAdapter_updated");
-            if (updatedAdapterClass != null) {
-                // Use the updated adapter
-                adapter = new MessageRecyclerAdapter(this, messages, this);
-            }
-        } catch (ClassNotFoundException e) {
-            // Use the regular adapter
-            adapter = new MessageRecyclerAdapter(this, messages, this);
-        }
-        
+        // Create and set up the adapter
+        adapter = new MessageRecyclerAdapter(this, messages, this);
         messagesRecyclerView.setAdapter(adapter);
 
         // Set up send button
-        if (sendButton != null) {
-            sendButton.setOnClickListener(v -> sendMessage());
-        }
+        sendButton.setOnClickListener(v -> sendMessage());
 
         // Set up translate input button
         if (translateInputButton != null) {
             translateInputButton.setOnClickListener(v -> translateInput());
         }
         
-        // Set up emoji button (only if it exists in layout)
-        if (emojiButton != null) {
-            emojiButton.setOnClickListener(v -> showEmojiPicker());
-        }
+        // Note: emojiButton removed as it doesn't exist in the layout
 
         // Update UI based on theme
         updateUIForTheme();
@@ -223,12 +206,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     }
 
                     // Update UI
-                    adapter.notifyDataSetChanged();
+                    if (adapter != null) {
+                        adapter.notifyDataSetChanged();
+                    }
                     hideLoadingIndicator();
 
-                    // Scroll to bottom
-                    if (!messages.isEmpty()) {
-                        messagesRecyclerView.scrollToPosition(messages.size() - 1);
+                    // Scroll to bottom after adapter has been notified
+                    if (!messages.isEmpty() && messagesRecyclerView != null) {
+                        messagesRecyclerView.post(() -> 
+                            messagesRecyclerView.scrollToPosition(messages.size() - 1)
+                        );
                     }
 
                     // Show empty state if no messages
@@ -356,7 +343,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Translate in background
         executorService.execute(() -> {
-            translationManager.translateText(inputText, targetLanguage, true, (success, translatedText, errorMessage) -> {
+            translationManager.translateText(inputText, targetLanguage, (success, translatedText, errorMessage) -> {
                 runOnUiThread(() -> {
                     hideProgressDialog();
 
