@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -226,8 +227,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     Log.d(TAG, "Loading first page of messages for thread ID: " + threadId);
                     loadedMessages = loadMessagesPage(0, PAGE_SIZE);
                     
-                    // Cache the loaded messages
+                    // Sort messages chronologically (oldest first) for display
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
+                        Collections.sort(loadedMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+                        
+                        // Cache the loaded messages
                         MessageCache.cacheMessages(threadId, new ArrayList<>(loadedMessages));
                     }
                 }
@@ -299,25 +303,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Loads a specific page of messages
+     * Loads a specific page of messages using true database pagination
      */
     private List<Message> loadMessagesPage(int page, int pageSize) {
         try {
-            // For now, we'll load all messages and simulate pagination
-            // In a future optimization, we could modify MessageService to support true pagination
-            List<Message> allMessages = messageService.loadMessages(threadId);
-            if (allMessages == null || allMessages.isEmpty()) {
-                return new ArrayList<>();
-            }
-            
-            int startIndex = page * pageSize;
-            int endIndex = Math.min(startIndex + pageSize, allMessages.size());
-            
-            if (startIndex >= allMessages.size()) {
-                return new ArrayList<>();
-            }
-            
-            return new ArrayList<>(allMessages.subList(startIndex, endIndex));
+            int offset = page * pageSize;
+            return messageService.loadMessagesPaginated(threadId, offset, pageSize);
         } catch (Exception e) {
             Log.e(TAG, "Error loading messages page " + page, e);
             return new ArrayList<>();
@@ -369,6 +360,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         hasMoreMessages = false;
                         Log.d(TAG, "No more messages to load");
                     } else {
+                        // Sort new messages chronologically (oldest first) for consistency
+                        Collections.sort(newMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+                        
                         // Insert at the beginning (older messages)
                         messages.addAll(0, newMessages);
                         adapter.notifyItemRangeInserted(0, newMessages.size());
