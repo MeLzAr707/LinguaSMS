@@ -57,9 +57,27 @@ public class ThemeTest {
 
     @Test
     public void testDarkThemeDetection() {
-        boolean isDarkMode = userPreferences.isDarkThemeActive(context);
-        // This will depend on the device's current setting
-        assertNotNull(isDarkMode);
+        // Test dark theme detection for different theme settings
+        
+        // Dark theme should be detected as dark
+        userPreferences.setThemeId(UserPreferences.THEME_DARK);
+        assertTrue("Dark theme should be detected as dark", 
+                  userPreferences.isDarkThemeActive(context));
+        
+        // Light theme should not be detected as dark
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertFalse("Light theme should not be detected as dark", 
+                   userPreferences.isDarkThemeActive(context));
+        
+        // Black Glass theme should be detected as dark
+        userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
+        assertTrue("Black Glass theme should be detected as dark", 
+                  userPreferences.isDarkThemeActive(context));
+        
+        // System theme detection depends on device setting
+        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
+        boolean isSystemDark = userPreferences.isDarkThemeActive(context);
+        assertNotNull("System theme detection should return a valid boolean", isSystemDark);
     }
 
     @Test
@@ -71,19 +89,27 @@ public class ThemeTest {
         // This should remain light theme regardless of system setting
         assertTrue("Light theme should be settable independently of system dark mode", 
                   userPreferences.getThemeId() == UserPreferences.THEME_LIGHT);
+        
+        // Test that isDarkThemeActive returns false for explicitly set light theme
+        assertFalse("Light theme should not be considered dark theme", 
+                   userPreferences.isDarkThemeActive(context));
     }
 
     @Test
     public void testBlackGlassThemeConfiguration() {
         // Test that BlackGlass theme can be selected and maintained
         userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
-        assertEquals("BlackGlass theme should be settable", 
+        assertEquals("Black theme should be settable", 
                     UserPreferences.THEME_BLACK_GLASS, userPreferences.getThemeId());
         
         // Verify the theme persists after getting it again
         int retrievedTheme = userPreferences.getThemeId();
-        assertEquals("BlackGlass theme should persist", 
+        assertEquals("Black theme should persist", 
                     UserPreferences.THEME_BLACK_GLASS, retrievedTheme);
+        
+        // Test that Black Glass theme is considered a dark theme
+        assertTrue("Black theme should be considered dark theme",
+                  userPreferences.isDarkThemeActive(context));
     }
 
     @Test

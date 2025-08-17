@@ -57,7 +57,7 @@
     <string name="theme_description">Choose your preferred app theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="theme_black_glass">Black Glass</string>
+    <string name="theme_black_glass">Black</string>
     <string name="theme_system">System Default</string>
 
     <!-- About and Info -->
