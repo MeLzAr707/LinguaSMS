@@ -87,9 +87,11 @@ public class ConversationDisplayTest {
      */
     @Test
     public void testThreadsShowPhoneNumberOrContactName() {
-        // Test case 1: Thread with valid phone number should show phone number
+        // Test case 1: Thread with valid phone number should show formatted phone number
         Conversation phoneOnlyConversation = createTestConversation("1", "+1234567890", null);
         String displayName1 = getExpectedDisplayName(phoneOnlyConversation, mockContext);
+        // Note: The actual display will be formatted by ConversationRecyclerAdapter.formatPhoneNumber()
+        // but this helper method returns the raw address for the logic test
         assertEquals("Should display phone number when no contact name is available", 
                     "+1234567890", displayName1);
 
@@ -158,5 +160,31 @@ public class ConversationDisplayTest {
         
         // Last resort: Unknown contact
         return "Unknown Contact";
+    }
+
+    /**
+     * Test the phone number formatting specifically for the country code fix.
+     */
+    @Test
+    public void testPhoneNumberFormattingBehavior() {
+        // Create a minimal adapter to test formatting
+        ConversationRecyclerAdapter testAdapter = new ConversationRecyclerAdapter(mockContext, Arrays.asList());
+        
+        // Test various phone number formats to ensure country codes are removed
+        assertEquals("Should format 10-digit number (no country code to remove)", "(123) 456-7890", 
+                    testAdapter.formatPhoneNumber("+1234567890"));
+                    
+        // Test an actual 11-digit number with US country code
+        assertEquals("Should format US number removing country code", "(555) 123-4567", 
+                    testAdapter.formatPhoneNumber("+15551234567"));
+        
+        assertEquals("Should format 10-digit number", "(555) 123-4567", 
+                    testAdapter.formatPhoneNumber("5551234567"));
+        
+        assertEquals("Should handle null", "Unknown", 
+                    testAdapter.formatPhoneNumber(null));
+        
+        assertEquals("Should handle empty", "Unknown", 
+                    testAdapter.formatPhoneNumber(""));
     }
 }
