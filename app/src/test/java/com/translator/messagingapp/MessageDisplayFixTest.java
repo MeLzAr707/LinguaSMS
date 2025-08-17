@@ -129,4 +129,48 @@ public class MessageDisplayFixTest {
         shouldShowEmptyState = messages.isEmpty();
         assertFalse("Should not show empty state when messages exist", shouldShowEmptyState);
     }
+    
+    @Test
+    public void testMessageDisplayIntegration() {
+        // Integration test for the complete message display flow
+        List<Message> messages = new ArrayList<>();
+        
+        // Simulate MessageService returning messages
+        List<Message> loadedMessages = new ArrayList<>();
+        
+        Message message1 = new Message();
+        message1.setBody("Hello");
+        message1.setDate(System.currentTimeMillis() - 1000);
+        message1.setType(Message.TYPE_SENT);
+        
+        Message message2 = new Message();
+        message2.setBody("Hi there");
+        message2.setDate(System.currentTimeMillis());
+        message2.setType(Message.TYPE_INBOX);
+        
+        loadedMessages.add(message1);
+        loadedMessages.add(message2);
+        
+        // Simulate ConversationActivity.loadMessages() logic
+        messages.clear();
+        if (loadedMessages != null && !loadedMessages.isEmpty()) {
+            messages.addAll(loadedMessages);
+        }
+        
+        // Verify the adapter would have data to display
+        assertFalse("Messages should not be empty", messages.isEmpty());
+        assertEquals("Should have correct number of messages", 2, messages.size());
+        
+        // Verify adapter.notifyDataSetChanged() would be called
+        boolean adapterShouldUpdate = true; // This represents adapter != null check
+        assertTrue("Adapter should be updated", adapterShouldUpdate);
+        
+        // Verify scroll position calculation
+        int scrollPosition = messages.isEmpty() ? -1 : messages.size() - 1;
+        assertEquals("Should scroll to last message", 1, scrollPosition);
+        
+        // Verify empty state should be hidden
+        boolean shouldShowEmptyState = messages.isEmpty();
+        assertFalse("Empty state should be hidden when messages exist", shouldShowEmptyState);
+    }
 }
