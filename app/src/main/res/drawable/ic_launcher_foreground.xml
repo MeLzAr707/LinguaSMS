@@ -45,20 +45,6 @@
                          L5,12 Z" />
         
         <!-- Small colorful dots representing different languages -->
-        <circle
-            android:fillColor="#FF5722"
-            android:cx="10"
-            android:cy="7"
-            android:radius="0.8" />
-        <circle
-            android:fillColor="#2196F3"
-            android:cx="12"
-            android:cy="9"
-            android:radius="0.6" />
-        <circle
-            android:fillColor="#9C27B0"
-            android:cx="11"
-            android:cy="11"
-            android:radius="0.5" />
+
     </group>
 </vector>
