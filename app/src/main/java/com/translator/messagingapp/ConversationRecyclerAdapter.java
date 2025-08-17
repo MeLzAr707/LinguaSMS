@@ -149,27 +149,47 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     }
 
     /**
-     * Format a phone number for display
+     * Format a phone number for display (removes country code for cleaner display)
+     * Package-private for testing
      */
-    private String formatPhoneNumber(String phoneNumber) {
+    String formatPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isEmpty()) {
             return "Unknown";
         }
 
-        // Simple formatting for display
-        if (phoneNumber.length() == 10) {
-            // Format as (XXX) XXX-XXXX for 10-digit US numbers
+        // Remove any spaces, dashes, parentheses, and plus signs for processing
+        String cleanNumber = phoneNumber.replaceAll("[\\s\\-\\(\\)\\+]", "");
+        
+        // If the number starts with country code (like +1 for US), remove it for display
+        if (cleanNumber.startsWith("1") && cleanNumber.length() == 11) {
+            // Remove US country code (1) if present
+            cleanNumber = cleanNumber.substring(1);
+        }
+        
+        // Format as (XXX) XXX-XXXX for 10-digit numbers
+        if (cleanNumber.length() == 10) {
             return String.format("(%s) %s-%s",
-                    phoneNumber.substring(0, 3),
-                    phoneNumber.substring(3, 6),
-                    phoneNumber.substring(6));
-        } else if (phoneNumber.length() > 10) {
-            // For international numbers, add a + if not present
-            if (!phoneNumber.startsWith("+")) {
-                return "+" + phoneNumber;
+                    cleanNumber.substring(0, 3),
+                    cleanNumber.substring(3, 6),
+                    cleanNumber.substring(6));
+        } else if (cleanNumber.length() == 7) {
+            // Format 7-digit numbers as XXX-XXXX
+            return String.format("%s-%s",
+                    cleanNumber.substring(0, 3),
+                    cleanNumber.substring(3));
+        } else if (cleanNumber.length() > 10) {
+            // For other international numbers, show without country code if possible
+            // Try to extract the last 10 digits for display
+            if (cleanNumber.length() >= 10) {
+                String lastTenDigits = cleanNumber.substring(cleanNumber.length() - 10);
+                return String.format("(%s) %s-%s",
+                        lastTenDigits.substring(0, 3),
+                        lastTenDigits.substring(3, 6),
+                        lastTenDigits.substring(6));
             }
         }
 
+        // If we can't format it nicely, return as-is
         return phoneNumber;
     }
 

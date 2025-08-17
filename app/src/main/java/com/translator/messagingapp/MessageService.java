@@ -99,6 +99,14 @@ public class MessageService {
             Log.e(TAG, "MMS conversation loading failed", e);
         }
 
+        // Ensure conversations are sorted by date (newest first)
+        Collections.sort(conversations, (c1, c2) -> {
+            if (c1.getDate() == null && c2.getDate() == null) return 0;
+            if (c1.getDate() == null) return 1;
+            if (c2.getDate() == null) return -1;
+            return Long.compare(c2.getDate().getTime(), c1.getDate().getTime()); // Newest first
+        });
+
         return conversations;
     }
 
@@ -234,6 +242,10 @@ public class MessageService {
                 conversation.setDate(date);
                 conversation.setRead(read);
 
+                // Resolve contact name
+                String contactName = ContactUtils.getContactName(context, address);
+                conversation.setContactName(contactName);
+
                 // Count unread messages
                 int unreadCount = countUnreadMessages(threadId);
                 conversation.setUnreadCount(unreadCount);
@@ -287,6 +299,10 @@ public class MessageService {
                 conversation.setLastMessage(mmsSnippet); // Also set lastMessage for consistency
                 conversation.setDate(date);
                 conversation.setRead(read);
+
+                // Resolve contact name
+                String contactName = ContactUtils.getContactName(context, address);
+                conversation.setContactName(contactName);
 
                 // Count unread messages
                 int unreadCount = countUnreadMessages(threadId);
