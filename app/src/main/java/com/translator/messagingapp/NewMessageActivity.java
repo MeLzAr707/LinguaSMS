@@ -317,7 +317,6 @@ public class NewMessageActivity extends BaseActivity {
         // Use TranslationManager to translate the text with force translation for outgoing messages
         translationManager.translateText(inputText,
                 targetLanguage,
-                true,
                 (success, translatedText, errorMessage) -> {
                     isTranslating.set(false);
 
@@ -352,7 +351,7 @@ public class NewMessageActivity extends BaseActivity {
                                     Toast.LENGTH_SHORT).show();
                         });
                     }
-                }, true);
+                }, true); // Force translation for outgoing messages
     }
 
     private void updateInputTranslationState() {
