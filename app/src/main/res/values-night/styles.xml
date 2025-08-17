@@ -1,7 +1,13 @@
 <resources>
     <!-- Base application theme for night mode -->
-    <style name="AppTheme" parent="AppTheme.BlackGlass">
-        <!-- Night mode automatically uses the BlackGlass theme -->
+    <!-- Only use dark theme when explicitly set, not automatically -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
     </style>
 
     <!-- AppBar styles for dark theme -->
@@ -18,11 +24,10 @@
     </style>
 
     <!-- No Action Bar Theme for night mode -->
-    <style name="AppTheme.NoActionBar" parent="AppTheme.BlackGlass.NoActionBar">
-        <!-- Night mode automatically uses the BlackGlass NoActionBar theme -->
+    <style name="AppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
     </style>
-
-    <!-- Splash Screen Theme for night mode -->
 
     <!-- Additional night-specific overrides -->
 

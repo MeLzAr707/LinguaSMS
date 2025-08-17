@@ -42,9 +42,8 @@
         <item name="alertDialogTheme">@style/BlackGlassAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
-        <item name="android:windowTranslucentStatus">true</item>
-        <item name="android:windowTranslucentNavigation">true</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
+        <!-- Removed translucent flags that cause layout overlap - now handled programmatically -->
     </style>
 
     <!-- Black Glass No Action Bar theme - Adding this back -->

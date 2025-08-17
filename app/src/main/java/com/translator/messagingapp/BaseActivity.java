@@ -121,19 +121,19 @@ public class BaseActivity extends AppCompatActivity {
     }
     
     /**
-     * Apply special window flags for the Black Glass theme
+     * Apply special window configuration for the Black Glass theme
+     * Uses safer methods to avoid layout overlap with system UI
      */
     private void applyBlackGlassWindowFlags() {
-        // These flags need to be set programmatically in addition to the theme attributes
-        getWindow().setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        );
-        
-        // For Android 5.0+ devices, we need to handle the status bar and navigation bar properly
+        // Use OpenGL-compatible system bar configuration to avoid overlap issues
+        // This replaces the problematic FLAG_LAYOUT_NO_LIMITS
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
-            getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+            // Use safe system bar configuration that doesn't cause layout overlap
+            OpenGLCompatibilityHelper.safelyConfigureSystemBars(
+                this,
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            );
         }
     }
 
