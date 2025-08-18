@@ -783,6 +783,9 @@ public class MessageService {
             if (callback != null) {
                 callback.run();
             }
+            
+            // Broadcast message sent to refresh UI
+            broadcastMessageSent();
 
             return true;
         } catch (Exception e) {
@@ -903,6 +906,9 @@ public class MessageService {
             // Request to send the message
             Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
             context.sendBroadcast(intent);
+
+            // Broadcast message sent to refresh UI
+            broadcastMessageSent();
 
             return true;
         } catch (Exception e) {
@@ -1444,6 +1450,19 @@ public class MessageService {
             Log.d(TAG, "Broadcasted message received event");
         } catch (Exception e) {
             Log.e(TAG, "Error broadcasting message received event", e);
+        }
+    }
+
+    /**
+     * Broadcasts that a new message has been sent to refresh the UI.
+     */
+    private void broadcastMessageSent() {
+        try {
+            Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
+            context.sendBroadcast(broadcastIntent);
+            Log.d(TAG, "Broadcasted message sent event");
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting message sent event", e);
         }
     }
 
