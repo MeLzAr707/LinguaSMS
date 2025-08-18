@@ -280,17 +280,27 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      * View holder for outgoing messages.
      */
     class OutgoingMessageViewHolder extends MessageViewHolder {
+        private CardView messageCard;
+        
         OutgoingMessageViewHolder(View itemView) {
             super(itemView);
+            messageCard = itemView.findViewById(R.id.message_card);
         }
 
         @Override
         void bind(Message message, int position) {
             super.bind(message, position);
 
-            // Add any outgoing-specific binding here
-            if (message.getType() == Message.TYPE_INBOX || message.getType() == Message.TYPE_ALL) {
-                // Outgoing message specific styling
+            // Apply theme-specific styling for outgoing messages
+            if (messageCard != null) {
+                UserPreferences userPreferences = new UserPreferences(context);
+                if (userPreferences.isUsingBlackGlassTheme()) {
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                } else {
+                    // Use theme-aware default color (colorPrimary for outgoing messages)
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.colorPrimary));
+                }
             }
         }
     }
@@ -351,8 +361,28 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      * View holder for incoming media messages.
      */
     class IncomingMediaMessageViewHolder extends MediaMessageViewHolder {
+        private CardView messageCard;
+        
         IncomingMediaMessageViewHolder(View itemView) {
             super(itemView);
+            messageCard = itemView.findViewById(R.id.message_card);
+        }
+
+        @Override
+        void bind(Message message, int position) {
+            super.bind(message, position);
+
+            // Apply theme-specific styling for incoming media messages
+            if (messageCard != null) {
+                UserPreferences userPreferences = new UserPreferences(context);
+                if (userPreferences.isUsingBlackGlassTheme()) {
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                } else {
+                    // Use theme-aware default color (will be overridden by theme)
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
+                }
+            }
         }
     }
 
@@ -360,8 +390,28 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      * View holder for outgoing media messages.
      */
     class OutgoingMediaMessageViewHolder extends MediaMessageViewHolder {
+        private CardView messageCard;
+        
         OutgoingMediaMessageViewHolder(View itemView) {
             super(itemView);
+            messageCard = itemView.findViewById(R.id.message_card);
+        }
+
+        @Override
+        void bind(Message message, int position) {
+            super.bind(message, position);
+
+            // Apply theme-specific styling for outgoing media messages
+            if (messageCard != null) {
+                UserPreferences userPreferences = new UserPreferences(context);
+                if (userPreferences.isUsingBlackGlassTheme()) {
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                } else {
+                    // Use theme-aware default color (colorPrimary for outgoing messages)
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.colorPrimary));
+                }
+            }
         }
     }
 }
