@@ -100,6 +100,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Initialize UI components
         initializeComponents();
+        
+        // Set up message update receiver
+        setupMessageUpdateReceiver();
 
         // Load messages
         loadMessages();
@@ -420,15 +423,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     hideLoadingIndicator();
 
                     if (success) {
-                        // Clear cache to ensure fresh data
-                        MessageCache.clearCacheForThread(threadId);
-                        
-                        // Reset pagination state
-                        currentPage = 0;
-                        hasMoreMessages = true;
-                        
-                        // Refresh messages
-                        loadMessages();
+                        // Note: Message refresh will be handled by broadcast receiver
+                        // when MESSAGE_SENT broadcast is received from MessageService
+                        Log.d(TAG, "Message sent successfully, waiting for broadcast to refresh UI");
                     } else {
                         Toast.makeText(ConversationActivity.this,
                                 R.string.error_sending_message,
@@ -458,14 +455,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     /**
      * Set up broadcast receiver for message update events.
      * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
-     * This method can be safely called multiple times.
      */
     private void setupMessageUpdateReceiver() {
-        // Don't register if already registered
-        if (messageUpdateReceiver != null) {
-            return;
-        }
-        
         try {
             // Create the broadcast receiver
             messageUpdateReceiver = new BroadcastReceiver() {
@@ -478,13 +469,23 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         switch (intent.getAction()) {
                             case "com.translator.messagingapp.MESSAGE_RECEIVED":
                             case "com.translator.messagingapp.REFRESH_MESSAGES":
+                                // Refresh messages when received or refresh requested
+                                Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
+                                loadMessages();
+                                break;
                             case "com.translator.messagingapp.MESSAGE_SENT":
-                                // Refresh messages when any update is received
-                                Log.d(TAG, "Refreshing messages due to broadcast");
-                                // Ensure UI update happens on main thread
-                                runOnUiThread(() -> {
-                                    loadMessages();
-                                });
+                                // Handle sent message: clear cache, reset pagination, then refresh
+                                Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing");
+                                
+                                // Clear cache to ensure fresh data
+                                MessageCache.clearCacheForThread(threadId);
+                                
+                                // Reset pagination state
+                                currentPage = 0;
+                                hasMoreMessages = true;
+                                
+                                // Refresh messages
+                                loadMessages();
                                 break;
                             default:
                                 Log.d(TAG, "Unknown update action: " + intent.getAction());
@@ -513,8 +514,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             
         } catch (Exception e) {
             Log.e(TAG, "Error setting up message update receiver", e);
-            // Clear the receiver reference if registration failed
-            messageUpdateReceiver = null;
+            // Don't throw the exception to prevent app crash
         }
     }
 
@@ -820,32 +820,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
+    protected void onDestroy() {
+        super.onDestroy();
         
-        // Set up message update receiver when activity becomes visible
-        setupMessageUpdateReceiver();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        
-        // Unregister message update receiver when activity is not visible
+        // Unregister message update receiver
         if (messageUpdateReceiver != null) {
             try {
                 unregisterReceiver(messageUpdateReceiver);
-                Log.d(TAG, "Message update receiver unregistered (onPause)");
-                messageUpdateReceiver = null; // Clear reference
+                Log.d(TAG, "Message update receiver unregistered");
             } catch (Exception e) {
-                Log.e(TAG, "Error unregistering message update receiver (onPause)", e);
+                Log.e(TAG, "Error unregistering message update receiver", e);
             }
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
         
         // Clean up resources
         if (executorService != null) {
