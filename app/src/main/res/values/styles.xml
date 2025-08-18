@@ -34,7 +34,7 @@
     <style name="AppTheme.BlackGlass" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/deep_dark_blue</item>
         <item name="colorPrimaryDark">@color/deep_dark_blue</item>
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorAccent">@color/deep_dark_blue</item>
         <item name="android:windowBackground">@color/darkBackground</item>
         <item name="android:textColor">@color/textColorPrimary_dark</item>
         <item name="android:textColorSecondary">@color/textColorSecondary_dark</item>
