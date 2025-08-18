@@ -1,5 +1,6 @@
 package com.translator.messagingapp;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
@@ -456,6 +457,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Set up broadcast receiver for message update events.
      * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
      */
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void setupMessageUpdateReceiver() {
         try {
             // Create the broadcast receiver
