@@ -100,9 +100,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Initialize UI components
         initializeComponents();
-        
-        // Set up message update receiver
-        setupMessageUpdateReceiver();
 
         // Load messages
         loadMessages();
@@ -461,8 +458,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     /**
      * Set up broadcast receiver for message update events.
      * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
+     * This method can be safely called multiple times.
      */
     private void setupMessageUpdateReceiver() {
+        // Don't register if already registered
+        if (messageUpdateReceiver != null) {
+            return;
+        }
+        
         try {
             // Create the broadcast receiver
             messageUpdateReceiver = new BroadcastReceiver() {
@@ -478,7 +481,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             case "com.translator.messagingapp.MESSAGE_SENT":
                                 // Refresh messages when any update is received
                                 Log.d(TAG, "Refreshing messages due to broadcast");
-                                loadMessages();
+                                // Ensure UI update happens on main thread
+                                runOnUiThread(() -> {
+                                    loadMessages();
+                                });
                                 break;
                             default:
                                 Log.d(TAG, "Unknown update action: " + intent.getAction());
@@ -507,7 +513,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             
         } catch (Exception e) {
             Log.e(TAG, "Error setting up message update receiver", e);
-            // Don't throw the exception to prevent app crash
+            // Clear the receiver reference if registration failed
+            messageUpdateReceiver = null;
         }
     }
 
@@ -813,18 +820,32 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onResume() {
+        super.onResume();
         
-        // Unregister message update receiver
+        // Set up message update receiver when activity becomes visible
+        setupMessageUpdateReceiver();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        
+        // Unregister message update receiver when activity is not visible
         if (messageUpdateReceiver != null) {
             try {
                 unregisterReceiver(messageUpdateReceiver);
-                Log.d(TAG, "Message update receiver unregistered");
+                Log.d(TAG, "Message update receiver unregistered (onPause)");
+                messageUpdateReceiver = null; // Clear reference
             } catch (Exception e) {
-                Log.e(TAG, "Error unregistering message update receiver", e);
+                Log.e(TAG, "Error unregistering message update receiver (onPause)", e);
             }
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
         
         // Clean up resources
         if (executorService != null) {
