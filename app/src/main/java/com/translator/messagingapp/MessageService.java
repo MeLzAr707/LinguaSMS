@@ -43,6 +43,7 @@ public class MessageService {
     private final ExecutorService executorService;
     private final TranslationManager translationManager;
     private final TranslationCache translationCache;
+    private final RcsService rcsService;
 
     /**
      * Creates a new MessageService.
@@ -54,6 +55,7 @@ public class MessageService {
         this.executorService = Executors.newFixedThreadPool(2);
         this.translationManager = translationManager;
         this.translationCache = translationCache;
+        this.rcsService = new RcsService(context);
     }
 
     /**
@@ -491,6 +493,9 @@ public class MessageService {
             // Load MMS messages
             loadMmsMessages(contentResolver, threadId, messages);
 
+            // Load RCS messages if available
+            loadRcsMessages(threadId, messages);
+
             // Sort by date (oldest first for proper chronological order)
             Collections.sort(messages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
 
@@ -525,6 +530,9 @@ public class MessageService {
 
             // Load MMS messages with pagination
             loadMmsMessagesPaginated(contentResolver, threadId, messages, offset, limit);
+
+            // Load RCS messages with pagination if available
+            loadRcsMessagesPaginated(threadId, messages, offset, limit);
 
             // Sort by date (newest first for pagination)
             Collections.sort(messages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
@@ -1499,6 +1507,66 @@ public class MessageService {
     public void cleanup() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+        }
+    }
+
+    /**
+     * Loads RCS messages for a thread.
+     *
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     */
+    private void loadRcsMessages(String threadId, List<Message> messages) {
+        try {
+            if (rcsService != null) {
+                Log.d(TAG, "Loading RCS messages for thread " + threadId);
+                List<RcsMessage> rcsMessages = rcsService.loadRcsMessages(threadId);
+                if (rcsMessages != null && !rcsMessages.isEmpty()) {
+                    Log.d(TAG, "Found " + rcsMessages.size() + " RCS messages for thread " + threadId);
+                    messages.addAll(rcsMessages);
+                } else {
+                    Log.d(TAG, "No RCS messages found for thread " + threadId);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading RCS messages for thread " + threadId, e);
+        }
+    }
+
+    /**
+     * Loads RCS messages for a thread with pagination.
+     *
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     * @param offset The number of messages to skip
+     * @param limit The maximum number of messages to load
+     */
+    private void loadRcsMessagesPaginated(String threadId, List<Message> messages, int offset, int limit) {
+        try {
+            if (rcsService != null) {
+                Log.d(TAG, "Loading paginated RCS messages for thread " + threadId + 
+                      " (offset: " + offset + ", limit: " + limit + ")");
+                List<RcsMessage> rcsMessages = rcsService.loadRcsMessages(threadId);
+                if (rcsMessages != null && !rcsMessages.isEmpty()) {
+                    // Apply pagination to RCS messages
+                    Collections.sort(rcsMessages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
+                    
+                    int startIndex = Math.min(offset, rcsMessages.size());
+                    int endIndex = Math.min(offset + limit, rcsMessages.size());
+                    
+                    if (startIndex < endIndex) {
+                        List<RcsMessage> paginatedRcsMessages = rcsMessages.subList(startIndex, endIndex);
+                        Log.d(TAG, "Found " + paginatedRcsMessages.size() + " paginated RCS messages for thread " + threadId);
+                        messages.addAll(paginatedRcsMessages);
+                    } else {
+                        Log.d(TAG, "No paginated RCS messages found for thread " + threadId + " at offset " + offset);
+                    }
+                } else {
+                    Log.d(TAG, "No RCS messages found for thread " + threadId + " (paginated)");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
     }
 }
