@@ -552,8 +552,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Show translation in progress
         showProgressDialog("Translating...");
 
-        // Get target language
-        String targetLanguage = userPreferences.getPreferredLanguage();
+        // Get user's preferred outgoing language
+        String targetLanguage = userPreferences.getPreferredOutgoingLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            targetLanguage = userPreferences.getPreferredLanguage();
+        }
 
         // Translate in background
         executorService.execute(() -> {
@@ -572,7 +575,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                 Toast.LENGTH_LONG).show();
                     }
                 });
-            });
+            }, true); // Force translation for outgoing messages
         });
     }
 
