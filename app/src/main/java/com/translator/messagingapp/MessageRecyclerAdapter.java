@@ -36,18 +36,24 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     public interface OnMessageClickListener {
         void onMessageClick(Message message, int position);
+
         void onMessageLongClick(Message message, int position);
+
         void onTranslateClick(Message message, int position);
+
         void onAttachmentClick(MmsMessage.Attachment attachment, int position);
+
         void onAttachmentClick(Uri uri, int position);
+
         void onReactionClick(Message message, int position);
+
         void onAddReactionClick(Message message, int position);
     }
 
     /**
      * Creates a new MessageRecyclerAdapter.
      *
-     * @param context The context
+     * @param context  The context
      * @param messages The list of messages
      * @param listener The click listener
      */
@@ -86,7 +92,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         if (position >= messages.size()) {
             return; // Safety check for position bounds
         }
-        
+
         Message message = messages.get(position);
         if (message == null) {
             return; // Safety check for null message
@@ -136,7 +142,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             if (message == null) {
                 return; // Safety check for null message
             }
-            
+
             // Set message text with improved handling for RCS messages
             String displayText = getDisplayTextForMessage(message);
             messageText.setText(displayText);
@@ -249,7 +255,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     class IncomingMessageViewHolder extends MessageViewHolder {
         private CardView messageCard;
-        
+
         IncomingMessageViewHolder(View itemView) {
             super(itemView);
             messageCard = itemView.findViewById(R.id.message_card);
@@ -278,7 +284,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     class OutgoingMessageViewHolder extends MessageViewHolder {
         private CardView messageCard;
-        
+
         OutgoingMessageViewHolder(View itemView) {
             super(itemView);
             messageCard = itemView.findViewById(R.id.message_card);
@@ -359,7 +365,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     class IncomingMediaMessageViewHolder extends MediaMessageViewHolder {
         private CardView messageCard;
-        
+
         IncomingMediaMessageViewHolder(View itemView) {
             super(itemView);
             messageCard = itemView.findViewById(R.id.message_card);
@@ -388,7 +394,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     class OutgoingMediaMessageViewHolder extends MediaMessageViewHolder {
         private CardView messageCard;
-        
+
         OutgoingMediaMessageViewHolder(View itemView) {
             super(itemView);
             messageCard = itemView.findViewById(R.id.message_card);
@@ -420,10 +426,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         if (message.isShowTranslation() && message.isTranslated()) {
             return message.getTranslatedText();
         }
-        
+
         // Handle message body
         String body = message.getBody();
-        
+
         // Handle null or empty body
         if (body == null || body.trim().isEmpty()) {
             // For RCS messages, provide a more descriptive placeholder
@@ -439,6 +445,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return "[Empty Message]";
             }
         }
-        
+
         return body;
     }
+}
