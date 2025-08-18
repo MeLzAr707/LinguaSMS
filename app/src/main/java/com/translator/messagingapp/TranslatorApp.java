@@ -23,6 +23,8 @@ public class TranslatorApp extends Application {
     private GoogleTranslationService translationService;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
+    private MessageWorkManager messageWorkManager;
+    private MessageContentObserver messageContentObserver;
 
     @Override
     public void onCreate() {
@@ -88,6 +90,22 @@ public class TranslatorApp extends Application {
         } catch (Exception e) {
             android.util.Log.e(TAG, "Error scheduling cache maintenance", e);
             // Continue without periodic maintenance
+        }
+
+        try {
+            // Initialize WorkManager for message processing
+            messageWorkManager = new MessageWorkManager(this);
+            messageWorkManager.initializePeriodicWork();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing MessageWorkManager", e);
+        }
+
+        try {
+            // Initialize and register ContentObserver for reactive updates
+            messageContentObserver = new MessageContentObserver(this);
+            messageContentObserver.register();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing MessageContentObserver", e);
         }
     }
 
@@ -166,6 +184,29 @@ public class TranslatorApp extends Application {
         return userPreferences;
     }
     
+    public MessageWorkManager getMessageWorkManager() {
+        if (messageWorkManager == null) {
+            try {
+                messageWorkManager = new MessageWorkManager(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback MessageWorkManager", e);
+            }
+        }
+        return messageWorkManager;
+    }
+
+    public MessageContentObserver getMessageContentObserver() {
+        if (messageContentObserver == null) {
+            try {
+                messageContentObserver = new MessageContentObserver(this);
+                messageContentObserver.register();
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback MessageContentObserver", e);
+            }
+        }
+        return messageContentObserver;
+    }
+    
 
 
     /**
@@ -204,6 +245,12 @@ public class TranslatorApp extends Application {
         }
         if (translationManager != null) {
             translationManager.cleanup();
+        }
+        if (messageContentObserver != null) {
+            messageContentObserver.unregister();
+        }
+        if (messageWorkManager != null) {
+            messageWorkManager.cancelPeriodicWork();
         }
 
     }
