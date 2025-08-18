@@ -74,39 +74,41 @@ public class OptimizedConversationService {
         List<Conversation> conversations = new ArrayList<>();
         ContentResolver contentResolver = context.getContentResolver();
         
-        // Use optimized query to get conversation threads with all needed data in one go
-        String unionQuery = buildOptimizedConversationQuery(offset, limit);
-        
-        try (Cursor cursor = contentResolver.rawQuery(unionQuery, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                Map<String, Conversation> conversationMap = new HashMap<>();
-                
-                do {
-                    String threadId = cursor.getString(0); // thread_id
-                    String address = cursor.getString(1);  // address
-                    String snippet = cursor.getString(2);  // snippet/body
-                    long date = cursor.getLong(3);         // date
-                    int isRead = cursor.getInt(4);         // read status
-                    int unreadCount = cursor.getInt(5);    // unread count
-                    
-                    // Check if we already have this conversation
-                    Conversation conversation = conversationMap.get(threadId);
-                    if (conversation == null) {
-                        conversation = new Conversation();
-                        conversation.setThreadId(threadId);
-                        conversation.setAddress(address);
-                        conversation.setSnippet(snippet != null ? snippet : "");
-                        conversation.setLastMessage(snippet != null ? snippet : "");
-                        conversation.setDate(date);
-                        conversation.setRead(isRead == 1);
-                        conversation.setUnreadCount(unreadCount);
+        // Since ContentResolver doesn't support raw SQL queries, use the basic method approach
+        // which works with proper ContentResolver.query() calls
+        try {
+            // Query conversation threads using the standard Android API
+            Uri uri = Uri.parse("content://mms-sms/conversations?simple=true");
+            String[] projection = {
+                    Telephony.Threads._ID,
+                    Telephony.Threads.DATE,
+                    Telephony.Threads.MESSAGE_COUNT,
+                    Telephony.Threads.RECIPIENT_IDS,
+                    Telephony.Threads.SNIPPET,
+                    Telephony.Threads.READ
+            };
+            String sortOrder = Telephony.Threads.DATE + " DESC LIMIT " + limit + " OFFSET " + offset;
+            
+            try (Cursor cursor = contentResolver.query(uri, projection, null, null, sortOrder)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        String threadId = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Threads._ID));
                         
-                        conversationMap.put(threadId, conversation);
-                    }
-                    
-                } while (cursor.moveToNext());
-                
-                conversations.addAll(conversationMap.values());
+                        // Check cache first
+                        Conversation cached = cache.getCachedConversation(threadId);
+                        if (cached != null) {
+                            conversations.add(cached);
+                            continue;
+                        }
+                        
+                        // Load conversation details using efficient method
+                        Conversation conversation = loadConversationDetailsEfficient(threadId);
+                        if (conversation != null) {
+                            conversations.add(conversation);
+                            cache.cacheConversation(threadId, conversation);
+                        }
+                    } while (cursor.moveToNext());
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in optimized conversation query, falling back to basic method", e);
@@ -207,19 +209,69 @@ public class OptimizedConversationService {
     private Conversation loadConversationDetailsEfficient(String threadId) {
         ContentResolver contentResolver = context.getContentResolver();
         
-        // Single query to get latest message and unread count for SMS
-        String query = "SELECT address, body, date, read, " +
-                      "(SELECT COUNT(*) FROM sms WHERE thread_id = ? AND read = 0) as unread_count " +
-                      "FROM sms WHERE thread_id = ? ORDER BY date DESC LIMIT 1";
+        // Use standard ContentResolver queries instead of raw SQL
+        // First, get the latest SMS message for this thread
+        String address = null;
+        String snippet = null;
+        long date = 0;
+        boolean read = true;
+        int unreadCount = 0;
         
-        try (Cursor cursor = contentResolver.rawQuery(query, new String[]{threadId, threadId})) {
-            if (cursor != null && cursor.moveToFirst()) {
-                String address = cursor.getString(0);
-                String snippet = cursor.getString(1);
-                long date = cursor.getLong(2);
-                boolean read = cursor.getInt(3) == 1;
-                int unreadCount = cursor.getInt(4);
+        try {
+            // Query SMS messages for this thread
+            Uri smsUri = Telephony.Sms.CONTENT_URI;
+            String[] projection = {
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE,
+                Telephony.Sms.READ
+            };
+            String selection = Telephony.Sms.THREAD_ID + " = ?";
+            String[] selectionArgs = {threadId};
+            String sortOrder = Telephony.Sms.DATE + " DESC LIMIT 1";
+            
+            try (Cursor cursor = contentResolver.query(smsUri, projection, selection, selectionArgs, sortOrder)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+                    snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                    date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                    read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
+                }
+            }
+            
+            // Get unread count for this thread
+            String unreadSelection = Telephony.Sms.THREAD_ID + " = ? AND " + Telephony.Sms.READ + " = 0";
+            try (Cursor unreadCursor = contentResolver.query(smsUri, new String[]{"COUNT(*)"}, unreadSelection, selectionArgs, null)) {
+                if (unreadCursor != null && unreadCursor.moveToFirst()) {
+                    unreadCount = unreadCursor.getInt(0);
+                }
+            }
+            
+            // If we didn't find SMS data, try MMS
+            if (address == null) {
+                // Check MMS messages for this thread
+                Uri mmsUri = Telephony.Mms.CONTENT_URI;
+                String[] mmsProjection = {
+                    Telephony.Mms.DATE,
+                    Telephony.Mms.READ
+                };
+                String mmsSelection = Telephony.Mms.THREAD_ID + " = ?";
+                String mmsSortOrder = Telephony.Mms.DATE + " DESC LIMIT 1";
                 
+                try (Cursor mmsCursor = contentResolver.query(mmsUri, mmsProjection, mmsSelection, selectionArgs, mmsSortOrder)) {
+                    if (mmsCursor != null && mmsCursor.moveToFirst()) {
+                        date = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
+                        read = mmsCursor.getInt(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
+                        snippet = "[MMS]";
+                        
+                        // For MMS, we need to get the address from a different table
+                        // This is a simplified approach - in production you'd query the MMS address table
+                        address = "Unknown";
+                    }
+                }
+            }
+            
+            if (address != null) {
                 Conversation conversation = new Conversation();
                 conversation.setThreadId(threadId);
                 conversation.setAddress(address);
@@ -231,6 +283,7 @@ public class OptimizedConversationService {
                 
                 return conversation;
             }
+            
         } catch (Exception e) {
             Log.e(TAG, "Error in efficient conversation details loading for thread " + threadId, e);
         }
