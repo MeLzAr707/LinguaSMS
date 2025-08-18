@@ -430,15 +430,31 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         // Handle message body
         String body = message.getBody();
 
-        // Handle null or empty body
+        // Handle MMS messages specially
+        if (message.isMms()) {
+            boolean hasAttachments = message.hasAttachments();
+            boolean hasText = body != null && !body.trim().isEmpty();
+            
+            if (hasText && hasAttachments) {
+                // MMS with both text and attachments
+                return body + " 📎";
+            } else if (hasText) {
+                // MMS with only text
+                return body;
+            } else if (hasAttachments) {
+                // MMS with only attachments
+                return "[Media Message]";
+            } else {
+                // MMS with no content (likely loading issue)
+                return "[MMS Message]";
+            }
+        }
+
+        // Handle null or empty body for non-MMS messages
         if (body == null || body.trim().isEmpty()) {
             // For RCS messages, provide a more descriptive placeholder
             if (message.isRcs()) {
                 return "[RCS Message - Content not available]";
-            }
-            // For MMS messages, check if it has attachments
-            else if (message.isMms() && message.hasAttachments()) {
-                return "[Media Message]";
             }
             // For empty SMS messages
             else {

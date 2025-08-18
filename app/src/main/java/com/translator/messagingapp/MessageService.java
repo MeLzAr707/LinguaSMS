@@ -375,7 +375,11 @@ public class MessageService {
                     int contentTypeIndex = cursor.getColumnIndex("ct");
                     if (contentTypeIndex >= 0) {
                         String contentType = cursor.getString(contentTypeIndex);
-                        if (contentType != null && contentType.startsWith("text/plain")) {
+                        
+                        // Look for various text content types
+                        if (contentType != null && (contentType.startsWith("text/plain") || 
+                                                   contentType.startsWith("text/") ||
+                                                   contentType.equals("text"))) {
                             int dataIndex = cursor.getColumnIndex("_data");
                             int textIndex = cursor.getColumnIndex("text");
                             
@@ -390,7 +394,8 @@ public class MessageService {
                                 text = cursor.getString(textIndex);
                             }
                             
-                            if (text != null) {
+                            if (text != null && !text.trim().isEmpty()) {
+                                Log.d(TAG, "Found MMS text content: " + text.substring(0, Math.min(50, text.length())));
                                 break;
                             }
                         }
@@ -430,6 +435,60 @@ public class MessageService {
         }
 
         return text;
+    }
+
+    /**
+     * Loads attachments for an MMS message.
+     *
+     * @param contentResolver The content resolver
+     * @param messageId The MMS message ID
+     * @param mmsMessage The MMS message to add attachments to
+     */
+    private void loadMmsAttachments(ContentResolver contentResolver, String messageId, MmsMessage mmsMessage) {
+        if (messageId == null || messageId.isEmpty() || mmsMessage == null) {
+            return;
+        }
+
+        // Query the part table to get all parts for this MMS message
+        Uri uri = Uri.parse("content://mms/" + messageId + "/part");
+
+        try (Cursor cursor = contentResolver.query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    int contentTypeIndex = cursor.getColumnIndex("ct");
+                    int dataIdIndex = cursor.getColumnIndex("_id");
+                    int nameIndex = cursor.getColumnIndex("name");
+                    int sizeIndex = cursor.getColumnIndex("_size");
+
+                    if (contentTypeIndex >= 0 && dataIdIndex >= 0) {
+                        String contentType = cursor.getString(contentTypeIndex);
+                        String partId = cursor.getString(dataIdIndex);
+
+                        // Skip text parts as they're handled by getMmsText
+                        if (contentType != null && !contentType.startsWith("text/plain") && !contentType.equals("application/smil")) {
+                            // This is an attachment (image, video, audio, etc.)
+                            Uri attachmentUri = Uri.parse("content://mms/part/" + partId);
+                            
+                            String fileName = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+                            long size = sizeIndex >= 0 ? cursor.getLong(sizeIndex) : 0;
+
+                            // Create attachment object
+                            MmsMessage.Attachment attachment = new MmsMessage.Attachment(
+                                attachmentUri, 
+                                contentType, 
+                                fileName, 
+                                size
+                            );
+
+                            mmsMessage.addAttachment(attachment);
+                            Log.d(TAG, "Loaded attachment: " + contentType + " for MMS " + messageId);
+                        }
+                    }
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS attachments for message " + messageId, e);
+        }
     }
 
     /**
@@ -633,6 +692,9 @@ public class MessageService {
                         message.setRead(read);
                         message.setThreadId(Long.parseLong(threadId));
 
+                        // Load attachments for this MMS message
+                        loadMmsAttachments(contentResolver, id, message);
+
                         messages.add(message);
                     } catch (Exception e) {
                         Log.e(TAG, "Error processing MMS message in thread " + threadId, e);
@@ -732,6 +794,9 @@ public class MessageService {
                         message.setAddress(address);
                         message.setRead(read);
                         message.setThreadId(Long.parseLong(threadId));
+
+                        // Load attachments for this MMS message
+                        loadMmsAttachments(contentResolver, id, message);
 
                         messages.add(message);
                     } catch (Exception e) {
@@ -1125,6 +1190,9 @@ public class MessageService {
                             message.setAddress(address);
                             message.setThreadId(Long.parseLong(threadId));
 
+                            // Load attachments for this MMS message
+                            loadMmsAttachments(contentResolver, id, message);
+
                             messages.add(message);
                         } while (cursor.moveToNext());
                     }
@@ -1273,6 +1341,9 @@ public class MessageService {
                     message.setAddress(address);
                     message.setThreadId(Long.parseLong(threadId));
                     message.setMessageType(Message.MESSAGE_TYPE_MMS);
+
+                    // Load attachments for this MMS message
+                    loadMmsAttachments(contentResolver, id, message);
 
                     // Add search metadata
                     message.setSearchQuery(query);

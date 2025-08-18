@@ -25,6 +25,15 @@ public class MmsMessage extends Message {
     private String transactionId;
 
     /**
+     * Creates a new empty MMS message for testing.
+     */
+    public MmsMessage() {
+        super();
+        this.attachments = new ArrayList<>();
+        setMessageType(MESSAGE_TYPE_MMS);
+    }
+
+    /**
      * Creates a new MMS message.
      *
      * @param id The message ID
@@ -178,6 +187,13 @@ public class MmsMessage extends Message {
         private long size;
 
         /**
+         * Creates a new empty attachment.
+         */
+        public Attachment() {
+            // Default constructor for test cases
+        }
+
+        /**
          * Creates a new attachment.
          *
          * @param uri The URI of the attachment content
@@ -263,6 +279,42 @@ public class MmsMessage extends Message {
         public String getPartId() {
             // Using the URI as a unique identifier for the part
             return uri != null ? uri.getLastPathSegment() : null;
+        }
+
+        /**
+         * Sets the URI of the attachment content.
+         *
+         * @param uri The URI
+         */
+        public void setUri(Uri uri) {
+            this.uri = uri;
+        }
+
+        /**
+         * Sets the MIME type of the attachment.
+         *
+         * @param contentType The MIME type
+         */
+        public void setContentType(String contentType) {
+            this.contentType = contentType;
+        }
+
+        /**
+         * Sets the file name of the attachment.
+         *
+         * @param fileName The file name
+         */
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        /**
+         * Sets the size of the attachment in bytes.
+         *
+         * @param size The size in bytes
+         */
+        public void setSize(long size) {
+            this.size = size;
         }
     }
 }
