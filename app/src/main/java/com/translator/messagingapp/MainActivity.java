@@ -246,7 +246,7 @@ public class MainActivity extends BaseActivity
         if (headerView != null && userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
             headerView.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
         }
-        }
+
     }
 
     private void setupRecyclerView() {
@@ -525,11 +525,12 @@ public class MainActivity extends BaseActivity
                 }
 
                 // Update UI on main thread
+                List<Conversation> finalLoadedConversations = loadedConversations;
                 runOnUiThread(() -> {
                     // Clear existing conversations and add loaded ones
                     conversations.clear();
-                    if (loadedConversations != null) {
-                        conversations.addAll(loadedConversations);
+                    if (finalLoadedConversations != null) {
+                        conversations.addAll(finalLoadedConversations);
                     }
 
                     // Update UI
