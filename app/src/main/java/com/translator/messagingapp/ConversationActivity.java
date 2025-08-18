@@ -423,15 +423,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     hideLoadingIndicator();
 
                     if (success) {
-                        // Clear cache to ensure fresh data
-                        MessageCache.clearCacheForThread(threadId);
-                        
-                        // Reset pagination state
-                        currentPage = 0;
-                        hasMoreMessages = true;
-                        
-                        // Refresh messages
-                        loadMessages();
+                        // Note: Message refresh will be handled by broadcast receiver
+                        // when MESSAGE_SENT broadcast is received from MessageService
+                        Log.d(TAG, "Message sent successfully, waiting for broadcast to refresh UI");
                     } else {
                         Toast.makeText(ConversationActivity.this,
                                 R.string.error_sending_message,
@@ -475,9 +469,22 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         switch (intent.getAction()) {
                             case "com.translator.messagingapp.MESSAGE_RECEIVED":
                             case "com.translator.messagingapp.REFRESH_MESSAGES":
+                                // Refresh messages when received or refresh requested
+                                Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
+                                loadMessages();
+                                break;
                             case "com.translator.messagingapp.MESSAGE_SENT":
-                                // Refresh messages when any update is received
-                                Log.d(TAG, "Refreshing messages due to broadcast");
+                                // Handle sent message: clear cache, reset pagination, then refresh
+                                Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing");
+                                
+                                // Clear cache to ensure fresh data
+                                MessageCache.clearCacheForThread(threadId);
+                                
+                                // Reset pagination state
+                                currentPage = 0;
+                                hasMoreMessages = true;
+                                
+                                // Refresh messages
                                 loadMessages();
                                 break;
                             default:
