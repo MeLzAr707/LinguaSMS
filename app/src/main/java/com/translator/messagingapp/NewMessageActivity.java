@@ -61,6 +61,9 @@ public class NewMessageActivity extends BaseActivity {
                 getSupportActionBar().setTitle("New Message");
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
+            
+            // Apply theme-specific toolbar styling
+            updateToolbarTheme(toolbar);
 
             // Initialize UI components with correct types
             recipientInput = findViewById(R.id.recipient_input);
@@ -444,6 +447,28 @@ public class NewMessageActivity extends BaseActivity {
             System.gc();
         } catch (Exception e) {
             Log.e(TAG, "Error cleaning up resources", e);
+        }
+    }
+
+    /**
+     * Update toolbar colors based on current theme
+     */
+    private void updateToolbarTheme(Toolbar toolbar) {
+        if (toolbar != null && userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
+            // Use deep dark blue for Black Glass theme
+            toolbar.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
+        }
+        // Other themes will be handled by the theme system automatically
+    }
+    
+    @Override
+    protected void onThemeChanged() {
+        super.onThemeChanged();
+        
+        // Update toolbar colors when theme changes
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            updateToolbarTheme(toolbar);
         }
     }
 }

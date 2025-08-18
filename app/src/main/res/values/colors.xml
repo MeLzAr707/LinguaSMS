@@ -34,6 +34,7 @@
     <!-- Missing Colors - Orange Theme -->
 
     <!-- Missing Colors - Purple Theme -->
+    <color name="dark_purple">#23023d</color>
 
     <!-- Missing Colors - Red Theme -->
 
@@ -53,6 +54,9 @@
     <color name="deep_dark_blue_lighter">#162A47</color>  <!-- Slightly lighter deep blue for highlights -->
     <color name="textColorPrimary_dark">#FFFFFF</color>
     <color name="textColorSecondary_dark">#B3FFFFFF</color> <!-- 70% white -->
+
+    <!-- Theme-aware colors for message bubbles -->
+    <color name="incoming_message_background">@color/background_light</color>
 
 </resources>
 

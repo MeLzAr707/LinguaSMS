@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -252,17 +253,27 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      * View holder for incoming messages.
      */
     class IncomingMessageViewHolder extends MessageViewHolder {
+        private CardView messageCard;
+        
         IncomingMessageViewHolder(View itemView) {
             super(itemView);
+            messageCard = itemView.findViewById(R.id.message_card);
         }
 
         @Override
         void bind(Message message, int position) {
             super.bind(message, position);
 
-            // Add any incoming-specific binding here
-            if (message.getType() == Message.TYPE_INBOX || message.getType() == Message.TYPE_ALL) {
-                // Incoming message specific styling
+            // Apply theme-specific styling for incoming messages
+            if (messageCard != null) {
+                UserPreferences userPreferences = new UserPreferences(context);
+                if (userPreferences.isUsingBlackGlassTheme()) {
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                } else {
+                    // Use theme-aware default color (will be overridden by theme)
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
+                }
             }
         }
     }

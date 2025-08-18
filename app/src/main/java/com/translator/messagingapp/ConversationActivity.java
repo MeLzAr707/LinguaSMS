@@ -101,6 +101,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle(contactName != null ? contactName : address);
         }
+        
+        // Apply theme-specific toolbar styling
+        updateToolbarTheme(toolbar);
 
         // Find views
         messagesRecyclerView = findViewById(R.id.messages_recycler_view);
@@ -625,6 +628,28 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * Update toolbar colors based on current theme
+     */
+    private void updateToolbarTheme(Toolbar toolbar) {
+        if (toolbar != null && userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
+            // Use deep dark blue for Black Glass theme
+            toolbar.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
+        }
+        // Other themes will be handled by the theme system automatically
+    }
+    
+    @Override
+    protected void onThemeChanged() {
+        super.onThemeChanged();
+        
+        // Update toolbar colors when theme changes
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null) {
+            updateToolbarTheme(toolbar);
         }
     }
 }

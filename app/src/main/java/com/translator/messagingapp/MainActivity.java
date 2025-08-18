@@ -229,6 +229,12 @@ public class MainActivity extends BaseActivity
                 appVersionTextView.setText("Version Unknown");
             }
         }
+
+        // Apply theme-specific styling to navigation header
+        if (headerView != null && userPreferences != null && userPreferences.isUsingBlackGlassTheme()) {
+            headerView.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
+        }
+        }
     }
 
     private void setupRecyclerView() {
