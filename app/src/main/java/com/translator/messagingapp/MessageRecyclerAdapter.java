@@ -138,16 +138,29 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
             
-            // Set message text
+            // Set message text with better null handling
+            String messageBody;
             if (message.isShowTranslation() && message.isTranslated()) {
-                messageText.setText(message.getTranslatedText());
+                messageBody = message.getTranslatedText();
             } else {
-                messageText.setText(message.getBody() != null ? message.getBody() : "");
+                messageBody = message.getBody();
             }
+            
+            // Handle null or empty message body
+            if (messageBody == null || messageBody.trim().isEmpty()) {
+                if (message.hasAttachments()) {
+                    messageBody = "[Media message]";
+                } else {
+                    messageBody = "[No content]";
+                }
+            }
+            
+            messageText.setText(messageBody);
 
             // Set date
             if (dateText != null) {
-                dateText.setText(message.getFormattedDate());
+                String formattedDate = message.getFormattedDate();
+                dateText.setText(formattedDate != null ? formattedDate : "");
             }
 
             // Set up click listeners
@@ -306,35 +319,79 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         void bind(final Message message, final int position) {
-            // Set message text
-            if (!TextUtils.isEmpty(message.getBody())) {
+            if (message == null) {
+                return; // Safety check for null message
+            }
+            
+            // Set message text with improved null handling
+            String messageBody = message.getBody();
+            if (!TextUtils.isEmpty(messageBody)) {
                 messageText.setVisibility(View.VISIBLE);
                 if (message.isShowTranslation() && message.isTranslated()) {
                     messageText.setText(message.getTranslatedText());
                 } else {
-                    messageText.setText(message.getBody());
+                    messageText.setText(messageBody);
                 }
             } else {
-                messageText.setVisibility(View.GONE);
+                // Show placeholder for media-only messages
+                messageText.setVisibility(View.VISIBLE);
+                messageText.setText("[Media message]");
             }
 
-            // Set date
-            dateText.setText(message.getFormattedDate());
+            // Set date with null check
+            if (dateText != null) {
+                String formattedDate = message.getFormattedDate();
+                dateText.setText(formattedDate != null ? formattedDate : "");
+            }
 
-            // Set up media
-            if (message.hasAttachments() && message instanceof MmsMessage) {
-                MmsMessage mmsMessage = (MmsMessage) message;
-                if (!mmsMessage.getAttachments().isEmpty()) {
-                    // For simplicity, just show the first attachment
-                    // In a real app, you'd handle multiple attachments
-                    Uri attachment = mmsMessage.getAttachments().get(0);
+            // Set up media with better error handling
+            if (mediaImage != null) {
+                if (message.hasAttachments() && message instanceof MmsMessage) {
+                    MmsMessage mmsMessage = (MmsMessage) message;
+                    List<Uri> attachments = mmsMessage.getAttachments();
+                    
+                    if (attachments != null && !attachments.isEmpty()) {
+                        mediaImage.setVisibility(View.VISIBLE);
+                        
+                        // For simplicity, just show the first attachment
+                        // In a real app, you'd handle multiple attachments
+                        Uri attachment = attachments.get(0);
 
-                    // Load image using Glide or similar library
-                    // Glide.with(context).load(attachment.getUri()).into(mediaImage);
+                        // TODO: Load image using Glide or similar library
+                        // For now, show a placeholder
+                        mediaImage.setImageResource(android.R.drawable.ic_menu_gallery);
 
-                    mediaImage.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAttachmentClick(attachment, position);
+                        mediaImage.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentClick(attachment, position);
+                            }
+                        });
+                    } else {
+                        mediaImage.setVisibility(View.GONE);
+                    }
+                } else if (message.hasAttachments()) {
+                    // Handle generic URI attachments
+                    List<Uri> attachments = message.getAttachments();
+                    if (attachments != null && !attachments.isEmpty()) {
+                        mediaImage.setVisibility(View.VISIBLE);
+                        Uri uri = attachments.get(0);
+
+                        // TODO: Load image using Glide or similar library
+                        // For now, show a placeholder
+                        mediaImage.setImageResource(android.R.drawable.ic_menu_gallery);
+
+                        mediaImage.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentClick(uri, position);
+                            }
+                        });
+                    } else {
+                        mediaImage.setVisibility(View.GONE);
+                    }
+                } else {
+                    mediaImage.setVisibility(View.GONE);
+                }
+            }
                         }
                     });
                 }

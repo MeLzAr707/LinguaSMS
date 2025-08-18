@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,6 +52,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private String contactName;
     private List<Message> messages;
     private ExecutorService executorService;
+    
+    // Pagination variables
+    private static final int PAGE_SIZE = 50;
+    private int currentPage = 0;
+    private boolean isLoading = false;
+    private boolean hasMoreMessages = true;
 
     // Service classes
     private MessageService messageService;
@@ -207,9 +214,32 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Use a background thread to load messages
         executorService.execute(() -> {
             try {
-                // Load messages using MessageService
-                Log.d(TAG, "Loading messages for thread ID: " + threadId);
-                final List<Message> loadedMessages = messageService.loadMessages(threadId);
+                // First, check cache for existing messages
+                Log.d(TAG, "Checking cache for thread ID: " + threadId);
+                List<Message> cachedMessages = MessageCache.getCachedMessages(threadId);
+                
+                final List<Message> loadedMessages;
+                if (cachedMessages != null && !cachedMessages.isEmpty()) {
+                    Log.d(TAG, "Found " + cachedMessages.size() + " cached messages");
+                    loadedMessages = cachedMessages;
+                    
+                    // For cached messages, we might already have multiple pages
+                    // Set hasMoreMessages based on cache size
+                    hasMoreMessages = cachedMessages.size() >= PAGE_SIZE;
+                } else {
+                    // Load first page of messages from MessageService
+                    Log.d(TAG, "Loading first page of messages for thread ID: " + threadId);
+                    loadedMessages = loadMessagesPage(0, PAGE_SIZE);
+                    
+                    // Sort messages chronologically (oldest first) for display
+                    if (loadedMessages != null && !loadedMessages.isEmpty()) {
+                        Collections.sort(loadedMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+                        
+                        // Cache the loaded messages
+                        MessageCache.cacheMessages(threadId, new ArrayList<>(loadedMessages));
+                    }
+                }
+                
                 Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
                 // Update UI on main thread
@@ -219,8 +249,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
                         messages.addAll(loadedMessages);
                         Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
+                        
+                        // Set up pagination
+                        setupPagination();
+                        
+                        // Check if we have more messages to load
+                        hasMoreMessages = loadedMessages.size() >= PAGE_SIZE;
                     } else {
                         Log.d(TAG, "No messages to add to UI list");
+                        hasMoreMessages = false;
                     }
 
                     // Update UI
@@ -269,6 +306,91 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         });
     }
 
+    /**
+     * Loads a specific page of messages using true database pagination
+     */
+    private List<Message> loadMessagesPage(int page, int pageSize) {
+        try {
+            int offset = page * pageSize;
+            return messageService.loadMessagesPaginated(threadId, offset, pageSize);
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading messages page " + page, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Sets up pagination for the RecyclerView
+     */
+    private void setupPagination() {
+        messagesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager == null) return;
+                
+                int visibleItemCount = layoutManager.getChildCount();
+                int totalItemCount = layoutManager.getItemCount();
+                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+                
+                // Load more when scrolling up (towards older messages)
+                if (!isLoading && hasMoreMessages && firstVisibleItemPosition == 0 && dy < 0) {
+                    loadMoreMessages();
+                }
+            }
+        });
+    }
+
+    /**
+     * Loads more messages (older messages) when scrolling up
+     */
+    private void loadMoreMessages() {
+        if (isLoading || !hasMoreMessages) {
+            return;
+        }
+        
+        isLoading = true;
+        currentPage++;
+        
+        executorService.execute(() -> {
+            try {
+                Log.d(TAG, "Loading more messages - page " + currentPage);
+                List<Message> newMessages = loadMessagesPage(currentPage, PAGE_SIZE);
+                
+                runOnUiThread(() -> {
+                    if (newMessages.isEmpty()) {
+                        hasMoreMessages = false;
+                        Log.d(TAG, "No more messages to load");
+                    } else {
+                        // Sort new messages chronologically (oldest first) for consistency
+                        Collections.sort(newMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+                        
+                        // Insert at the beginning (older messages)
+                        messages.addAll(0, newMessages);
+                        adapter.notifyItemRangeInserted(0, newMessages.size());
+                        
+                        // Maintain scroll position
+                        LinearLayoutManager layoutManager = (LinearLayoutManager) messagesRecyclerView.getLayoutManager();
+                        if (layoutManager != null) {
+                            layoutManager.scrollToPositionWithOffset(newMessages.size(), 0);
+                        }
+                        
+                        Log.d(TAG, "Added " + newMessages.size() + " older messages");
+                    }
+                    isLoading = false;
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading more messages", e);
+                runOnUiThread(() -> {
+                    isLoading = false;
+                    Toast.makeText(ConversationActivity.this, "Error loading more messages", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
@@ -290,6 +412,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     hideLoadingIndicator();
 
                     if (success) {
+                        // Clear cache to ensure fresh data
+                        MessageCache.clearCacheForThread(threadId);
+                        
+                        // Reset pagination state
+                        currentPage = 0;
+                        hasMoreMessages = true;
+                        
                         // Refresh messages
                         loadMessages();
                     } else {

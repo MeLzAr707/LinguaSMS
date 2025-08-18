@@ -503,6 +503,47 @@ public class MessageService {
     }
 
     /**
+     * Loads messages for a specific thread with pagination support.
+     *
+     * @param threadId The thread ID
+     * @param offset The number of messages to skip
+     * @param limit The maximum number of messages to load
+     * @return A list of messages
+     */
+    public List<Message> loadMessagesPaginated(String threadId, int offset, int limit) {
+        if (threadId == null || threadId.isEmpty()) {
+            Log.e(TAG, "Cannot load messages: threadId is null or empty");
+            return new ArrayList<>();
+        }
+
+        List<Message> messages = new ArrayList<>();
+        ContentResolver contentResolver = context.getContentResolver();
+
+        try {
+            // Load SMS messages with pagination
+            loadSmsMessagesPaginated(contentResolver, threadId, messages, offset, limit);
+
+            // Load MMS messages with pagination
+            loadMmsMessagesPaginated(contentResolver, threadId, messages, offset, limit);
+
+            // Sort by date (newest first for pagination)
+            Collections.sort(messages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
+
+            // Apply limit after sorting
+            if (messages.size() > limit) {
+                messages = new ArrayList<>(messages.subList(0, limit));
+            }
+
+            Log.d(TAG, "Loaded " + messages.size() + " paginated messages for thread " + threadId + 
+                  " (offset: " + offset + ", limit: " + limit + ")");
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading paginated messages for thread " + threadId, e);
+        }
+
+        return messages;
+    }
+
+    /**
      * Loads SMS messages for a thread.
      *
      * @param contentResolver The content resolver
@@ -595,6 +636,106 @@ public class MessageService {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading MMS messages for thread " + threadId, e);
+        }
+    }
+
+    /**
+     * Loads SMS messages for a thread with pagination.
+     *
+     * @param contentResolver The content resolver
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     * @param offset The number of messages to skip
+     * @param limit The maximum number of messages to load
+     */
+    private void loadSmsMessagesPaginated(ContentResolver contentResolver, String threadId, List<Message> messages, int offset, int limit) {
+        Uri uri = Uri.parse("content://sms");
+        String selection = "thread_id = ?";
+        String[] selectionArgs = new String[] { threadId };
+        String sortOrder = "date DESC LIMIT " + limit + " OFFSET " + offset;
+
+        try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                Log.d(TAG, "Found " + cursor.getCount() + " SMS messages for thread " + threadId + " (paginated)");
+                do {
+                    try {
+                        String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms._ID));
+                        String body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                        long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                        int type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE));
+                        String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+                        boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
+
+                        Message message = new Message();
+                        message.setId(Long.parseLong(id));
+                        message.setBody(body);
+                        message.setDate(date);
+                        message.setType(type);
+                        message.setAddress(address);
+                        message.setRead(read);
+                        message.setThreadId(Long.parseLong(threadId));
+                        message.setMessageType(Message.MESSAGE_TYPE_SMS);
+
+                        messages.add(message);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error processing SMS message in thread " + threadId, e);
+                        // Continue processing other messages
+                    }
+                } while (cursor.moveToNext());
+            } else {
+                Log.d(TAG, "No SMS messages found for thread " + threadId + " (paginated)");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading paginated SMS messages for thread " + threadId, e);
+        }
+    }
+
+    /**
+     * Loads MMS messages for a thread with pagination.
+     *
+     * @param contentResolver The content resolver
+     * @param threadId The thread ID
+     * @param messages The list to add messages to
+     * @param offset The number of messages to skip
+     * @param limit The maximum number of messages to load
+     */
+    private void loadMmsMessagesPaginated(ContentResolver contentResolver, String threadId, List<Message> messages, int offset, int limit) {
+        Uri uri = Uri.parse("content://mms");
+        String selection = "thread_id = ?";
+        String[] selectionArgs = new String[] { threadId };
+        String sortOrder = "date DESC LIMIT " + limit + " OFFSET " + offset;
+
+        try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                Log.d(TAG, "Found " + cursor.getCount() + " MMS messages for thread " + threadId + " (paginated)");
+                do {
+                    try {
+                        String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms._ID));
+                        long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
+                        int type = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_BOX));
+                        boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
+
+                        // Get the address and text content
+                        String address = getMmsAddress(contentResolver, id, type);
+                        String body = getMmsText(contentResolver, id);
+
+                        // Create the message
+                        MmsMessage message = new MmsMessage(id, body, date, type);
+                        message.setAddress(address);
+                        message.setRead(read);
+                        message.setThreadId(Long.parseLong(threadId));
+
+                        messages.add(message);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error processing MMS message in thread " + threadId, e);
+                        // Continue processing other messages
+                    }
+                } while (cursor.moveToNext());
+            } else {
+                Log.d(TAG, "No MMS messages found for thread " + threadId + " (paginated)");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading paginated MMS messages for thread " + threadId, e);
         }
     }
 
