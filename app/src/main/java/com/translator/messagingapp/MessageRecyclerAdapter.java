@@ -117,6 +117,63 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     }
 
     /**
+     * Common method to set up reactions for any message view holder.
+     * This method is shared between MessageViewHolder and MediaMessageViewHolder.
+     */
+    private void setupReactions(Message message, int position, LinearLayout reactionsLayout) {
+        if (reactionsLayout != null) {
+            reactionsLayout.removeAllViews();
+
+            if (message.hasReactions()) {
+                reactionsLayout.setVisibility(View.VISIBLE);
+
+                // Get reaction counts
+                Map<String, Integer> reactionCounts = message.getReactionManager().getReactionCounts();
+
+                // Add reaction views
+                LayoutInflater inflater = LayoutInflater.from(context);
+                for (Map.Entry<String, Integer> entry : reactionCounts.entrySet()) {
+                    String emoji = entry.getKey();
+                    int count = entry.getValue();
+
+                    View reactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
+                    TextView emojiText = reactionView.findViewById(R.id.reaction_emoji); // Fixed ID
+                    TextView countText = reactionView.findViewById(R.id.reaction_count); // Fixed ID
+
+                    emojiText.setText(emoji);
+                    countText.setText(String.valueOf(count));
+
+                    reactionView.setOnClickListener(v -> {
+                        if (listener != null) {
+                            listener.onReactionClick(message, position);
+                        }
+                    });
+
+                    reactionsLayout.addView(reactionView);
+                }
+
+                // Add "add reaction" button
+                View addReactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
+                TextView addEmojiText = addReactionView.findViewById(R.id.reaction_emoji); // Fixed ID
+                TextView addCountText = addReactionView.findViewById(R.id.reaction_count); // Fixed ID
+
+                addEmojiText.setText("+");
+                addCountText.setVisibility(View.GONE);
+
+                addReactionView.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onAddReactionClick(message, position);
+                    }
+                });
+
+                reactionsLayout.addView(addReactionView);
+            } else {
+                reactionsLayout.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    /**
      * Base view holder for messages.
      */
     abstract class MessageViewHolder extends RecyclerView.ViewHolder {
@@ -208,56 +265,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         void setupReactions(Message message, int position) {
-            if (reactionsLayout != null) {
-                reactionsLayout.removeAllViews();
-
-                if (message.hasReactions()) {
-                    reactionsLayout.setVisibility(View.VISIBLE);
-
-                    // Get reaction counts
-                    Map<String, Integer> reactionCounts = message.getReactionManager().getReactionCounts();
-
-                    // Add reaction views
-                    LayoutInflater inflater = LayoutInflater.from(context);
-                    for (Map.Entry<String, Integer> entry : reactionCounts.entrySet()) {
-                        String emoji = entry.getKey();
-                        int count = entry.getValue();
-
-                        View reactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                        TextView emojiText = reactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                        TextView countText = reactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                        emojiText.setText(emoji);
-                        countText.setText(String.valueOf(count));
-
-                        reactionView.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onReactionClick(message, position);
-                            }
-                        });
-
-                        reactionsLayout.addView(reactionView);
-                    }
-
-                    // Add "add reaction" button
-                    View addReactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                    TextView addEmojiText = addReactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                    TextView addCountText = addReactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                    addEmojiText.setText("+");
-                    addCountText.setVisibility(View.GONE);
-
-                    addReactionView.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAddReactionClick(message, position);
-                        }
-                    });
-
-                    reactionsLayout.addView(addReactionView);
-                } else {
-                    reactionsLayout.setVisibility(View.GONE);
-                }
-            }
+            MessageRecyclerAdapter.this.setupReactions(message, position, reactionsLayout);
         }
     }
 
@@ -459,56 +467,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         void setupReactions(Message message, int position) {
-            if (reactionsLayout != null) {
-                reactionsLayout.removeAllViews();
-
-                if (message.hasReactions()) {
-                    reactionsLayout.setVisibility(View.VISIBLE);
-
-                    // Get reaction counts
-                    Map<String, Integer> reactionCounts = message.getReactionManager().getReactionCounts();
-
-                    // Add reaction views
-                    LayoutInflater inflater = LayoutInflater.from(context);
-                    for (Map.Entry<String, Integer> entry : reactionCounts.entrySet()) {
-                        String emoji = entry.getKey();
-                        int count = entry.getValue();
-
-                        View reactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                        TextView emojiText = reactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                        TextView countText = reactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                        emojiText.setText(emoji);
-                        countText.setText(String.valueOf(count));
-
-                        reactionView.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onReactionClick(message, position);
-                            }
-                        });
-
-                        reactionsLayout.addView(reactionView);
-                    }
-
-                    // Add "add reaction" button
-                    View addReactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                    TextView addEmojiText = addReactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                    TextView addCountText = addReactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                    addEmojiText.setText("+");
-                    addCountText.setVisibility(View.GONE);
-
-                    addReactionView.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAddReactionClick(message, position);
-                        }
-                    });
-
-                    reactionsLayout.addView(addReactionView);
-                } else {
-                    reactionsLayout.setVisibility(View.GONE);
-                }
-            }
+            MessageRecyclerAdapter.this.setupReactions(message, position, reactionsLayout);
         }
     }
 
