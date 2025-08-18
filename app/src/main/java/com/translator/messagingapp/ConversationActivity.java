@@ -1,10 +1,12 @@
 package com.translator.messagingapp;
 
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
@@ -57,6 +59,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
+    
+    // BroadcastReceiver for message updates
+    private BroadcastReceiver messageUpdateReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +93,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Initialize UI components
         initializeComponents();
+        
+        // Set up message update receiver
+        setupMessageUpdateReceiver();
 
         // Load messages
         loadMessages();
@@ -316,6 +324,59 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     private void hideLoadingIndicator() {
         progressBar.setVisibility(View.GONE);
+    }
+
+    /**
+     * Set up broadcast receiver for message update events.
+     * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
+     */
+    private void setupMessageUpdateReceiver() {
+        try {
+            // Create the broadcast receiver
+            messageUpdateReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    Log.d(TAG, "Message update broadcast received: " + intent.getAction());
+                    
+                    // Handle different update actions
+                    if (intent != null && intent.getAction() != null) {
+                        switch (intent.getAction()) {
+                            case "com.translator.messagingapp.MESSAGE_RECEIVED":
+                            case "com.translator.messagingapp.REFRESH_MESSAGES":
+                            case "com.translator.messagingapp.MESSAGE_SENT":
+                                // Refresh messages when any update is received
+                                Log.d(TAG, "Refreshing messages due to broadcast");
+                                loadMessages();
+                                break;
+                            default:
+                                Log.d(TAG, "Unknown update action: " + intent.getAction());
+                                break;
+                        }
+                    }
+                }
+            };
+
+            // Create intent filter for message update events
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("com.translator.messagingapp.MESSAGE_RECEIVED");
+            filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
+            filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
+
+            // Register receiver with proper Android 13+ flags
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED
+                registerReceiver(messageUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                // Pre-Android 13 registration
+                registerReceiver(messageUpdateReceiver, filter);
+            }
+            
+            Log.d(TAG, "Message update receiver registered successfully");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up message update receiver", e);
+            // Don't throw the exception to prevent app crash
+        }
     }
 
     private void showProgressDialog(String message) {
@@ -622,6 +683,17 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        
+        // Unregister message update receiver
+        if (messageUpdateReceiver != null) {
+            try {
+                unregisterReceiver(messageUpdateReceiver);
+                Log.d(TAG, "Message update receiver unregistered");
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering message update receiver", e);
+            }
+        }
+        
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
