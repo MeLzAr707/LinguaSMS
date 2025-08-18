@@ -64,6 +64,15 @@ public class MainActivity extends BaseActivity
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
     
+    // Optimized services for better performance
+    private OptimizedConversationService optimizedConversationService;
+    
+    // Pagination state
+    private int currentPage = 0;
+    private boolean isLoading = false;
+    private boolean hasMoreConversations = true;
+    private PaginationUtils.PaginationScrollListener paginationScrollListener;
+    
     // Message refresh receiver
     private BroadcastReceiver messageRefreshReceiver;
 
@@ -195,6 +204,9 @@ public class MainActivity extends BaseActivity
         // Initialize data
         conversations = new ArrayList<>();
 
+        // Initialize optimized conversation service
+        optimizedConversationService = new OptimizedConversationService(this);
+
         // Find views
         conversationsRecyclerView = findViewById(R.id.conversations_recycler_view);
         progressBar = findViewById(R.id.progress_bar);
@@ -202,7 +214,7 @@ public class MainActivity extends BaseActivity
         newMessageFab = findViewById(R.id.new_message_fab);
         drawerLayout = findViewById(R.id.drawer_layout);
 
-        // Set up RecyclerView
+        // Set up RecyclerView with pagination
         setupRecyclerView();
 
         // Set up FAB
@@ -254,6 +266,25 @@ public class MainActivity extends BaseActivity
 
         // Set adapter to RecyclerView
         conversationsRecyclerView.setAdapter(conversationAdapter);
+        
+        // Set up pagination for smoother loading
+        setupPagination(layoutManager);
+    }
+    
+    /**
+     * Sets up pagination for the conversation list to improve loading performance.
+     */
+    private void setupPagination(LinearLayoutManager layoutManager) {
+        paginationScrollListener = PaginationUtils.setupPagination(
+            conversationsRecyclerView,
+            () -> {
+                if (!isLoading && hasMoreConversations) {
+                    loadMoreConversations();
+                }
+            },
+            5, // Load more when 5 items from bottom
+            progressBar
+        );
     }
 
     private void setupStandardToolbar() {
@@ -346,6 +377,120 @@ public class MainActivity extends BaseActivity
     }
 
     private void loadConversations() {
+        // Reset pagination state for initial load
+        currentPage = 0;
+        hasMoreConversations = true;
+        
+        // Clear existing conversations for fresh load
+        conversations.clear();
+        conversationAdapter.notifyDataSetChanged();
+        
+        // Load first page of conversations
+        loadMoreConversations();
+    }
+    
+    /**
+     * Loads the next page of conversations using optimized pagination.
+     */
+    private void loadMoreConversations() {
+        if (isLoading || !hasMoreConversations) {
+            return;
+        }
+        
+        // Check if optimized service is available, fallback to original if needed
+        if (optimizedConversationService == null) {
+            loadConversationsFallback();
+            return;
+        }
+        
+        isLoading = true;
+        
+        // Show loading indicator only for initial load
+        if (currentPage == 0) {
+            showLoadingIndicator();
+        }
+        
+        // Calculate offset for pagination
+        int offset = currentPage * OptimizedConversationService.DEFAULT_PAGE_SIZE;
+        
+        // Load conversations using optimized service with pagination
+        optimizedConversationService.loadConversationsPaginated(
+            offset, 
+            OptimizedConversationService.DEFAULT_PAGE_SIZE,
+            new OptimizedConversationService.ConversationLoadCallback() {
+                @Override
+                public void onConversationsLoaded(List<Conversation> loadedConversations, boolean hasMore) {
+                    runOnUiThread(() -> {
+                        // Add new conversations to existing list
+                        int oldSize = conversations.size();
+                        conversations.addAll(loadedConversations);
+                        
+                        // Notify adapter of new items
+                        if (currentPage == 0) {
+                            // First load - notify entire dataset changed
+                            conversationAdapter.notifyDataSetChanged();
+                        } else {
+                            // Subsequent loads - notify items inserted
+                            conversationAdapter.notifyItemRangeInserted(oldSize, loadedConversations.size());
+                        }
+                        
+                        // Update pagination state
+                        currentPage++;
+                        hasMoreConversations = hasMore;
+                        isLoading = false;
+                        
+                        // Hide loading indicator
+                        if (currentPage == 1) { // First page completed
+                            hideLoadingIndicator();
+                        }
+                        
+                        // Show empty state if no conversations after first load
+                        if (conversations.isEmpty() && currentPage == 1) {
+                            emptyStateTextView.setText(R.string.no_conversations);
+                            emptyStateTextView.setVisibility(View.VISIBLE);
+                        } else {
+                            emptyStateTextView.setVisibility(View.GONE);
+                        }
+                        
+                        Log.d(TAG, "Loaded page " + (currentPage - 1) + " with " + 
+                              loadedConversations.size() + " conversations. Total: " + conversations.size() + 
+                              ", Has more: " + hasMore);
+                    });
+                }
+                
+                @Override
+                public void onError(Exception error) {
+                    Log.e(TAG, "Error loading conversations with optimized service", error);
+                    runOnUiThread(() -> {
+                        isLoading = false;
+                        hideLoadingIndicator();
+                        
+                        // Show error message
+                        Toast.makeText(MainActivity.this,
+                                getString(R.string.error_loading_conversations) + ": " + error.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                        
+                        // Show empty state with error
+                        if (conversations.isEmpty()) {
+                            emptyStateTextView.setText(R.string.error_loading_conversations);
+                            emptyStateTextView.setVisibility(View.VISIBLE);
+                        }
+                        
+                        // Fallback to original method if first page fails
+                        if (currentPage == 0) {
+                            Log.d(TAG, "Falling back to original conversation loading method");
+                            loadConversationsFallback();
+                        }
+                    });
+                }
+            }
+        );
+    }
+    
+    /**
+     * Fallback to original conversation loading method if optimized service fails.
+     */
+    private void loadConversationsFallback() {
         // Check if messageService is available
         if (messageService == null) {
             Log.e(TAG, "MessageService is null, cannot load conversations");
@@ -358,17 +503,20 @@ public class MainActivity extends BaseActivity
             return;
         }
 
-        // Show loading indicator for automatic refresh
+        // Show loading indicator for fallback method
         showLoadingIndicator();
         
         // Use a background thread to load conversations
         executorService.execute(() -> {
             try {
-                // Debug SMS content provider access
-                debugSmsContentProvider();
-
-                // Load conversations using MessageService
+                // Load conversations using original MessageService (limited to first 50 for performance)
                 List<Conversation> loadedConversations = messageService.loadConversations();
+                
+                // Limit conversations for performance in fallback mode
+                if (loadedConversations.size() > 50) {
+                    loadedConversations = loadedConversations.subList(0, 50);
+                    Log.d(TAG, "Limited fallback conversations to 50 for performance");
+                }
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
@@ -381,6 +529,8 @@ public class MainActivity extends BaseActivity
                     // Update UI
                     conversationAdapter.notifyDataSetChanged();
                     hideLoadingIndicator();
+                    isLoading = false;
+                    hasMoreConversations = false; // No pagination in fallback mode
 
                     // Show empty state if no conversations
                     if (conversations.isEmpty()) {
@@ -389,14 +539,17 @@ public class MainActivity extends BaseActivity
                     } else {
                         emptyStateTextView.setVisibility(View.GONE);
                     }
+                    
+                    Log.d(TAG, "Fallback method loaded " + conversations.size() + " conversations");
                 });
             } catch (Exception e) {
-                Log.e(TAG, "Error loading conversations", e);
+                Log.e(TAG, "Error loading conversations with fallback method", e);
                 runOnUiThread(() -> {
                     Toast.makeText(MainActivity.this,
                             getString(R.string.error_loading_conversations) + ": " + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                     hideLoadingIndicator();
+                    isLoading = false;
                     emptyStateTextView.setText(R.string.error_loading_conversations);
                     emptyStateTextView.setVisibility(View.VISIBLE);
                 });
@@ -485,8 +638,13 @@ public class MainActivity extends BaseActivity
     }
 
     private void refreshConversations() {
-        // Clear cache to force reload
+        Log.d(TAG, "Refreshing conversations");
+        
+        // Clear cache to ensure fresh data
         MessageCache.clearCache();
+        if (optimizedConversationService != null) {
+            optimizedConversationService.clearCache();
+        }
 
         // Load conversations with automatic refresh
         loadConversations();
