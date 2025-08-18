@@ -8,5 +8,8 @@ local.properties
 # Java class files
 *.class
 
+# Validation and testing scripts
+validate_mms_fix.sh
+
 # Test files
 test_theme_changes.md
