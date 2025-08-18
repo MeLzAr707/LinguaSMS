@@ -137,12 +137,9 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
             
-            // Set message text
-            if (message.isShowTranslation() && message.isTranslated()) {
-                messageText.setText(message.getTranslatedText());
-            } else {
-                messageText.setText(message.getBody() != null ? message.getBody() : "");
-            }
+            // Set message text with improved handling for RCS messages
+            String displayText = getDisplayTextForMessage(message);
+            messageText.setText(displayText);
 
             // Set date
             if (dateText != null) {
@@ -364,4 +361,34 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             super(itemView);
         }
     }
-}
+
+    /**
+     * Gets the appropriate display text for a message, handling special cases for RCS messages.
+     */
+    private String getDisplayTextForMessage(Message message) {
+        // Show translation if available and enabled
+        if (message.isShowTranslation() && message.isTranslated()) {
+            return message.getTranslatedText();
+        }
+        
+        // Handle message body
+        String body = message.getBody();
+        
+        // Handle null or empty body
+        if (body == null || body.trim().isEmpty()) {
+            // For RCS messages, provide a more descriptive placeholder
+            if (message.isRcs()) {
+                return "[RCS Message - Content not available]";
+            }
+            // For MMS messages, check if it has attachments
+            else if (message.isMms() && message.hasAttachments()) {
+                return "[Media Message]";
+            }
+            // For empty SMS messages
+            else {
+                return "[Empty Message]";
+            }
+        }
+        
+        return body;
+    }
