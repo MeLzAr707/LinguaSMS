@@ -25,6 +25,7 @@
 - **Navigation Header**: Deep dark blue (#0D1A2D) - matches settings activity perfectly
 - **Message Bubbles**: Deep dark blue (#0D1A2D) background - creates cohesive visual experience
 - **Buttons**: Deep dark blue (#0D1A2D) - consistent with overall theme
+- **Dialog Components**: Deep dark blue (#0D1A2D) - fixed to use consistent theme colors instead of dark purple
 - **Visual Consistency**: All components now use the same deep dark blue color
 
 ## Color Comparison

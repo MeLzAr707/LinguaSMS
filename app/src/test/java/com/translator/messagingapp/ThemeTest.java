@@ -130,4 +130,25 @@ public class ThemeTest {
         assertTrue("Theme change should be detectable", 
                   originalTheme != userPreferences.getThemeId());
     }
+    
+    @Test
+    public void testBlackGlassThemeColorConsistency() {
+        // Test that Black Glass theme detection works correctly
+        userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
+        assertTrue("Black Glass theme should be detected correctly", 
+                  userPreferences.isUsingBlackGlassTheme());
+        
+        // Verify that Black Glass theme is a dark theme
+        assertTrue("Black Glass theme should be considered a dark theme",
+                  userPreferences.isDarkThemeActive(context));
+        
+        // Test that other themes don't trigger Black Glass detection
+        userPreferences.setThemeId(UserPreferences.THEME_DARK);
+        assertFalse("Dark theme should not be detected as Black Glass theme", 
+                   userPreferences.isUsingBlackGlassTheme());
+        
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertFalse("Light theme should not be detected as Black Glass theme", 
+                   userPreferences.isUsingBlackGlassTheme());
+    }
 }
