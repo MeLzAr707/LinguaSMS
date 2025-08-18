@@ -80,7 +80,7 @@
         <item name="android:background">@color/darkBackground</item>
         <item name="android:textColorPrimary">@color/textColorPrimary_dark</item>
         <item name="android:textColor">@color/textColorPrimary_dark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorAccent">@color/deep_dark_blue</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>
@@ -92,7 +92,7 @@
         <item name="android:background">@color/darkBackground</item>
         <item name="android:textColorPrimary">@color/textColorPrimary_dark</item>
         <item name="android:textColor">@color/textColorPrimary_dark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorAccent">@color/deep_dark_blue</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>
