@@ -93,8 +93,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         if (holder instanceof MessageViewHolder) {
             ((MessageViewHolder) holder).bind(message, position);
-        } else if (holder instanceof MediaMessageViewHolder) {
-            ((MediaMessageViewHolder) holder).bind(message, position);
         }
     }
 
@@ -113,63 +111,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             return hasAttachments ? VIEW_TYPE_INCOMING_MEDIA : VIEW_TYPE_INCOMING;
         } else {
             return hasAttachments ? VIEW_TYPE_OUTGOING_MEDIA : VIEW_TYPE_OUTGOING;
-        }
-    }
-
-    /**
-     * Common method to set up reactions for any message view holder.
-     * This method is shared between MessageViewHolder and MediaMessageViewHolder.
-     */
-    private void setupReactions(Message message, int position, LinearLayout reactionsLayout) {
-        if (reactionsLayout != null) {
-            reactionsLayout.removeAllViews();
-
-            if (message.hasReactions()) {
-                reactionsLayout.setVisibility(View.VISIBLE);
-
-                // Get reaction counts
-                Map<String, Integer> reactionCounts = message.getReactionManager().getReactionCounts();
-
-                // Add reaction views
-                LayoutInflater inflater = LayoutInflater.from(context);
-                for (Map.Entry<String, Integer> entry : reactionCounts.entrySet()) {
-                    String emoji = entry.getKey();
-                    int count = entry.getValue();
-
-                    View reactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                    TextView emojiText = reactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                    TextView countText = reactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                    emojiText.setText(emoji);
-                    countText.setText(String.valueOf(count));
-
-                    reactionView.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onReactionClick(message, position);
-                        }
-                    });
-
-                    reactionsLayout.addView(reactionView);
-                }
-
-                // Add "add reaction" button
-                View addReactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
-                TextView addEmojiText = addReactionView.findViewById(R.id.reaction_emoji); // Fixed ID
-                TextView addCountText = addReactionView.findViewById(R.id.reaction_count); // Fixed ID
-
-                addEmojiText.setText("+");
-                addCountText.setVisibility(View.GONE);
-
-                addReactionView.setOnClickListener(v -> {
-                    if (listener != null) {
-                        listener.onAddReactionClick(message, position);
-                    }
-                });
-
-                reactionsLayout.addView(addReactionView);
-            } else {
-                reactionsLayout.setVisibility(View.GONE);
-            }
         }
     }
 
@@ -195,29 +136,16 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
             
-            // Set message text with better null handling
-            String messageBody;
+            // Set message text
             if (message.isShowTranslation() && message.isTranslated()) {
-                messageBody = message.getTranslatedText();
+                messageText.setText(message.getTranslatedText());
             } else {
-                messageBody = message.getBody();
+                messageText.setText(message.getBody() != null ? message.getBody() : "");
             }
-            
-            // Handle null or empty message body
-            if (messageBody == null || messageBody.trim().isEmpty()) {
-                if (message.hasAttachments()) {
-                    messageBody = "[Media message]";
-                } else {
-                    messageBody = "[No content]";
-                }
-            }
-            
-            messageText.setText(messageBody);
 
             // Set date
             if (dateText != null) {
-                String formattedDate = message.getFormattedDate();
-                dateText.setText(formattedDate != null ? formattedDate : "");
+                dateText.setText(message.getFormattedDate());
             }
 
             // Set up click listeners
@@ -265,7 +193,56 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         void setupReactions(Message message, int position) {
-            MessageRecyclerAdapter.this.setupReactions(message, position, reactionsLayout);
+            if (reactionsLayout != null) {
+                reactionsLayout.removeAllViews();
+
+                if (message.hasReactions()) {
+                    reactionsLayout.setVisibility(View.VISIBLE);
+
+                    // Get reaction counts
+                    Map<String, Integer> reactionCounts = message.getReactionManager().getReactionCounts();
+
+                    // Add reaction views
+                    LayoutInflater inflater = LayoutInflater.from(context);
+                    for (Map.Entry<String, Integer> entry : reactionCounts.entrySet()) {
+                        String emoji = entry.getKey();
+                        int count = entry.getValue();
+
+                        View reactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
+                        TextView emojiText = reactionView.findViewById(R.id.reaction_emoji); // Fixed ID
+                        TextView countText = reactionView.findViewById(R.id.reaction_count); // Fixed ID
+
+                        emojiText.setText(emoji);
+                        countText.setText(String.valueOf(count));
+
+                        reactionView.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onReactionClick(message, position);
+                            }
+                        });
+
+                        reactionsLayout.addView(reactionView);
+                    }
+
+                    // Add "add reaction" button
+                    View addReactionView = inflater.inflate(R.layout.reaction_item, reactionsLayout, false);
+                    TextView addEmojiText = addReactionView.findViewById(R.id.reaction_emoji); // Fixed ID
+                    TextView addCountText = addReactionView.findViewById(R.id.reaction_count); // Fixed ID
+
+                    addEmojiText.setText("+");
+                    addCountText.setVisibility(View.GONE);
+
+                    addReactionView.setOnClickListener(v -> {
+                        if (listener != null) {
+                            listener.onAddReactionClick(message, position);
+                        }
+                    });
+
+                    reactionsLayout.addView(addReactionView);
+                } else {
+                    reactionsLayout.setVisibility(View.GONE);
+                }
+            }
         }
     }
 
@@ -310,96 +287,33 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     /**
      * Base view holder for media messages.
      */
-    abstract class MediaMessageViewHolder extends RecyclerView.ViewHolder {
-        TextView messageText;
-        TextView dateText;
+    abstract class MediaMessageViewHolder extends MessageViewHolder {
         ImageView mediaImage;
-        View translateButton;
-        LinearLayout reactionsLayout;
 
         MediaMessageViewHolder(View itemView) {
             super(itemView);
-            messageText = itemView.findViewById(R.id.message_text);
-            dateText = itemView.findViewById(R.id.message_date); // Fixed ID
             mediaImage = itemView.findViewById(R.id.media_image);
-            translateButton = itemView.findViewById(R.id.translate_button);
-            reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
         }
 
+        @Override
         void bind(final Message message, final int position) {
-            if (message == null) {
-                return; // Safety check for null message
-            }
-            
-            // Set message text with improved null handling
-            String messageBody = message.getBody();
-            if (!TextUtils.isEmpty(messageBody)) {
-                messageText.setVisibility(View.VISIBLE);
-                if (message.isShowTranslation() && message.isTranslated()) {
-                    messageText.setText(message.getTranslatedText());
-                } else {
-                    messageText.setText(messageBody);
-                }
-            } else {
-                // Show placeholder for media-only messages
-                messageText.setVisibility(View.VISIBLE);
-                messageText.setText("[Media message]");
-            }
+            // Call parent bind method for common functionality first
+            super.bind(message, position);
 
-            // Set date with null check
-            if (dateText != null) {
-                String formattedDate = message.getFormattedDate();
-                dateText.setText(formattedDate != null ? formattedDate : "");
-            }
+            // Set up media-specific functionality
+            if (message.hasAttachments() && message instanceof MmsMessage) {
+                MmsMessage mmsMessage = (MmsMessage) message;
+                if (!mmsMessage.getAttachments().isEmpty()) {
+                    // For simplicity, just show the first attachment
+                    // In a real app, you'd handle multiple attachments
+                    Uri attachment = mmsMessage.getAttachments().get(0);
 
-            // Set up media with better error handling
-            if (mediaImage != null) {
-                if (message.hasAttachments() && message instanceof MmsMessage) {
-                    MmsMessage mmsMessage = (MmsMessage) message;
-                    List<Uri> attachments = mmsMessage.getAttachments();
-                    
-                    if (attachments != null && !attachments.isEmpty()) {
-                        mediaImage.setVisibility(View.VISIBLE);
-                        
-                        // For simplicity, just show the first attachment
-                        // In a real app, you'd handle multiple attachments
-                        Uri attachment = attachments.get(0);
+                    // Load image using Glide or similar library
+                    // Glide.with(context).load(attachment.getUri()).into(mediaImage);
 
-                        // TODO: Load image using Glide or similar library
-                        // For now, show a placeholder
-                        mediaImage.setImageResource(android.R.drawable.ic_menu_gallery);
-
-                        mediaImage.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onAttachmentClick(attachment, position);
-                            }
-                        });
-                    } else {
-                        mediaImage.setVisibility(View.GONE);
-                    }
-                } else if (message.hasAttachments()) {
-                    // Handle generic URI attachments
-                    List<Uri> attachments = message.getAttachments();
-                    if (attachments != null && !attachments.isEmpty()) {
-                        mediaImage.setVisibility(View.VISIBLE);
-                        Uri uri = attachments.get(0);
-
-                        // TODO: Load image using Glide or similar library
-                        // For now, show a placeholder
-                        mediaImage.setImageResource(android.R.drawable.ic_menu_gallery);
-
-                        mediaImage.setOnClickListener(v -> {
-                            if (listener != null) {
-                                listener.onAttachmentClick(uri, position);
-                            }
-                        });
-                    } else {
-                        mediaImage.setVisibility(View.GONE);
-                    }
-                } else {
-                    mediaImage.setVisibility(View.GONE);
-                }
-            }
+                    mediaImage.setOnClickListener(v -> {
+                        if (listener != null) {
+                            listener.onAttachmentClick(attachment, position);
                         }
                     });
                 }
@@ -419,55 +333,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     });
                 }
             }
-
-            // Set up click listeners
-            itemView.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onMessageClick(message, position);
-                }
-            });
-
-            itemView.setOnLongClickListener(v -> {
-                if (listener != null) {
-                    listener.onMessageLongClick(message, position);
-                    return true;
-                }
-                return false;
-            });
-
-            // Set up translate button
-            if (translateButton != null && !TextUtils.isEmpty(message.getBody())) {
-                if (message.isTranslatable()) {
-                    translateButton.setVisibility(View.VISIBLE);
-
-                    // Cast to ImageButton to use setImageResource
-                    if (translateButton instanceof ImageButton) {
-                        ImageButton translateImageButton = (ImageButton) translateButton;
-                        if (message.isShowTranslation() && message.isTranslated()) {
-                            translateImageButton.setImageResource(R.drawable.ic_restore);
-                        } else {
-                            translateImageButton.setImageResource(R.drawable.ic_translate);
-                        }
-                    }
-
-                    translateButton.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onTranslateClick(message, position);
-                        }
-                    });
-                } else {
-                    translateButton.setVisibility(View.GONE);
-                }
-            } else if (translateButton != null) {
-                translateButton.setVisibility(View.GONE);
-            }
-
-            // Set up reactions
-            setupReactions(message, position);
-        }
-
-        void setupReactions(Message message, int position) {
-            MessageRecyclerAdapter.this.setupReactions(message, position, reactionsLayout);
         }
     }
 
