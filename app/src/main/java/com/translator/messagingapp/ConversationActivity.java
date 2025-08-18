@@ -559,8 +559,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
 
         // Translate in background
+        String finalTargetLanguage = targetLanguage;
         executorService.execute(() -> {
-            translationManager.translateText(inputText, targetLanguage, (success, translatedText, errorMessage) -> {
+            translationManager.translateText(inputText, finalTargetLanguage, (success, translatedText, errorMessage) -> {
                 runOnUiThread(() -> {
                     hideProgressDialog();
 
