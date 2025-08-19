@@ -402,6 +402,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
          * Load media (image/video) using Glide with proper error handling
          */
         private void loadMediaWithGlide(Uri mediaUri, MmsMessage.Attachment attachment) {
+            if (mediaUri == null || mediaImage == null) {
+                return;
+            }
+            
             try {
                 RequestOptions options = new RequestOptions()
                     .placeholder(R.drawable.ic_attachment)
@@ -416,27 +420,37 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         @Override
                         public void onResourceReady(@NonNull android.graphics.drawable.Drawable resource, 
                                                   com.bumptech.glide.request.transition.Transition<? super android.graphics.drawable.Drawable> transition) {
-                            mediaImage.setImageDrawable(resource);
-                            mediaImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                            mediaImage.setVisibility(View.VISIBLE);
+                            if (mediaImage != null) {
+                                mediaImage.setImageDrawable(resource);
+                                mediaImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                mediaImage.setVisibility(View.VISIBLE);
+                            }
                         }
 
                         @Override
                         public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
-                            mediaImage.setImageDrawable(placeholder);
+                            if (mediaImage != null && placeholder != null) {
+                                mediaImage.setImageDrawable(placeholder);
+                            }
                         }
                         
                         @Override
                         public void onLoadFailed(android.graphics.drawable.Drawable errorDrawable) {
                             // Show attachment icon for failed loads
-                            mediaImage.setImageResource(R.drawable.ic_attachment);
-                            mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                            if (mediaImage != null) {
+                                mediaImage.setImageResource(R.drawable.ic_attachment);
+                                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                                mediaImage.setVisibility(View.VISIBLE);
+                            }
                         }
                     });
             } catch (Exception e) {
                 // Fallback to attachment icon
-                mediaImage.setImageResource(R.drawable.ic_attachment);
-                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                if (mediaImage != null) {
+                    mediaImage.setImageResource(R.drawable.ic_attachment);
+                    mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                    mediaImage.setVisibility(View.VISIBLE);
+                }
             }
         }
     }
