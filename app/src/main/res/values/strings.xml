@@ -59,6 +59,9 @@
     <string name="theme_dark">Dark</string>
     <string name="theme_black_glass">Black</string>
     <string name="theme_system">System Default</string>
+    <string name="theme_custom">Custom</string>
+    <string name="customize_colors">Customize Colors</string>
+    <string name="custom_theme_colors">Custom Theme Colors</string>
 
     <!-- About and Info -->
     <string name="about">About</string>

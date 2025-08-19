@@ -93,6 +93,16 @@
         </activity>
 
         <activity
+            android:name=".ColorWheelActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:parentActivityName=".SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SettingsActivity" />
+        </activity>
+
+        <activity
             android:name=".SearchActivity"
             android:exported="false"
             android:theme="@style/AppTheme.NoActionBar" />

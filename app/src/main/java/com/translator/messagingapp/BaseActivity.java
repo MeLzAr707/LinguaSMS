@@ -80,6 +80,9 @@ public class BaseActivity extends AppCompatActivity {
                     // Apply additional window flags for Black Glass theme
                     applyBlackGlassWindowFlags();
                     break;
+                case UserPreferences.THEME_CUSTOM:
+                    setTheme(R.style.AppTheme_NoActionBar); // Base theme for custom
+                    break;
                 case UserPreferences.THEME_SYSTEM:
                     // Use system default
                     if (userPreferences.isDarkThemeActive(this)) {
@@ -104,6 +107,9 @@ public class BaseActivity extends AppCompatActivity {
                     // Apply additional window flags for Black Glass theme
                     applyBlackGlassWindowFlags();
                     break;
+                case UserPreferences.THEME_CUSTOM:
+                    setTheme(R.style.AppTheme); // Base theme for custom
+                    break;
                 case UserPreferences.THEME_SYSTEM:
                     // Use system default
                     if (userPreferences.isDarkThemeActive(this)) {
@@ -117,6 +123,11 @@ public class BaseActivity extends AppCompatActivity {
                     setTheme(R.style.AppTheme);
                     break;
             }
+        }
+        
+        // Apply custom colors if using custom theme
+        if (themeId == UserPreferences.THEME_CUSTOM) {
+            applyCustomColors();
         }
     }
     
@@ -195,6 +206,39 @@ public class BaseActivity extends AppCompatActivity {
     protected void onThemeChanged() {
         // Default implementation does nothing
         // Subclasses can override to update their UI elements
+    }
+    
+    /**
+     * Apply custom colors when using custom theme
+     */
+    protected void applyCustomColors() {
+        // This method will be called after setContentView() 
+        // to apply custom colors to UI elements
+        // Individual activities can override this to apply custom colors to their specific components
+    }
+    
+    /**
+     * Helper method to apply custom colors to common UI elements after view creation
+     * Should be called from onCreate() after setContentView()
+     */
+    protected void applyCustomColorsToViews() {
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to toolbar if present
+            applyCustomColorsToToolbar();
+        }
+    }
+    
+    /**
+     * Apply custom colors to toolbar
+     */
+    protected void applyCustomColorsToToolbar() {
+        // Find toolbar and apply custom colors
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar != null && userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customTopBarColor = userPreferences.getCustomTopBarColor(defaultColor);
+            toolbar.setBackgroundColor(customTopBarColor);
+        }
     }
 }
 

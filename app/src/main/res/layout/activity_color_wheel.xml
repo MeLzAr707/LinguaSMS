@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ColorWheelActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+            app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Color Picker Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/custom_theme_colors"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Simple Color Wheel (will be replaced with actual color picker) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <View
+                    android:id="@+id/color_preview"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:background="@color/colorPrimary"
+                    android:layout_marginEnd="16dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Select Color"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/selected_color_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="#2196F3"
+                        android:textSize="14sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Color Grid -->
+            <GridLayout
+                android:id="@+id/color_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="6"
+                android:layout_marginBottom="24dp">
+
+                <!-- Colors will be added programmatically -->
+
+            </GridLayout>
+
+            <!-- Component Selection -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Apply Color To:"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/component_radio_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+
+                <RadioButton
+                    android:id="@+id/radio_nav_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Navigation Bar"
+                    android:checked="true" />
+
+                <RadioButton
+                    android:id="@+id/radio_top_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Top Bar" />
+
+                <RadioButton
+                    android:id="@+id/radio_buttons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Buttons" />
+
+                <RadioButton
+                    android:id="@+id/radio_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Menus" />
+
+                <RadioButton
+                    android:id="@+id/radio_incoming_bubbles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Incoming Chat Bubbles" />
+
+                <RadioButton
+                    android:id="@+id/radio_outgoing_bubbles"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Outgoing Chat Bubbles" />
+
+            </RadioGroup>
+
+            <!-- Apply Button -->
+            <Button
+                android:id="@+id/apply_color_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Apply Color"
+                android:backgroundTint="@color/colorPrimary"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Reset Button -->
+            <Button
+                android:id="@+id/reset_colors_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reset to Default"
+                android:backgroundTint="#757575"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="16dp" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
