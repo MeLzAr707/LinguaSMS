@@ -66,6 +66,16 @@ public class UserPreferences {
         return preferences.getString(KEY_PREFERRED_OUTGOING_LANGUAGE, getPreferredLanguage());
     }
 
+    /**
+     * Gets the target language for translations.
+     * This is an alias for getPreferredLanguage() to maintain compatibility.
+     *
+     * @return The target language code
+     */
+    public String getTargetLanguage() {
+        return getPreferredLanguage();
+    }
+
     public void setPreferredOutgoingLanguage(String language) {
         preferences.edit().putString(KEY_PREFERRED_OUTGOING_LANGUAGE, language).apply();
     }

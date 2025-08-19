@@ -1,5 +1,6 @@
 package com.translator.messagingapp;
 
+import android.content.Context;
 import android.util.Log;
 import android.util.LruCache;
 import java.util.ArrayList;
@@ -15,8 +16,31 @@ public class OptimizedMessageCache {
     
     private final LruCache<String, List<Message>> messageCache;
     private final LruCache<String, Conversation> conversationCache;
+    private final Context context; // Add context field for constructor compatibility
     
     public OptimizedMessageCache() {
+        this.context = null;
+        initializeCaches();
+    }
+    
+    /**
+     * Constructor that accepts a Context parameter for compatibility.
+     *
+     * @param context The application context
+     */
+    public OptimizedMessageCache(Context context) {
+        this.context = context;
+        initializeCaches();
+    }
+    
+    /**
+     * Initializes the LRU caches.
+     */
+    private void initializeCaches() {
+    /**
+     * Initializes the LRU caches.
+     */
+    private void initializeCaches() {
         // Initialize LRU cache for messages with memory-based eviction
         messageCache = new LruCache<String, List<Message>>(MAX_MEMORY_SIZE) {
             @Override
@@ -147,5 +171,21 @@ public class OptimizedMessageCache {
         return String.format("Message cache: %d/%d, Conversation cache: %d/%d",
                 messageCache.hitCount(), messageCache.missCount() + messageCache.hitCount(),
                 conversationCache.hitCount(), conversationCache.missCount() + conversationCache.hitCount());
+    }
+    
+    /**
+     * Performs maintenance operations on the cache.
+     * This method can be called periodically to optimize cache performance.
+     */
+    public void performMaintenance() {
+        Log.d(TAG, "Performing cache maintenance");
+        
+        // Log current cache statistics
+        Log.d(TAG, "Current cache stats: " + getCacheStats());
+        
+        // Optionally trim memory if needed
+        messageCache.trimToSize(MAX_MEMORY_SIZE / 2);
+        
+        Log.d(TAG, "Cache maintenance completed");
     }
 }
