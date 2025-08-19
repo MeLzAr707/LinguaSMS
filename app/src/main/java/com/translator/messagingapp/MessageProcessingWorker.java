@@ -185,24 +185,53 @@ public class MessageProcessingWorker extends Worker {
                 return Result.retry();
             }
 
-            // Perform translation
+            // Perform translation using asynchronous method with synchronization
             try {
-                String translatedText = translationManager.translateText(
-                    messageBody, sourceLanguage, targetLanguage);
-                
-                if (translatedText != null && !translatedText.isEmpty()) {
+                final Object lock = new Object();
+                final String[] translatedTextHolder = new String[1];
+                final String[] errorMessageHolder = new String[1];
+                final boolean[] isCompleted = new boolean[1];
+
+                translationManager.translateText(messageBody, sourceLanguage, targetLanguage, 
+                    new TranslationManager.TranslationCallback() {
+                        @Override
+                        public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                            synchronized (lock) {
+                                translatedTextHolder[0] = translatedText;
+                                errorMessageHolder[0] = errorMessage;
+                                isCompleted[0] = true;
+                                lock.notify();
+                            }
+                        }
+                    });
+
+                // Wait for translation to complete
+                synchronized (lock) {
+                    while (!isCompleted[0]) {
+                        try {
+                            lock.wait(30000); // Wait up to 30 seconds
+                            break;
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            Log.e(TAG, "Translation was interrupted", e);
+                            return Result.retry();
+                        }
+                    }
+                }
+
+                if (translatedTextHolder[0] != null && !translatedTextHolder[0].isEmpty()) {
                     // Store translation result (implementation would depend on your storage mechanism)
                     Log.d(TAG, "Translation completed for message: " + messageId);
                     
                     // Create success data with translation result
                     Data outputData = new Data.Builder()
-                        .putString("translated_text", translatedText)
+                        .putString("translated_text", translatedTextHolder[0])
                         .putString("message_id", messageId)
                         .build();
                     
                     return Result.success(outputData);
                 } else {
-                    Log.e(TAG, "Translation returned empty result");
+                    Log.e(TAG, "Translation failed: " + (errorMessageHolder[0] != null ? errorMessageHolder[0] : "empty result"));
                     return Result.retry();
                 }
             } catch (Exception translationError) {
