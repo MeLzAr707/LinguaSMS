@@ -15,6 +15,10 @@ import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+
 import java.util.List;
 import java.util.Map;
 
@@ -327,19 +331,44 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             // Set up media-specific functionality
             if (message.hasAttachments() && message instanceof MmsMessage) {
                 MmsMessage mmsMessage = (MmsMessage) message;
-                if (!mmsMessage.getAttachments().isEmpty()) {
+                List<MmsMessage.Attachment> attachmentObjects = mmsMessage.getAttachmentObjects();
+                
+                if (attachmentObjects != null && !attachmentObjects.isEmpty()) {
                     // For simplicity, just show the first attachment
                     // In a real app, you'd handle multiple attachments
-                    Uri attachment = mmsMessage.getAttachments().get(0);
-
-                    // Load image using Glide or similar library
-                    // Glide.with(context).load(attachment.getUri()).into(mediaImage);
-
-                    mediaImage.setOnClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAttachmentClick(attachment, position);
+                    MmsMessage.Attachment attachment = attachmentObjects.get(0);
+                    Uri attachmentUri = attachment.getUri();
+                    
+                    if (attachmentUri != null && (attachment.isImage() || attachment.isVideo())) {
+                        // Load image/video using Glide
+                        loadMediaWithGlide(attachmentUri, attachment);
+                        
+                        // Hide text when showing image
+                        if (messageText != null) {
+                            String body = message.getBody();
+                            if (body == null || body.trim().isEmpty()) {
+                                messageText.setVisibility(View.GONE);
+                            } else {
+                                messageText.setVisibility(View.VISIBLE);
+                            }
                         }
-                    });
+                        
+                        mediaImage.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentClick(attachment, position);
+                            }
+                        });
+                    } else if (attachmentUri != null) {
+                        // For non-image attachments (video, audio), show placeholder
+                        mediaImage.setImageResource(R.drawable.ic_attachment);
+                        mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                        
+                        mediaImage.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentClick(attachment, position);
+                            }
+                        });
+                    }
                 }
             } else if (message.hasAttachments()) {
                 // Handle generic URI attachments
@@ -347,8 +376,18 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 if (attachments != null && !attachments.isEmpty()) {
                     Uri uri = attachments.get(0);
 
-                    // Load image using Glide or similar library
-                    // Glide.with(context).load(uri).into(mediaImage);
+                    // Load image/video using Glide
+                    loadMediaWithGlide(uri, null);
+                    
+                    // Hide text when showing image
+                    if (messageText != null) {
+                        String body = message.getBody();
+                        if (body == null || body.trim().isEmpty()) {
+                            messageText.setVisibility(View.GONE);
+                        } else {
+                            messageText.setVisibility(View.VISIBLE);
+                        }
+                    }
 
                     mediaImage.setOnClickListener(v -> {
                         if (listener != null) {
@@ -356,6 +395,48 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         }
                     });
                 }
+            }
+        }
+        
+        /**
+         * Load media (image/video) using Glide with proper error handling
+         */
+        private void loadMediaWithGlide(Uri mediaUri, MmsMessage.Attachment attachment) {
+            try {
+                RequestOptions options = new RequestOptions()
+                    .placeholder(R.drawable.ic_attachment)
+                    .error(R.drawable.ic_attachment)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .centerCrop();
+                
+                Glide.with(context)
+                    .load(mediaUri)
+                    .apply(options)
+                    .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.drawable.Drawable>() {
+                        @Override
+                        public void onResourceReady(@NonNull android.graphics.drawable.Drawable resource, 
+                                                  com.bumptech.glide.request.transition.Transition<? super android.graphics.drawable.Drawable> transition) {
+                            mediaImage.setImageDrawable(resource);
+                            mediaImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                            mediaImage.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
+                            mediaImage.setImageDrawable(placeholder);
+                        }
+                        
+                        @Override
+                        public void onLoadFailed(android.graphics.drawable.Drawable errorDrawable) {
+                            // Show attachment icon for failed loads
+                            mediaImage.setImageResource(R.drawable.ic_attachment);
+                            mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                        }
+                    });
+            } catch (Exception e) {
+                // Fallback to attachment icon
+                mediaImage.setImageResource(R.drawable.ic_attachment);
+                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
             }
         }
     }
