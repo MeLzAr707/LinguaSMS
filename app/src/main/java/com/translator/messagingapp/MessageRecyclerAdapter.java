@@ -34,6 +34,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     private final Context context;
     private final List<Message> messages;
     private final OnMessageClickListener listener;
+    private final TextSizeManager textSizeManager;
 
     /**
      * Interface for message click events.
@@ -65,6 +66,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         this.context = context;
         this.messages = messages;
         this.listener = listener;
+        this.textSizeManager = new TextSizeManager(context);
     }
 
     @NonNull
@@ -150,6 +152,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             // Set message text with improved handling for RCS messages
             String displayText = getDisplayTextForMessage(message);
             messageText.setText(displayText);
+            
+            // Apply current text size from preferences
+            float currentTextSize = textSizeManager.getCurrentTextSize();
+            messageText.setTextSize(currentTextSize);
 
             // Set date
             if (dateText != null) {
@@ -558,5 +564,13 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         return body;
+    }
+
+    /**
+     * Updates text size for all visible message text views.
+     * Call this when text size preference changes.
+     */
+    public void updateTextSizes() {
+        notifyDataSetChanged();
     }
 }

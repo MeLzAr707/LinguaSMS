@@ -13,8 +13,11 @@ import android.os.Bundle;
 import android.provider.Telephony;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -67,6 +70,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
+    private TextSizeManager textSizeManager;
+    
+    // Gesture detection for pinch-to-zoom
+    private ScaleGestureDetector scaleGestureDetector;
     
     // BroadcastReceiver for message updates
     private BroadcastReceiver messageUpdateReceiver;
@@ -81,6 +88,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
+        textSizeManager = new TextSizeManager(this);
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -175,6 +183,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         
         messagesRecyclerView.setAdapter(adapter);
 
+        // Set up pinch-to-zoom gesture detection
+        setupGestureDetection();
+
         // Set up send button
         if (sendButton != null) {
             sendButton.setOnClickListener(v -> sendMessage());
@@ -187,6 +198,38 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Update UI based on theme
         updateUIForTheme();
+    }
+
+    private void setupGestureDetection() {
+        // Initialize scale gesture detector for pinch-to-zoom
+        scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                float scaleFactor = detector.getScaleFactor();
+                
+                // Update text size based on scale gesture
+                textSizeManager.updateTextSize(scaleFactor);
+                
+                // Update all visible text views
+                if (adapter != null) {
+                    adapter.updateTextSizes();
+                }
+                
+                return true;
+            }
+        });
+
+        // Set touch listener on RecyclerView to intercept gestures
+        messagesRecyclerView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                // Pass touch events to scale gesture detector
+                scaleGestureDetector.onTouchEvent(event);
+                
+                // Return false to allow normal RecyclerView scrolling when not scaling
+                return false;
+            }
+        });
     }
 
     private void updateUIForTheme() {
