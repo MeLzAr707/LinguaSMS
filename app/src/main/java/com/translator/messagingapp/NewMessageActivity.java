@@ -473,6 +473,34 @@ public class NewMessageActivity extends BaseActivity {
         if (toolbar != null) {
             updateToolbarTheme(toolbar);
         }
+        
+        // Apply custom theme colors if using custom theme
+        applyCustomButtonColors();
+    }
+    
+    /**
+     * Apply custom button colors if using custom theme
+     */
+    private void applyCustomButtonColors() {
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            // Apply custom color to send button
+            if (sendButton != null) {
+                sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to contact button
+            if (contactButton != null) {
+                contactButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to translate button
+            if (translateButton != null) {
+                translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+        }
     }
     
     @Override

@@ -213,17 +213,6 @@
 
             </RadioGroup>
 
-            <!-- Custom Colors Button (only visible when custom theme is selected) -->
-            <Button
-                android:id="@+id/customize_colors_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/customize_colors"
-                android:backgroundTint="@color/colorPrimary"
-                android:textColor="@android:color/white"
-                android:visibility="gone" />
-
             <!-- Offline Translation Section -->
             <TextView
                 android:layout_width="match_parent"

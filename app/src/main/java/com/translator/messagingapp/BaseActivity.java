@@ -91,6 +91,9 @@ public class BaseActivity extends AppCompatActivity {
                         setTheme(R.style.AppTheme_NoActionBar);
                     }
                     break;
+                case UserPreferences.THEME_CUSTOM:
+                    setTheme(R.style.AppTheme_NoActionBar);
+                    break;
                 case UserPreferences.THEME_LIGHT:
                 default:
                     setTheme(R.style.AppTheme_NoActionBar);
@@ -117,6 +120,9 @@ public class BaseActivity extends AppCompatActivity {
                     } else {
                         setTheme(R.style.AppTheme);
                     }
+                    break;
+                case UserPreferences.THEME_CUSTOM:
+                    setTheme(R.style.AppTheme);
                     break;
                 case UserPreferences.THEME_LIGHT:
                 default:

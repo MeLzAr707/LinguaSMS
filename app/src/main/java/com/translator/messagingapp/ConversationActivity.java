@@ -52,6 +52,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;
+    private ImageButton emojiButton;
+    private ImageButton attachmentButton;
+    private ImageButton translateButton;
 
     // Data
     private String threadId;
@@ -1085,6 +1088,39 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             updateToolbarTheme(toolbar);
+        }
+        
+        // Update button colors for custom theme
+        applyCustomButtonColors();
+    }
+    
+    /**
+     * Apply custom button colors if using custom theme
+     */
+    private void applyCustomButtonColors() {
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            // Apply custom color to send button
+            if (sendButton != null) {
+                sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to emoji button
+            if (emojiButton != null) {
+                emojiButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to attachment button
+            if (attachmentButton != null) {
+                attachmentButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to translate button
+            if (translateButton != null) {
+                translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
         }
     }
     

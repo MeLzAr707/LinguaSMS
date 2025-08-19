@@ -27,7 +27,6 @@ public class SettingsActivity extends BaseActivity {
     private Button testApiKeyButton;
     private Button saveButton;
     private Button manageOfflineModelsButton;
-    private Button customizeColorsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
@@ -50,9 +49,6 @@ public class SettingsActivity extends BaseActivity {
 
         // Load saved preferences
         loadPreferences();
-        
-        // Apply custom colors if using custom theme
-        applyCustomColorsToViews();
     }
 
     private void setupToolbar() {
@@ -79,7 +75,6 @@ public class SettingsActivity extends BaseActivity {
         testApiKeyButton = findViewById(R.id.test_api_key_button);
         saveButton = findViewById(R.id.save_button);
         manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
-        customizeColorsButton = findViewById(R.id.customize_colors_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
@@ -130,23 +125,6 @@ public class SettingsActivity extends BaseActivity {
                 openOfflineModelsActivity();
             }
         });
-        
-        // Set up customize colors button
-        customizeColorsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openColorWheelActivity();
-            }
-        });
-        
-        // Set up theme radio group listener
-        themeRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                int themeId = getThemeIdFromRadioButton(checkedId);
-                updateCustomizeColorsButtonVisibility(themeId);
-            }
-        });
     }
 
     private void loadPreferences() {
@@ -195,9 +173,6 @@ public class SettingsActivity extends BaseActivity {
                 break;
         }
         themeRadioGroup.check(radioButtonId);
-        
-        // Show/hide customize colors button based on selected theme
-        updateCustomizeColorsButtonVisibility(themeId);
     }
 
     private void showLanguageSelectionDialog(final String selectionType) {
@@ -343,71 +318,44 @@ public class SettingsActivity extends BaseActivity {
         startActivity(intent);
     }
     
-    /**
-     * Opens the color wheel activity for custom theme colors.
-     */
-    private void openColorWheelActivity() {
-        Intent intent = new Intent(this, ColorWheelActivity.class);
-        startActivity(intent);
-    }
-    
-    /**
-     * Updates the visibility of the customize colors button based on selected theme.
-     */
-    private void updateCustomizeColorsButtonVisibility(int themeId) {
-        if (themeId == UserPreferences.THEME_CUSTOM) {
-            customizeColorsButton.setVisibility(View.VISIBLE);
-        } else {
-            customizeColorsButton.setVisibility(View.GONE);
-        }
-    }
-    
-    /**
-     * Gets theme ID from radio button ID.
-     */
-    private int getThemeIdFromRadioButton(int radioButtonId) {
-        switch (radioButtonId) {
-            case R.id.radio_dark:
-                return UserPreferences.THEME_DARK;
-            case R.id.radio_black_glass:
-                return UserPreferences.THEME_BLACK_GLASS;
-            case R.id.radio_system:
-                return UserPreferences.THEME_SYSTEM;
-            case R.id.radio_custom:
-                return UserPreferences.THEME_CUSTOM;
-            case R.id.radio_light:
-            default:
-                return UserPreferences.THEME_LIGHT;
-        }
-    }
-    
     @Override
-    protected void applyCustomColorsToViews() {
-        super.applyCustomColorsToViews();
+    protected void onThemeChanged() {
+        super.onThemeChanged();
         
+        // Apply custom theme colors if using custom theme
+        applyCustomButtonColors();
+    }
+    
+    /**
+     * Apply custom button colors if using custom theme
+     */
+    private void applyCustomButtonColors() {
         if (userPreferences.isUsingCustomTheme()) {
-            // Apply custom colors to buttons
-            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
             
-            // Apply to all buttons
+            // Apply custom color to save button
+            if (saveButton != null) {
+                saveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to test API key button
             if (testApiKeyButton != null) {
                 testApiKeyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            if (selectIncomingLanguageButton != null) {
-                selectIncomingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
-            if (selectOutgoingLanguageButton != null) {
-                selectOutgoingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
+            
+            // Apply custom color to manage offline models button
             if (manageOfflineModelsButton != null) {
                 manageOfflineModelsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            if (customizeColorsButton != null) {
-                customizeColorsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            
+            // Apply custom color to language selection buttons
+            if (selectIncomingLanguageButton != null) {
+                selectIncomingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            if (saveButton != null) {
-                saveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            
+            if (selectOutgoingLanguageButton != null) {
+                selectOutgoingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
         }
     }
