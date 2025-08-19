@@ -74,3 +74,59 @@ public void performMaintenance() {
 The original build errors referenced files `ActivityIntegrationExample.java` and `MessageProcessingWorker.java` which were not found in the current repository. This suggests these files may have been deleted during the merge, but the code that references the missing methods in the existing classes has been fixed.
 
 All changes maintain backward compatibility and follow the existing code patterns in the project.
+
+---
+
+## Additional Build Errors Fixed (Issue #253)
+
+The following additional build errors were identified and fixed:
+
+### 4. Missing TextSizeManager.java
+**Error:** `cannot find symbol` errors for TextSizeManager class and its methods
+**Fix:** Created complete `TextSizeManager.java` class with all required methods:
+
+```java
+public class TextSizeManager {
+    public float getCurrentTextSize() { return userPreferences.getMessageTextSize(); }
+    public boolean setTextSize(float newSize) { /* with validation */ }
+    public float increaseTextSize(float increment) { /* with bounds checking */ }
+    public float decreaseTextSize(float decrement) { /* with bounds checking */ }
+    public void resetToDefault() { /* resets to 14.0f */ }
+}
+```
+
+### 5. Missing UserPreferences text size methods
+**Error:** `cannot find symbol - method getMessageTextSize()` and `setMessageTextSize(float)`
+**Fix:** Added both methods to UserPreferences.java:
+
+```java
+public float getMessageTextSize() {
+    return preferences.getFloat(KEY_MESSAGE_TEXT_SIZE, 14.0f);
+}
+
+public void setMessageTextSize(float textSize) {
+    preferences.edit().putFloat(KEY_MESSAGE_TEXT_SIZE, textSize).apply();
+}
+```
+
+### 6. Missing THEME_CUSTOM constant
+**Error:** `duplicate case label` errors referencing non-existent `UserPreferences.THEME_CUSTOM`
+**Fix:** Added THEME_CUSTOM constant to UserPreferences:
+
+```java
+public static final int THEME_CUSTOM = 4;
+```
+
+### 7. Missing R.id.fab reference
+**Error:** `cannot find symbol - variable fab` in MainActivity.java
+**Fix:** Added fab ID alias to `app/src/main/res/values/ids.xml`:
+
+```xml
+<item name="fab" type="id" />
+```
+
+## Additional Files Modified (Issue #253)
+- `app/src/main/java/com/translator/messagingapp/TextSizeManager.java` (created)
+- `app/src/main/java/com/translator/messagingapp/UserPreferences.java` (enhanced)
+- `app/src/main/res/values/ids.xml` (updated)
+- `app/src/test/java/com/translator/messagingapp/BuildErrorFixTest.java` (created for validation)
