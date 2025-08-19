@@ -49,6 +49,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         void onAttachmentClick(Uri uri, int position);
 
+        void onAttachmentLongClick(MmsMessage.Attachment attachment, int position);
+
+        void onAttachmentLongClick(Uri uri, int position);
+
         void onReactionClick(Message message, int position);
 
         void onAddReactionClick(Message message, int position);
@@ -589,5 +593,13 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         return body;
+    }
+
+    /**
+     * Updates text sizes for all visible message views.
+     * Called when text size is changed via pinch-to-zoom.
+     */
+    public void updateTextSizes() {
+        notifyDataSetChanged();
     }
 }

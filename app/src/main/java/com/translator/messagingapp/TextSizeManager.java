@@ -78,6 +78,20 @@ public class TextSizeManager {
     }
 
     /**
+     * Updates the text size based on a scale factor from pinch-to-zoom gesture.
+     *
+     * @param scaleFactor The scale factor from the gesture
+     * @return The new text size after scaling
+     */
+    public float updateTextSize(float scaleFactor) {
+        float currentSize = getCurrentTextSize();
+        float newSize = currentSize * scaleFactor;
+        float constrainedSize = Math.max(MIN_TEXT_SIZE, Math.min(newSize, MAX_TEXT_SIZE));
+        userPreferences.setMessageTextSize(constrainedSize);
+        return constrainedSize;
+    }
+
+    /**
      * Validates if a text size is within acceptable bounds.
      *
      * @param size The size to validate
