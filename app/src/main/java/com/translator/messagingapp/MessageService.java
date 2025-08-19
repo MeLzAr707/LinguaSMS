@@ -14,6 +14,7 @@ import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.io.OutputStream;
 
 import java.io.ByteArrayOutputStream;
@@ -1604,41 +1605,43 @@ public class MessageService {
     private void broadcastMessageReceived() {
         try {
             Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_RECEIVED");
-            context.sendBroadcast(broadcastIntent);
-            Log.d(TAG, "Broadcasted message received event");
+            // Use LocalBroadcastManager for more reliable intra-app communication
+            LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
+            Log.d(TAG, "Broadcasted message received event via LocalBroadcastManager");
         } catch (Exception e) {
             Log.e(TAG, "Error broadcasting message received event", e);
+            // Fallback to global broadcast
+            try {
+                Intent fallbackIntent = new Intent("com.translator.messagingapp.MESSAGE_RECEIVED");
+                context.sendBroadcast(fallbackIntent);
+                Log.d(TAG, "Broadcasted message received event via fallback global broadcast");
+            } catch (Exception fallbackError) {
+                Log.e(TAG, "Error in fallback broadcast", fallbackError);
+            }
         }
     }
 
     /**
      * Broadcasts that a new message has been sent to refresh the UI.
-     * Includes a small delay to ensure the message is stored in the SMS database.
+     * Uses LocalBroadcastManager for immediate and reliable delivery.
      */
     private void broadcastMessageSent() {
-        // Use executor to add a small delay before broadcasting
-        // This ensures the SMS is actually stored in the database before UI refresh
-        executorService.execute(() -> {
+        try {
+            Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
+            // Use LocalBroadcastManager for immediate and reliable intra-app communication
+            LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
+            Log.d(TAG, "Broadcasted message sent event via LocalBroadcastManager");
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting message sent event", e);
+            // Fallback to global broadcast
             try {
-                // Small delay to allow SMS system to store the message
-                Thread.sleep(500);
-                
-                Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
-                context.sendBroadcast(broadcastIntent);
-                Log.d(TAG, "Broadcasted message sent event (with delay)");
-            } catch (Exception e) {
-                Log.e(TAG, "Error broadcasting message sent event", e);
-                
-                // Fallback: broadcast immediately if there's an error
-                try {
-                    Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
-                    context.sendBroadcast(broadcastIntent);
-                    Log.d(TAG, "Broadcasted message sent event (fallback)");
-                } catch (Exception fallbackError) {
-                    Log.e(TAG, "Error in fallback broadcast", fallbackError);
-                }
+                Intent fallbackIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
+                context.sendBroadcast(fallbackIntent);
+                Log.d(TAG, "Broadcasted message sent event via fallback global broadcast");
+            } catch (Exception fallbackError) {
+                Log.e(TAG, "Error in fallback broadcast", fallbackError);
             }
-        });
+        }
     }
 
     /**

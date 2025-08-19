@@ -28,6 +28,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -130,8 +131,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Unregister message update receiver when activity is not visible
         if (messageUpdateReceiver != null) {
             try {
-                unregisterReceiver(messageUpdateReceiver);
-                Log.d(TAG, "Message update receiver unregistered in onPause");
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(messageUpdateReceiver);
+                Log.d(TAG, "Message update receiver unregistered from LocalBroadcastManager in onPause");
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering message update receiver in onPause", e);
             }
@@ -520,7 +521,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     /**
      * Set up broadcast receiver for message update events.
-     * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
+     * Uses LocalBroadcastManager for reliable intra-app communication.
      */
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void setupMessageUpdateReceiver() {
@@ -548,17 +549,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                     loadMessages();
                                     break;
                                 case "com.translator.messagingapp.MESSAGE_SENT":
-                                    // Handle sent message: clear cache, reset pagination, then refresh
-                                    Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing");
-                                    
-                                    // Clear cache to ensure fresh data
-                                    MessageCache.clearCacheForThread(threadId);
-                                    
-                                    // Reset pagination state
-                                    currentPage = 0;
-                                    hasMoreMessages = true;
-                                    
-                                    // Refresh messages
+                                    // Handle sent message: just refresh without clearing cache
+                                    // to prevent sent message from disappearing temporarily
+                                    Log.d(TAG, "Message sent broadcast received, refreshing messages");
                                     loadMessages();
                                     break;
                                 default:
@@ -576,16 +569,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
             filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
 
-            // Register receiver with proper Android 13+ flags
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED
-                registerReceiver(messageUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                // Pre-Android 13 registration
-                registerReceiver(messageUpdateReceiver, filter);
-            }
-            
-            Log.d(TAG, "Message update receiver registered successfully");
+            // Register receiver with LocalBroadcastManager for more reliable delivery
+            LocalBroadcastManager.getInstance(this).registerReceiver(messageUpdateReceiver, filter);
+            Log.d(TAG, "Message update receiver registered successfully with LocalBroadcastManager");
             
         } catch (Exception e) {
             Log.e(TAG, "Error setting up message update receiver", e);
