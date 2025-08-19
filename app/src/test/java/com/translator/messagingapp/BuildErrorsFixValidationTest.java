@@ -52,4 +52,94 @@ public class BuildErrorsFixValidationTest {
             fail("OptimizedMessageCache should still have default constructor: " + e.getMessage());
         }
     }
+
+    // Tests for issue #255 build errors
+
+    @Test
+    public void testTextSizeManagerUpdateTextSizeMethod() {
+        try {
+            // Verify that the updateTextSize(float) method exists in TextSizeManager
+            TextSizeManager.class.getMethod("updateTextSize", float.class);
+            assertTrue("updateTextSize(float) method should exist in TextSizeManager", true);
+        } catch (NoSuchMethodException e) {
+            fail("updateTextSize(float) method should exist in TextSizeManager: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testMessageRecyclerAdapterUpdateTextSizesMethod() {
+        try {
+            // Verify that the updateTextSizes() method exists in MessageRecyclerAdapter
+            MessageRecyclerAdapter.class.getMethod("updateTextSizes");
+            assertTrue("updateTextSizes() method should exist in MessageRecyclerAdapter", true);
+        } catch (NoSuchMethodException e) {
+            fail("updateTextSizes() method should exist in MessageRecyclerAdapter: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testOnMessageClickListenerHasAttachmentLongClickMethods() {
+        try {
+            // Get the OnMessageClickListener interface
+            Class<?> listenerInterface = null;
+            for (Class<?> declaredClass : MessageRecyclerAdapter.class.getDeclaredClasses()) {
+                if (declaredClass.getSimpleName().equals("OnMessageClickListener")) {
+                    listenerInterface = declaredClass;
+                    break;
+                }
+            }
+            assertNotNull("OnMessageClickListener interface should exist", listenerInterface);
+
+            // Verify that onAttachmentLongClick methods exist
+            try {
+                listenerInterface.getMethod("onAttachmentLongClick", MmsMessage.Attachment.class, int.class);
+                assertTrue("onAttachmentLongClick(Attachment, int) should exist", true);
+            } catch (NoSuchMethodException e) {
+                fail("onAttachmentLongClick(Attachment, int) should exist: " + e.getMessage());
+            }
+
+            try {
+                listenerInterface.getMethod("onAttachmentLongClick", android.net.Uri.class, int.class);
+                assertTrue("onAttachmentLongClick(Uri, int) should exist", true);
+            } catch (NoSuchMethodException e) {
+                fail("onAttachmentLongClick(Uri, int) should exist: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            fail("Error checking OnMessageClickListener interface: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testBaseActivityNoDuplicateCaseLabels() {
+        // This test verifies that BaseActivity can be compiled without duplicate case label errors
+        // Since we can't easily test switch statement compilation directly, we verify the class loads
+        try {
+            Class.forName("com.translator.messagingapp.BaseActivity");
+            assertTrue("BaseActivity should load without compilation errors", true);
+        } catch (ClassNotFoundException e) {
+            fail("BaseActivity should exist and be compilable: " + e.getMessage());
+        }
+    }
+
+    @Test 
+    public void testConversationActivityImplementsAllMethods() {
+        // Verify that ConversationActivity can be compiled without @Override errors
+        try {
+            Class.forName("com.translator.messagingapp.ConversationActivity");
+            assertTrue("ConversationActivity should load without compilation errors", true);
+        } catch (ClassNotFoundException e) {
+            fail("ConversationActivity should exist and be compilable: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testSearchActivityImplementsAllMethods() {
+        // Verify that SearchActivity can be compiled without @Override errors
+        try {
+            Class.forName("com.translator.messagingapp.SearchActivity");
+            assertTrue("SearchActivity should load without compilation errors", true);
+        } catch (ClassNotFoundException e) {
+            fail("SearchActivity should exist and be compilable: " + e.getMessage());
+        }
+    }
 }
