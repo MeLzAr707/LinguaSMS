@@ -273,8 +273,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             if (messageCard != null) {
                 UserPreferences userPreferences = new UserPreferences(context);
                 if (userPreferences.isUsingBlackGlassTheme()) {
-                    // Use deep dark blue for Black Glass theme
-                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                    // Use dark theme background color for Black Glass theme to differentiate from outgoing messages
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.background_dark));
                 } else {
                     // Use theme-aware default color (will be overridden by theme)
                     messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
@@ -474,8 +474,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             if (messageCard != null) {
                 UserPreferences userPreferences = new UserPreferences(context);
                 if (userPreferences.isUsingBlackGlassTheme()) {
-                    // Use deep dark blue for Black Glass theme
-                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
+                    // Use dark theme background color for Black Glass theme to differentiate from outgoing messages
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.background_dark));
                 } else {
                     // Use theme-aware default color (will be overridden by theme)
                     messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
