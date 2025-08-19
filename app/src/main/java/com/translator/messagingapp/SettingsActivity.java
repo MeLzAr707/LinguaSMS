@@ -27,6 +27,7 @@ public class SettingsActivity extends BaseActivity {
     private Button testApiKeyButton;
     private Button saveButton;
     private Button manageOfflineModelsButton;
+    private Button customizeColorsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
@@ -75,6 +76,7 @@ public class SettingsActivity extends BaseActivity {
         testApiKeyButton = findViewById(R.id.test_api_key_button);
         saveButton = findViewById(R.id.save_button);
         manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
+        customizeColorsButton = findViewById(R.id.customize_colors_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
@@ -125,6 +127,23 @@ public class SettingsActivity extends BaseActivity {
                 openOfflineModelsActivity();
             }
         });
+        
+        // Set up customize colors button
+        customizeColorsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openColorWheelActivity();
+            }
+        });
+        
+        // Set up theme radio group listener
+        themeRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                int themeId = getThemeIdFromRadioButton(checkedId);
+                updateCustomizeColorsButtonVisibility(themeId);
+            }
+        });
     }
 
     private void loadPreferences() {
@@ -164,12 +183,18 @@ public class SettingsActivity extends BaseActivity {
             case UserPreferences.THEME_SYSTEM:
                 radioButtonId = R.id.radio_system;
                 break;
+            case UserPreferences.THEME_CUSTOM:
+                radioButtonId = R.id.radio_custom;
+                break;
             case UserPreferences.THEME_LIGHT:
             default:
                 radioButtonId = R.id.radio_light;
                 break;
         }
         themeRadioGroup.check(radioButtonId);
+        
+        // Show/hide customize colors button based on selected theme
+        updateCustomizeColorsButtonVisibility(themeId);
     }
 
     private void showLanguageSelectionDialog(final String selectionType) {
@@ -273,6 +298,8 @@ public class SettingsActivity extends BaseActivity {
             newThemeId = UserPreferences.THEME_BLACK_GLASS;
         } else if (checkedId == R.id.radio_system) {
             newThemeId = UserPreferences.THEME_SYSTEM;
+        } else if (checkedId == R.id.radio_custom) {
+            newThemeId = UserPreferences.THEME_CUSTOM;
         } else {
             newThemeId = UserPreferences.THEME_LIGHT;
         }
@@ -311,5 +338,43 @@ public class SettingsActivity extends BaseActivity {
     private void openOfflineModelsActivity() {
         Intent intent = new Intent(this, OfflineModelsActivity.class);
         startActivity(intent);
+    }
+    
+    /**
+     * Opens the color wheel activity for custom theme colors.
+     */
+    private void openColorWheelActivity() {
+        Intent intent = new Intent(this, ColorWheelActivity.class);
+        startActivity(intent);
+    }
+    
+    /**
+     * Updates the visibility of the customize colors button based on selected theme.
+     */
+    private void updateCustomizeColorsButtonVisibility(int themeId) {
+        if (themeId == UserPreferences.THEME_CUSTOM) {
+            customizeColorsButton.setVisibility(View.VISIBLE);
+        } else {
+            customizeColorsButton.setVisibility(View.GONE);
+        }
+    }
+    
+    /**
+     * Gets theme ID from radio button ID.
+     */
+    private int getThemeIdFromRadioButton(int radioButtonId) {
+        switch (radioButtonId) {
+            case R.id.radio_dark:
+                return UserPreferences.THEME_DARK;
+            case R.id.radio_black_glass:
+                return UserPreferences.THEME_BLACK_GLASS;
+            case R.id.radio_system:
+                return UserPreferences.THEME_SYSTEM;
+            case R.id.radio_custom:
+                return UserPreferences.THEME_CUSTOM;
+            case R.id.radio_light:
+            default:
+                return UserPreferences.THEME_LIGHT;
+        }
     }
 }
