@@ -16,6 +16,7 @@ public class UserPreferences {
     private static final String KEY_LAST_TRANSLATION_DATE = "last_translation_date";
     private static final String KEY_TRANSLATIONS_TODAY = "translations_today";
     private static final String KEY_OFFLINE_TRANSLATION_ENABLED = "offline_translation_enabled";
+    private static final String KEY_MESSAGE_TEXT_SIZE = "message_text_size";
 
     // Theme constants
     public static final int THEME_LIGHT = 0;
@@ -130,6 +131,24 @@ public class UserPreferences {
 
     public boolean isUsingBlackGlassTheme() {
         return getThemeId() == THEME_BLACK_GLASS;
+    }
+
+    /**
+     * Gets the current message text size.
+     *
+     * @return The message text size
+     */
+    public float getMessageTextSize() {
+        return preferences.getFloat(KEY_MESSAGE_TEXT_SIZE, 14.0f);
+    }
+
+    /**
+     * Sets the message text size.
+     *
+     * @param textSize The text size to set
+     */
+    public void setMessageTextSize(float textSize) {
+        preferences.edit().putFloat(KEY_MESSAGE_TEXT_SIZE, textSize).apply();
     }
 
     /**

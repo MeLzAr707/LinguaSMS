@@ -6,4 +6,5 @@
     <item name="action_debug" type="id" />
     <item name="action_add_test" type="id" />
     <item name="action_set_default" type="id" />
+    <item name="fab" type="id" />
 </resources>

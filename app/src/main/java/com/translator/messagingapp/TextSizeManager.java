@@ -3,80 +3,114 @@ package com.translator.messagingapp;
 import android.content.Context;
 
 /**
- * Utility class for managing text size preferences and calculations.
+ * Manages text size preferences for the messaging app.
+ * Provides methods to get, set, and validate text sizes.
  */
 public class TextSizeManager {
+    private static final float DEFAULT_TEXT_SIZE = 14.0f;
+    private static final float MIN_TEXT_SIZE = 10.0f;
+    private static final float MAX_TEXT_SIZE = 24.0f;
     
-    // Text size constraints
-    public static final float MIN_TEXT_SIZE = 10.0f; // Minimum readable text size
-    public static final float MAX_TEXT_SIZE = 30.0f; // Maximum text size to prevent overflow
-    public static final float DEFAULT_TEXT_SIZE = 16.0f; // Default text size
-    
-    // Scale factors for pinch gestures
-    public static final float SCALE_SENSITIVITY = 0.5f; // Sensitivity for scale changes
-    
-    private final UserPreferences userPreferences;
-    
+    private UserPreferences userPreferences;
+    private Context context;
+
     public TextSizeManager(Context context) {
+        this.context = context;
         this.userPreferences = new UserPreferences(context);
     }
-    
+
     /**
-     * Gets the current text size.
+     * Gets the current message text size from user preferences.
      *
-     * @return The current text size in SP
+     * @return The current text size
      */
     public float getCurrentTextSize() {
         return userPreferences.getMessageTextSize();
     }
-    
+
     /**
-     * Updates the text size based on a scale factor from pinch gesture.
+     * Sets the message text size with validation.
      *
-     * @param scaleFactor The scale factor from the gesture detector
-     * @return The new text size after applying the scale
+     * @param newSize The new text size to set
+     * @return true if the size was set successfully, false if it was out of bounds
      */
-    public float updateTextSize(float scaleFactor) {
-        float currentSize = getCurrentTextSize();
-        float newSize = currentSize * scaleFactor;
-        
-        // Apply constraints
-        newSize = Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, newSize));
-        
-        // Save the new size
-        userPreferences.setMessageTextSize(newSize);
-        
-        return newSize;
+    public boolean setTextSize(float newSize) {
+        if (isValidTextSize(newSize)) {
+            userPreferences.setMessageTextSize(newSize);
+            return true;
+        }
+        return false;
     }
-    
+
     /**
-     * Sets the text size directly.
+     * Increases the text size by a given amount.
      *
-     * @param textSize The text size in SP
-     * @return The actual text size set (after applying constraints)
+     * @param increment The amount to increase by
+     * @return The new text size after increase
      */
-    public float setTextSize(float textSize) {
-        float constrainedSize = Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, textSize));
+    public float increaseTextSize(float increment) {
+        float currentSize = getCurrentTextSize();
+        float newSize = currentSize + increment;
+        float constrainedSize = Math.min(newSize, MAX_TEXT_SIZE);
         userPreferences.setMessageTextSize(constrainedSize);
         return constrainedSize;
     }
-    
+
     /**
-     * Resets the text size to default.
+     * Decreases the text size by a given amount.
+     *
+     * @param decrement The amount to decrease by
+     * @return The new text size after decrease
      */
-    public void resetTextSize() {
+    public float decreaseTextSize(float decrement) {
+        float currentSize = getCurrentTextSize();
+        float newSize = currentSize - decrement;
+        float constrainedSize = Math.max(newSize, MIN_TEXT_SIZE);
+        userPreferences.setMessageTextSize(constrainedSize);
+        return constrainedSize;
+    }
+
+    /**
+     * Resets the text size to the default value.
+     */
+    public void resetToDefault() {
         userPreferences.setMessageTextSize(DEFAULT_TEXT_SIZE);
     }
-    
+
     /**
-     * Applies the current text size to a text view with proper scaling.
+     * Validates if a text size is within acceptable bounds.
      *
-     * @param scaleFactor The scale factor to apply to the current text size
-     * @return The calculated text size
+     * @param size The size to validate
+     * @return true if valid, false otherwise
      */
-    public float calculateScaledTextSize(float scaleFactor) {
-        float currentSize = getCurrentTextSize();
-        float scaledSize = currentSize * scaleFactor;
-        return Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, scaledSize));
+    private boolean isValidTextSize(float size) {
+        return size >= MIN_TEXT_SIZE && size <= MAX_TEXT_SIZE;
+    }
+
+    /**
+     * Gets the minimum allowed text size.
+     *
+     * @return The minimum text size
+     */
+    public float getMinTextSize() {
+        return MIN_TEXT_SIZE;
+    }
+
+    /**
+     * Gets the maximum allowed text size.
+     *
+     * @return The maximum text size
+     */
+    public float getMaxTextSize() {
+        return MAX_TEXT_SIZE;
+    }
+
+    /**
+     * Gets the default text size.
+     *
+     * @return The default text size
+     */
+    public float getDefaultTextSize() {
+        return DEFAULT_TEXT_SIZE;
     }
 }
