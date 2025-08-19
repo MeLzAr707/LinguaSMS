@@ -342,6 +342,38 @@ public class MainActivity extends BaseActivity
                 headerView.setBackgroundColor(getResources().getColor(R.color.deep_dark_blue));
             }
         }
+        
+        // Apply custom theme colors if using custom theme
+        applyCustomThemeColors();
+    }
+    
+    /**
+     * Apply custom theme colors to UI elements
+     */
+    private void applyCustomThemeColors() {
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int customNavBarColor = userPreferences.getCustomNavBarColor(defaultColor);
+            
+            // Apply custom navigation bar color
+            NavigationView navigationView = findViewById(R.id.nav_view);
+            if (navigationView != null) {
+                View headerView = navigationView.getHeaderView(0);
+                if (headerView != null) {
+                    headerView.setBackgroundColor(customNavBarColor);
+                }
+            }
+            
+            // Apply custom color to FAB
+            FloatingActionButton fab = findViewById(R.id.fab);
+            if (fab == null) {
+                // Try to find with the actual variable name
+                fab = newMessageFab;
+            }
+            if (fab != null) {
+                fab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customNavBarColor));
+            }
+        }
     }
 
     private void checkPermissions() {

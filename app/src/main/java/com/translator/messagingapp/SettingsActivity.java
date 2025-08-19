@@ -164,6 +164,9 @@ public class SettingsActivity extends BaseActivity {
             case UserPreferences.THEME_SYSTEM:
                 radioButtonId = R.id.radio_system;
                 break;
+            case UserPreferences.THEME_CUSTOM:
+                radioButtonId = R.id.radio_custom;
+                break;
             case UserPreferences.THEME_LIGHT:
             default:
                 radioButtonId = R.id.radio_light;
@@ -273,6 +276,8 @@ public class SettingsActivity extends BaseActivity {
             newThemeId = UserPreferences.THEME_BLACK_GLASS;
         } else if (checkedId == R.id.radio_system) {
             newThemeId = UserPreferences.THEME_SYSTEM;
+        } else if (checkedId == R.id.radio_custom) {
+            newThemeId = UserPreferences.THEME_CUSTOM;
         } else {
             newThemeId = UserPreferences.THEME_LIGHT;
         }
@@ -311,5 +316,47 @@ public class SettingsActivity extends BaseActivity {
     private void openOfflineModelsActivity() {
         Intent intent = new Intent(this, OfflineModelsActivity.class);
         startActivity(intent);
+    }
+    
+    @Override
+    protected void onThemeChanged() {
+        super.onThemeChanged();
+        
+        // Apply custom theme colors if using custom theme
+        applyCustomButtonColors();
+    }
+    
+    /**
+     * Apply custom button colors if using custom theme
+     */
+    private void applyCustomButtonColors() {
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            // Apply custom color to save button
+            if (saveButton != null) {
+                saveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to test API key button
+            if (testApiKeyButton != null) {
+                testApiKeyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to manage offline models button
+            if (manageOfflineModelsButton != null) {
+                manageOfflineModelsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply custom color to language selection buttons
+            if (selectIncomingLanguageButton != null) {
+                selectIncomingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            if (selectOutgoingLanguageButton != null) {
+                selectOutgoingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+        }
     }
 }
