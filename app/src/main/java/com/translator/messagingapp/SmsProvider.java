@@ -122,6 +122,8 @@ public class SmsProvider extends ContentProvider {
 
         try {
             int match = uriMatcher.match(uri);
+            Uri resultUri = null;
+            
             switch (match) {
                 case SMS:
                     // For SMS inserts, we can use MessageService to handle additional logic
@@ -143,11 +145,21 @@ public class SmsProvider extends ContentProvider {
                     }
 
                     // Delegate to system SMS provider for the actual insert
-                    return delegateInsertToSystemProvider(uri, values);
+                    resultUri = delegateInsertToSystemProvider(uri, values);
+                    if (resultUri != null) {
+                        // Clear cache and notify observers
+                        MessageCache.clearCache();
+                        notifyContentChange(resultUri);
+                    }
+                    return resultUri;
 
                 case TRANSLATIONS:
                     // Insert translation
-                    return insertTranslation(uri, values);
+                    resultUri = insertTranslation(uri, values);
+                    if (resultUri != null) {
+                        notifyContentChange(resultUri);
+                    }
+                    return resultUri;
 
                 default:
                     throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -164,15 +176,19 @@ public class SmsProvider extends ContentProvider {
 
         try {
             int match = uriMatcher.match(uri);
+            int deletedRows = 0;
+            
             switch (match) {
                 case SMS:
                     // For bulk SMS deletes, we might want to clear caches
-                    int result = delegateDeleteToSystemProvider(uri, selection, selectionArgs);
-                    if (result > 0) {
+                    deletedRows = delegateDeleteToSystemProvider(uri, selection, selectionArgs);
+                    if (deletedRows > 0) {
                         // Clear message cache since we don't know which threads were affected
                         MessageCache.clearCache();
+                        // Notify content observers of the change
+                        notifyContentChange(uri);
                     }
-                    return result;
+                    return deletedRows;
 
                 case SMS_ID:
                     // For single SMS delete, we can be more specific
@@ -180,14 +196,27 @@ public class SmsProvider extends ContentProvider {
                     if (id != null) {
                         // Use MessageService to delete the message
                         boolean success = messageService.deleteMessage(id, Message.MESSAGE_TYPE_SMS);
-                        return success ? 1 : 0;
+                        if (success) {
+                            deletedRows = 1;
+                            // Notify content observers of the change
+                            notifyContentChange(uri);
+                        }
+                        return deletedRows;
                     }
-                    return delegateDeleteToSystemProvider(uri, selection, selectionArgs);
+                    deletedRows = delegateDeleteToSystemProvider(uri, selection, selectionArgs);
+                    if (deletedRows > 0) {
+                        notifyContentChange(uri);
+                    }
+                    return deletedRows;
 
                 case TRANSLATIONS:
                 case TRANSLATION_ID:
                     // Delete translation
-                    return deleteTranslation(uri, selection, selectionArgs);
+                    deletedRows = deleteTranslation(uri, selection, selectionArgs);
+                    if (deletedRows > 0) {
+                        notifyContentChange(uri);
+                    }
+                    return deletedRows;
 
                 default:
                     throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -205,16 +234,29 @@ public class SmsProvider extends ContentProvider {
 
         try {
             int match = uriMatcher.match(uri);
+            int updatedRows = 0;
+            
             switch (match) {
                 case SMS:
                 case SMS_ID:
                     // Delegate to system SMS provider
-                    return delegateUpdateToSystemProvider(uri, values, selection, selectionArgs);
+                    updatedRows = delegateUpdateToSystemProvider(uri, values, selection, selectionArgs);
+                    if (updatedRows > 0) {
+                        // Clear relevant cache entries
+                        MessageCache.clearCache();
+                        // Notify content observers of the change
+                        notifyContentChange(uri);
+                    }
+                    return updatedRows;
 
                 case TRANSLATIONS:
                 case TRANSLATION_ID:
                     // Update translation
-                    return updateTranslation(uri, values, selection, selectionArgs);
+                    updatedRows = updateTranslation(uri, values, selection, selectionArgs);
+                    if (updatedRows > 0) {
+                        notifyContentChange(uri);
+                    }
+                    return updatedRows;
 
                 default:
                     throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -379,6 +421,31 @@ public class SmsProvider extends ContentProvider {
 
         // Return 0 rows affected
         return 0;
+    }
+
+    /**
+     * Notifies content observers of changes to the data.
+     * This enables reactive updates throughout the app.
+     */
+    private void notifyContentChange(Uri uri) {
+        try {
+            if (getContext() != null && uri != null) {
+                getContext().getContentResolver().notifyChange(uri, null);
+                Log.d(TAG, "Notified content change for URI: " + uri);
+                
+                // Also notify the generic SMS/MMS URIs for broader compatibility
+                if (uri.toString().contains("sms")) {
+                    getContext().getContentResolver().notifyChange(Telephony.Sms.CONTENT_URI, null);
+                } else if (uri.toString().contains("mms")) {
+                    getContext().getContentResolver().notifyChange(Telephony.Mms.CONTENT_URI, null);
+                }
+                
+                // Notify conversations URI for UI updates
+                getContext().getContentResolver().notifyChange(Telephony.Threads.CONTENT_URI, null);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error notifying content change", e);
+        }
     }
 }
 
