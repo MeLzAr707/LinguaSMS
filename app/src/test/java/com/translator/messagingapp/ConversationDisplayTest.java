@@ -106,6 +106,24 @@ public class ConversationDisplayTest {
         String displayName3 = getExpectedDisplayName(noAddressConversation, mockContext);
         assertEquals("Should display 'Unknown Contact' when no address is available", 
                     "Unknown Contact", displayName3);
+        
+        // Test case 4: Thread with string "null" contact name should fall back to phone number
+        Conversation nullStringConversation = createTestConversation("4", "+15551234567", "null");
+        String displayName4 = getExpectedDisplayName(nullStringConversation, mockContext);
+        assertEquals("Should display phone number when contact name is string 'null'", 
+                    "+15551234567", displayName4);
+        
+        // Test case 5: Group message with contact names should preserve group format
+        Conversation groupConversation = createTestConversation("5", "+15551234567", "John Doe, Jane Smith");
+        String displayName5 = getExpectedDisplayName(groupConversation, mockContext);
+        assertEquals("Should preserve group contact name format", 
+                    "John Doe, Jane Smith", displayName5);
+        
+        // Test case 6: Group message with summary format should be preserved
+        Conversation groupSummaryConversation = createTestConversation("6", "+15551234567", "Alice + 3 others");
+        String displayName6 = getExpectedDisplayName(groupSummaryConversation, mockContext);
+        assertEquals("Should preserve group summary format", 
+                    "Alice + 3 others", displayName6);
     }
 
     /**
@@ -134,28 +152,42 @@ public class ConversationDisplayTest {
         String address = conversation.getAddress();
         String threadId = conversation.getThreadId();
         
+        // Clean up contact name - handle string "null", empty, or actual null
+        if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+            contactName = null;
+        }
+        
         // Safety check: never display threadId as the contact name
         if (!TextUtils.isEmpty(contactName) && contactName.equals(threadId)) {
             contactName = null; // Force fallback logic
         }
         
-        // First priority: Non-empty contact name that's not just the phone number
-        if (!TextUtils.isEmpty(contactName) && !contactName.equals(address)) {
-            return contactName;
+        // If we have a valid contact name, use it
+        if (contactName != null) {
+            // Check if it's a group message indicator
+            if (contactName.contains(",") || (contactName.contains("+") && contactName.contains("others"))) {
+                return contactName; // Already formatted group name
+            }
+            
+            // Check if contact name is same as address (not useful)
+            if (!contactName.equals(address)) {
+                return contactName;
+            }
         }
         
-        // Second priority: Phone number/address
+        // Fall back to formatted phone number or address
         if (!TextUtils.isEmpty(address)) {
             // Additional safety check: make sure address is not threadId
             if (address.equals(threadId)) {
                 return "Unknown Contact";
             }
-            return address;
-        }
-        
-        // Third priority: Contact name even if it might be a phone number
-        if (!TextUtils.isEmpty(contactName)) {
-            return contactName;
+            
+            // Check if this looks like a group message
+            if (address.contains(",") || (address.contains("+") && address.contains("others"))) {
+                return address; // Already formatted group address
+            }
+            
+            return address; // Return raw address for test logic (formatting happens in adapter)
         }
         
         // Last resort: Unknown contact

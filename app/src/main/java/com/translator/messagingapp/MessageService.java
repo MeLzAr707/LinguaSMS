@@ -245,8 +245,12 @@ public class MessageService {
                 conversation.setDate(date);
                 conversation.setRead(read);
 
-                // Resolve contact name
+                // Resolve contact name with improved handling
                 String contactName = ContactUtils.getContactName(context, address);
+                // Ensure we never set string "null" - keep it as actual null if no contact found
+                if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+                    contactName = null;
+                }
                 conversation.setContactName(contactName);
 
                 // Count unread messages
@@ -303,8 +307,12 @@ public class MessageService {
                 conversation.setDate(date);
                 conversation.setRead(read);
 
-                // Resolve contact name
+                // Resolve contact name with improved handling
                 String contactName = ContactUtils.getContactName(context, address);
+                // Ensure we never set string "null" - keep it as actual null if no contact found
+                if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+                    contactName = null;
+                }
                 conversation.setContactName(contactName);
 
                 // Count unread messages
@@ -333,24 +341,93 @@ public class MessageService {
             return null;
         }
 
-        String address = null;
-
-        // Query the addr table to get the address
+        List<String> addresses = getMmsAddresses(contentResolver, messageId);
+        
+        if (addresses.isEmpty()) {
+            return null;
+        } else if (addresses.size() == 1) {
+            return addresses.get(0);
+        } else {
+            // For group messages, return a formatted string of contact names
+            return formatGroupAddresses(addresses);
+        }
+    }
+    
+    /**
+     * Gets all MMS addresses for a message.
+     */
+    private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId) {
+        List<String> addresses = new ArrayList<>();
+        
+        // Query the addr table to get all addresses
         Uri uri = Uri.parse("content://mms/" + messageId + "/addr");
         String selection = "type=" + TYPE_TO;
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int addressIndex = cursor.getColumnIndex("address");
-                if (addressIndex >= 0) {
-                    address = cursor.getString(addressIndex);
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    int addressIndex = cursor.getColumnIndex("address");
+                    if (addressIndex >= 0) {
+                        String address = cursor.getString(addressIndex);
+                        if (!TextUtils.isEmpty(address)) {
+                            addresses.add(address);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS address for message " + messageId, e);
+            Log.e(TAG, "Error getting MMS addresses for message " + messageId, e);
         }
 
-        return address;
+        return addresses;
+    }
+    
+    /**
+     * Formats multiple addresses for group message display.
+     */
+    private String formatGroupAddresses(List<String> addresses) {
+        if (addresses.size() <= 1) {
+            return addresses.isEmpty() ? null : addresses.get(0);
+        }
+        
+        List<String> contactNames = new ArrayList<>();
+        
+        // Try to get contact names for each address
+        for (String address : addresses) {
+            String contactName = ContactUtils.getContactName(context, address);
+            if (!TextUtils.isEmpty(contactName)) {
+                contactNames.add(contactName);
+            } else {
+                // Fall back to formatted phone number
+                contactNames.add(formatPhoneNumberForGroup(address));
+            }
+        }
+        
+        if (contactNames.size() <= 2) {
+            return TextUtils.join(", ", contactNames);
+        } else {
+            // For more than 2 contacts, show first contact and count
+            return contactNames.get(0) + " + " + (contactNames.size() - 1) + " others";
+        }
+    }
+    
+    /**
+     * Formats a phone number for group display (shorter format).
+     */
+    private String formatPhoneNumberForGroup(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return "Unknown";
+        }
+        
+        // Remove any non-digit characters
+        String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
+        
+        // For group display, show last 4 digits
+        if (digitsOnly.length() >= 4) {
+            return "..." + digitsOnly.substring(digitsOnly.length() - 4);
+        }
+        
+        return phoneNumber;
     }
 
     /**
