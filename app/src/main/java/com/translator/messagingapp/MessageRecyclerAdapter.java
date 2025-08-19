@@ -34,7 +34,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     private final Context context;
     private final List<Message> messages;
     private final OnMessageClickListener listener;
-    private final TextSizeManager textSizeManager;
 
     /**
      * Interface for message click events.
@@ -49,10 +48,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         void onAttachmentClick(MmsMessage.Attachment attachment, int position);
 
         void onAttachmentClick(Uri uri, int position);
-
-        void onAttachmentLongClick(MmsMessage.Attachment attachment, int position);
-
-        void onAttachmentLongClick(Uri uri, int position);
 
         void onReactionClick(Message message, int position);
 
@@ -70,7 +65,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         this.context = context;
         this.messages = messages;
         this.listener = listener;
-        this.textSizeManager = new TextSizeManager(context);
     }
 
     @NonNull
@@ -136,6 +130,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     abstract class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
+        TextView originalText;
         TextView dateText;
         View translateButton;
         LinearLayout reactionsLayout;
@@ -143,6 +138,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         MessageViewHolder(View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
+            originalText = itemView.findViewById(R.id.original_text);
             dateText = itemView.findViewById(R.id.message_date); // Fixed ID
             translateButton = itemView.findViewById(R.id.translate_button);
             reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
@@ -153,13 +149,27 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
 
-            // Set message text with improved handling for RCS messages
-            String displayText = getDisplayTextForMessage(message);
-            messageText.setText(displayText);
-            
-            // Apply current text size from preferences
-            float currentTextSize = textSizeManager.getCurrentTextSize();
-            messageText.setTextSize(currentTextSize);
+            // Handle dual text display for translations
+            if (message.isShowTranslation() && message.isTranslated()) {
+                // Show both original and translated text
+                String originalBody = getOriginalTextForMessage(message);
+                String translatedText = message.getTranslatedText();
+                
+                if (originalText != null) {
+                    originalText.setText("Original: " + originalBody);
+                    originalText.setVisibility(View.VISIBLE);
+                }
+                
+                messageText.setText(translatedText);
+            } else {
+                // Show only original text
+                String displayText = getDisplayTextForMessage(message);
+                messageText.setText(displayText);
+                
+                if (originalText != null) {
+                    originalText.setVisibility(View.GONE);
+                }
+            }
 
             // Set date
             if (dateText != null) {
@@ -283,8 +293,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             if (messageCard != null) {
                 UserPreferences userPreferences = new UserPreferences(context);
                 if (userPreferences.isUsingBlackGlassTheme()) {
-                    // Use dark theme background color for Black Glass theme to differentiate from outgoing messages
-                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.background_dark));
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
                 } else {
                     // Use theme-aware default color (will be overridden by theme)
                     messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
@@ -353,13 +363,21 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         // Load image/video using Glide
                         loadMediaWithGlide(attachmentUri, attachment);
                         
-                        // Hide text when showing image
+                        // Hide text when showing image and there's no text content
                         if (messageText != null) {
                             String body = message.getBody();
-                            if (body == null || body.trim().isEmpty()) {
-                                messageText.setVisibility(View.GONE);
-                            } else {
+                            boolean hasTextContent = (body != null && !body.trim().isEmpty()) || 
+                                                   (message.isTranslated() && message.getTranslatedText() != null && !message.getTranslatedText().trim().isEmpty());
+                            
+                            if (hasTextContent) {
                                 messageText.setVisibility(View.VISIBLE);
+                                // Original text visibility is handled by parent bind method
+                            } else {
+                                messageText.setVisibility(View.GONE);
+                                // Also hide original text if main text is hidden
+                                if (originalText != null) {
+                                    originalText.setVisibility(View.GONE);
+                                }
                             }
                         }
                         
@@ -367,14 +385,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                             if (listener != null) {
                                 listener.onAttachmentClick(attachment, position);
                             }
-                        });
-                        
-                        mediaImage.setOnLongClickListener(v -> {
-                            if (listener != null) {
-                                listener.onAttachmentLongClick(attachment, position);
-                                return true;
-                            }
-                            return false;
                         });
                     } else if (attachmentUri != null) {
                         // For non-image attachments (video, audio), show placeholder
@@ -385,14 +395,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                             if (listener != null) {
                                 listener.onAttachmentClick(attachment, position);
                             }
-                        });
-                        
-                        mediaImage.setOnLongClickListener(v -> {
-                            if (listener != null) {
-                                listener.onAttachmentLongClick(attachment, position);
-                                return true;
-                            }
-                            return false;
                         });
                     }
                 }
@@ -419,14 +421,6 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         if (listener != null) {
                             listener.onAttachmentClick(uri, position);
                         }
-                    });
-                    
-                    mediaImage.setOnLongClickListener(v -> {
-                        if (listener != null) {
-                            listener.onAttachmentLongClick(uri, position);
-                            return true;
-                        }
-                        return false;
                     });
                 }
             }
@@ -508,8 +502,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             if (messageCard != null) {
                 UserPreferences userPreferences = new UserPreferences(context);
                 if (userPreferences.isUsingBlackGlassTheme()) {
-                    // Use dark theme background color for Black Glass theme to differentiate from outgoing messages
-                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.background_dark));
+                    // Use deep dark blue for Black Glass theme
+                    messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.deep_dark_blue));
                 } else {
                     // Use theme-aware default color (will be overridden by theme)
                     messageCard.setCardBackgroundColor(context.getResources().getColor(R.color.incoming_message_background));
@@ -549,13 +543,16 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     /**
      * Gets the appropriate display text for a message, handling special cases for RCS messages.
+     * This method always returns the original text, not the translated text.
      */
     private String getDisplayTextForMessage(Message message) {
-        // Show translation if available and enabled
-        if (message.isShowTranslation() && message.isTranslated()) {
-            return message.getTranslatedText();
-        }
+        return getOriginalTextForMessage(message);
+    }
 
+    /**
+     * Gets the original text for a message, handling special cases for RCS messages.
+     */
+    private String getOriginalTextForMessage(Message message) {
         // Handle message body
         String body = message.getBody();
 
@@ -592,13 +589,5 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         return body;
-    }
-
-    /**
-     * Updates text size for all visible message text views.
-     * Call this when text size preference changes.
-     */
-    public void updateTextSizes() {
-        notifyDataSetChanged();
     }
 }

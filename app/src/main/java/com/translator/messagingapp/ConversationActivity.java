@@ -329,6 +329,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     messages.clear();
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
                         messages.addAll(loadedMessages);
+                        
+                        // Restore translation state for all loaded messages
+                        restoreTranslationStateForMessages(loadedMessages);
+                        
                         Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
                         
                         // Set up pagination
@@ -447,6 +451,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     } else {
                         // Sort new messages chronologically (oldest first) for consistency
                         Collections.sort(newMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
+                        
+                        // Restore translation state for new messages
+                        restoreTranslationStateForMessages(newMessages);
                         
                         // Insert at the beginning (older messages)
                         messages.addAll(0, newMessages);
@@ -673,12 +680,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         message.setTranslatedText(translatedText);
                         message.setTranslated(true);
                         message.setShowTranslation(true);
+                        
+                        // Set translation language info if available
+                        message.setTranslatedLanguage(targetLanguage);
 
-                        // Save to cache
+                        // Save translation state to cache
                         if (translationCache != null) {
-                            // Use the put method instead of saveTranslation
-                            String cacheKey = "msg_" + message.getId() + "_translation";
-                            translationCache.put(cacheKey, translatedText);
+                            message.saveTranslationState(translationCache);
                         }
 
                         // Update UI
@@ -698,6 +706,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (message.isTranslated()) {
             // Toggle between original and translated text
             message.setShowTranslation(!message.isShowTranslation());
+            
+            // Save the updated show state to cache
+            if (translationCache != null) {
+                message.saveTranslationState(translationCache);
+            }
+            
             adapter.notifyItemChanged(position);
         } else {
             // Translate the message
@@ -1067,6 +1081,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         
         // Note: BroadcastReceiver cleanup is handled in onPause()
         Log.d(TAG, "ConversationActivity destroyed");
+    }
+
+    /**
+     * Restores translation state for a list of messages from the cache.
+     */
+    private void restoreTranslationStateForMessages(List<Message> messagesToRestore) {
+        if (translationCache == null || messagesToRestore == null) {
+            return;
+        }
+        
+        for (Message message : messagesToRestore) {
+            try {
+                boolean restored = message.restoreTranslationState(translationCache);
+                if (restored) {
+                    Log.d(TAG, "Restored translation state for message " + message.getId());
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error restoring translation state for message " + message.getId(), e);
+            }
+        }
     }
 
     /**
