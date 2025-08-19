@@ -1545,6 +1545,12 @@ public class MessageService {
      */
     private void showSmsNotification(String address, String body) {
         try {
+            // Only show notification if this app is the default SMS app
+            if (!PhoneUtils.isDefaultSmsApp(context)) {
+                Log.d(TAG, "Skipping SMS notification - app is not the default SMS app");
+                return;
+            }
+            
             // Get thread ID for the notification
             String threadId = getThreadIdForAddress(address);
             
@@ -1583,6 +1589,14 @@ public class MessageService {
     public void handleIncomingMms(Intent intent) {
         try {
             Log.d(TAG, "Processing incoming MMS");
+            
+            // Only show notification if this app is the default SMS app
+            if (!PhoneUtils.isDefaultSmsApp(context)) {
+                Log.d(TAG, "Skipping MMS notification - app is not the default SMS app");
+                // Still broadcast message received to refresh UI for storage purposes
+                broadcastMessageReceived();
+                return;
+            }
             
             // For now, show a simple MMS notification
             // This could be enhanced to parse MMS content in the future
