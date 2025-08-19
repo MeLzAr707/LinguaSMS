@@ -130,6 +130,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     abstract class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
+        TextView originalText;
         TextView dateText;
         View translateButton;
         LinearLayout reactionsLayout;
@@ -137,6 +138,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         MessageViewHolder(View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
+            originalText = itemView.findViewById(R.id.original_text);
             dateText = itemView.findViewById(R.id.message_date); // Fixed ID
             translateButton = itemView.findViewById(R.id.translate_button);
             reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
@@ -147,9 +149,27 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
 
-            // Set message text with improved handling for RCS messages
-            String displayText = getDisplayTextForMessage(message);
-            messageText.setText(displayText);
+            // Handle dual text display for translations
+            if (message.isShowTranslation() && message.isTranslated()) {
+                // Show both original and translated text
+                String originalBody = getOriginalTextForMessage(message);
+                String translatedText = message.getTranslatedText();
+                
+                if (originalText != null) {
+                    originalText.setText("Original: " + originalBody);
+                    originalText.setVisibility(View.VISIBLE);
+                }
+                
+                messageText.setText(translatedText);
+            } else {
+                // Show only original text
+                String displayText = getDisplayTextForMessage(message);
+                messageText.setText(displayText);
+                
+                if (originalText != null) {
+                    originalText.setVisibility(View.GONE);
+                }
+            }
 
             // Set date
             if (dateText != null) {
@@ -515,13 +535,16 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
     /**
      * Gets the appropriate display text for a message, handling special cases for RCS messages.
+     * This method always returns the original text, not the translated text.
      */
     private String getDisplayTextForMessage(Message message) {
-        // Show translation if available and enabled
-        if (message.isShowTranslation() && message.isTranslated()) {
-            return message.getTranslatedText();
-        }
+        return getOriginalTextForMessage(message);
+    }
 
+    /**
+     * Gets the original text for a message, handling special cases for RCS messages.
+     */
+    private String getOriginalTextForMessage(Message message) {
         // Handle message body
         String body = message.getBody();
 

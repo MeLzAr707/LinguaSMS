@@ -36,13 +36,27 @@
                 android:contentDescription="@string/attachment_image"
                 tools:src="@drawable/ic_attachment" />
 
+            <!-- Original message text (shown when translation is active) -->
+            <TextView
+                android:id="@+id/original_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:alpha="0.7"
+                android:textSize="14sp"
+                android:textStyle="italic"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"
+                tools:text="Original: This is an outgoing message with media" />
+
+            <!-- Main message text (original or translated) -->
             <TextView
                 android:id="@+id/message_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/white"
                 android:textSize="16sp"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 tools:text="This is an outgoing message with media" />
 
             <LinearLayout
