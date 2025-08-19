@@ -244,14 +244,30 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
 
     @Override
     public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
-        // Not implemented for search results
+        // Not implemented for search results - redirect to conversation
+        if (attachment != null) {
+            openConversationForAttachment(attachment);
+        }
     }
 
-    // Add the missing method to fix the compilation error
     @Override
     public void onAttachmentClick(Uri uri, int position) {
-        // Not implemented for search results
-        Toast.makeText(this, "Attachment viewing not supported in search results", Toast.LENGTH_SHORT).show();
+        // Not implemented for search results - show message
+        Toast.makeText(this, "Open the conversation to interact with attachments", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onAttachmentLongClick(MmsMessage.Attachment attachment, int position) {
+        // Not implemented for search results - redirect to conversation
+        if (attachment != null) {
+            openConversationForAttachment(attachment);
+        }
+    }
+
+    @Override
+    public void onAttachmentLongClick(Uri uri, int position) {
+        // Not implemented for search results - show message
+        Toast.makeText(this, "Open the conversation to interact with attachments", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -277,6 +293,12 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         intent.putExtra("contact_name", contactName);
 
         startActivity(intent);
+    }
+    
+    private void openConversationForAttachment(MmsMessage.Attachment attachment) {
+        // For attachments, we need to find the message to open the conversation
+        // For now, just show a message to the user
+        Toast.makeText(this, "Open the conversation to interact with this attachment", Toast.LENGTH_SHORT).show();
     }
 
     @Override
