@@ -31,6 +31,23 @@ public class ContactUtils {
             return null;
         }
 
+        // Try multiple phone number formats for better contact matching
+        String[] phoneVariants = getPhoneNumberVariants(phoneNumber);
+        
+        for (String variant : phoneVariants) {
+            String contactName = lookupContactName(context, variant);
+            if (!TextUtils.isEmpty(contactName)) {
+                return contactName;
+            }
+        }
+
+        return null;
+    }
+    
+    /**
+     * Looks up contact name for a specific phone number variant.
+     */
+    private static String lookupContactName(Context context, String phoneNumber) {
         try {
             ContentResolver contentResolver = context.getContentResolver();
             Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
@@ -46,7 +63,11 @@ public class ContactUtils {
                     if (cursor.moveToFirst()) {
                         int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
                         if (nameIndex >= 0) {
-                            return cursor.getString(nameIndex);
+                            String contactName = cursor.getString(nameIndex);
+                            // Ensure we don't return string "null" or empty strings
+                            if (!TextUtils.isEmpty(contactName) && !"null".equals(contactName)) {
+                                return contactName;
+                            }
                         }
                     }
                 } finally {
@@ -58,6 +79,63 @@ public class ContactUtils {
         }
 
         return null;
+    }
+    
+    /**
+     * Gets different phone number variants to try for contact lookup.
+     */
+    private static String[] getPhoneNumberVariants(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return new String[]{phoneNumber};
+        }
+        
+        // Remove any non-digit characters for processing
+        String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
+        
+        // Create variants to try
+        String[] variants = new String[4];
+        variants[0] = phoneNumber; // Original format
+        
+        if (digitsOnly.length() >= 10) {
+            // US number variants
+            if (digitsOnly.length() == 11 && digitsOnly.startsWith("1")) {
+                // Remove US country code
+                String withoutCountryCode = digitsOnly.substring(1);
+                variants[1] = withoutCountryCode;
+                variants[2] = formatAsPhoneNumber(withoutCountryCode);
+                variants[3] = "+" + digitsOnly;
+            } else if (digitsOnly.length() == 10) {
+                // Add US country code
+                variants[1] = "1" + digitsOnly;
+                variants[2] = "+" + "1" + digitsOnly;
+                variants[3] = formatAsPhoneNumber(digitsOnly);
+            } else {
+                // International number
+                variants[1] = "+" + digitsOnly;
+                variants[2] = digitsOnly;
+                variants[3] = phoneNumber;
+            }
+        } else {
+            // Short number, try as-is
+            variants[1] = digitsOnly;
+            variants[2] = phoneNumber;
+            variants[3] = phoneNumber;
+        }
+        
+        return variants;
+    }
+    
+    /**
+     * Formats a phone number as (XXX) XXX-XXXX.
+     */
+    private static String formatAsPhoneNumber(String digitsOnly) {
+        if (digitsOnly.length() == 10) {
+            return String.format("(%s) %s-%s",
+                    digitsOnly.substring(0, 3),
+                    digitsOnly.substring(3, 6),
+                    digitsOnly.substring(6));
+        }
+        return digitsOnly;
     }
 
     /**

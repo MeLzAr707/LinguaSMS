@@ -79,11 +79,8 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         final Conversation conversation = conversations.get(position);
 
-        // Set the contact name
-        String displayName = conversation.getContactName();
-        if (displayName == null || displayName.isEmpty() || displayName.equals("null")) {
-            displayName = formatPhoneNumber(conversation.getAddress());
-        }
+        // Set the contact name with improved null handling
+        String displayName = getDisplayNameForConversation(conversation);
         holder.contactName.setText(displayName);
 
         // Set the last message/snippet with proper null checks
@@ -146,6 +143,49 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     @Override
     public int getItemCount() {
         return conversations != null ? conversations.size() : 0;
+    }
+
+    /**
+     * Gets the appropriate display name for a conversation with improved logic.
+     */
+    private String getDisplayNameForConversation(Conversation conversation) {
+        if (conversation == null) {
+            return "Unknown Contact";
+        }
+        
+        String contactName = conversation.getContactName();
+        String address = conversation.getAddress();
+        
+        // Clean up contact name - handle string "null", empty, or actual null
+        if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+            contactName = null;
+        }
+        
+        // If we have a valid contact name, use it
+        if (contactName != null) {
+            // Check if it's a group message indicator
+            if (contactName.contains(",") || contactName.contains("+") && contactName.contains("others")) {
+                return contactName; // Already formatted group name
+            }
+            
+            // Check if contact name is same as address (not useful)
+            if (!contactName.equals(address)) {
+                return contactName;
+            }
+        }
+        
+        // Fall back to formatted phone number
+        if (!TextUtils.isEmpty(address)) {
+            // Check if this looks like a group message
+            if (address.contains(",") || address.contains("+") && address.contains("others")) {
+                return address; // Already formatted group address
+            }
+            
+            return formatPhoneNumber(address);
+        }
+        
+        // Last resort
+        return "Unknown Contact";
     }
 
     /**
