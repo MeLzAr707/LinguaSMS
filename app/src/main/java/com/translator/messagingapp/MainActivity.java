@@ -112,6 +112,9 @@ public class MainActivity extends BaseActivity
             
             // Set up message refresh receiver
             setupMessageRefreshReceiver();
+            
+            // Apply custom colors if using custom theme
+            applyCustomColorsToViews();
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing MainActivity", e);
@@ -1118,6 +1121,29 @@ public class MainActivity extends BaseActivity
                 Log.e(TAG, "Error unregistering message refresh receiver", e);
             }
             messageRefreshReceiver = null;
+        }
+    }
+    
+    @Override
+    protected void applyCustomColorsToViews() {
+        super.applyCustomColorsToViews();
+        
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to navigation view and FAB
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customNavBarColor = userPreferences.getCustomNavBarColor(defaultColor);
+            
+            // Apply to Navigation View header if present
+            NavigationView navigationView = findViewById(R.id.nav_view);
+            if (navigationView != null && navigationView.getHeaderView(0) != null) {
+                navigationView.getHeaderView(0).setBackgroundColor(customNavBarColor);
+            }
+            
+            // Apply to FloatingActionButton
+            FloatingActionButton fab = findViewById(R.id.fab);
+            if (fab != null) {
+                fab.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customNavBarColor));
+            }
         }
     }
 }

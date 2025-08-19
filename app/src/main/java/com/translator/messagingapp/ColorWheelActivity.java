@@ -60,7 +60,11 @@ public class ColorWheelActivity extends BaseActivity {
         findViews();
         setupClickListeners();
         setupColorGrid();
+        loadCurrentCustomColors();
         updateColorPreview();
+        
+        // Apply custom colors if using custom theme
+        applyCustomColorsToViews();
     }
 
     private void setupToolbar() {
@@ -129,6 +133,16 @@ public class ColorWheelActivity extends BaseActivity {
         colorPreview.setBackgroundColor(selectedColor);
         selectedColorText.setText(String.format("#%06X", (0xFFFFFF & selectedColor)));
     }
+    
+    private void loadCurrentCustomColors() {
+        // Load the current primary color if using custom theme
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            selectedColor = userPreferences.getCustomPrimaryColor(defaultColor);
+        } else {
+            selectedColor = getResources().getColor(R.color.colorPrimary);
+        }
+    }
 
     private void applySelectedColor() {
         int checkedId = componentRadioGroup.getCheckedRadioButtonId();
@@ -179,5 +193,20 @@ public class ColorWheelActivity extends BaseActivity {
         updateColorPreview();
         
         Toast.makeText(this, "Colors reset to default", Toast.LENGTH_SHORT).show();
+    }
+    
+    @Override
+    protected void applyCustomColorsToViews() {
+        super.applyCustomColorsToViews();
+        
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to buttons
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            if (applyColorButton != null) {
+                applyColorButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+        }
     }
 }

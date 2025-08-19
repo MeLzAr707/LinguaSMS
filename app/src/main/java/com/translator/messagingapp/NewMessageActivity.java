@@ -166,6 +166,9 @@ public class NewMessageActivity extends BaseActivity {
         if (messageInput != null) {
             messageInput.addTextChangedListener(messageTextWatcher);
         }
+        
+        // Apply custom colors if using custom theme
+        applyCustomColorsToViews();
     }
 
     private void updateSendButtonState() {
@@ -469,6 +472,21 @@ public class NewMessageActivity extends BaseActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             updateToolbarTheme(toolbar);
+        }
+    }
+    
+    @Override
+    protected void applyCustomColorsToViews() {
+        super.applyCustomColorsToViews();
+        
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to buttons
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            if (sendButton != null) {
+                sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
         }
     }
 }

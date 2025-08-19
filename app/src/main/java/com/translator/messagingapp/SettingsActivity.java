@@ -50,6 +50,9 @@ public class SettingsActivity extends BaseActivity {
 
         // Load saved preferences
         loadPreferences();
+        
+        // Apply custom colors if using custom theme
+        applyCustomColorsToViews();
     }
 
     private void setupToolbar() {
@@ -375,6 +378,37 @@ public class SettingsActivity extends BaseActivity {
             case R.id.radio_light:
             default:
                 return UserPreferences.THEME_LIGHT;
+        }
+    }
+    
+    @Override
+    protected void applyCustomColorsToViews() {
+        super.applyCustomColorsToViews();
+        
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to buttons
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            // Apply to all buttons
+            if (testApiKeyButton != null) {
+                testApiKeyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            if (selectIncomingLanguageButton != null) {
+                selectIncomingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            if (selectOutgoingLanguageButton != null) {
+                selectOutgoingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            if (manageOfflineModelsButton != null) {
+                manageOfflineModelsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            if (customizeColorsButton != null) {
+                customizeColorsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            if (saveButton != null) {
+                saveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
         }
     }
 }

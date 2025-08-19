@@ -104,6 +104,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Load messages
         loadMessages();
+        
+        // Apply custom colors if using custom theme
+        applyCustomColorsToViews();
     }
 
     @Override
@@ -884,6 +887,37 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             updateToolbarTheme(toolbar);
+        }
+    }
+    
+    @Override
+    protected void applyCustomColorsToViews() {
+        super.applyCustomColorsToViews();
+        
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom colors to send button and other UI elements
+            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
+            
+            // Apply to send button
+            if (sendButton != null) {
+                sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply to emoji button
+            if (emojiButton != null) {
+                emojiButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply to attachment button
+            if (attachmentButton != null) {
+                attachmentButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
+            
+            // Apply to translate button
+            if (translateButton != null) {
+                translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
         }
     }
 }
