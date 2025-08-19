@@ -101,12 +101,31 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Initialize UI components
         initializeComponents();
-        
-        // Set up message update receiver
-        setupMessageUpdateReceiver();
 
         // Load messages
         loadMessages();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Register message update receiver when activity becomes visible
+        setupMessageUpdateReceiver();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Unregister message update receiver when activity is not visible
+        if (messageUpdateReceiver != null) {
+            try {
+                unregisterReceiver(messageUpdateReceiver);
+                Log.d(TAG, "Message update receiver unregistered in onPause");
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering message update receiver in onPause", e);
+            }
+            messageUpdateReceiver = null;
+        }
     }
 
     private void initializeComponents() {
@@ -460,39 +479,47 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     private void setupMessageUpdateReceiver() {
         try {
+            // Prevent double registration
+            if (messageUpdateReceiver != null) {
+                Log.d(TAG, "Message update receiver already registered, skipping");
+                return;
+            }
+            
             // Create the broadcast receiver
             messageUpdateReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     Log.d(TAG, "Message update broadcast received: " + intent.getAction());
                     
-                    // Handle different update actions
+                    // Handle different update actions on UI thread to ensure UI updates work
                     if (intent != null && intent.getAction() != null) {
-                        switch (intent.getAction()) {
-                            case "com.translator.messagingapp.MESSAGE_RECEIVED":
-                            case "com.translator.messagingapp.REFRESH_MESSAGES":
-                                // Refresh messages when received or refresh requested
-                                Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
-                                loadMessages();
-                                break;
-                            case "com.translator.messagingapp.MESSAGE_SENT":
-                                // Handle sent message: clear cache, reset pagination, then refresh
-                                Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing");
-                                
-                                // Clear cache to ensure fresh data
-                                MessageCache.clearCacheForThread(threadId);
-                                
-                                // Reset pagination state
-                                currentPage = 0;
-                                hasMoreMessages = true;
-                                
-                                // Refresh messages
-                                loadMessages();
-                                break;
-                            default:
-                                Log.d(TAG, "Unknown update action: " + intent.getAction());
-                                break;
-                        }
+                        runOnUiThread(() -> {
+                            switch (intent.getAction()) {
+                                case "com.translator.messagingapp.MESSAGE_RECEIVED":
+                                case "com.translator.messagingapp.REFRESH_MESSAGES":
+                                    // Refresh messages when received or refresh requested
+                                    Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
+                                    loadMessages();
+                                    break;
+                                case "com.translator.messagingapp.MESSAGE_SENT":
+                                    // Handle sent message: clear cache, reset pagination, then refresh
+                                    Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing");
+                                    
+                                    // Clear cache to ensure fresh data
+                                    MessageCache.clearCacheForThread(threadId);
+                                    
+                                    // Reset pagination state
+                                    currentPage = 0;
+                                    hasMoreMessages = true;
+                                    
+                                    // Refresh messages
+                                    loadMessages();
+                                    break;
+                                default:
+                                    Log.d(TAG, "Unknown update action: " + intent.getAction());
+                                    break;
+                            }
+                        });
                     }
                 }
             };
@@ -829,20 +856,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     protected void onDestroy() {
         super.onDestroy();
         
-        // Unregister message update receiver
-        if (messageUpdateReceiver != null) {
-            try {
-                unregisterReceiver(messageUpdateReceiver);
-                Log.d(TAG, "Message update receiver unregistered");
-            } catch (Exception e) {
-                Log.e(TAG, "Error unregistering message update receiver", e);
-            }
-        }
-        
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
         }
+        
+        // Note: BroadcastReceiver cleanup is handled in onPause()
+        Log.d(TAG, "ConversationActivity destroyed");
     }
 
     /**
