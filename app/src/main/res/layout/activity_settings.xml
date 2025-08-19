@@ -205,6 +205,12 @@
                     android:layout_height="wrap_content"
                     android:text="@string/theme_system" />
 
+                <RadioButton
+                    android:id="@+id/radio_custom"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/theme_custom" />
+
             </RadioGroup>
 
             <!-- Offline Translation Section -->

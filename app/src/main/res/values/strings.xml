@@ -59,6 +59,7 @@
     <string name="theme_dark">Dark</string>
     <string name="theme_black_glass">Black</string>
     <string name="theme_system">System Default</string>
+    <string name="theme_custom">Custom</string>
 
     <!-- About and Info -->
     <string name="about">About</string>
