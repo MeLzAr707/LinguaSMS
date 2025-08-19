@@ -14,8 +14,8 @@ public class OptimizedMessageCache {
     private static final String TAG = "OptimizedMessageCache";
     private static final int MAX_MEMORY_SIZE = 1024 * 1024 * 4; // 4MB cache size
     
-    private final LruCache<String, List<Message>> messageCache;
-    private final LruCache<String, Conversation> conversationCache;
+    private LruCache<String, List<Message>> messageCache;
+    private LruCache<String, Conversation> conversationCache;
     private final Context context; // Add context field for constructor compatibility
     
     public OptimizedMessageCache() {
@@ -36,10 +36,7 @@ public class OptimizedMessageCache {
     /**
      * Initializes the LRU caches.
      */
-    private void initializeCaches() {
-    /**
-     * Initializes the LRU caches.
-     */
+
     private void initializeCaches() {
         // Initialize LRU cache for messages with memory-based eviction
         messageCache = new LruCache<String, List<Message>>(MAX_MEMORY_SIZE) {
