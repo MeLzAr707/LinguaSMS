@@ -848,15 +848,34 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     @Override
     public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
-        // Handle attachment click
-        Toast.makeText(this, "Attachment clicked", Toast.LENGTH_SHORT).show();
+        // Handle attachment click - open with appropriate app
+        if (attachment != null && attachment.getUri() != null) {
+            openAttachment(attachment.getUri(), attachment.getContentType());
+        }
     }
     
-    // Add the missing method to fix the compilation error
     @Override
     public void onAttachmentClick(Uri uri, int position) {
-        // Handle attachment click for URI
-        Toast.makeText(this, "Attachment clicked: " + uri.toString(), Toast.LENGTH_SHORT).show();
+        // Handle attachment click for URI - open with appropriate app
+        if (uri != null) {
+            openAttachment(uri, null);
+        }
+    }
+    
+    @Override
+    public void onAttachmentLongClick(MmsMessage.Attachment attachment, int position) {
+        // Handle attachment long click - show options menu
+        if (attachment != null && attachment.getUri() != null) {
+            showAttachmentOptionsDialog(attachment.getUri(), attachment.getContentType(), attachment.getFileName());
+        }
+    }
+    
+    @Override
+    public void onAttachmentLongClick(Uri uri, int position) {
+        // Handle attachment long click for URI - show options menu
+        if (uri != null) {
+            showAttachmentOptionsDialog(uri, null, null);
+        }
     }
     
     @Override
@@ -869,6 +888,156 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     public void onAddReactionClick(Message message, int position) {
         // Show reaction picker
         showReactionPicker(message, position);
+    }
+
+    /**
+     * Open attachment using the appropriate system app
+     */
+    private void openAttachment(Uri uri, String contentType) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            
+            if (contentType != null) {
+                intent.setDataAndType(uri, contentType);
+            } else {
+                intent.setData(uri);
+            }
+            
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                startActivity(intent);
+            } else {
+                Toast.makeText(this, "No app available to open this attachment", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error opening attachment", e);
+            Toast.makeText(this, "Error opening attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Show options dialog for attachment (save, share, view)
+     */
+    private void showAttachmentOptionsDialog(Uri uri, String contentType, String fileName) {
+        String[] options = {"View", "Save", "Share"};
+        
+        new AlertDialog.Builder(this)
+                .setTitle("Attachment Options")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // View
+                            openAttachment(uri, contentType);
+                            break;
+                        case 1: // Save
+                            saveAttachment(uri, contentType, fileName);
+                            break;
+                        case 2: // Share
+                            shareAttachment(uri, contentType);
+                            break;
+                    }
+                })
+                .show();
+    }
+    
+    /**
+     * Save attachment to device storage
+     */
+    private void saveAttachment(Uri uri, String contentType, String fileName) {
+        try {
+            // For Android 10+ (API 29+), use MediaStore
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                saveAttachmentModern(uri, contentType, fileName);
+            } else {
+                saveAttachmentLegacy(uri, contentType, fileName);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving attachment", e);
+            Toast.makeText(this, "Error saving attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Save attachment using modern MediaStore API (Android 10+)
+     */
+    @androidx.annotation.RequiresApi(api = android.os.Build.VERSION_CODES.Q)
+    private void saveAttachmentModern(Uri uri, String contentType, String fileName) {
+        try {
+            android.content.ContentResolver resolver = getContentResolver();
+            android.content.ContentValues values = new android.content.ContentValues();
+            
+            // Determine the appropriate collection based on content type
+            android.net.Uri collection;
+            if (contentType != null && contentType.startsWith("image/")) {
+                collection = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                values.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName != null ? fileName : "attachment_" + System.currentTimeMillis());
+                values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, contentType);
+                values.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/LinguaSMS");
+            } else if (contentType != null && contentType.startsWith("video/")) {
+                collection = android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                values.put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, fileName != null ? fileName : "attachment_" + System.currentTimeMillis());
+                values.put(android.provider.MediaStore.Video.Media.MIME_TYPE, contentType);
+                values.put(android.provider.MediaStore.Video.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_MOVIES + "/LinguaSMS");
+            } else {
+                collection = android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                values.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName != null ? fileName : "attachment_" + System.currentTimeMillis());
+                if (contentType != null) {
+                    values.put(android.provider.MediaStore.Downloads.MIME_TYPE, contentType);
+                }
+                values.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/LinguaSMS");
+            }
+            
+            android.net.Uri newUri = resolver.insert(collection, values);
+            if (newUri != null) {
+                try (java.io.InputStream input = resolver.openInputStream(uri);
+                     java.io.OutputStream output = resolver.openOutputStream(newUri)) {
+                    
+                    if (input != null && output != null) {
+                        byte[] buffer = new byte[8192];
+                        int length;
+                        while ((length = input.read(buffer)) > 0) {
+                            output.write(buffer, 0, length);
+                        }
+                        Toast.makeText(this, "Attachment saved successfully", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving attachment with MediaStore", e);
+            Toast.makeText(this, "Error saving attachment", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Save attachment using legacy method (Android 9 and below)
+     */
+    private void saveAttachmentLegacy(Uri uri, String contentType, String fileName) {
+        // For legacy versions, just show a message that saving is not supported
+        // or implement legacy file saving if needed
+        Toast.makeText(this, "Please use the share option to save this attachment", Toast.LENGTH_LONG).show();
+    }
+    
+    /**
+     * Share attachment using system share dialog
+     */
+    private void shareAttachment(Uri uri, String contentType) {
+        try {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            
+            if (contentType != null) {
+                shareIntent.setType(contentType);
+            } else {
+                shareIntent.setType("*/*");
+            }
+            
+            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            
+            startActivity(Intent.createChooser(shareIntent, "Share attachment"));
+        } catch (Exception e) {
+            Log.e(TAG, "Error sharing attachment", e);
+            Toast.makeText(this, "Error sharing attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showMessageOptionsDialog(Message message, int position) {

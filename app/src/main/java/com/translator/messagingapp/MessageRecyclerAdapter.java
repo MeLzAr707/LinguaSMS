@@ -50,6 +50,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         void onAttachmentClick(Uri uri, int position);
 
+        void onAttachmentLongClick(MmsMessage.Attachment attachment, int position);
+
+        void onAttachmentLongClick(Uri uri, int position);
+
         void onReactionClick(Message message, int position);
 
         void onAddReactionClick(Message message, int position);
@@ -364,6 +368,14 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                                 listener.onAttachmentClick(attachment, position);
                             }
                         });
+                        
+                        mediaImage.setOnLongClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentLongClick(attachment, position);
+                                return true;
+                            }
+                            return false;
+                        });
                     } else if (attachmentUri != null) {
                         // For non-image attachments (video, audio), show placeholder
                         mediaImage.setImageResource(R.drawable.ic_attachment);
@@ -373,6 +385,14 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                             if (listener != null) {
                                 listener.onAttachmentClick(attachment, position);
                             }
+                        });
+                        
+                        mediaImage.setOnLongClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentLongClick(attachment, position);
+                                return true;
+                            }
+                            return false;
                         });
                     }
                 }
@@ -399,6 +419,14 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         if (listener != null) {
                             listener.onAttachmentClick(uri, position);
                         }
+                    });
+                    
+                    mediaImage.setOnLongClickListener(v -> {
+                        if (listener != null) {
+                            listener.onAttachmentLongClick(uri, position);
+                            return true;
+                        }
+                        return false;
                     });
                 }
             }
