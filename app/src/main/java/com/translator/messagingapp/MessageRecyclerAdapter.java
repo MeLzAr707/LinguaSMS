@@ -363,13 +363,21 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         // Load image/video using Glide
                         loadMediaWithGlide(attachmentUri, attachment);
                         
-                        // Hide text when showing image
+                        // Hide text when showing image and there's no text content
                         if (messageText != null) {
                             String body = message.getBody();
-                            if (body == null || body.trim().isEmpty()) {
-                                messageText.setVisibility(View.GONE);
-                            } else {
+                            boolean hasTextContent = (body != null && !body.trim().isEmpty()) || 
+                                                   (message.isTranslated() && message.getTranslatedText() != null && !message.getTranslatedText().trim().isEmpty());
+                            
+                            if (hasTextContent) {
                                 messageText.setVisibility(View.VISIBLE);
+                                // Original text visibility is handled by parent bind method
+                            } else {
+                                messageText.setVisibility(View.GONE);
+                                // Also hide original text if main text is hidden
+                                if (originalText != null) {
+                                    originalText.setVisibility(View.GONE);
+                                }
                             }
                         }
                         
