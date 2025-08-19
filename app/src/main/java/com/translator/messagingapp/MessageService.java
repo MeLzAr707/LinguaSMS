@@ -373,37 +373,63 @@ public class MessageService {
             if (cursor != null && cursor.moveToFirst()) {
                 do {
                     int contentTypeIndex = cursor.getColumnIndex("ct");
+                    int dataIndex = cursor.getColumnIndex("_data");
+                    int textIndex = cursor.getColumnIndex("text");
+                    
+                    String contentType = null;
                     if (contentTypeIndex >= 0) {
-                        String contentType = cursor.getString(contentTypeIndex);
-                        
-                        // Look for various text content types
-                        if (contentType != null && (contentType.startsWith("text/plain") || 
-                                                   contentType.startsWith("text/") ||
-                                                   contentType.equals("text"))) {
-                            int dataIndex = cursor.getColumnIndex("_data");
-                            int textIndex = cursor.getColumnIndex("text");
-                            
-                            if (dataIndex >= 0) {
-                                String data = cursor.getString(dataIndex);
-                                if (data != null) {
-                                    // Text is stored in a file
-                                    text = getMmsTextFromFile(contentResolver, data);
+                        contentType = cursor.getString(contentTypeIndex);
+                    }
+                    
+                    // Look for various text content types - be more inclusive
+                    boolean isTextPart = false;
+                    if (contentType != null) {
+                        String lowerContentType = contentType.toLowerCase();
+                        isTextPart = lowerContentType.startsWith("text/plain") || 
+                                    lowerContentType.startsWith("text/") ||
+                                    lowerContentType.equals("text") ||
+                                    lowerContentType.contains("text");
+                    } else {
+                        // If content type is null, still check for text data
+                        isTextPart = true;
+                    }
+                    
+                    if (isTextPart) {
+                        // Try to get text from _data column first (file-based storage)
+                        if (dataIndex >= 0) {
+                            String data = cursor.getString(dataIndex);
+                            if (data != null && !data.trim().isEmpty()) {
+                                // Text is stored in a file
+                                text = getMmsTextFromFile(contentResolver, data);
+                                if (text != null && !text.trim().isEmpty()) {
+                                    Log.d(TAG, "Found MMS text from file for message " + messageId + ": " + 
+                                          text.substring(0, Math.min(50, text.length())));
+                                    break;
                                 }
-                            } else if (textIndex >= 0) {
-                                // Text is stored directly in the table
-                                text = cursor.getString(textIndex);
                             }
-                            
-                            if (text != null && !text.trim().isEmpty()) {
-                                Log.d(TAG, "Found MMS text content: " + text.substring(0, Math.min(50, text.length())));
+                        }
+                        
+                        // Try to get text directly from text column
+                        if (textIndex >= 0) {
+                            String directText = cursor.getString(textIndex);
+                            if (directText != null && !directText.trim().isEmpty()) {
+                                text = directText;
+                                Log.d(TAG, "Found MMS text directly for message " + messageId + ": " + 
+                                      text.substring(0, Math.min(50, text.length())));
                                 break;
                             }
                         }
                     }
                 } while (cursor.moveToNext());
+            } else {
+                Log.d(TAG, "No MMS parts found for message " + messageId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting MMS text for message " + messageId, e);
+        }
+
+        if (text == null || text.trim().isEmpty()) {
+            Log.d(TAG, "No text content found for MMS message " + messageId);
         }
 
         return text;
@@ -417,6 +443,11 @@ public class MessageService {
      * @return The text content
      */
     private String getMmsTextFromFile(ContentResolver contentResolver, String dataPath) {
+        if (dataPath == null || dataPath.trim().isEmpty()) {
+            Log.d(TAG, "Data path is null or empty for MMS text file");
+            return null;
+        }
+        
         Uri uri = Uri.parse("content://mms/part/" + dataPath);
         String text = null;
 
@@ -428,10 +459,22 @@ public class MessageService {
                 while ((len = is.read(buffer)) != -1) {
                     baos.write(buffer, 0, len);
                 }
-                text = new String(baos.toByteArray());
+                
+                // Convert bytes to string and handle potential encoding issues
+                byte[] textBytes = baos.toByteArray();
+                if (textBytes.length > 0) {
+                    text = new String(textBytes).trim();
+                    Log.d(TAG, "Successfully read " + textBytes.length + " bytes from MMS text file");
+                } else {
+                    Log.d(TAG, "MMS text file is empty");
+                }
+            } else {
+                Log.d(TAG, "Could not open input stream for MMS text file: " + uri);
             }
         } catch (IOException e) {
-            Log.e(TAG, "Error reading MMS text from file", e);
+            Log.e(TAG, "Error reading MMS text from file: " + uri, e);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Security exception reading MMS text from file: " + uri, e);
         }
 
         return text;
@@ -460,31 +503,67 @@ public class MessageService {
                     int nameIndex = cursor.getColumnIndex("name");
                     int sizeIndex = cursor.getColumnIndex("_size");
 
-                    if (contentTypeIndex >= 0 && dataIdIndex >= 0) {
-                        String contentType = cursor.getString(contentTypeIndex);
-                        String partId = cursor.getString(dataIdIndex);
+                    String contentType = null;
+                    String partId = null;
+                    
+                    if (contentTypeIndex >= 0) {
+                        contentType = cursor.getString(contentTypeIndex);
+                    }
+                    
+                    if (dataIdIndex >= 0) {
+                        partId = cursor.getString(dataIdIndex);
+                    }
 
-                        // Skip text parts as they're handled by getMmsText
-                        if (contentType != null && !contentType.startsWith("text/plain") && !contentType.equals("application/smil")) {
-                            // This is an attachment (image, video, audio, etc.)
-                            Uri attachmentUri = Uri.parse("content://mms/part/" + partId);
-                            
-                            String fileName = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
-                            long size = sizeIndex >= 0 ? cursor.getLong(sizeIndex) : 0;
+                    // Skip if we don't have the essential data
+                    if (partId == null || partId.trim().isEmpty()) {
+                        continue;
+                    }
 
-                            // Create attachment object
-                            MmsMessage.Attachment attachment = new MmsMessage.Attachment(
-                                attachmentUri, 
-                                contentType, 
-                                fileName, 
-                                size
-                            );
-
-                            mmsMessage.addAttachment(attachment);
-                            Log.d(TAG, "Loaded attachment: " + contentType + " for MMS " + messageId);
+                    // Skip text parts and SMIL as they're handled by getMmsText or are metadata
+                    boolean isAttachment = true;
+                    if (contentType != null) {
+                        String lowerContentType = contentType.toLowerCase();
+                        if (lowerContentType.startsWith("text/plain") || 
+                            lowerContentType.equals("application/smil") ||
+                            lowerContentType.startsWith("text/") ||
+                            lowerContentType.equals("text")) {
+                            isAttachment = false;
                         }
                     }
+
+                    if (isAttachment) {
+                        // This is an attachment (image, video, audio, etc.)
+                        Uri attachmentUri = Uri.parse("content://mms/part/" + partId);
+                        
+                        String fileName = null;
+                        if (nameIndex >= 0) {
+                            fileName = cursor.getString(nameIndex);
+                        }
+                        
+                        long size = 0;
+                        if (sizeIndex >= 0) {
+                            size = cursor.getLong(sizeIndex);
+                        }
+
+                        // Create attachment object
+                        MmsMessage.Attachment attachment = new MmsMessage.Attachment(
+                            attachmentUri, 
+                            contentType, 
+                            fileName, 
+                            size
+                        );
+
+                        mmsMessage.addAttachment(attachment);
+                        Log.d(TAG, "Loaded attachment: " + contentType + " for MMS " + messageId + 
+                              " (URI: " + attachmentUri + ")");
+                    } else {
+                        Log.d(TAG, "Skipped text/metadata part: " + contentType + " for MMS " + messageId);
+                    }
                 } while (cursor.moveToNext());
+                
+                Log.d(TAG, "Loaded " + mmsMessage.getAttachmentObjects().size() + " attachments for MMS " + messageId);
+            } else {
+                Log.d(TAG, "No MMS parts found for message " + messageId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading MMS attachments for message " + messageId, e);
