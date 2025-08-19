@@ -15,9 +15,9 @@
     <color name="darkSurfaceTranslucent">#CC121212</color> <!-- 80% opacity dark surface -->
 
     <!-- Override Primary Colors for Night Mode -->
-    <color name="colorPrimary">#23023d</color>
+    <color name="colorPrimary">#0D1A2D</color>
     <color name="colorPrimaryDark">#000000</color>
-    <color name="colorAccent">#23023d</color>
+    <color name="colorAccent">#162A47</color>
 
     <!-- Light Theme Colors (Inverted for Night Mode) -->
     <color name="background_light">#121212</color>
