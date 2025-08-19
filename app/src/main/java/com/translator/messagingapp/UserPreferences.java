@@ -16,13 +16,13 @@ public class UserPreferences {
     private static final String KEY_LAST_TRANSLATION_DATE = "last_translation_date";
     private static final String KEY_TRANSLATIONS_TODAY = "translations_today";
     private static final String KEY_OFFLINE_TRANSLATION_ENABLED = "offline_translation_enabled";
+    private static final String KEY_MESSAGE_TEXT_SIZE = "message_text_size";
 
     // Theme constants
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
     public static final int THEME_BLACK_GLASS = 2;
     public static final int THEME_SYSTEM = 3;
-    public static final int THEME_CUSTOM = 4;
 
     // Translation mode constants
     public static final int TRANSLATION_MODE_AUTO = 0;
@@ -32,15 +32,6 @@ public class UserPreferences {
     // Additional preference keys for missing functionality
     private static final String KEY_TRANSLATION_MODE = "translation_mode";
     private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
-    
-    // Custom theme color keys
-    private static final String KEY_CUSTOM_PRIMARY_COLOR = "custom_primary_color";
-    private static final String KEY_CUSTOM_NAV_BAR_COLOR = "custom_nav_bar_color";
-    private static final String KEY_CUSTOM_BUTTON_COLOR = "custom_button_color";
-    private static final String KEY_CUSTOM_TOP_BAR_COLOR = "custom_top_bar_color";
-    private static final String KEY_CUSTOM_INCOMING_BUBBLE_COLOR = "custom_incoming_bubble_color";
-    private static final String KEY_CUSTOM_OUTGOING_BUBBLE_COLOR = "custom_outgoing_bubble_color";
-    private static final String KEY_CUSTOM_MENU_COLOR = "custom_menu_color";
 
     private final SharedPreferences preferences;
 
@@ -299,149 +290,23 @@ public class UserPreferences {
     public void setString(String key, String value) {
         preferences.edit().putString(key, value).apply();
     }
-    
-    // Custom theme color methods
-    
+
     /**
-     * Checks if the user is using a custom theme.
-     * 
-     * @return true if using custom theme, false otherwise
+     * Gets the message text size preference.
+     *
+     * @return The text size in SP, default is 16sp
      */
-    public boolean isUsingCustomTheme() {
-        return getThemeId() == THEME_CUSTOM;
+    public float getMessageTextSize() {
+        return preferences.getFloat(KEY_MESSAGE_TEXT_SIZE, 16.0f);
     }
-    
+
     /**
-     * Gets custom primary color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom primary color
+     * Sets the message text size preference.
+     *
+     * @param textSize The text size in SP
      */
-    public int getCustomPrimaryColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_PRIMARY_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom primary color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomPrimaryColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_PRIMARY_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom navigation bar color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom navigation bar color
-     */
-    public int getCustomNavBarColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_NAV_BAR_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom navigation bar color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomNavBarColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_NAV_BAR_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom button color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom button color
-     */
-    public int getCustomButtonColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_BUTTON_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom button color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomButtonColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_BUTTON_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom top bar color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom top bar color
-     */
-    public int getCustomTopBarColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_TOP_BAR_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom top bar color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomTopBarColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_TOP_BAR_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom incoming chat bubble color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom incoming chat bubble color
-     */
-    public int getCustomIncomingBubbleColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_INCOMING_BUBBLE_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom incoming chat bubble color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomIncomingBubbleColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_INCOMING_BUBBLE_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom outgoing chat bubble color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom outgoing chat bubble color
-     */
-    public int getCustomOutgoingBubbleColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_OUTGOING_BUBBLE_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom outgoing chat bubble color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomOutgoingBubbleColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_OUTGOING_BUBBLE_COLOR, color).apply();
-    }
-    
-    /**
-     * Gets custom menu color.
-     * 
-     * @param defaultColor Default color to return if not set
-     * @return Custom menu color
-     */
-    public int getCustomMenuColor(int defaultColor) {
-        return preferences.getInt(KEY_CUSTOM_MENU_COLOR, defaultColor);
-    }
-    
-    /**
-     * Sets custom menu color.
-     * 
-     * @param color The color value
-     */
-    public void setCustomMenuColor(int color) {
-        preferences.edit().putInt(KEY_CUSTOM_MENU_COLOR, color).apply();
+    public void setMessageTextSize(float textSize) {
+        preferences.edit().putFloat(KEY_MESSAGE_TEXT_SIZE, textSize).apply();
     }
 }
 
