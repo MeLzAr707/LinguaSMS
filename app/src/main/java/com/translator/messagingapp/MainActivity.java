@@ -27,6 +27,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -152,6 +153,10 @@ public class MainActivity extends BaseActivity
                                 // Refresh conversations when new messages arrive
                                 refreshConversations();
                                 break;
+                            case "com.translator.messagingapp.MESSAGE_RECEIVED":
+                                // Refresh conversations when new messages are received
+                                refreshConversations();
+                                break;
                             case "com.translator.messagingapp.MESSAGE_SENT":
                                 // Update UI when message is sent
                                 refreshConversations();
@@ -167,9 +172,13 @@ public class MainActivity extends BaseActivity
             // Create intent filter for message refresh events
             IntentFilter filter = new IntentFilter();
             filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
+            filter.addAction("com.translator.messagingapp.MESSAGE_RECEIVED");
             filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
 
-            // Register receiver with proper Android 13+ flags
+            // Register receiver with LocalBroadcastManager for intra-app communication
+            LocalBroadcastManager.getInstance(this).registerReceiver(messageRefreshReceiver, filter);
+            
+            // Also register with system broadcast for fallback
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED
                 registerReceiver(messageRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -1147,8 +1156,11 @@ public class MainActivity extends BaseActivity
         // Unregister message refresh receiver
         if (messageRefreshReceiver != null) {
             try {
+                // Unregister from LocalBroadcastManager
+                LocalBroadcastManager.getInstance(this).unregisterReceiver(messageRefreshReceiver);
+                // Unregister from system broadcasts
                 unregisterReceiver(messageRefreshReceiver);
-                Log.d(TAG, "Message refresh receiver unregistered");
+                Log.d(TAG, "Message refresh receiver unregistered from both LocalBroadcastManager and system");
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering message refresh receiver", e);
             }
