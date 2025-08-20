@@ -13,10 +13,3 @@ validate_mms_fix.sh
 
 # Test files
 test_theme_changes.md
-# Cleanup - temporary files
-*.backup
-commit_message.txt
-verify_*.sh
-create_pr*.sh
-commit_to_master_via_api.sh
-demo_*.sh
