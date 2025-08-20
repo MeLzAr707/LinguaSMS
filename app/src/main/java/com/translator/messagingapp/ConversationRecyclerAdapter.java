@@ -174,6 +174,20 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             }
         }
         
+        // If no contact name, try to look it up from device contacts as fallback
+        if (contactName == null && !TextUtils.isEmpty(address)) {
+            // Handle group conversations (comma-separated addresses)
+            if (address.contains(",")) {
+                return getGroupDisplayName(address);
+            }
+            
+            // Single address - try contact lookup
+            String lookedUpName = ContactUtils.getContactName(context, address);
+            if (!TextUtils.isEmpty(lookedUpName)) {
+                return lookedUpName;
+            }
+        }
+        
         // Fall back to formatted phone number
         if (!TextUtils.isEmpty(address)) {
             // Check if this looks like a group message
@@ -186,6 +200,55 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         
         // Last resort
         return "Unknown Contact";
+    }
+    
+    /**
+     * Get display name for group conversations with multiple addresses.
+     */
+    private String getGroupDisplayName(String addresses) {
+        if (TextUtils.isEmpty(addresses)) {
+            return "Unknown Contact";
+        }
+        
+        String[] addressArray = addresses.split(",");
+        if (addressArray.length <= 1) {
+            // Not actually a group, treat as single address
+            String singleAddress = addresses.trim();
+            String contactName = ContactUtils.getContactName(context, singleAddress);
+            return !TextUtils.isEmpty(contactName) ? contactName : formatPhoneNumber(singleAddress);
+        }
+        
+        // For group conversations, try to get contact names for each participant
+        StringBuilder groupName = new StringBuilder();
+        int nameCount = 0;
+        int maxNamesToShow = 3; // Show max 3 names, then "and X others"
+        
+        for (int i = 0; i < addressArray.length && nameCount < maxNamesToShow; i++) {
+            String address = addressArray[i].trim();
+            if (TextUtils.isEmpty(address)) {
+                continue;
+            }
+            
+            String contactName = ContactUtils.getContactName(context, address);
+            String displayName = !TextUtils.isEmpty(contactName) ? contactName : formatPhoneNumber(address);
+            
+            if (nameCount > 0) {
+                groupName.append(", ");
+            }
+            groupName.append(displayName);
+            nameCount++;
+        }
+        
+        // If there are more participants than we showed
+        if (addressArray.length > maxNamesToShow) {
+            int remaining = addressArray.length - maxNamesToShow;
+            groupName.append(" + ").append(remaining).append(" other");
+            if (remaining > 1) {
+                groupName.append("s");
+            }
+        }
+        
+        return groupName.length() > 0 ? groupName.toString() : "Group Chat";
     }
 
     /**
