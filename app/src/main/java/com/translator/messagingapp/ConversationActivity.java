@@ -555,7 +555,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                 case "com.translator.messagingapp.MESSAGE_RECEIVED":
                                 case "com.translator.messagingapp.REFRESH_MESSAGES":
                                     // Refresh messages when received or refresh requested
+                                    // Clear cache to ensure new received messages are loaded
                                     Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
+                                    MessageCache.clearCacheForThread(threadId);
                                     loadMessages();
                                     break;
                                 case "com.translator.messagingapp.MESSAGE_SENT":
