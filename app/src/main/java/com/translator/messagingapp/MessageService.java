@@ -1571,11 +1571,16 @@ public class MessageService {
                 }
 
                 if (senderAddress != null && fullMessageBody.length() > 0) {
-                    // Store the message in the SMS database
-                    storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
-                    
-                    // Process the message
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
+
+                    // Only manually store the message if we're NOT the default SMS app
+                    // When we are the default SMS app, Android automatically stores the message
+                    if (!PhoneUtils.isDefaultSmsApp(context)) {
+                        Log.d(TAG, "Not default SMS app, manually storing message");
+                        storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                    } else {
+                        Log.d(TAG, "Default SMS app - system will automatically store message");
+                    }
 
                     // Show notification
                     showSmsNotification(senderAddress, fullMessageBody.toString());
