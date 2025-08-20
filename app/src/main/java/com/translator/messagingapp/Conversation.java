@@ -93,11 +93,7 @@ public class Conversation {
     }
 
     public void setDate(Date date) {
-        if (date != null) {
-            this.date = date.getTime();
-        } else {
-            this.date = 0; // Default to epoch if null
-        }
+        this.date = date.getTime();
     }
 
     /**
