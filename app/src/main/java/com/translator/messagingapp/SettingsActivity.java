@@ -21,16 +21,6 @@ import java.util.Locale;
 public class SettingsActivity extends BaseActivity {
     private static final String TAG = "SettingsActivity";
 
-    // Language configuration constants
-    private static final String[] LANGUAGE_CODES = {
-            "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi"
-    };
-
-    private static final String[] LANGUAGE_NAMES = {
-            "English", "Spanish", "French", "German", "Italian", "Portuguese",
-            "Russian", "Chinese", "Japanese", "Korean", "Arabic", "Hindi"
-    };
-
     private EditText apiKeyInput;
     private Button selectIncomingLanguageButton;
     private Button selectOutgoingLanguageButton;
@@ -200,16 +190,26 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void showLanguageSelectionDialog(final String selectionType) {
+        // Define language options
+        final String[] languageCodes = {
+                "en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi"
+        };
+
+        final String[] languageNames = {
+                "English", "Spanish", "French", "German", "Italian", "Portuguese",
+                "Russian", "Chinese", "Japanese", "Korean", "Arabic", "Hindi"
+        };
+
         // Create dialog builder
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Select Language");
 
         // Set items
-        builder.setItems(LANGUAGE_NAMES, new DialogInterface.OnClickListener() {
+        builder.setItems(languageNames, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                String selectedCode = LANGUAGE_CODES[which];
-                String selectedName = LANGUAGE_NAMES[which];
+                String selectedCode = languageCodes[which];
+                String selectedName = languageNames[which];
 
                 // Save the selected language
                 if ("incoming".equals(selectionType)) {
