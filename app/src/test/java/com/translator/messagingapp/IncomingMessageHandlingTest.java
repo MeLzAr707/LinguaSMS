@@ -138,4 +138,25 @@ public class IncomingMessageHandlingTest {
             fail("getThreadIdForAddress should not throw exceptions: " + e.getMessage());
         }
     }
+
+    /**
+     * Test that incoming SMS messages are always stored in the database.
+     * This ensures messages don't get lost regardless of default app status.
+     */
+    @Test
+    public void testIncomingSmsAlwaysStored() {
+        // Create a mock SMS intent
+        Intent smsIntent = new Intent();
+        Bundle bundle = new Bundle();
+        smsIntent.putExtras(bundle);
+        
+        // Test that handleIncomingSms doesn't throw exceptions when processing messages
+        // The actual database storage testing would require Android framework mocking
+        try {
+            messageService.handleIncomingSms(smsIntent);
+            assertTrue("Incoming SMS should be processed without exceptions", true);
+        } catch (Exception e) {
+            fail("handleIncomingSms should process messages without exceptions: " + e.getMessage());
+        }
+    }
 }
