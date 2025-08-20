@@ -78,7 +78,7 @@ public class CustomThemeColorTest {
         // Test background color
         userPreferences.setCustomBackgroundColor(testColor);
         assertEquals(testColor, userPreferences.getCustomBackgroundColor(defaultColor));
-        
+
         // Test text color
         userPreferences.setCustomTextColor(testColor);
         assertEquals(testColor, userPreferences.getCustomTextColor(defaultColor));
