@@ -155,7 +155,6 @@ public class MainActivity extends BaseActivity
                                 break;
                             case "com.translator.messagingapp.MESSAGE_RECEIVED":
                                 // Refresh conversations when new messages are received
-                                Log.d(TAG, "Refreshing conversations due to new message received");
                                 refreshConversations();
                                 break;
                             case "com.translator.messagingapp.MESSAGE_SENT":
@@ -176,7 +175,10 @@ public class MainActivity extends BaseActivity
             filter.addAction("com.translator.messagingapp.MESSAGE_RECEIVED");
             filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
 
-            // Register receiver with proper Android 13+ flags and LocalBroadcastManager
+            // Register receiver with LocalBroadcastManager for intra-app communication
+            LocalBroadcastManager.getInstance(this).registerReceiver(messageRefreshReceiver, filter);
+            
+            // Also register with system broadcast for fallback
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED
                 registerReceiver(messageRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -184,9 +186,6 @@ public class MainActivity extends BaseActivity
                 // Pre-Android 13 registration
                 registerReceiver(messageRefreshReceiver, filter);
             }
-            
-            // Also register with LocalBroadcastManager for MESSAGE_RECEIVED broadcasts
-            LocalBroadcastManager.getInstance(this).registerReceiver(messageRefreshReceiver, filter);
             
             Log.d(TAG, "Message refresh receiver registered successfully");
             
@@ -1157,9 +1156,11 @@ public class MainActivity extends BaseActivity
         // Unregister message refresh receiver
         if (messageRefreshReceiver != null) {
             try {
-                unregisterReceiver(messageRefreshReceiver);
+                // Unregister from LocalBroadcastManager
                 LocalBroadcastManager.getInstance(this).unregisterReceiver(messageRefreshReceiver);
-                Log.d(TAG, "Message refresh receiver unregistered");
+                // Unregister from system broadcasts
+                unregisterReceiver(messageRefreshReceiver);
+                Log.d(TAG, "Message refresh receiver unregistered from both LocalBroadcastManager and system");
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering message refresh receiver", e);
             }
