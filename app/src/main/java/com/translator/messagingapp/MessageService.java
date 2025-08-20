@@ -1009,6 +1009,9 @@ public class MessageService {
                 smsManager.sendTextMessage(address, null, body, null, null);
             }
 
+            // Store the sent message in the SMS database
+            storeSentSmsMessage(address, body, System.currentTimeMillis());
+
             // Execute callback if provided
             if (callback != null) {
                 callback.run();
@@ -1612,6 +1615,34 @@ public class MessageService {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error storing SMS message from " + address, e);
+        }
+    }
+
+    /**
+     * Stores a sent SMS message in the device's SMS database.
+     *
+     * @param address The recipient's address
+     * @param body The message body
+     * @param timestamp The message timestamp
+     */
+    private void storeSentSmsMessage(String address, String body, long timestamp) {
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Sms.ADDRESS, address);
+            values.put(Telephony.Sms.BODY, body);
+            values.put(Telephony.Sms.DATE, timestamp);
+            values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT);
+            values.put(Telephony.Sms.READ, 1); // Mark as read (user sent it)
+            values.put(Telephony.Sms.SEEN, 1); // Mark as seen (user sent it)
+
+            Uri uri = context.getContentResolver().insert(Telephony.Sms.CONTENT_URI, values);
+            if (uri != null) {
+                Log.d(TAG, "Successfully stored sent SMS message to " + address);
+            } else {
+                Log.e(TAG, "Failed to store sent SMS message to " + address);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error storing sent SMS message to " + address, e);
         }
     }
 
