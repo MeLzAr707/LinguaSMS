@@ -49,6 +49,9 @@ public class SettingsActivity extends BaseActivity {
 
         // Load saved preferences
         loadPreferences();
+        
+        // Apply custom colors to views if using custom theme
+        applyCustomColorsToViews();
     }
 
     private void setupToolbar() {
