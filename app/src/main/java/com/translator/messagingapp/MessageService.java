@@ -1547,29 +1547,42 @@ public class MessageService {
 
     /**
      * Gets the thread ID for a specific address.
+     * Creates a new thread if one doesn't exist for this address.
      *
      * @param address The address to look up
-     * @return The thread ID, or null if not found
+     * @return The thread ID, or null if address is invalid
      */
     public String getThreadIdForAddress(String address) {
         if (address == null || address.isEmpty()) {
             return null;
         }
 
-        Uri uri = Uri.parse("content://sms/inbox");
-        String[] projection = new String[] { "thread_id" };
-        String selection = "address = ?";
-        String[] selectionArgs = new String[] { address };
+        try {
+            // First try to find existing thread by querying SMS messages
+            Uri uri = Uri.parse("content://sms");
+            String[] projection = new String[] { "thread_id" };
+            String selection = "address = ?";
+            String[] selectionArgs = new String[] { address };
 
-        try (Cursor cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                return cursor.getString(0);
+            try (Cursor cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, "date DESC LIMIT 1")) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    String threadId = cursor.getString(0);
+                    if (threadId != null && !threadId.isEmpty()) {
+                        return threadId;
+                    }
+                }
             }
+
+            // If no existing thread found, create or get thread ID using Android's API
+            java.util.Set<String> recipients = new java.util.HashSet<>();
+            recipients.add(address);
+            long threadId = Telephony.Threads.getOrCreateThreadId(context, recipients);
+            return String.valueOf(threadId);
+            
         } catch (Exception e) {
             Log.e(TAG, "Error getting thread ID for address: " + address, e);
+            return null;
         }
-
-        return null;
     }
 
     /**
