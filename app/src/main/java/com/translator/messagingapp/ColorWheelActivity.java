@@ -43,6 +43,9 @@ public class ColorWheelActivity extends BaseActivity {
         setupClickListeners();
         loadCurrentColors();
         updatePreviews();
+        
+        // Apply custom colors to views if using custom theme
+        applyCustomColorsToViews();
     }
     
     private void setupToolbar() {
@@ -252,6 +255,17 @@ public class ColorWheelActivity extends BaseActivity {
         int defaultBackground = Color.WHITE;
         int defaultIncoming = Color.parseColor("#E0E0E0");
         
+        // Reset all colors to defaults including background
+        userPreferences.setCustomBackgroundColor(defaultBackground);
+        userPreferences.setCustomPrimaryColor(defaultBlue);
+        userPreferences.setCustomNavBarColor(defaultBlue);
+        userPreferences.setCustomTopBarColor(defaultBlue);
+        userPreferences.setCustomButtonColor(defaultBlue);
+        userPreferences.setCustomMenuColor(defaultBlue);
+        userPreferences.setCustomIncomingBubbleColor(defaultIncoming);
+        userPreferences.setCustomOutgoingBubbleColor(defaultBlue);
+        
+        // Update local variables
         backgroundCurrentColor = defaultBackground;
         navBarCurrentColor = defaultBlue;
         buttonCurrentColor = defaultBlue;

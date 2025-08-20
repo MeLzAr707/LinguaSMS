@@ -123,20 +123,23 @@ public class CustomThemeColorTest {
         userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
         assertTrue(userPreferences.isUsingCustomTheme());
 
-        // Set custom colors
+        // Set custom colors including new background color
         int customPrimary = Color.parseColor("#9C27B0"); // Purple
         int customButton = Color.parseColor("#E91E63"); // Pink
         int customNavBar = Color.parseColor("#FF5722"); // Deep Orange
+        int customBackground = Color.parseColor("#F5F5F5"); // Light Gray
 
         userPreferences.setCustomPrimaryColor(customPrimary);
         userPreferences.setCustomButtonColor(customButton);
         userPreferences.setCustomNavBarColor(customNavBar);
+        userPreferences.setCustomBackgroundColor(customBackground);
 
         // Verify colors are stored
         int defaultColor = Color.parseColor("#000000"); // Black as default
         assertEquals(customPrimary, userPreferences.getCustomPrimaryColor(defaultColor));
         assertEquals(customButton, userPreferences.getCustomButtonColor(defaultColor));
         assertEquals(customNavBar, userPreferences.getCustomNavBarColor(defaultColor));
+        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(defaultColor));
 
         // Switch back to light theme
         userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
@@ -146,5 +149,25 @@ public class CustomThemeColorTest {
         assertEquals(customPrimary, userPreferences.getCustomPrimaryColor(defaultColor));
         assertEquals(customButton, userPreferences.getCustomButtonColor(defaultColor));
         assertEquals(customNavBar, userPreferences.getCustomNavBarColor(defaultColor));
+        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(defaultColor));
+    }
+
+    @Test
+    public void testBackgroundColorFunctionality() {
+        // Test the new background color functionality specifically
+        int whiteBackground = Color.WHITE;
+        int blackBackground = Color.BLACK;
+        int customBackground = Color.parseColor("#F0F0F0");
+        
+        // Test setting and getting background color
+        userPreferences.setCustomBackgroundColor(whiteBackground);
+        assertEquals(whiteBackground, userPreferences.getCustomBackgroundColor(blackBackground));
+        
+        userPreferences.setCustomBackgroundColor(customBackground);
+        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(blackBackground));
+        
+        // Test that default is returned when not set
+        UserPreferences freshPreferences = new UserPreferences(context);
+        assertEquals(blackBackground, freshPreferences.getCustomBackgroundColor(blackBackground));
     }
 }

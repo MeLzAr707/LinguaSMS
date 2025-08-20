@@ -223,8 +223,27 @@ public class BaseActivity extends AppCompatActivity {
      */
     protected void applyCustomColorsToViews() {
         if (userPreferences.isUsingCustomTheme()) {
+            // Apply custom background color to the root view
+            applyCustomBackgroundColor();
+            
             // Apply custom colors to toolbar if present
             applyCustomColorsToToolbar();
+        }
+    }
+    
+    /**
+     * Apply custom background color to the activity
+     */
+    protected void applyCustomBackgroundColor() {
+        if (userPreferences.isUsingCustomTheme()) {
+            int defaultBackgroundColor = getResources().getColor(R.color.background_light);
+            int customBackgroundColor = userPreferences.getCustomBackgroundColor(defaultBackgroundColor);
+            
+            // Apply to the main content view
+            android.view.View rootView = findViewById(android.R.id.content);
+            if (rootView != null) {
+                rootView.setBackgroundColor(customBackgroundColor);
+            }
         }
     }
     
