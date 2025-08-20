@@ -281,6 +281,10 @@ public class OptimizedConversationService {
                 conversation.setRead(read);
                 conversation.setUnreadCount(unreadCount);
                 
+                // Look up contact name for the address
+                String contactName = ContactUtils.getContactName(context, address);
+                conversation.setContactName(contactName);
+                
                 return conversation;
             }
             

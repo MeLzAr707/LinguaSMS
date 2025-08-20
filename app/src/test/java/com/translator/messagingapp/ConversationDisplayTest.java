@@ -175,6 +175,10 @@ public class ConversationDisplayTest {
             }
         }
         
+        // If no contact name and we have an address, this is where the real implementation
+        // would try ContactUtils.getContactName(context, address) for fallback lookup
+        // For this test, we simulate that contact lookup would fail, so we fall back to address
+        
         // Fall back to formatted phone number or address
         if (!TextUtils.isEmpty(address)) {
             // Additional safety check: make sure address is not threadId
