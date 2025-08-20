@@ -49,9 +49,6 @@ public class SettingsActivity extends BaseActivity {
 
         // Load saved preferences
         loadPreferences();
-        
-        // Apply custom colors to views if using custom theme
-        applyCustomColorsToViews();
     }
 
     private void setupToolbar() {
@@ -128,14 +125,14 @@ public class SettingsActivity extends BaseActivity {
                 openOfflineModelsActivity();
             }
         });
-
-        // Set up theme radio group listener to handle custom theme selection
+        
+        // Set up theme radio group listener
         themeRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+                // If custom theme is selected, open color wheel activity
                 if (checkedId == R.id.radio_custom) {
-                    // Open color customization activity when custom theme is selected
-                    openCustomThemeSettings();
+                    openColorWheelActivity();
                 }
             }
         });
@@ -291,16 +288,7 @@ public class SettingsActivity extends BaseActivity {
         } else if (checkedId == R.id.radio_system) {
             newThemeId = UserPreferences.THEME_SYSTEM;
         } else if (checkedId == R.id.radio_custom) {
-            // For custom theme, only save if it's already been set up
-            // This prevents saving custom theme without proper colors
-            if (userPreferences.isUsingCustomTheme()) {
-                newThemeId = UserPreferences.THEME_CUSTOM;
-            } else {
-                // Don't change theme, custom theme should be set via ColorWheelActivity
-                newThemeId = userPreferences.getThemeId();
-                Toast.makeText(this, "Please configure custom colors first", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            newThemeId = UserPreferences.THEME_CUSTOM;
         } else {
             newThemeId = UserPreferences.THEME_LIGHT;
         }
@@ -340,20 +328,13 @@ public class SettingsActivity extends BaseActivity {
         Intent intent = new Intent(this, OfflineModelsActivity.class);
         startActivity(intent);
     }
-
+    
     /**
-     * Opens the custom theme color settings activity.
+     * Opens the color wheel activity for custom theme color selection.
      */
-    private void openCustomThemeSettings() {
+    private void openColorWheelActivity() {
         Intent intent = new Intent(this, ColorWheelActivity.class);
         startActivity(intent);
-    }
-    
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // Reload preferences in case they were changed in another activity
-        loadPreferences();
     }
     
     @Override

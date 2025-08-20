@@ -74,10 +74,10 @@ public class CustomThemeColorTest {
         // Test menu color
         userPreferences.setCustomMenuColor(testColor);
         assertEquals(testColor, userPreferences.getCustomMenuColor(defaultColor));
-
-        // Test background color (new functionality)
-        userPreferences.setCustomBackgroundColor(testColor);
-        assertEquals(testColor, userPreferences.getCustomBackgroundColor(defaultColor));
+        
+        // Test text color
+        userPreferences.setCustomTextColor(testColor);
+        assertEquals(testColor, userPreferences.getCustomTextColor(defaultColor));
     }
 
     @Test
@@ -92,7 +92,7 @@ public class CustomThemeColorTest {
         assertEquals(defaultColor, userPreferences.getCustomIncomingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomOutgoingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomMenuColor(defaultColor));
-        assertEquals(defaultColor, userPreferences.getCustomBackgroundColor(defaultColor));
+        assertEquals(defaultColor, userPreferences.getCustomTextColor(defaultColor));
     }
 
     @Test
@@ -123,23 +123,20 @@ public class CustomThemeColorTest {
         userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
         assertTrue(userPreferences.isUsingCustomTheme());
 
-        // Set custom colors including new background color
+        // Set custom colors
         int customPrimary = Color.parseColor("#9C27B0"); // Purple
         int customButton = Color.parseColor("#E91E63"); // Pink
         int customNavBar = Color.parseColor("#FF5722"); // Deep Orange
-        int customBackground = Color.parseColor("#F5F5F5"); // Light Gray
 
         userPreferences.setCustomPrimaryColor(customPrimary);
         userPreferences.setCustomButtonColor(customButton);
         userPreferences.setCustomNavBarColor(customNavBar);
-        userPreferences.setCustomBackgroundColor(customBackground);
 
         // Verify colors are stored
         int defaultColor = Color.parseColor("#000000"); // Black as default
         assertEquals(customPrimary, userPreferences.getCustomPrimaryColor(defaultColor));
         assertEquals(customButton, userPreferences.getCustomButtonColor(defaultColor));
         assertEquals(customNavBar, userPreferences.getCustomNavBarColor(defaultColor));
-        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(defaultColor));
 
         // Switch back to light theme
         userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
@@ -149,25 +146,50 @@ public class CustomThemeColorTest {
         assertEquals(customPrimary, userPreferences.getCustomPrimaryColor(defaultColor));
         assertEquals(customButton, userPreferences.getCustomButtonColor(defaultColor));
         assertEquals(customNavBar, userPreferences.getCustomNavBarColor(defaultColor));
-        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(defaultColor));
     }
 
     @Test
-    public void testBackgroundColorFunctionality() {
-        // Test the new background color functionality specifically
-        int whiteBackground = Color.WHITE;
-        int blackBackground = Color.BLACK;
-        int customBackground = Color.parseColor("#F0F0F0");
+    public void testTextColorFunctionality() {
+        // Test the new text color functionality
+        int defaultTextColor = Color.parseColor("#000000"); // Black
+        int customTextColor = Color.parseColor("#FFFFFF"); // White
         
-        // Test setting and getting background color
-        userPreferences.setCustomBackgroundColor(whiteBackground);
-        assertEquals(whiteBackground, userPreferences.getCustomBackgroundColor(blackBackground));
+        // Test default text color retrieval
+        assertEquals(defaultTextColor, userPreferences.getCustomTextColor(defaultTextColor));
         
-        userPreferences.setCustomBackgroundColor(customBackground);
-        assertEquals(customBackground, userPreferences.getCustomBackgroundColor(blackBackground));
+        // Test setting and getting custom text color
+        userPreferences.setCustomTextColor(customTextColor);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
         
-        // Test that default is returned when not set
-        UserPreferences freshPreferences = new UserPreferences(context);
-        assertEquals(blackBackground, freshPreferences.getCustomBackgroundColor(blackBackground));
+        // Test that text color persists with theme changes
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+        
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+    }
+
+    @Test
+    public void testBackgroundAndTextColorCombination() {
+        // Test that both background and text colors can be set independently
+        int backgroundColor = Color.parseColor("#2196F3"); // Blue
+        int textColor = Color.parseColor("#FFFFFF"); // White
+        int defaultColor = Color.parseColor("#000000"); // Black
+        
+        userPreferences.setCustomPrimaryColor(backgroundColor);
+        userPreferences.setCustomTextColor(textColor);
+        
+        assertEquals(backgroundColor, userPreferences.getCustomPrimaryColor(defaultColor));
+        assertEquals(textColor, userPreferences.getCustomTextColor(defaultColor));
+        
+        // Test with different combinations
+        int newBackgroundColor = Color.parseColor("#4CAF50"); // Green
+        int newTextColor = Color.parseColor("#000000"); // Black
+        
+        userPreferences.setCustomPrimaryColor(newBackgroundColor);
+        userPreferences.setCustomTextColor(newTextColor);
+        
+        assertEquals(newBackgroundColor, userPreferences.getCustomPrimaryColor(defaultColor));
+        assertEquals(newTextColor, userPreferences.getCustomTextColor(defaultColor));
     }
 }
