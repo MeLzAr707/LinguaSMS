@@ -42,6 +42,7 @@ public class UserPreferences {
     private static final String KEY_CUSTOM_MENU_COLOR = "custom_menu_color";
     private static final String KEY_CUSTOM_INCOMING_BUBBLE_COLOR = "custom_incoming_bubble_color";
     private static final String KEY_CUSTOM_OUTGOING_BUBBLE_COLOR = "custom_outgoing_bubble_color";
+    private static final String KEY_CUSTOM_BACKGROUND_COLOR = "custom_background_color";
 
     private final SharedPreferences preferences;
 
@@ -459,6 +460,25 @@ public class UserPreferences {
      */
     public void setCustomOutgoingBubbleColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_OUTGOING_BUBBLE_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the custom background color.
+     *
+     * @param defaultColor The default color to return if not set
+     * @return The custom background color
+     */
+    public int getCustomBackgroundColor(int defaultColor) {
+        return preferences.getInt(KEY_CUSTOM_BACKGROUND_COLOR, defaultColor);
+    }
+
+    /**
+     * Sets the custom background color.
+     *
+     * @param color The color to set
+     */
+    public void setCustomBackgroundColor(int color) {
+        preferences.edit().putInt(KEY_CUSTOM_BACKGROUND_COLOR, color).apply();
     }
 }
 
