@@ -125,6 +125,17 @@ public class SettingsActivity extends BaseActivity {
                 openOfflineModelsActivity();
             }
         });
+        
+        // Set up theme radio group listener
+        themeRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                // If custom theme is selected, open color wheel activity
+                if (checkedId == R.id.radio_custom) {
+                    openColorWheelActivity();
+                }
+            }
+        });
     }
 
     private void loadPreferences() {
@@ -315,6 +326,14 @@ public class SettingsActivity extends BaseActivity {
      */
     private void openOfflineModelsActivity() {
         Intent intent = new Intent(this, OfflineModelsActivity.class);
+        startActivity(intent);
+    }
+    
+    /**
+     * Opens the color wheel activity for custom theme color selection.
+     */
+    private void openColorWheelActivity() {
+        Intent intent = new Intent(this, ColorWheelActivity.class);
         startActivity(intent);
     }
     

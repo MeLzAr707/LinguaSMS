@@ -74,6 +74,10 @@ public class CustomThemeColorTest {
         // Test menu color
         userPreferences.setCustomMenuColor(testColor);
         assertEquals(testColor, userPreferences.getCustomMenuColor(defaultColor));
+        
+        // Test text color
+        userPreferences.setCustomTextColor(testColor);
+        assertEquals(testColor, userPreferences.getCustomTextColor(defaultColor));
     }
 
     @Test
@@ -88,6 +92,7 @@ public class CustomThemeColorTest {
         assertEquals(defaultColor, userPreferences.getCustomIncomingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomOutgoingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomMenuColor(defaultColor));
+        assertEquals(defaultColor, userPreferences.getCustomTextColor(defaultColor));
     }
 
     @Test
@@ -141,5 +146,50 @@ public class CustomThemeColorTest {
         assertEquals(customPrimary, userPreferences.getCustomPrimaryColor(defaultColor));
         assertEquals(customButton, userPreferences.getCustomButtonColor(defaultColor));
         assertEquals(customNavBar, userPreferences.getCustomNavBarColor(defaultColor));
+    }
+
+    @Test
+    public void testTextColorFunctionality() {
+        // Test the new text color functionality
+        int defaultTextColor = Color.parseColor("#000000"); // Black
+        int customTextColor = Color.parseColor("#FFFFFF"); // White
+        
+        // Test default text color retrieval
+        assertEquals(defaultTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+        
+        // Test setting and getting custom text color
+        userPreferences.setCustomTextColor(customTextColor);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+        
+        // Test that text color persists with theme changes
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+        
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertEquals(customTextColor, userPreferences.getCustomTextColor(defaultTextColor));
+    }
+
+    @Test
+    public void testBackgroundAndTextColorCombination() {
+        // Test that both background and text colors can be set independently
+        int backgroundColor = Color.parseColor("#2196F3"); // Blue
+        int textColor = Color.parseColor("#FFFFFF"); // White
+        int defaultColor = Color.parseColor("#000000"); // Black
+        
+        userPreferences.setCustomPrimaryColor(backgroundColor);
+        userPreferences.setCustomTextColor(textColor);
+        
+        assertEquals(backgroundColor, userPreferences.getCustomPrimaryColor(defaultColor));
+        assertEquals(textColor, userPreferences.getCustomTextColor(defaultColor));
+        
+        // Test with different combinations
+        int newBackgroundColor = Color.parseColor("#4CAF50"); // Green
+        int newTextColor = Color.parseColor("#000000"); // Black
+        
+        userPreferences.setCustomPrimaryColor(newBackgroundColor);
+        userPreferences.setCustomTextColor(newTextColor);
+        
+        assertEquals(newBackgroundColor, userPreferences.getCustomPrimaryColor(defaultColor));
+        assertEquals(newTextColor, userPreferences.getCustomTextColor(defaultColor));
     }
 }

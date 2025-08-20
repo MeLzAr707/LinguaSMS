@@ -1,8 +1,13 @@
 package com.translator.messagingapp;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.GridLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 /**
  * Activity for selecting custom theme colors using a color wheel/picker interface.
@@ -14,10 +19,49 @@ public class ColorWheelActivity extends BaseActivity {
     // UI components
     private Button applyButton;
     private Button resetButton;
+    private GridLayout colorPaletteGrid;
+    private GridLayout textColorPaletteGrid;
+    private View backgroundColorPreview;
+    private View textColorPreview;
+    private LinearLayout combinedPreview;
+    private TextView previewText;
     
     // Data
     private UserPreferences userPreferences;
-    private int selectedColor = 0xFF3F51B5; // Default blue color
+    private int selectedBackgroundColor = 0xFF3F51B5; // Default blue color
+    private int selectedTextColor = 0xFF000000; // Default black color
+    
+    // Color palettes
+    private static final int[] BACKGROUND_COLORS = {
+            0xFF2196F3, // Blue
+            0xFF4CAF50, // Green
+            0xFFFF9800, // Orange  
+            0xFFE91E63, // Pink
+            0xFF9C27B0, // Purple
+            0xFF607D8B, // Blue Gray
+            0xFF795548, // Brown
+            0xFFFF5722, // Deep Orange
+            // Darker shades
+            0xFF1976D2, // Dark Blue
+            0xFF388E3C, // Dark Green
+            0xFFF57C00, // Dark Orange
+            0xFFC2185B, // Dark Pink
+            0xFF7B1FA2, // Dark Purple
+            0xFF455A64, // Dark Blue Gray
+            0xFF5D4037, // Dark Brown
+            0xFFD84315  // Dark Deep Orange
+    };
+    
+    private static final int[] TEXT_COLORS = {
+            0xFF000000, // Black
+            0xFF424242, // Dark Gray
+            0xFF757575, // Gray
+            0xFFFFFFFF, // White
+            0xFF1976D2, // Dark Blue
+            0xFF388E3C, // Dark Green
+            0xFF7B1FA2, // Dark Purple
+            0xFFD84315  // Dark Orange
+    };
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,8 +72,10 @@ public class ColorWheelActivity extends BaseActivity {
         
         setupToolbar();
         findViews();
+        setupColorPalettes();
         setupClickListeners();
         loadCurrentColors();
+        updatePreviews();
     }
     
     private void setupToolbar() {
@@ -46,6 +92,12 @@ public class ColorWheelActivity extends BaseActivity {
     private void findViews() {
         applyButton = findViewById(R.id.apply_button);
         resetButton = findViewById(R.id.reset_button);
+        colorPaletteGrid = findViewById(R.id.color_palette_grid);
+        textColorPaletteGrid = findViewById(R.id.text_color_palette_grid);
+        backgroundColorPreview = findViewById(R.id.background_color_preview);
+        textColorPreview = findViewById(R.id.text_color_preview);
+        combinedPreview = findViewById(R.id.combined_preview);
+        previewText = findViewById(R.id.preview_text);
     }
     
     private void setupClickListeners() {
@@ -53,7 +105,7 @@ public class ColorWheelActivity extends BaseActivity {
             applyButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    applySelectedColor();
+                    applySelectedColors();
                 }
             });
         }
@@ -68,35 +120,145 @@ public class ColorWheelActivity extends BaseActivity {
         }
     }
     
-    private void loadCurrentColors() {
-        if (userPreferences.isUsingCustomTheme()) {
-            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
-            selectedColor = userPreferences.getCustomPrimaryColor(defaultColor);
+    private void setupColorPalettes() {
+        setupBackgroundColorPalette();
+        setupTextColorPalette();
+    }
+    
+    private void setupBackgroundColorPalette() {
+        if (colorPaletteGrid == null) return;
+        
+        for (int color : BACKGROUND_COLORS) {
+            View colorView = createColorView(color, true);
+            colorPaletteGrid.addView(colorView);
         }
     }
     
-    private void applySelectedColor() {
-        // Apply the selected color to various UI components
+    private void setupTextColorPalette() {
+        if (textColorPaletteGrid == null) return;
+        
+        for (int color : TEXT_COLORS) {
+            View colorView = createColorView(color, false);
+            textColorPaletteGrid.addView(colorView);
+        }
+    }
+    
+    private View createColorView(final int color, final boolean isBackgroundColor) {
+        View colorView = new View(this);
+        
+        // Set size (convert dp to pixels)
+        int sizeInDp = 60;
+        int sizeInPx = (int) (sizeInDp * getResources().getDisplayMetrics().density);
+        int marginInDp = 8;
+        int marginInPx = (int) (marginInDp * getResources().getDisplayMetrics().density);
+        
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = sizeInPx;
+        params.height = sizeInPx;
+        params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
+        colorView.setLayoutParams(params);
+        
+        // Set background color
+        colorView.setBackgroundColor(color);
+        
+        // Add selection border (initially transparent)
+        colorView.setPadding(4, 4, 4, 4);
+        
+        // Set click listener
+        colorView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isBackgroundColor) {
+                    selectedBackgroundColor = color;
+                } else {
+                    selectedTextColor = color;
+                }
+                updatePreviews();
+                updateColorSelection();
+            }
+        });
+        
+        return colorView;
+    }
+    
+    private void updateColorSelection() {
+        // Update background color grid selection
+        for (int i = 0; i < colorPaletteGrid.getChildCount(); i++) {
+            View child = colorPaletteGrid.getChildAt(i);
+            if (BACKGROUND_COLORS[i] == selectedBackgroundColor) {
+                child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
+                child.setBackgroundColor(selectedBackgroundColor);
+                child.setPadding(8, 8, 8, 8);
+            } else {
+                child.setBackgroundColor(BACKGROUND_COLORS[i]);
+                child.setPadding(4, 4, 4, 4);
+            }
+        }
+        
+        // Update text color grid selection
+        for (int i = 0; i < textColorPaletteGrid.getChildCount(); i++) {
+            View child = textColorPaletteGrid.getChildAt(i);
+            if (TEXT_COLORS[i] == selectedTextColor) {
+                child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
+                child.setBackgroundColor(selectedTextColor);
+                child.setPadding(8, 8, 8, 8);
+            } else {
+                child.setBackgroundColor(TEXT_COLORS[i]);
+                child.setPadding(4, 4, 4, 4);
+            }
+        }
+    }
+    
+    private void updatePreviews() {
+        if (backgroundColorPreview != null) {
+            backgroundColorPreview.setBackgroundColor(selectedBackgroundColor);
+        }
+        
+        if (textColorPreview != null) {
+            textColorPreview.setBackgroundColor(selectedTextColor);
+        }
+        
+        if (combinedPreview != null && previewText != null) {
+            combinedPreview.setBackgroundColor(selectedBackgroundColor);
+            previewText.setTextColor(selectedTextColor);
+        }
+    }
+    
+    private void loadCurrentColors() {
         if (userPreferences.isUsingCustomTheme()) {
-            // Apply to navigation bar
-            userPreferences.setCustomNavBarColor(selectedColor);
+            int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int defaultTextColor = getResources().getColor(android.R.color.black);
             
-            // Apply to top bar  
-            userPreferences.setCustomTopBarColor(selectedColor);
+            selectedBackgroundColor = userPreferences.getCustomPrimaryColor(defaultBackgroundColor);
+            selectedTextColor = userPreferences.getCustomTextColor(defaultTextColor);
+        }
+    }
+    
+    private void applySelectedColors() {
+        // Apply the selected colors to various UI components
+        if (userPreferences.isUsingCustomTheme()) {
+            // Apply background color to navigation bar
+            userPreferences.setCustomNavBarColor(selectedBackgroundColor);
             
-            // Apply to buttons
-            userPreferences.setCustomButtonColor(selectedColor);
+            // Apply background color to top bar  
+            userPreferences.setCustomTopBarColor(selectedBackgroundColor);
             
-            // Apply to menu
-            userPreferences.setCustomMenuColor(selectedColor);
+            // Apply background color to buttons
+            userPreferences.setCustomButtonColor(selectedBackgroundColor);
             
-            // Apply to message bubbles
-            userPreferences.setCustomIncomingBubbleColor(selectedColor);
-            userPreferences.setCustomOutgoingBubbleColor(selectedColor);
+            // Apply background color to menu
+            userPreferences.setCustomMenuColor(selectedBackgroundColor);
+            
+            // Apply background color to message bubbles
+            userPreferences.setCustomIncomingBubbleColor(selectedBackgroundColor);
+            userPreferences.setCustomOutgoingBubbleColor(selectedBackgroundColor);
         }
         
         // Set as primary color
-        userPreferences.setCustomPrimaryColor(selectedColor);
+        userPreferences.setCustomPrimaryColor(selectedBackgroundColor);
+        
+        // Set text color
+        userPreferences.setCustomTextColor(selectedTextColor);
         
         // Switch to custom theme if not already using it
         if (userPreferences.getThemeId() != UserPreferences.THEME_CUSTOM) {
@@ -107,19 +269,24 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void resetToDefaults() {
-        int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
+        int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+        int defaultTextColor = getResources().getColor(android.R.color.black);
         
-        userPreferences.setCustomPrimaryColor(defaultColor);
-        userPreferences.setCustomNavBarColor(defaultColor);
-        userPreferences.setCustomTopBarColor(defaultColor);
-        userPreferences.setCustomButtonColor(defaultColor);
-        userPreferences.setCustomMenuColor(defaultColor);
+        userPreferences.setCustomPrimaryColor(defaultBackgroundColor);
+        userPreferences.setCustomNavBarColor(defaultBackgroundColor);
+        userPreferences.setCustomTopBarColor(defaultBackgroundColor);
+        userPreferences.setCustomButtonColor(defaultBackgroundColor);
+        userPreferences.setCustomMenuColor(defaultBackgroundColor);
         userPreferences.setCustomIncomingBubbleColor(getResources().getColor(R.color.background_light));
-        userPreferences.setCustomOutgoingBubbleColor(defaultColor);
+        userPreferences.setCustomOutgoingBubbleColor(defaultBackgroundColor);
+        userPreferences.setCustomTextColor(defaultTextColor);
         
-        selectedColor = defaultColor;
+        selectedBackgroundColor = defaultBackgroundColor;
+        selectedTextColor = defaultTextColor;
         
         // Update UI to reflect reset
+        updatePreviews();
+        updateColorSelection();
         updateButtonColors();
     }
     
@@ -142,5 +309,21 @@ public class ColorWheelActivity extends BaseActivity {
     protected void onThemeChanged() {
         super.onThemeChanged();
         updateButtonColors();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle back button properly
+        if (item.getItemId() == android.R.id.home) {
+            onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Simply finish the activity to return to the previous screen
+        finish();
     }
 }
