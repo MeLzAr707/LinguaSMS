@@ -9,6 +9,9 @@ import android.util.Log;
 
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Cache for storing translated text using SQLite database with memory cache layer.
@@ -28,6 +31,9 @@ public class TranslationCache {
     // Statistics
     private int cacheHits = 0;
     private int cacheMisses = 0;
+
+    // Background executor for database operations
+    private final ExecutorService backgroundExecutor;
 
     /**
      * Database helper class for the translation cache.
@@ -80,9 +86,10 @@ public class TranslationCache {
     public TranslationCache(Context context) {
         this.memoryCache = new ConcurrentHashMap<>(MEMORY_CACHE_SIZE);
         this.dbHelper = new TranslationDbHelper(context.getApplicationContext());
+        this.backgroundExecutor = Executors.newSingleThreadExecutor();
 
         // Perform maintenance on startup (in background)
-        new Thread(this::performMaintenance).start();
+        backgroundExecutor.execute(this::performMaintenance);
     }
 
     /**
@@ -320,7 +327,7 @@ public class TranslationCache {
      * Updates the timestamp for a cache entry to mark it as recently used.
      */
     private void updateTimestamp(final String key) {
-        new Thread(() -> {
+        backgroundExecutor.execute(() -> {
             SQLiteDatabase db;
             try {
                 db = dbHelper.getWritableDatabase();
@@ -337,7 +344,7 @@ public class TranslationCache {
             } catch (Exception e) {
                 Log.e(TAG, "Error updating timestamp", e);
             }
-        }).start();
+        });
     }
 
     /**
@@ -425,10 +432,33 @@ public class TranslationCache {
     }
 
     /**
-     * Closes the database helper.
-     * Should be called when the app is being destroyed.
+     * Closes the cache and shuts down background threads.
+     * This method should be called when the cache is no longer needed.
      */
     public void close() {
-        dbHelper.close();
+        // Shutdown the background executor
+        if (backgroundExecutor != null && !backgroundExecutor.isShutdown()) {
+            backgroundExecutor.shutdown();
+            try {
+                // Wait a while for existing tasks to terminate
+                if (!backgroundExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    backgroundExecutor.shutdownNow(); // Cancel currently executing tasks
+                    // Wait a while for tasks to respond to being cancelled
+                    if (!backgroundExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                        Log.w(TAG, "TranslationCache executor did not terminate gracefully");
+                    }
+                }
+            } catch (InterruptedException e) {
+                // Re-cancel if current thread also interrupted
+                backgroundExecutor.shutdownNow();
+                // Preserve interrupt status
+                Thread.currentThread().interrupt();
+            }
+        }
+        
+        // Close database helper
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
     }
 }
