@@ -74,6 +74,10 @@ public class CustomThemeColorTest {
         // Test menu color
         userPreferences.setCustomMenuColor(testColor);
         assertEquals(testColor, userPreferences.getCustomMenuColor(defaultColor));
+
+        // Test background color
+        userPreferences.setCustomBackgroundColor(testColor);
+        assertEquals(testColor, userPreferences.getCustomBackgroundColor(defaultColor));
     }
 
     @Test
@@ -88,6 +92,7 @@ public class CustomThemeColorTest {
         assertEquals(defaultColor, userPreferences.getCustomIncomingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomOutgoingBubbleColor(defaultColor));
         assertEquals(defaultColor, userPreferences.getCustomMenuColor(defaultColor));
+        assertEquals(defaultColor, userPreferences.getCustomBackgroundColor(defaultColor));
     }
 
     @Test
