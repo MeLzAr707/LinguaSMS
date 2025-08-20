@@ -105,6 +105,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
+        // If we have an address but no thread ID, try to resolve it
+        if (TextUtils.isEmpty(threadId) && !TextUtils.isEmpty(address)) {
+            Log.d(TAG, "Resolving thread ID for address: " + address);
+            threadId = messageService.getThreadIdForAddress(address);
+            if (TextUtils.isEmpty(threadId)) {
+                Log.e(TAG, "Could not resolve thread ID for address: " + address);
+                finish();
+                return;
+            }
+            Log.d(TAG, "Resolved thread ID: " + threadId + " for address: " + address);
+        }
+
         // Initialize executor service
         executorService = Executors.newCachedThreadPool();
 
