@@ -3,6 +3,7 @@ package com.translator.messagingapp;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Telephony;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -105,5 +106,33 @@ public class DuplicateMessageFixTest {
         
         // This should not throw an exception
         messageService.handleIncomingSms(smsIntent);
+    }
+
+    /**
+     * Test that handleIncomingSms properly handles different SMS intent actions.
+     */
+    @Test
+    public void testHandleIncomingSmsWithDifferentActions() {
+        // Test SMS_RECEIVED_ACTION
+        Intent smsReceivedIntent = new Intent(Telephony.Sms.Intents.SMS_RECEIVED_ACTION);
+        Bundle bundle1 = new Bundle();
+        smsReceivedIntent.putExtras(bundle1);
+        
+        // Mock PhoneUtils.isDefaultSmsApp to return false for this test
+        try (MockedStatic<PhoneUtils> mockedPhoneUtils = mockStatic(PhoneUtils.class)) {
+            mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(false);
+            messageService.handleIncomingSms(smsReceivedIntent);
+        }
+
+        // Test SMS_DELIVER_ACTION  
+        Intent smsDeliverIntent = new Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION);
+        Bundle bundle2 = new Bundle();
+        smsDeliverIntent.putExtras(bundle2);
+        
+        // Mock PhoneUtils.isDefaultSmsApp to return true for this test
+        try (MockedStatic<PhoneUtils> mockedPhoneUtils = mockStatic(PhoneUtils.class)) {
+            mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(true);
+            messageService.handleIncomingSms(smsDeliverIntent);
+        }
     }
 }
