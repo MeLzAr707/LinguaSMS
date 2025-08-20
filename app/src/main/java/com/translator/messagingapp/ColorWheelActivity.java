@@ -147,10 +147,10 @@ public class ColorWheelActivity extends BaseActivity {
     private View createColorView(final int color, final boolean isBackgroundColor) {
         View colorView = new View(this);
         
-        // Set size (convert dp to pixels)
-        int sizeInDp = 60;
+        // Set size (convert dp to pixels) - making them slightly larger for better touch targets
+        int sizeInDp = 72;
         int sizeInPx = (int) (sizeInDp * getResources().getDisplayMetrics().density);
-        int marginInDp = 8;
+        int marginInDp = 12;
         int marginInPx = (int) (marginInDp * getResources().getDisplayMetrics().density);
         
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
@@ -159,11 +159,16 @@ public class ColorWheelActivity extends BaseActivity {
         params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
         colorView.setLayoutParams(params);
         
-        // Set background color
-        colorView.setBackgroundColor(color);
+        // Create initial drawable with subtle border
+        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+        drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        drawable.setColor(color);
+        drawable.setStroke(2, android.graphics.Color.LTGRAY);
+        drawable.setCornerRadius(8f);
+        colorView.setBackground(drawable);
         
-        // Add selection border (initially transparent)
-        colorView.setPadding(4, 4, 4, 4);
+        // Add elevation for better visual depth
+        colorView.setElevation(4f);
         
         // Set click listener
         colorView.setOnClickListener(new View.OnClickListener() {
@@ -187,12 +192,23 @@ public class ColorWheelActivity extends BaseActivity {
         for (int i = 0; i < colorPaletteGrid.getChildCount() && i < BACKGROUND_COLORS.length; i++) {
             View child = colorPaletteGrid.getChildAt(i);
             if (BACKGROUND_COLORS[i] == selectedBackgroundColor) {
-                child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
-                child.setBackgroundColor(selectedBackgroundColor);
-                child.setPadding(8, 8, 8, 8);
+                // Create a shape drawable with color and white border for selection
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(selectedBackgroundColor);
+                drawable.setStroke(6, android.graphics.Color.WHITE);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(8f);
             } else {
-                child.setBackgroundColor(BACKGROUND_COLORS[i]);
-                child.setPadding(4, 4, 4, 4);
+                // Create a shape drawable with color and subtle border for unselected
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(BACKGROUND_COLORS[i]);
+                drawable.setStroke(2, android.graphics.Color.LTGRAY);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(4f);
             }
         }
         
@@ -200,12 +216,23 @@ public class ColorWheelActivity extends BaseActivity {
         for (int i = 0; i < textColorPaletteGrid.getChildCount() && i < TEXT_COLORS.length; i++) {
             View child = textColorPaletteGrid.getChildAt(i);
             if (TEXT_COLORS[i] == selectedTextColor) {
-                child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
-                child.setBackgroundColor(selectedTextColor);
-                child.setPadding(8, 8, 8, 8);
+                // Create a shape drawable with color and white border for selection
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(selectedTextColor);
+                drawable.setStroke(6, android.graphics.Color.WHITE);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(8f);
             } else {
-                child.setBackgroundColor(TEXT_COLORS[i]);
-                child.setPadding(4, 4, 4, 4);
+                // Create a shape drawable with color and subtle border for unselected
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(TEXT_COLORS[i]);
+                drawable.setStroke(2, android.graphics.Color.LTGRAY);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(4f);
             }
         }
     }
