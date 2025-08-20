@@ -1375,15 +1375,24 @@ public class MessageService {
     private void searchSmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
         Cursor cursor = null;
         try {
-            // Query the SMS content provider
+            // Query the SMS content provider with optimized column selection and LIMIT
             Uri uri = Uri.parse("content://sms");
+            String[] projection = {
+                Telephony.Sms._ID,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE,
+                Telephony.Sms.TYPE,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.READ,
+                Telephony.Sms.THREAD_ID
+            };
             String selection = "body LIKE ?";
             String[] selectionArgs = {"%" + query + "%"};
-            String sortOrder = "date DESC";
+            String sortOrder = "date DESC LIMIT 100"; // Limit results for better performance
 
             cursor = contentResolver.query(
                     uri,
-                    null,
+                    projection, // Use specific columns instead of null
                     selection,
                     selectionArgs,
                     sortOrder
@@ -1449,14 +1458,24 @@ public class MessageService {
      */
     private void searchMmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
         Cursor cursor = null;
+        int resultCount = 0;
+        final int MAX_MMS_RESULTS = 50; // Limit MMS results for performance
+        
         try {
-            // Query the MMS content provider
+            // Query the MMS content provider with optimized column selection
             Uri uri = Uri.parse("content://mms");
-            String sortOrder = "date DESC";
+            String[] projection = {
+                Telephony.Mms._ID,
+                Telephony.Mms.DATE,
+                Telephony.Mms.MESSAGE_BOX,
+                Telephony.Mms.READ,
+                Telephony.Mms.THREAD_ID
+            };
+            String sortOrder = "date DESC LIMIT 200"; // Get more than needed to filter by content
 
             cursor = contentResolver.query(
                     uri,
-                    null,
+                    projection, // Use specific columns instead of null
                     null,
                     null,
                     sortOrder
@@ -1464,6 +1483,11 @@ public class MessageService {
 
             if (cursor != null && cursor.moveToFirst()) {
                 do {
+                    // Stop if we've found enough results
+                    if (resultCount >= MAX_MMS_RESULTS) {
+                        break;
+                    }
+                    
                     int idIndex = cursor.getColumnIndex(Telephony.Mms._ID);
                     int dateIndex = cursor.getColumnIndex(Telephony.Mms.DATE);
                     int typeIndex = cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX);
@@ -1507,6 +1531,7 @@ public class MessageService {
 
                     // Add to results
                     results.add(message);
+                    resultCount++;
 
                 } while (cursor.moveToNext());
             }

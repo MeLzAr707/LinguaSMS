@@ -3,6 +3,8 @@ package com.translator.messagingapp;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -44,6 +46,15 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
     private ExecutorService executorService;
     private MessageService messageService;
     private TranslationCache translationCache;
+    
+    // Search debouncing
+    private Handler searchHandler;
+    private Runnable searchRunnable;
+    private static final int SEARCH_DELAY_MS = 300; // Delay before executing search
+    
+    // Simple cache for recent searches
+    private String lastSearchQuery = "";
+    private List<Message> lastSearchResults;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +73,9 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
 
         // Initialize executor service
         executorService = Executors.newCachedThreadPool();
+        
+        // Initialize search handler for debouncing
+        searchHandler = new Handler(Looper.getMainLooper());
 
         // Initialize data
         searchResults = new ArrayList<>();
@@ -105,9 +119,24 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
                 // Show/hide clear button based on text
                 clearSearchButton.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
 
-                // Perform search if text is at least 2 characters
+                // Cancel any pending search
+                if (searchRunnable != null) {
+                    searchHandler.removeCallbacks(searchRunnable);
+                }
+
+                // Perform search if text is at least 2 characters with debouncing
                 if (s.length() >= 2) {
-                    performSearch(s.toString());
+                    String query = s.toString();
+                    
+                    // Check cache first
+                    if (query.equals(lastSearchQuery) && lastSearchResults != null) {
+                        updateSearchResults(lastSearchResults);
+                        return;
+                    }
+                    
+                    // Create new search runnable with debouncing
+                    searchRunnable = () -> performSearch(query);
+                    searchHandler.postDelayed(searchRunnable, SEARCH_DELAY_MS);
                 } else if (s.length() == 0) {
                     // Clear results if search is empty
                     clearSearchResults();
@@ -148,9 +177,10 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
             return;
         }
 
-        // Cancel any previous search
-        executorService.shutdownNow();
-        executorService = Executors.newCachedThreadPool();
+        // Don't recreate executor service every time - just cancel previous search
+        if (searchRunnable != null) {
+            searchHandler.removeCallbacks(searchRunnable);
+        }
 
         // Perform search in background
         executorService.execute(() -> {
@@ -165,21 +195,13 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
                     }
                 }
 
-                // Update UI on main thread
-                runOnUiThread(() -> {
-                    // Update search results
-                    searchResults.clear();
-                    if (results != null && !results.isEmpty()) {
-                        searchResults.addAll(results);
-                        adapter.notifyDataSetChanged();
-                        hideEmptyState();
-                    } else {
-                        showEmptyState(R.string.no_search_results);
-                    }
+                // Cache the results
+                lastSearchQuery = query;
+                lastSearchResults = new ArrayList<>(results);
 
-                    // Hide loading indicator
-                    hideLoadingIndicator();
-                });
+                // Update UI on main thread
+                runOnUiThread(() -> updateSearchResults(results));
+                
             } catch (Exception e) {
                 Log.e(TAG, "Error searching messages", e);
                 runOnUiThread(() -> {
@@ -191,11 +213,35 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
             }
         });
     }
+    
+    /**
+     * Updates the search results in the UI.
+     * 
+     * @param results The search results to display
+     */
+    private void updateSearchResults(List<Message> results) {
+        // Update search results
+        searchResults.clear();
+        if (results != null && !results.isEmpty()) {
+            searchResults.addAll(results);
+            adapter.notifyDataSetChanged();
+            hideEmptyState();
+        } else {
+            showEmptyState(R.string.no_search_results);
+        }
+
+        // Hide loading indicator
+        hideLoadingIndicator();
+    }
 
     private void clearSearchResults() {
         searchResults.clear();
         adapter.notifyDataSetChanged();
         showEmptyState(R.string.search_hint);
+        
+        // Clear search cache
+        lastSearchQuery = "";
+        lastSearchResults = null;
     }
 
     private void showLoadingIndicator() {

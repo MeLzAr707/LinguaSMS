@@ -149,6 +149,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 return; // Safety check for null message
             }
 
+            // Get search query for highlighting
+            String searchQuery = message.getSearchQuery();
+            boolean hasSearchQuery = searchQuery != null && !searchQuery.trim().isEmpty();
+
             // Handle dual text display for translations
             if (message.isShowTranslation() && message.isTranslated()) {
                 // Show both original and translated text
@@ -156,15 +160,32 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 String translatedText = message.getTranslatedText();
                 
                 if (originalText != null) {
-                    originalText.setText("Original: " + originalBody);
+                    String originalLabel = "Original: " + originalBody;
+                    // Apply highlighting to original text if search query exists
+                    if (hasSearchQuery) {
+                        originalText.setText(SearchHighlightUtils.highlightSearchTerms(originalLabel, searchQuery));
+                    } else {
+                        originalText.setText(originalLabel);
+                    }
                     originalText.setVisibility(View.VISIBLE);
                 }
                 
-                messageText.setText(translatedText);
+                // Apply highlighting to translated text if search query exists
+                if (hasSearchQuery) {
+                    messageText.setText(SearchHighlightUtils.highlightSearchTerms(translatedText, searchQuery));
+                } else {
+                    messageText.setText(translatedText);
+                }
             } else {
                 // Show only original text
                 String displayText = getDisplayTextForMessage(message);
-                messageText.setText(displayText);
+                
+                // Apply highlighting if search query exists
+                if (hasSearchQuery) {
+                    messageText.setText(SearchHighlightUtils.highlightSearchTerms(displayText, searchQuery));
+                } else {
+                    messageText.setText(displayText);
+                }
                 
                 if (originalText != null) {
                     originalText.setVisibility(View.GONE);
