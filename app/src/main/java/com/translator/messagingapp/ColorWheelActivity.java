@@ -76,6 +76,7 @@ public class ColorWheelActivity extends BaseActivity {
         setupClickListeners();
         loadCurrentColors();
         updatePreviews();
+        updateColorSelection();
     }
     
     private void setupToolbar() {
@@ -183,7 +184,7 @@ public class ColorWheelActivity extends BaseActivity {
     
     private void updateColorSelection() {
         // Update background color grid selection
-        for (int i = 0; i < colorPaletteGrid.getChildCount(); i++) {
+        for (int i = 0; i < colorPaletteGrid.getChildCount() && i < BACKGROUND_COLORS.length; i++) {
             View child = colorPaletteGrid.getChildAt(i);
             if (BACKGROUND_COLORS[i] == selectedBackgroundColor) {
                 child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
@@ -196,7 +197,7 @@ public class ColorWheelActivity extends BaseActivity {
         }
         
         // Update text color grid selection
-        for (int i = 0; i < textColorPaletteGrid.getChildCount(); i++) {
+        for (int i = 0; i < textColorPaletteGrid.getChildCount() && i < TEXT_COLORS.length; i++) {
             View child = textColorPaletteGrid.getChildAt(i);
             if (TEXT_COLORS[i] == selectedTextColor) {
                 child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
