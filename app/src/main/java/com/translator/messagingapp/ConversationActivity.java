@@ -559,9 +559,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                     loadMessages();
                                     break;
                                 case "com.translator.messagingapp.MESSAGE_SENT":
-                                    // Handle sent message: just refresh without clearing cache
-                                    // to prevent sent message from disappearing temporarily
-                                    Log.d(TAG, "Message sent broadcast received, refreshing messages");
+                                    // Handle sent message: clear cache to ensure new sent message is loaded
+                                    Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing messages");
+                                    MessageCache.clearCacheForThread(threadId);
                                     loadMessages();
                                     break;
                                 default:
