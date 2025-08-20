@@ -1891,30 +1891,4 @@ public class MessageService {
             Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
     }
-
-    /**
-     * Shuts down the executor service to prevent resource leaks.
-     * This method should be called when the MessageService is no longer needed.
-     */
-    public void shutdown() {
-        if (executorService != null && !executorService.isShutdown()) {
-            Log.d(TAG, "Shutting down MessageService executor");
-            executorService.shutdown();
-            try {
-                // Wait a while for existing tasks to terminate
-                if (!executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                    executorService.shutdownNow(); // Cancel currently executing tasks
-                    // Wait a while for tasks to respond to being cancelled
-                    if (!executorService.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                        Log.w(TAG, "MessageService executor did not terminate gracefully");
-                    }
-                }
-            } catch (InterruptedException e) {
-                // Re-cancel if current thread also interrupted
-                executorService.shutdownNow();
-                // Preserve interrupt status
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
 }
