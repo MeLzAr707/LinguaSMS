@@ -1610,6 +1610,9 @@ public class MessageService {
                         Log.d(TAG, "Default SMS app - system will automatically store message");
                     }
 
+                    // Attempt automatic translation for incoming messages
+                    translateIncomingSmsIfEnabled(senderAddress, fullMessageBody.toString(), messageTimestamp);
+
                     // Show notification
                     showSmsNotification(senderAddress, fullMessageBody.toString());
                     
@@ -1617,6 +1620,75 @@ public class MessageService {
                     broadcastMessageReceived();
                 }
             }
+        }
+    }
+
+    /**
+     * Attempts to automatically translate an incoming SMS message if auto-translate is enabled.
+     *
+     * @param senderAddress The sender's address
+     * @param messageBody The message body text
+     * @param timestamp The message timestamp
+     */
+    private void translateIncomingSmsIfEnabled(String senderAddress, String messageBody, long timestamp) {
+        try {
+            // Check if translation manager is available
+            if (translationManager == null) {
+                Log.d(TAG, "Translation manager not available for incoming SMS translation");
+                return;
+            }
+
+            // Create SmsMessage object for translation
+            SmsMessage smsMessage = new SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
+            smsMessage.setIncoming(true);
+            smsMessage.setRead(false); // Incoming messages are initially unread
+
+            // Attempt translation - TranslationManager will check if auto-translate is enabled
+            translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
+                @Override
+                public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
+                    if (success && translatedMessage != null && translatedMessage.isTranslated()) {
+                        Log.d(TAG, "Successfully translated incoming SMS from " + senderAddress + 
+                              ": '" + translatedMessage.getOriginalText() + "' -> '" + 
+                              translatedMessage.getTranslatedText() + "'");
+                        
+                        // Store the translation result in cache for UI access
+                        // The translated text will be available when the UI loads the message
+                        
+                        // Broadcast translation completed to refresh UI with translated content
+                        broadcastTranslationCompleted(senderAddress, translatedMessage);
+                    } else {
+                        Log.d(TAG, "Translation not performed for incoming SMS from " + senderAddress + 
+                              " (auto-translate disabled, service unavailable, or translation failed)");
+                    }
+                }
+            });
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error attempting to translate incoming SMS from " + senderAddress, e);
+        }
+    }
+
+    /**
+     * Broadcasts that a message translation has been completed to refresh the UI.
+     *
+     * @param address The sender's address
+     * @param translatedMessage The translated message
+     */
+    private void broadcastTranslationCompleted(String address, SmsMessage translatedMessage) {
+        try {
+            Intent broadcastIntent = new Intent("com.translator.messagingapp.TRANSLATION_COMPLETED");
+            broadcastIntent.putExtra("address", address);
+            broadcastIntent.putExtra("original_text", translatedMessage.getOriginalText());
+            broadcastIntent.putExtra("translated_text", translatedMessage.getTranslatedText());
+            broadcastIntent.putExtra("original_language", translatedMessage.getOriginalLanguage());
+            broadcastIntent.putExtra("translated_language", translatedMessage.getTranslatedLanguage());
+            
+            // Use LocalBroadcastManager for reliable intra-app communication
+            LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
+            Log.d(TAG, "Broadcasted translation completed event for message from " + address);
+        } catch (Exception e) {
+            Log.e(TAG, "Error broadcasting translation completed event", e);
         }
     }
 
