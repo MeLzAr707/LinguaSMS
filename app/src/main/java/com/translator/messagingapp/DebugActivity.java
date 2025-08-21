@@ -23,6 +23,7 @@ public class DebugActivity extends BaseActivity {
     private Button checkButton;
     private Button openButton;
     private Button directOpenButton;
+    private Button testNotificationButton;
     private TextView resultText;
 
     @Override
@@ -43,16 +44,14 @@ public class DebugActivity extends BaseActivity {
         checkButton = findViewById(R.id.debug_check_button);
         openButton = findViewById(R.id.debug_open_button);
         directOpenButton = findViewById(R.id.debug_direct_open_button);
+        testNotificationButton = findViewById(R.id.debug_test_notification_button);
         resultText = findViewById(R.id.debug_result_text);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
         openButton.setOnClickListener(v -> openConversation());
         directOpenButton.setOnClickListener(v -> openConversationDirect());
-        
-        // Add a button to check message loading issues
-
-        directOpenButton.setOnClickListener(v -> openConversationDirect());
+        testNotificationButton.setOnClickListener(v -> testNotification());
 
         // Check if we were launched with an address
         String launchedAddress = getIntent().getStringExtra("address");
@@ -623,6 +622,60 @@ public class DebugActivity extends BaseActivity {
             }
         } catch (Exception e) {
             report.append("     ERROR testing thread: ").append(e.getMessage()).append("\n");
+        }
+    }
+    
+    /**
+     * Test notification functionality to verify the notification suppression
+     * and full message display features.
+     */
+    private void testNotification() {
+        try {
+            String address = addressInput.getText().toString().trim();
+            if (address.isEmpty()) {
+                address = "+1234567890"; // Default test number
+            }
+            
+            // Create test message content with long text to verify BigTextStyle
+            String longMessage = "This is a test notification with a very long message to verify that " +
+                                "the BigTextStyle is working correctly and the full message content is " +
+                                "displayed when the user expands the notification. The message should not " +
+                                "be truncated and should be fully visible in the expanded notification view.";
+            
+            String shortMessage = "Short test message";
+            
+            // Test both short and long messages
+            NotificationHelper notificationHelper = new NotificationHelper(this);
+            
+            // Show short message notification
+            notificationHelper.showSmsReceivedNotification("Test Contact", shortMessage, "test_thread_123");
+            
+            // Show long message notification after 2 seconds to see both
+            new android.os.Handler().postDelayed(() -> {
+                notificationHelper.showSmsReceivedNotification("Test Contact", longMessage, "test_thread_456");
+            }, 2000);
+            
+            // Update result text
+            StringBuilder result = new StringBuilder();
+            result.append("Test notifications sent!\n\n");
+            result.append("1. Short message notification (test_thread_123)\n");
+            result.append("   Message: ").append(shortMessage).append("\n\n");
+            result.append("2. Long message notification (test_thread_456) - sent after 2s delay\n");
+            result.append("   Message: ").append(longMessage).append("\n\n");
+            result.append("To test notification suppression:\n");
+            result.append("1. Open a conversation (test_thread_123 or test_thread_456)\n");
+            result.append("2. Send another test notification for that thread\n");
+            result.append("3. The notification should be suppressed while viewing the conversation\n\n");
+            result.append("Check your notification panel to see the notifications with full message content.\n");
+            
+            resultText.setText(result.toString());
+            
+            Toast.makeText(this, "Test notifications sent! Check notification panel.", Toast.LENGTH_LONG).show();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error testing notifications", e);
+            resultText.setText("Error testing notifications: " + e.getMessage());
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 }
