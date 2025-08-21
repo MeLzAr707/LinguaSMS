@@ -26,30 +26,15 @@ public class SmsReceiver extends BroadcastReceiver {
         if (messageService != null) {
             // Handle SMS_RECEIVED action (when not default app)
             if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) {
-                // Pass to MessageService for processing
+                Log.d(TAG, "Processing SMS_RECEIVED - app is not default SMS app");
                 messageService.handleIncomingSms(intent);
             }
             // Handle SMS_DELIVER action (when default app)
             else if (Telephony.Sms.Intents.SMS_DELIVER_ACTION.equals(intent.getAction())) {
-                // Extract SMS messages from the intent
-                SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
-                if (messages != null && messages.length > 0) {
-                    StringBuilder body = new StringBuilder();
-                    String sender = null;
-
-                    // Concatenate message parts if it's a multi-part message
-                    for (SmsMessage sms : messages) {
-                        if (sender == null) {
-                            sender = sms.getOriginatingAddress();
-                        }
-                        body.append(sms.getMessageBody());
-                    }
-
-                    Log.d(TAG, "SMS from " + sender + ": " + body.toString());
-
-                    // Pass to MessageService for processing
-                    messageService.handleIncomingSms(intent);
-                }
+                Log.d(TAG, "Processing SMS_DELIVER - app is default SMS app");
+                // For SMS_DELIVER, we just need to trigger notifications and UI refresh
+                // since Android system already stores the message when we're the default app
+                messageService.handleIncomingSms(intent);
             }
         } else {
             Log.e(TAG, "MessageService is null, cannot process SMS");

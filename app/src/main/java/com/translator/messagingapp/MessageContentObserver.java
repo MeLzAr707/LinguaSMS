@@ -72,6 +72,7 @@ public class MessageContentObserver extends ContentObserver {
 
     /**
      * Registers the content observer to monitor SMS and MMS changes.
+     * Uses optimized URI registration to prevent redundant notifications.
      */
     public void register() {
         if (isRegistered) {
@@ -80,24 +81,18 @@ public class MessageContentObserver extends ContentObserver {
         }
 
         try {
-            // Register for SMS content changes
-            context.getContentResolver().registerContentObserver(
-                Telephony.Sms.CONTENT_URI, true, this);
-            
-            // Register for MMS content changes  
-            context.getContentResolver().registerContentObserver(
-                Telephony.Mms.CONTENT_URI, true, this);
-            
-            // Register for conversation thread changes
-            context.getContentResolver().registerContentObserver(
-                Telephony.Threads.CONTENT_URI, true, this);
-            
-            // Register for combined SMS/MMS changes
+            // Register for combined SMS/MMS changes - this covers most message events
+            // and reduces redundant notifications compared to registering for individual URIs
             context.getContentResolver().registerContentObserver(
                 Uri.parse("content://mms-sms/"), true, this);
+            
+            // Only register for conversation thread changes separately as it provides
+            // different granularity of notifications needed for thread-level updates
+            context.getContentResolver().registerContentObserver(
+                Telephony.Threads.CONTENT_URI, true, this);
 
             isRegistered = true;
-            Log.d(TAG, "MessageContentObserver registered successfully");
+            Log.d(TAG, "MessageContentObserver registered successfully with optimized URIs");
         } catch (Exception e) {
             Log.e(TAG, "Error registering MessageContentObserver", e);
         }
@@ -170,6 +165,8 @@ public class MessageContentObserver extends ContentObserver {
         try {
             String uriString = uri.toString();
             
+            // Only call specific notification methods, not both specific AND notifyAllListeners
+            // to prevent redundant processing
             if (isSmsUri(uriString)) {
                 notifySmsChanged(uri);
             } else if (isMmsUri(uriString)) {
@@ -181,8 +178,9 @@ public class MessageContentObserver extends ContentObserver {
                 notifyMessageContentChanged(uri);
             }
             
-            // Always notify all listeners of general content change
-            notifyAllListeners(uri);
+            // Only call notifyAllListeners for cache clearing and sync scheduling
+            // but avoid duplicate listener notifications
+            scheduleWorkAndClearCache(uri);
             
         } catch (Exception e) {
             Log.e(TAG, "Error handling content change", e);
@@ -266,9 +264,10 @@ public class MessageContentObserver extends ContentObserver {
     }
 
     /**
-     * Notifies all listeners of a content change.
+     * Schedules background work and clears cache for content changes.
+     * Separated from listener notifications to prevent redundant processing.
      */
-    private void notifyAllListeners(Uri uri) {
+    private void scheduleWorkAndClearCache(Uri uri) {
         // Schedule message sync work when content changes
         try {
             TranslatorApp app = (TranslatorApp) context;
@@ -286,6 +285,18 @@ public class MessageContentObserver extends ContentObserver {
         } catch (Exception e) {
             Log.w(TAG, "Could not clear message cache", e);
         }
+    }
+
+    /**
+     * Notifies all listeners of a content change.
+     * Used only for generic notifications when URI is null.
+     */
+    private void notifyAllListeners(Uri uri) {
+        // Schedule work and clear cache
+        scheduleWorkAndClearCache(uri);
+        
+        // Notify all listeners with generic message content change
+        notifyMessageContentChanged(uri);
     }
 
     /**
