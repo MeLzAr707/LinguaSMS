@@ -183,7 +183,9 @@ public class Message {
     }
 
     public boolean isShowTranslation() {
-        return showTranslation;
+        // SAFETY CHECK: Only show translation if we actually have valid translated text
+        // This prevents showing empty content when translation state is corrupted
+        return showTranslation && isTranslated();
     }
 
     public void setShowTranslation(boolean showTranslation) {
@@ -394,11 +396,26 @@ public class Message {
         if (savedData != null) {
             try {
                 JSONObject data = new JSONObject(savedData);
-                translatedText = data.optString("translatedText");
-                originalLanguage = data.optString("originalLanguage");
-                translatedLanguage = data.optString("translatedLanguage");
-                showTranslation = data.optBoolean("showTranslation");
-                return true;
+                String restoredTranslatedText = data.optString("translatedText");
+                String restoredOriginalLanguage = data.optString("originalLanguage");
+                String restoredTranslatedLanguage = data.optString("translatedLanguage");
+                boolean restoredShowTranslation = data.optBoolean("showTranslation");
+                
+                // SAFETY CHECK: Only restore translation state if we have valid translated text
+                // This prevents the issue where showTranslation=true but translatedText is empty
+                if (restoredTranslatedText != null && !restoredTranslatedText.trim().isEmpty()) {
+                    translatedText = restoredTranslatedText;
+                    originalLanguage = restoredOriginalLanguage;
+                    translatedLanguage = restoredTranslatedLanguage;
+                    showTranslation = restoredShowTranslation;
+                    return true;
+                } else {
+                    // If translated text is empty/null, don't restore the showTranslation flag
+                    // This ensures messages display their original text instead of empty content
+                    Log.d(TAG, "Skipping translation state restore due to empty translated text for message " + getId());
+                    showTranslation = false; // Explicitly set to false to show original text
+                    return false;
+                }
             } catch (JSONException e) {
                 Log.e(TAG, "Error restoring translation state", e);
             }

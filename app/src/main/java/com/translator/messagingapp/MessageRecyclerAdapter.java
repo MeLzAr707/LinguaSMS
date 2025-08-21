@@ -158,8 +158,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             boolean hasSearchQuery = searchQuery != null && !searchQuery.trim().isEmpty();
 
             // Handle dual text display for translations
-            if (message.isShowTranslation() && message.isTranslated()) {
-                // Show both original and translated text
+            // SAFETY CHECK: Ensure messages always display, even with corrupted translation state
+            if (message.isShowTranslation() && message.isTranslated() && 
+                message.getTranslatedText() != null && !message.getTranslatedText().trim().isEmpty()) {
+                // Show both original and translated text (only if translated text is valid)
                 String originalBody = getOriginalTextForMessage(message);
                 String translatedText = message.getTranslatedText();
                 
@@ -181,7 +183,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     messageText.setText(translatedText);
                 }
             } else {
-                // Show only original text
+                // Show only original text (this is the safe default path)
+                // This ensures messages are ALWAYS visible, even with translation issues
                 String displayText = getDisplayTextForMessage(message);
                 
                 // Apply highlighting if search query exists
