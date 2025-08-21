@@ -112,11 +112,14 @@ public class NotificationHelper {
         // Get notification sound
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         
-        // Build notification
+        // Build notification with BigTextStyle to show full message content
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_MESSAGES)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(sender)
                 .setContentText(body)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(body)
+                        .setBigContentTitle(sender))
                 .setAutoCancel(true)
                 .setSound(defaultSoundUri)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

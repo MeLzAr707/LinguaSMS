@@ -43,6 +43,20 @@ import java.util.concurrent.Executors;
  */
 public class ConversationActivity extends BaseActivity implements MessageRecyclerAdapter.OnMessageClickListener {
     private static final String TAG = "ConversationActivity";
+    
+    // Static field to track currently active conversation for notification suppression
+    private static String currentlyActiveThreadId = null;
+    
+    /**
+     * Checks if a specific thread is currently being viewed.
+     * This is used to suppress notifications for the active conversation.
+     * 
+     * @param threadId The thread ID to check
+     * @return true if the thread is currently active, false otherwise
+     */
+    public static boolean isThreadCurrentlyActive(String threadId) {
+        return threadId != null && threadId.equals(currentlyActiveThreadId);
+    }
 
     // UI components
     private RecyclerView messagesRecyclerView;
@@ -136,6 +150,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onResume() {
         super.onResume();
+        
+        // Set this thread as currently active for notification suppression
+        currentlyActiveThreadId = threadId;
+        Log.d(TAG, "Set active thread ID: " + threadId);
+        
         // Register message update receiver when activity becomes visible
         setupMessageUpdateReceiver();
         
@@ -148,6 +167,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onPause() {
         super.onPause();
+        
+        // Clear the active thread ID since this conversation is no longer visible
+        currentlyActiveThreadId = null;
+        Log.d(TAG, "Cleared active thread ID");
+        
         // Unregister message update receiver when activity is not visible
         if (messageUpdateReceiver != null) {
             try {

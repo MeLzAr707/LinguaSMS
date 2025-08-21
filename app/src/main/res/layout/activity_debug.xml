@@ -52,6 +52,13 @@
                 android:text="@string/debug_direct_open_button" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/debug_test_notification_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Test Notification" />
+
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent">
