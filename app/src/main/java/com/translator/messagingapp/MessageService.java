@@ -1693,6 +1693,13 @@ public class MessageService {
             // Get thread ID for the notification
             String threadId = getThreadIdForAddress(address);
             
+            // Check if the user is currently viewing this conversation
+            // If so, don't show a notification as they can already see the message
+            if (ConversationActivity.isThreadCurrentlyActive(threadId)) {
+                Log.d(TAG, "Suppressing notification for thread " + threadId + " as conversation is currently active");
+                return;
+            }
+            
             // Get contact name or use address as fallback
             String displayName = getContactNameForAddress(address);
             if (displayName == null || displayName.isEmpty()) {
