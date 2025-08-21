@@ -65,76 +65,75 @@ public class BaseActivity extends AppCompatActivity {
      * Apply the appropriate theme based on user preferences
      */
     protected void applyTheme() {
-        // Guard against null userPreferences
-        if (userPreferences == null) {
-            // Use default light theme if preferences aren't available
-            setTheme(useNoActionBar ? R.style.AppTheme_NoActionBar : R.style.AppTheme);
-            return;
-        }
-        
-        int themeId = userPreferences.getThemeId();
-        // Store the current theme ID to detect changes
-        currentThemeId = themeId;
+        try {
+            int themeId = userPreferences.getThemeId();
+            // Store the current theme ID to detect changes
+            currentThemeId = themeId;
 
-        if (useNoActionBar) {
-            // Apply NoActionBar variants
-            switch (themeId) {
-                case UserPreferences.THEME_DARK:
-                    setTheme(R.style.AppTheme_Dark_NoActionBar);
-                    break;
-                case UserPreferences.THEME_BLACK_GLASS:
-                    setTheme(R.style.AppTheme_BlackGlass_NoActionBar);
-                    // Apply additional window flags for Black Glass theme
-                    applyBlackGlassWindowFlags();
-                    break;
-                case UserPreferences.THEME_CUSTOM:
-                    setTheme(R.style.AppTheme_NoActionBar); // Base theme for custom
-                    break;
-                case UserPreferences.THEME_SYSTEM:
-                    // Use system default
-                    if (userPreferences.isDarkThemeActive(this)) {
+            if (useNoActionBar) {
+                // Apply NoActionBar variants
+                switch (themeId) {
+                    case UserPreferences.THEME_DARK:
                         setTheme(R.style.AppTheme_Dark_NoActionBar);
-                    } else {
+                        break;
+                    case UserPreferences.THEME_BLACK_GLASS:
+                        setTheme(R.style.AppTheme_BlackGlass_NoActionBar);
+                        // Apply additional window flags for Black Glass theme
+                        applyBlackGlassWindowFlags();
+                        break;
+                    case UserPreferences.THEME_CUSTOM:
+                        setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
+                        break;
+                    case UserPreferences.THEME_SYSTEM:
+                        // Use system default
+                        if (userPreferences.isDarkThemeActive(this)) {
+                            setTheme(R.style.AppTheme_Dark_NoActionBar);
+                        } else {
+                            setTheme(R.style.AppTheme_NoActionBar);
+                        }
+                        break;
+                    case UserPreferences.THEME_LIGHT:
+                    default:
                         setTheme(R.style.AppTheme_NoActionBar);
-                    }
-                    break;
-                case UserPreferences.THEME_LIGHT:
-                default:
-                    setTheme(R.style.AppTheme_NoActionBar);
-                    break;
-            }
-        } else {
-            // Apply regular themes
-            switch (themeId) {
-                case UserPreferences.THEME_DARK:
-                    setTheme(R.style.AppTheme_Dark);
-                    break;
-                case UserPreferences.THEME_BLACK_GLASS:
-                    setTheme(R.style.AppTheme_BlackGlass);
-                    // Apply additional window flags for Black Glass theme
-                    applyBlackGlassWindowFlags();
-                    break;
-                case UserPreferences.THEME_CUSTOM:
-                    setTheme(R.style.AppTheme); // Base theme for custom
-                    break;
-                case UserPreferences.THEME_SYSTEM:
-                    // Use system default
-                    if (userPreferences.isDarkThemeActive(this)) {
+                        break;
+                }
+            } else {
+                // Apply regular themes
+                switch (themeId) {
+                    case UserPreferences.THEME_DARK:
                         setTheme(R.style.AppTheme_Dark);
-                    } else {
+                        break;
+                    case UserPreferences.THEME_BLACK_GLASS:
+                        setTheme(R.style.AppTheme_BlackGlass);
+                        // Apply additional window flags for Black Glass theme
+                        applyBlackGlassWindowFlags();
+                        break;
+                    case UserPreferences.THEME_CUSTOM:
+                        setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
+                        break;
+                    case UserPreferences.THEME_SYSTEM:
+                        // Use system default
+                        if (userPreferences.isDarkThemeActive(this)) {
+                            setTheme(R.style.AppTheme_Dark);
+                        } else {
+                            setTheme(R.style.AppTheme);
+                        }
+                        break;
+                    case UserPreferences.THEME_LIGHT:
+                    default:
                         setTheme(R.style.AppTheme);
-                    }
-                    break;
-                case UserPreferences.THEME_LIGHT:
-                default:
-                    setTheme(R.style.AppTheme);
-                    break;
+                        break;
+                }
             }
-        }
-        
-        // Apply custom colors if using custom theme
-        if (themeId == UserPreferences.THEME_CUSTOM) {
-            applyCustomColors();
+            
+            // Apply custom colors if using custom theme
+            if (themeId == UserPreferences.THEME_CUSTOM) {
+                applyCustomColors();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error applying theme, falling back to light theme", e);
+            // Fallback to light theme if there's an error
+            setTheme(useNoActionBar ? R.style.AppTheme_NoActionBar : R.style.AppTheme);
         }
     }
     
@@ -229,7 +228,7 @@ public class BaseActivity extends AppCompatActivity {
      * Should be called from onCreate() after setContentView()
      */
     protected void applyCustomColorsToViews() {
-        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
+        if (userPreferences.isUsingCustomTheme()) {
             // Apply custom background color to the root view
             applyCustomBackgroundColor();
             
@@ -242,7 +241,7 @@ public class BaseActivity extends AppCompatActivity {
      * Apply custom background color to the activity
      */
     protected void applyCustomBackgroundColor() {
-        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
+        if (userPreferences.isUsingCustomTheme()) {
             int defaultBackgroundColor = getResources().getColor(R.color.background_light);
             int customBackgroundColor = userPreferences.getCustomBackgroundColor(defaultBackgroundColor);
             
@@ -260,7 +259,7 @@ public class BaseActivity extends AppCompatActivity {
     protected void applyCustomColorsToToolbar() {
         // Find toolbar and apply custom colors
         androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
-        if (toolbar != null && userPreferences != null && userPreferences.isUsingCustomTheme()) {
+        if (toolbar != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customTopBarColor = userPreferences.getCustomTopBarColor(defaultColor);
             toolbar.setBackgroundColor(customTopBarColor);
