@@ -1601,13 +1601,12 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Only manually store the message if we're NOT the default SMS app
-                    // When we are the default SMS app, Android automatically stores the message
-                    if (!PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Not default SMS app, manually storing message");
+                    // Check if message already exists to prevent duplicates
+                    if (!isMessageAlreadyStored(senderAddress, fullMessageBody.toString(), messageTimestamp)) {
+                        Log.d(TAG, "Message not found in database, storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
-                        Log.d(TAG, "Default SMS app - system will automatically store message");
+                        Log.d(TAG, "Message already exists in database, skipping storage to prevent duplicate");
                     }
 
                     // Show notification
@@ -1618,6 +1617,55 @@ public class MessageService {
                 }
             }
         }
+    }
+
+    /**
+     * Checks if an SMS message with the same content already exists in the database.
+     * This prevents duplicate messages from being stored.
+     *
+     * @param address The sender's address
+     * @param body The message body
+     * @param timestamp The message timestamp
+     * @return true if the message already exists, false otherwise
+     */
+    private boolean isMessageAlreadyStored(String address, String body, long timestamp) {
+        try {
+            // Define the query to check for existing messages
+            // We'll check for messages from the same address with the same body and close timestamp
+            String selection = Telephony.Sms.ADDRESS + " = ? AND " +
+                    Telephony.Sms.BODY + " = ? AND " +
+                    Telephony.Sms.TYPE + " = ? AND " +
+                    "ABS(" + Telephony.Sms.DATE + " - ?) < ?"; // Allow for small timestamp differences
+
+            String[] selectionArgs = {
+                    address,
+                    body,
+                    String.valueOf(Telephony.Sms.MESSAGE_TYPE_INBOX),
+                    String.valueOf(timestamp),
+                    String.valueOf(10000) // 10 seconds tolerance for timestamp differences
+            };
+
+            // Query the SMS database
+            Cursor cursor = context.getContentResolver().query(
+                    Telephony.Sms.CONTENT_URI,
+                    new String[]{Telephony.Sms._ID},
+                    selection,
+                    selectionArgs,
+                    null
+            );
+
+            if (cursor != null) {
+                boolean exists = cursor.getCount() > 0;
+                cursor.close();
+                Log.d(TAG, "Message duplicate check - exists: " + exists + " for address: " + address);
+                return exists;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking for duplicate message from " + address, e);
+        }
+        
+        // If we can't check for duplicates, assume it doesn't exist to ensure message is stored
+        return false;
     }
 
     /**
