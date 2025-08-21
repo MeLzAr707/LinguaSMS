@@ -349,7 +349,7 @@ public class SettingsActivity extends BaseActivity {
      * Apply custom button colors if using custom theme
      */
     private void applyCustomButtonColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
             

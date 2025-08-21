@@ -253,7 +253,7 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void loadCurrentColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
             int defaultTextColor = getResources().getColor(android.R.color.black);
             
@@ -264,7 +264,7 @@ public class ColorWheelActivity extends BaseActivity {
     
     private void applySelectedColors() {
         // Apply the selected colors to various UI components
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply background color to navigation bar
             userPreferences.setCustomNavBarColor(selectedBackgroundColor);
             
@@ -319,7 +319,7 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void updateButtonColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
             
