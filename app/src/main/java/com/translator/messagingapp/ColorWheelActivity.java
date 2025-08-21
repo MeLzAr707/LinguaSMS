@@ -19,33 +19,20 @@ public class ColorWheelActivity extends BaseActivity {
     // UI components
     private Button applyButton;
     private Button resetButton;
-    private GridLayout menuColorPaletteGrid;
-    private GridLayout navColorPaletteGrid;
-    private GridLayout buttonColorPaletteGrid;
-    private GridLayout incomingColorPaletteGrid;
-    private GridLayout outgoingColorPaletteGrid;
+    private GridLayout colorPaletteGrid;
+    private GridLayout textColorPaletteGrid;
+    private View backgroundColorPreview;
+    private View textColorPreview;
     private LinearLayout combinedPreview;
     private TextView previewText;
     
     // Data
     private UserPreferences userPreferences;
-    
-    // Individual color selections
-    private int selectedMenuColor = 0xFF3F51B5; // Default blue color
-    private int selectedNavBarColor = 0xFF3F51B5; // Default blue color
-    private int selectedButtonColor = 0xFF3F51B5; // Default blue color
-    private int selectedIncomingColor = 0xFFE3F2FD; // Light blue for incoming
-    private int selectedOutgoingColor = 0xFF3F51B5; // Default blue for outgoing
-    
-    // Color types for individual customization
-    private static final int COLOR_TYPE_MENU = 1;
-    private static final int COLOR_TYPE_NAV_BAR = 2;
-    private static final int COLOR_TYPE_BUTTON = 3;
-    private static final int COLOR_TYPE_INCOMING = 4;
-    private static final int COLOR_TYPE_OUTGOING = 5;
+    private int selectedBackgroundColor = 0xFF3F51B5; // Default blue color
+    private int selectedTextColor = 0xFF000000; // Default black color
     
     // Color palettes
-    private static final int[] UI_COLORS = {
+    private static final int[] BACKGROUND_COLORS = {
             0xFF2196F3, // Blue
             0xFF4CAF50, // Green
             0xFFFF9800, // Orange  
@@ -65,24 +52,15 @@ public class ColorWheelActivity extends BaseActivity {
             0xFFD84315  // Dark Deep Orange
     };
     
-    private static final int[] MESSAGE_COLORS = {
-            0xFFE3F2FD, // Light Blue
-            0xFFE8F5E8, // Light Green
-            0xFFFFF3E0, // Light Orange
-            0xFFFCE4EC, // Light Pink
-            0xFFF3E5F5, // Light Purple
-            0xFFECEFF1, // Light Blue Gray
-            0xFFEFEBE9, // Light Brown
-            0xFFFBE9E7, // Light Deep Orange
-            // Medium tones for contrast
-            0xFFBBDEFB, // Medium Blue
-            0xFFC8E6C9, // Medium Green
-            0xFFFFE0B2, // Medium Orange
-            0xFFF8BBD9, // Medium Pink
-            0xFFE1BEE7, // Medium Purple
-            0xFFCFD8DC, // Medium Blue Gray
-            0xFFD7CCC8, // Medium Brown
-            0xFFFFCCBC  // Medium Deep Orange
+    private static final int[] TEXT_COLORS = {
+            0xFF000000, // Black
+            0xFF424242, // Dark Gray
+            0xFF757575, // Gray
+            0xFFFFFFFF, // White
+            0xFF1976D2, // Dark Blue
+            0xFF388E3C, // Dark Green
+            0xFF7B1FA2, // Dark Purple
+            0xFFD84315  // Dark Orange
     };
     
     @Override
@@ -115,11 +93,10 @@ public class ColorWheelActivity extends BaseActivity {
     private void findViews() {
         applyButton = findViewById(R.id.apply_button);
         resetButton = findViewById(R.id.reset_button);
-        menuColorPaletteGrid = findViewById(R.id.menu_color_palette_grid);
-        navColorPaletteGrid = findViewById(R.id.nav_color_palette_grid);
-        buttonColorPaletteGrid = findViewById(R.id.button_color_palette_grid);
-        incomingColorPaletteGrid = findViewById(R.id.incoming_color_palette_grid);
-        outgoingColorPaletteGrid = findViewById(R.id.outgoing_color_palette_grid);
+        colorPaletteGrid = findViewById(R.id.color_palette_grid);
+        textColorPaletteGrid = findViewById(R.id.text_color_palette_grid);
+        backgroundColorPreview = findViewById(R.id.background_color_preview);
+        textColorPreview = findViewById(R.id.text_color_preview);
         combinedPreview = findViewById(R.id.combined_preview);
         previewText = findViewById(R.id.preview_text);
     }
@@ -145,65 +122,35 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void setupColorPalettes() {
-        setupMenuColorPalette();
-        setupNavBarColorPalette();
-        setupButtonColorPalette();
-        setupIncomingColorPalette();
-        setupOutgoingColorPalette();
+        setupBackgroundColorPalette();
+        setupTextColorPalette();
     }
     
-    private void setupMenuColorPalette() {
-        if (menuColorPaletteGrid == null) return;
+    private void setupBackgroundColorPalette() {
+        if (colorPaletteGrid == null) return;
         
-        for (int color : UI_COLORS) {
-            View colorView = createColorView(color, COLOR_TYPE_MENU);
-            menuColorPaletteGrid.addView(colorView);
+        for (int color : BACKGROUND_COLORS) {
+            View colorView = createColorView(color, true);
+            colorPaletteGrid.addView(colorView);
         }
     }
     
-    private void setupNavBarColorPalette() {
-        if (navColorPaletteGrid == null) return;
+    private void setupTextColorPalette() {
+        if (textColorPaletteGrid == null) return;
         
-        for (int color : UI_COLORS) {
-            View colorView = createColorView(color, COLOR_TYPE_NAV_BAR);
-            navColorPaletteGrid.addView(colorView);
+        for (int color : TEXT_COLORS) {
+            View colorView = createColorView(color, false);
+            textColorPaletteGrid.addView(colorView);
         }
     }
     
-    private void setupButtonColorPalette() {
-        if (buttonColorPaletteGrid == null) return;
-        
-        for (int color : UI_COLORS) {
-            View colorView = createColorView(color, COLOR_TYPE_BUTTON);
-            buttonColorPaletteGrid.addView(colorView);
-        }
-    }
-    
-    private void setupIncomingColorPalette() {
-        if (incomingColorPaletteGrid == null) return;
-        
-        for (int color : MESSAGE_COLORS) {
-            View colorView = createColorView(color, COLOR_TYPE_INCOMING);
-            incomingColorPaletteGrid.addView(colorView);
-        }
-    }
-    
-    private void setupOutgoingColorPalette() {
-        if (outgoingColorPaletteGrid == null) return;
-        
-        for (int color : MESSAGE_COLORS) {
-            View colorView = createColorView(color, COLOR_TYPE_OUTGOING);
-            outgoingColorPaletteGrid.addView(colorView);
-        }
-    }
-    
-    private View createColorView(final int color, final int colorType) {
+    private View createColorView(final int color, final boolean isBackgroundColor) {
         View colorView = new View(this);
         
-        // Set size (convert dp to pixels) - reduced from 60dp to 40dp for smaller squares
-        int sizeInDp = 40;
+        // Set size (convert dp to pixels) - making them slightly larger for better touch targets
+        int sizeInDp = 72;
         int sizeInPx = (int) (sizeInDp * getResources().getDisplayMetrics().density);
-        int marginInDp = 6;
+        int marginInDp = 12;
         int marginInPx = (int) (marginInDp * getResources().getDisplayMetrics().density);
         
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
@@ -212,32 +159,25 @@ public class ColorWheelActivity extends BaseActivity {
         params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
         colorView.setLayoutParams(params);
         
-        // Set background color
-        colorView.setBackgroundColor(color);
+        // Create initial drawable with subtle border
+        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+        drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        drawable.setColor(color);
+        drawable.setStroke(2, android.graphics.Color.LTGRAY);
+        drawable.setCornerRadius(8f);
+        colorView.setBackground(drawable);
         
-        // Add selection border (initially transparent)
-        colorView.setPadding(4, 4, 4, 4);
+        // Add elevation for better visual depth
+        colorView.setElevation(4f);
         
         // Set click listener
         colorView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                switch (colorType) {
-                    case COLOR_TYPE_MENU:
-                        selectedMenuColor = color;
-                        break;
-                    case COLOR_TYPE_NAV_BAR:
-                        selectedNavBarColor = color;
-                        break;
-                    case COLOR_TYPE_BUTTON:
-                        selectedButtonColor = color;
-                        break;
-                    case COLOR_TYPE_INCOMING:
-                        selectedIncomingColor = color;
-                        break;
-                    case COLOR_TYPE_OUTGOING:
-                        selectedOutgoingColor = color;
-                        break;
+                if (isBackgroundColor) {
+                    selectedBackgroundColor = color;
+                } else {
+                    selectedTextColor = color;
                 }
                 updatePreviews();
                 updateColorSelection();
@@ -248,65 +188,105 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void updateColorSelection() {
-        updateGridSelection(menuColorPaletteGrid, UI_COLORS, selectedMenuColor);
-        updateGridSelection(navColorPaletteGrid, UI_COLORS, selectedNavBarColor);
-        updateGridSelection(buttonColorPaletteGrid, UI_COLORS, selectedButtonColor);
-        updateGridSelection(incomingColorPaletteGrid, MESSAGE_COLORS, selectedIncomingColor);
-        updateGridSelection(outgoingColorPaletteGrid, MESSAGE_COLORS, selectedOutgoingColor);
-    }
-    
-    private void updateGridSelection(GridLayout grid, int[] colors, int selectedColor) {
-        if (grid == null) return;
-        
-        for (int i = 0; i < grid.getChildCount() && i < colors.length; i++) {
-            View child = grid.getChildAt(i);
-            if (colors[i] == selectedColor) {
-                child.setBackground(getResources().getDrawable(android.R.drawable.btn_default));
-                child.setBackgroundColor(selectedColor);
-                child.setPadding(8, 8, 8, 8);
+        // Update background color grid selection
+        for (int i = 0; i < colorPaletteGrid.getChildCount() && i < BACKGROUND_COLORS.length; i++) {
+            View child = colorPaletteGrid.getChildAt(i);
+            if (BACKGROUND_COLORS[i] == selectedBackgroundColor) {
+                // Create a shape drawable with color and white border for selection
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(selectedBackgroundColor);
+                drawable.setStroke(6, android.graphics.Color.WHITE);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(8f);
             } else {
-                child.setBackgroundColor(colors[i]);
-                child.setPadding(4, 4, 4, 4);
+                // Create a shape drawable with color and subtle border for unselected
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(BACKGROUND_COLORS[i]);
+                drawable.setStroke(2, android.graphics.Color.LTGRAY);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(4f);
+            }
+        }
+        
+        // Update text color grid selection
+        for (int i = 0; i < textColorPaletteGrid.getChildCount() && i < TEXT_COLORS.length; i++) {
+            View child = textColorPaletteGrid.getChildAt(i);
+            if (TEXT_COLORS[i] == selectedTextColor) {
+                // Create a shape drawable with color and white border for selection
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(selectedTextColor);
+                drawable.setStroke(6, android.graphics.Color.WHITE);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(8f);
+            } else {
+                // Create a shape drawable with color and subtle border for unselected
+                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                drawable.setColor(TEXT_COLORS[i]);
+                drawable.setStroke(2, android.graphics.Color.LTGRAY);
+                drawable.setCornerRadius(8f);
+                child.setBackground(drawable);
+                child.setElevation(4f);
             }
         }
     }
     
     private void updatePreviews() {
+        if (backgroundColorPreview != null) {
+            backgroundColorPreview.setBackgroundColor(selectedBackgroundColor);
+        }
+        
+        if (textColorPreview != null) {
+            textColorPreview.setBackgroundColor(selectedTextColor);
+        }
+        
         if (combinedPreview != null && previewText != null) {
-            // Use the navigation bar color as the main background for preview
-            combinedPreview.setBackgroundColor(selectedNavBarColor);
-            // Use white text for visibility
-            previewText.setTextColor(0xFFFFFFFF);
+            combinedPreview.setBackgroundColor(selectedBackgroundColor);
+            previewText.setTextColor(selectedTextColor);
         }
     }
     
     private void loadCurrentColors() {
         if (userPreferences.isUsingCustomTheme()) {
-            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
-            int defaultLightColor = getResources().getColor(R.color.background_light);
+            int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+            int defaultTextColor = getResources().getColor(android.R.color.black);
             
-            selectedMenuColor = userPreferences.getCustomMenuColor(defaultColor);
-            selectedNavBarColor = userPreferences.getCustomNavBarColor(defaultColor);
-            selectedButtonColor = userPreferences.getCustomButtonColor(defaultColor);
-            selectedIncomingColor = userPreferences.getCustomIncomingBubbleColor(defaultLightColor);
-            selectedOutgoingColor = userPreferences.getCustomOutgoingBubbleColor(defaultColor);
+            selectedBackgroundColor = userPreferences.getCustomPrimaryColor(defaultBackgroundColor);
+            selectedTextColor = userPreferences.getCustomTextColor(defaultTextColor);
         }
     }
     
     private void applySelectedColors() {
-        // Apply the individual selected colors to their respective UI components
+        // Apply the selected colors to various UI components
         if (userPreferences.isUsingCustomTheme()) {
-            // Apply individual colors to their specific components
-            userPreferences.setCustomMenuColor(selectedMenuColor);
-            userPreferences.setCustomNavBarColor(selectedNavBarColor);  
-            userPreferences.setCustomTopBarColor(selectedNavBarColor); // Use nav bar color for consistency
-            userPreferences.setCustomButtonColor(selectedButtonColor);
-            userPreferences.setCustomIncomingBubbleColor(selectedIncomingColor);
-            userPreferences.setCustomOutgoingBubbleColor(selectedOutgoingColor);
+            // Apply background color to navigation bar
+            userPreferences.setCustomNavBarColor(selectedBackgroundColor);
+            
+            // Apply background color to top bar  
+            userPreferences.setCustomTopBarColor(selectedBackgroundColor);
+            
+            // Apply background color to buttons
+            userPreferences.setCustomButtonColor(selectedBackgroundColor);
+            
+            // Apply background color to menu
+            userPreferences.setCustomMenuColor(selectedBackgroundColor);
+            
+            // Apply background color to message bubbles
+            userPreferences.setCustomIncomingBubbleColor(selectedBackgroundColor);
+            userPreferences.setCustomOutgoingBubbleColor(selectedBackgroundColor);
         }
         
-        // Set the nav bar color as primary color for backwards compatibility
-        userPreferences.setCustomPrimaryColor(selectedNavBarColor);
+        // Set as primary color
+        userPreferences.setCustomPrimaryColor(selectedBackgroundColor);
+        
+        // Set text color
+        userPreferences.setCustomTextColor(selectedTextColor);
         
         // Switch to custom theme if not already using it
         if (userPreferences.getThemeId() != UserPreferences.THEME_CUSTOM) {
@@ -317,24 +297,20 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void resetToDefaults() {
-        int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
-        int defaultLightColor = getResources().getColor(R.color.background_light);
+        int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+        int defaultTextColor = getResources().getColor(android.R.color.black);
         
-        // Reset all individual colors to defaults
-        userPreferences.setCustomMenuColor(defaultColor);
-        userPreferences.setCustomNavBarColor(defaultColor);
-        userPreferences.setCustomTopBarColor(defaultColor);
-        userPreferences.setCustomButtonColor(defaultColor);
-        userPreferences.setCustomIncomingBubbleColor(defaultLightColor);
-        userPreferences.setCustomOutgoingBubbleColor(defaultColor);
-        userPreferences.setCustomPrimaryColor(defaultColor);
+        userPreferences.setCustomPrimaryColor(defaultBackgroundColor);
+        userPreferences.setCustomNavBarColor(defaultBackgroundColor);
+        userPreferences.setCustomTopBarColor(defaultBackgroundColor);
+        userPreferences.setCustomButtonColor(defaultBackgroundColor);
+        userPreferences.setCustomMenuColor(defaultBackgroundColor);
+        userPreferences.setCustomIncomingBubbleColor(getResources().getColor(R.color.background_light));
+        userPreferences.setCustomOutgoingBubbleColor(defaultBackgroundColor);
+        userPreferences.setCustomTextColor(defaultTextColor);
         
-        // Reset local selections
-        selectedMenuColor = defaultColor;
-        selectedNavBarColor = defaultColor;
-        selectedButtonColor = defaultColor;
-        selectedIncomingColor = defaultLightColor;
-        selectedOutgoingColor = defaultColor;
+        selectedBackgroundColor = defaultBackgroundColor;
+        selectedTextColor = defaultTextColor;
         
         // Update UI to reflect reset
         updatePreviews();

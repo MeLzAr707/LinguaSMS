@@ -30,131 +30,202 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Custom Theme Colors"
-                android:textSize="20sp"
+                android:textSize="26sp"
                 android:textStyle="bold"
                 android:gravity="center"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="32dp"
+                android:textColor="?attr/colorOnSurface" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Customize individual UI element colors for your personal experience"
-                android:textSize="14sp"
-                android:gravity="center"
-                android:layout_marginBottom="24dp" />
-
-            <!-- Menu Toolbar Color Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Menu Toolbar Color"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <GridLayout
-                android:id="@+id/menu_color_palette_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6"
-                android:layout_marginBottom="12dp" />
-
-            <!-- Navigation Bar Color Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Navigation Bar Color"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <GridLayout
-                android:id="@+id/nav_color_palette_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6"
-                android:layout_marginBottom="12dp" />
-
-            <!-- Button Color Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Button Color"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <GridLayout
-                android:id="@+id/button_color_palette_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6"
-                android:layout_marginBottom="12dp" />
-
-            <!-- Incoming Message Color Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Incoming Message Color"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <GridLayout
-                android:id="@+id/incoming_color_palette_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6"
-                android:layout_marginBottom="12dp" />
-
-            <!-- Outgoing Message Color Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Outgoing Message Color"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <GridLayout
-                android:id="@+id/outgoing_color_palette_grid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6"
-                android:layout_marginBottom="16dp" />
-
-            <!-- Color Preview Section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Color Preview"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
+            <!-- Background Colors Section -->
             <LinearLayout
-                android:id="@+id/combined_preview"
                 android:layout_width="match_parent"
-                android:layout_height="80dp"
-                android:background="@android:color/holo_blue_dark"
-                android:layout_marginBottom="24dp"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center"
-                android:padding="16dp">
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp"
+                android:elevation="2dp">
 
                 <TextView
-                    android:id="@+id/preview_text"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Theme Preview"
-                    android:textSize="16sp"
-                    android:textColor="@android:color/white" />
+                    android:text="Background Color"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Choose a color for backgrounds, buttons, and UI elements"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="20dp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- Color Palette Grid -->
+                <GridLayout
+                    android:id="@+id/color_palette_grid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="4"
+                    android:layout_marginBottom="20dp"
+                    android:layout_gravity="center">
+
+                    <!-- Colors will be added programmatically -->
+
+                </GridLayout>
+
+                <!-- Selected Background Color Preview -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Selected Background Color:"
+                        android:textSize="16sp"
+                        android:textStyle="medium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <View
+                        android:id="@+id/background_color_preview"
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:background="@android:color/holo_blue_dark"
+                        android:layout_marginStart="12dp"
+                        android:elevation="1dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Text Colors Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Text Color"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Choose a color for text elements and content"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="20dp"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- Text Color Palette Grid -->
+                <GridLayout
+                    android:id="@+id/text_color_palette_grid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="4"
+                    android:layout_marginBottom="20dp"
+                    android:layout_gravity="center">
+
+                    <!-- Text colors will be added programmatically -->
+
+                </GridLayout>
+
+                <!-- Selected Text Color Preview -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Selected Text Color:"
+                        android:textSize="16sp"
+                        android:textStyle="medium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <View
+                        android:id="@+id/text_color_preview"
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:background="@android:color/black"
+                        android:layout_marginStart="12dp"
+                        android:elevation="1dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Combined Preview -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="32dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Preview"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:id="@+id/combined_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:background="@android:color/holo_blue_dark"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="20dp"
+                    android:elevation="1dp">
+
+                    <TextView
+                        android:id="@+id/preview_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sample Text Preview"
+                        android:textSize="20sp"
+                        android:textStyle="medium"
+                        android:textColor="@android:color/white" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="This shows how your theme will look"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:textColor="@android:color/white"
+                        android:alpha="0.8" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
