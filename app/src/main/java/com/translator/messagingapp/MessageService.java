@@ -1591,6 +1591,13 @@ public class MessageService {
      * @param intent The intent containing the SMS message
      */
     public void handleIncomingSms(Intent intent) {
+        Log.d(TAG, "handleIncomingSms called with action: " + (intent != null ? intent.getAction() : "null"));
+        
+        if (intent == null) {
+            Log.e(TAG, "Intent is null, cannot process SMS");
+            return;
+        }
+        
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
             Object[] pdus = (Object[]) bundle.get("pdus");

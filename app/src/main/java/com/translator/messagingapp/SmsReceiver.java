@@ -31,25 +31,9 @@ public class SmsReceiver extends BroadcastReceiver {
             }
             // Handle SMS_DELIVER action (when default app)
             else if (Telephony.Sms.Intents.SMS_DELIVER_ACTION.equals(intent.getAction())) {
-                // Extract SMS messages from the intent
-                SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
-                if (messages != null && messages.length > 0) {
-                    StringBuilder body = new StringBuilder();
-                    String sender = null;
-
-                    // Concatenate message parts if it's a multi-part message
-                    for (SmsMessage sms : messages) {
-                        if (sender == null) {
-                            sender = sms.getOriginatingAddress();
-                        }
-                        body.append(sms.getMessageBody());
-                    }
-
-                    Log.d(TAG, "SMS from " + sender + ": " + body.toString());
-
-                    // Pass to MessageService for processing
-                    messageService.handleIncomingSms(intent);
-                }
+                // Pass to MessageService for processing
+                // MessageService will handle message extraction to avoid duplication
+                messageService.handleIncomingSms(intent);
             }
         } else {
             Log.e(TAG, "MessageService is null, cannot process SMS");
