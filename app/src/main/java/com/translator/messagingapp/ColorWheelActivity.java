@@ -2,6 +2,7 @@ package com.translator.messagingapp;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
@@ -65,8 +66,20 @@ public class ColorWheelActivity extends BaseActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_color_wheel);
+        // Ensure safe theme application for ColorWheelActivity
+        try {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_color_wheel);
+        } catch (Exception e) {
+            // If theme application fails, fallback to light theme and recreate
+            Log.e(TAG, "Error applying custom theme, falling back to light theme", e);
+            if (userPreferences != null) {
+                userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+                recreate();
+                return;
+            }
+            throw e; // Re-throw if we can't handle it
+        }
         
         userPreferences = new UserPreferences(this);
         
@@ -270,15 +283,45 @@ public class ColorWheelActivity extends BaseActivity {
     }
     
     private void resetToDefaults() {
-        int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
-        int defaultTextColor = getResources().getColor(android.R.color.black);
+        // Use safer color resolution methods with theme context
+        int defaultBackgroundColor;
+        int defaultTextColor;
+        
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark, getTheme());
+                defaultTextColor = getResources().getColor(android.R.color.black, getTheme());
+            } else {
+                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+                defaultTextColor = getResources().getColor(android.R.color.black);
+            }
+        } catch (Exception e) {
+            // Fallback to hardcoded values if color resolution fails
+            Log.w(TAG, "Failed to resolve default colors, using fallback values", e);
+            defaultBackgroundColor = 0xFF33B5E5; // Holo blue dark equivalent
+            defaultTextColor = 0xFF000000; // Black
+        }
         
         userPreferences.setCustomPrimaryColor(defaultBackgroundColor);
         userPreferences.setCustomNavBarColor(defaultBackgroundColor);
         userPreferences.setCustomTopBarColor(defaultBackgroundColor);
         userPreferences.setCustomButtonColor(defaultBackgroundColor);
         userPreferences.setCustomMenuColor(defaultBackgroundColor);
-        userPreferences.setCustomIncomingBubbleColor(getResources().getColor(R.color.background_light));
+        
+        // Handle background_light color with safer resolution
+        int backgroundLightColor;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                backgroundLightColor = getResources().getColor(R.color.background_light, getTheme());
+            } else {
+                backgroundLightColor = getResources().getColor(R.color.background_light);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to resolve background_light color, using fallback", e);
+            backgroundLightColor = 0xFFFFFFFF; // White fallback
+        }
+        
+        userPreferences.setCustomIncomingBubbleColor(backgroundLightColor);
         userPreferences.setCustomOutgoingBubbleColor(defaultBackgroundColor);
         userPreferences.setCustomTextColor(defaultTextColor);
         
