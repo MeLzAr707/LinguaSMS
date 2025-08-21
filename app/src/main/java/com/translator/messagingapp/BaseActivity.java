@@ -81,7 +81,7 @@ public class BaseActivity extends AppCompatActivity {
                     applyBlackGlassWindowFlags();
                     break;
                 case UserPreferences.THEME_CUSTOM:
-                    setTheme(R.style.AppTheme_NoActionBar); // Base theme for custom
+                    setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
                     break;
                 case UserPreferences.THEME_SYSTEM:
                     // Use system default
@@ -108,7 +108,7 @@ public class BaseActivity extends AppCompatActivity {
                     applyBlackGlassWindowFlags();
                     break;
                 case UserPreferences.THEME_CUSTOM:
-                    setTheme(R.style.AppTheme); // Base theme for custom
+                    setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
                     break;
                 case UserPreferences.THEME_SYSTEM:
                     // Use system default
