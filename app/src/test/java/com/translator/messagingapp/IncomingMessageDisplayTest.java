@@ -180,4 +180,31 @@ public class IncomingMessageDisplayTest {
         // setShowTranslation should be false initially to show original first
         assertFalse("Should show original first, translation as secondary", newMessage.isShowTranslation());
     }
+
+    @Test
+    public void testEmptyCachedTranslationDoesNotBlockDisplay() {
+        // Test that empty cached translations don't interfere with message display
+        Message messageWithEmptyCache = new Message();
+        messageWithEmptyCache.setId(6L);
+        messageWithEmptyCache.setBody("Test message");
+        messageWithEmptyCache.setType(Message.TYPE_INBOX);
+        messageWithEmptyCache.setDate(System.currentTimeMillis());
+        messageWithEmptyCache.setAddress("+1234567890");
+        
+        // Simulate corrupted cache scenario - empty translated text but showTranslation flag set
+        messageWithEmptyCache.setTranslatedText(""); // Empty translation from cache
+        messageWithEmptyCache.setShowTranslation(true); // Flag incorrectly set to true
+        
+        // With our fix, isShowTranslation() should return false due to empty translated text
+        assertFalse("Message should not show translation with empty translated text", 
+                   messageWithEmptyCache.isShowTranslation());
+        
+        // Message should fall back to original text display
+        assertNotNull("Original body should be available", messageWithEmptyCache.getBody());
+        assertFalse("Original body should not be empty", messageWithEmptyCache.getBody().isEmpty());
+        
+        // Message should be displayable
+        messages.add(messageWithEmptyCache);
+        assertEquals("Message should be added to list", 1, messages.size());
+    }
 }
