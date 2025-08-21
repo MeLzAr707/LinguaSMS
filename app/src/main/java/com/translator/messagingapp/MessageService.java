@@ -1017,8 +1017,13 @@ public class MessageService {
                 callback.run();
             }
             
-            // Broadcast message sent to refresh UI
-            broadcastMessageSent();
+            // Get thread ID if not provided
+            if (threadId == null) {
+                threadId = getThreadIdForAddress(address);
+            }
+            
+            // Broadcast message sent with thread ID
+            broadcastMessageSent(threadId, address);
 
             return true;
         } catch (Exception e) {
@@ -1141,7 +1146,8 @@ public class MessageService {
             context.sendBroadcast(intent);
 
             // Broadcast message sent to refresh UI
-            broadcastMessageSent();
+            String threadId = getThreadIdForAddress(address);
+            broadcastMessageSent(threadId, address);
 
             return true;
         } catch (Exception e) {
@@ -1578,6 +1584,13 @@ public class MessageService {
      * @param intent The intent containing the SMS message
      */
     public void handleIncomingSms(Intent intent) {
+        Log.d(TAG, "handleIncomingSms called with action: " + (intent != null ? intent.getAction() : "null"));
+        
+        if (intent == null) {
+            Log.e(TAG, "Intent is null, cannot process SMS");
+            return;
+        }
+        
         Bundle bundle = intent.getExtras();
         if (bundle != null) {
             Object[] pdus = (Object[]) bundle.get("pdus");
@@ -1601,20 +1614,23 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Only manually store the message if we're NOT the default SMS app
+                    // Get thread ID for the sender address
+                    String threadId = getThreadIdForAddress(senderAddress);
+
+                    // CRITICAL FIX: Only store the message if we're NOT the default SMS app
                     // When we are the default SMS app, Android automatically stores the message
                     if (!PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Not default SMS app, manually storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                        Log.d(TAG, "Stored incoming SMS message from " + senderAddress + " (not default SMS app)");
                     } else {
-                        Log.d(TAG, "Default SMS app - system will automatically store message");
+                        Log.d(TAG, "Skipped storing SMS message - app is default SMS app, Android handles storage");
                     }
 
                     // Show notification
                     showSmsNotification(senderAddress, fullMessageBody.toString());
                     
-                    // Broadcast message received to refresh UI
-                    broadcastMessageReceived();
+                    // Broadcast message received with thread ID and address
+                    broadcastMessageReceived(threadId, senderAddress);
                 }
             }
         }
@@ -1733,7 +1749,7 @@ public class MessageService {
             if (!PhoneUtils.isDefaultSmsApp(context)) {
                 Log.d(TAG, "Skipping MMS notification - app is not the default SMS app");
                 // Still broadcast message received to refresh UI for storage purposes
-                broadcastMessageReceived();
+                broadcastMessageReceived(null, null);
                 return;
             }
             
@@ -1743,7 +1759,7 @@ public class MessageService {
             notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
             
             // Broadcast message received to refresh UI
-            broadcastMessageReceived();
+            broadcastMessageReceived(null, null);
             
             Log.d(TAG, "Showed MMS notification");
         } catch (Exception e) {
@@ -1754,22 +1770,23 @@ public class MessageService {
     /**
      * Broadcasts that a new message has been received to refresh the UI.
      */
-    private void broadcastMessageReceived() {
+    private void broadcastMessageReceived(String threadId, String address) {
         try {
             Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_RECEIVED");
+            
+            // Add thread ID and address to the intent so receivers can filter
+            if (threadId != null) {
+                broadcastIntent.putExtra("thread_id", threadId);
+            }
+            if (address != null) {
+                broadcastIntent.putExtra("address", address);
+            }
+            
             // Use LocalBroadcastManager for more reliable intra-app communication
             LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
-            Log.d(TAG, "Broadcasted message received event via LocalBroadcastManager");
+            Log.d(TAG, "Broadcasted message received event via LocalBroadcastManager for thread: " + threadId);
         } catch (Exception e) {
             Log.e(TAG, "Error broadcasting message received event", e);
-            // Fallback to global broadcast
-            try {
-                Intent fallbackIntent = new Intent("com.translator.messagingapp.MESSAGE_RECEIVED");
-                context.sendBroadcast(fallbackIntent);
-                Log.d(TAG, "Broadcasted message received event via fallback global broadcast");
-            } catch (Exception fallbackError) {
-                Log.e(TAG, "Error in fallback broadcast", fallbackError);
-            }
         }
     }
 
@@ -1777,22 +1794,23 @@ public class MessageService {
      * Broadcasts that a new message has been sent to refresh the UI.
      * Uses LocalBroadcastManager for immediate and reliable delivery.
      */
-    private void broadcastMessageSent() {
+    private void broadcastMessageSent(String threadId, String address) {
         try {
             Intent broadcastIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
+            
+            // Add thread ID and address to the intent so receivers can filter
+            if (threadId != null) {
+                broadcastIntent.putExtra("thread_id", threadId);
+            }
+            if (address != null) {
+                broadcastIntent.putExtra("address", address);
+            }
+            
             // Use LocalBroadcastManager for immediate and reliable intra-app communication
             LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
-            Log.d(TAG, "Broadcasted message sent event via LocalBroadcastManager");
+            Log.d(TAG, "Broadcasted message sent event via LocalBroadcastManager for thread: " + threadId);
         } catch (Exception e) {
             Log.e(TAG, "Error broadcasting message sent event", e);
-            // Fallback to global broadcast
-            try {
-                Intent fallbackIntent = new Intent("com.translator.messagingapp.MESSAGE_SENT");
-                context.sendBroadcast(fallbackIntent);
-                Log.d(TAG, "Broadcasted message sent event via fallback global broadcast");
-            } catch (Exception fallbackError) {
-                Log.e(TAG, "Error in fallback broadcast", fallbackError);
-            }
         }
     }
 
