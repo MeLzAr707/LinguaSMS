@@ -563,18 +563,30 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     // Handle different update actions on UI thread to ensure UI updates work
                     if (intent != null && intent.getAction() != null) {
                         runOnUiThread(() -> {
+                            // Check if this broadcast is relevant to our current thread
+                            String updatedThreadId = intent.getStringExtra("thread_id");
+                            
+                            // Only process broadcasts for our thread or broadcasts without thread ID
+                            if (updatedThreadId != null && !updatedThreadId.equals(threadId)) {
+                                // This update is for a different thread, ignore it
+                                Log.d(TAG, "Ignoring update for different thread: " + updatedThreadId);
+                                return;
+                            }
+                            
                             switch (intent.getAction()) {
                                 case "com.translator.messagingapp.MESSAGE_RECEIVED":
-                                case "com.translator.messagingapp.REFRESH_MESSAGES":
-                                    // Refresh messages when received or refresh requested
-                                    // Clear cache to ensure new received messages are loaded
-                                    Log.d(TAG, "Refreshing messages due to broadcast: " + intent.getAction());
+                                    Log.d(TAG, "Refreshing messages due to received message in this thread");
+                                    // Clear cache only for this thread
                                     MessageCache.clearCacheForThread(threadId);
                                     loadMessages();
                                     break;
                                 case "com.translator.messagingapp.MESSAGE_SENT":
-                                    // Handle sent message: clear cache to ensure new sent message is loaded
-                                    Log.d(TAG, "Message sent broadcast received, clearing cache and refreshing messages");
+                                    Log.d(TAG, "Message sent broadcast received, refreshing messages");
+                                    MessageCache.clearCacheForThread(threadId);
+                                    loadMessages();
+                                    break;
+                                case "com.translator.messagingapp.REFRESH_MESSAGES":
+                                    Log.d(TAG, "General refresh request received");
                                     MessageCache.clearCacheForThread(threadId);
                                     loadMessages();
                                     break;

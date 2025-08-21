@@ -72,7 +72,6 @@ public class MessageContentObserver extends ContentObserver {
 
     /**
      * Registers the content observer to monitor SMS and MMS changes.
-     * Uses optimized URI registration to prevent redundant notifications.
      */
     public void register() {
         if (isRegistered) {
@@ -81,18 +80,13 @@ public class MessageContentObserver extends ContentObserver {
         }
 
         try {
-            // Register for combined SMS/MMS changes - this covers most message events
-            // and reduces redundant notifications compared to registering for individual URIs
+            // Register for combined SMS/MMS changes ONLY - this covers all message events
+            // and prevents redundant notifications from multiple URIs
             context.getContentResolver().registerContentObserver(
                 Uri.parse("content://mms-sms/"), true, this);
             
-            // Only register for conversation thread changes separately as it provides
-            // different granularity of notifications needed for thread-level updates
-            context.getContentResolver().registerContentObserver(
-                Telephony.Threads.CONTENT_URI, true, this);
-
             isRegistered = true;
-            Log.d(TAG, "MessageContentObserver registered successfully with optimized URIs");
+            Log.d(TAG, "MessageContentObserver registered successfully for combined SMS/MMS URI");
         } catch (Exception e) {
             Log.e(TAG, "Error registering MessageContentObserver", e);
         }
@@ -165,8 +159,6 @@ public class MessageContentObserver extends ContentObserver {
         try {
             String uriString = uri.toString();
             
-            // Only call specific notification methods, not both specific AND notifyAllListeners
-            // to prevent redundant processing
             if (isSmsUri(uriString)) {
                 notifySmsChanged(uri);
             } else if (isMmsUri(uriString)) {
@@ -178,9 +170,8 @@ public class MessageContentObserver extends ContentObserver {
                 notifyMessageContentChanged(uri);
             }
             
-            // Only call notifyAllListeners for cache clearing and sync scheduling
-            // but avoid duplicate listener notifications
-            scheduleWorkAndClearCache(uri);
+            // Always notify all listeners of general content change
+            notifyAllListeners(uri);
             
         } catch (Exception e) {
             Log.e(TAG, "Error handling content change", e);
@@ -264,10 +255,9 @@ public class MessageContentObserver extends ContentObserver {
     }
 
     /**
-     * Schedules background work and clears cache for content changes.
-     * Separated from listener notifications to prevent redundant processing.
+     * Notifies all listeners of a content change.
      */
-    private void scheduleWorkAndClearCache(Uri uri) {
+    private void notifyAllListeners(Uri uri) {
         // Schedule message sync work when content changes
         try {
             TranslatorApp app = (TranslatorApp) context;
@@ -280,23 +270,57 @@ public class MessageContentObserver extends ContentObserver {
 
         // Clear message cache to ensure fresh data is loaded
         try {
-            MessageCache.clearCache();
-            Log.d(TAG, "Cleared message cache due to content change");
+            // Extract thread ID from URI if possible
+            String threadId = extractThreadIdFromUri(uri);
+            if (threadId != null) {
+                // Only clear cache for the affected thread
+                MessageCache.clearCacheForThread(threadId);
+                Log.d(TAG, "Cleared message cache for thread " + threadId + " due to content change");
+            } else {
+                // Only clear all cache if we can't determine which thread changed
+                MessageCache.clearCache();
+                Log.d(TAG, "Cleared all message cache due to content change");
+            }
         } catch (Exception e) {
             Log.w(TAG, "Could not clear message cache", e);
         }
     }
 
-    /**
-     * Notifies all listeners of a content change.
-     * Used only for generic notifications when URI is null.
-     */
-    private void notifyAllListeners(Uri uri) {
-        // Schedule work and clear cache
-        scheduleWorkAndClearCache(uri);
+    // Add helper method to extract thread ID from URI
+    private String extractThreadIdFromUri(Uri uri) {
+        if (uri == null) return null;
         
-        // Notify all listeners with generic message content change
-        notifyMessageContentChanged(uri);
+        try {
+            String uriString = uri.toString();
+            
+            // Try to extract thread_id from URI patterns
+            if (uriString.contains("thread_id=")) {
+                String[] parts = uriString.split("thread_id=");
+                if (parts.length > 1) {
+                    String threadIdPart = parts[1];
+                    int endIndex = threadIdPart.indexOf('&');
+                    if (endIndex > 0) {
+                        return threadIdPart.substring(0, endIndex);
+                    } else {
+                        return threadIdPart;
+                    }
+                }
+            }
+            
+            // Try to extract from path segments
+            List<String> segments = uri.getPathSegments();
+            if (segments.size() >= 2) {
+                if ("conversations".equals(segments.get(0))) {
+                    return segments.get(1);
+                } else if ("threads".equals(segments.get(0))) {
+                    return segments.get(1);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting thread ID from URI", e);
+        }
+        
+        return null;
     }
 
     /**
