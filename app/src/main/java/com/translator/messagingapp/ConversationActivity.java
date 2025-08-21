@@ -138,6 +138,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         super.onResume();
         // Register message update receiver when activity becomes visible
         setupMessageUpdateReceiver();
+        
+        // Refresh messages to catch any updates that may have been missed
+        // while the activity was not visible (MESSAGE_RECEIVED broadcasts
+        // are only received when the receiver is active)
+        loadMessages();
     }
 
     @Override
