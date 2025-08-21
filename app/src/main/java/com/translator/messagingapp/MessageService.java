@@ -10,7 +10,6 @@ import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
-import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -1590,7 +1589,7 @@ public class MessageService {
 
                 // Process all PDUs to handle multi-part messages
                 for (Object pdu : pdus) {
-                    SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdu, format);
+                    android.telephony.SmsMessage smsMessage = android.telephony.SmsMessage.createFromPdu((byte[]) pdu, format);
                     if (senderAddress == null) {
                         senderAddress = smsMessage.getOriginatingAddress();
                         messageTimestamp = smsMessage.getTimestampMillis();
@@ -1969,5 +1968,29 @@ public class MessageService {
         } catch (Exception e) {
             Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
+    }
+
+    /**
+     * Creates a custom SmsMessage object for internal use.
+     * This method demonstrates the class confusion issue that was causing build errors.
+     * 
+     * @param senderAddress The sender's address
+     * @param messageBody The message body
+     * @param timestamp The message timestamp
+     * @return A custom SmsMessage object
+     */
+    public com.translator.messagingapp.SmsMessage createCustomSmsMessage(String senderAddress, String messageBody, long timestamp) {
+        // This line would cause a build error due to class confusion:
+        // SmsMessage smsMessage = new SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
+        // 
+        // The error would be: "constructor SmsMessage in class SmsMessage cannot be applied to given types"
+        // because it's trying to use android.telephony.SmsMessage instead of our custom class
+        
+        // Fix: Use fully qualified name for our custom SmsMessage class
+        com.translator.messagingapp.SmsMessage smsMessage = new com.translator.messagingapp.SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
+        smsMessage.setIncoming(true);
+        smsMessage.setRead(false); // Incoming messages are initially unread
+        
+        return smsMessage;
     }
 }
