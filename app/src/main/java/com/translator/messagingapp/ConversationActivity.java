@@ -1134,7 +1134,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Apply custom button colors if using custom theme
      */
     private void applyCustomButtonColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
             
@@ -1164,7 +1164,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     protected void applyCustomColorsToViews() {
         super.applyCustomColorsToViews();
         
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply custom colors to send button and other UI elements
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);

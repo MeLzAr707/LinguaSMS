@@ -65,6 +65,13 @@ public class BaseActivity extends AppCompatActivity {
      * Apply the appropriate theme based on user preferences
      */
     protected void applyTheme() {
+        // Guard against null userPreferences
+        if (userPreferences == null) {
+            // Use default light theme if preferences aren't available
+            setTheme(useNoActionBar ? R.style.AppTheme_NoActionBar : R.style.AppTheme);
+            return;
+        }
+        
         int themeId = userPreferences.getThemeId();
         // Store the current theme ID to detect changes
         currentThemeId = themeId;
@@ -222,7 +229,7 @@ public class BaseActivity extends AppCompatActivity {
      * Should be called from onCreate() after setContentView()
      */
     protected void applyCustomColorsToViews() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply custom background color to the root view
             applyCustomBackgroundColor();
             
@@ -235,7 +242,7 @@ public class BaseActivity extends AppCompatActivity {
      * Apply custom background color to the activity
      */
     protected void applyCustomBackgroundColor() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultBackgroundColor = getResources().getColor(R.color.background_light);
             int customBackgroundColor = userPreferences.getCustomBackgroundColor(defaultBackgroundColor);
             
@@ -253,7 +260,7 @@ public class BaseActivity extends AppCompatActivity {
     protected void applyCustomColorsToToolbar() {
         // Find toolbar and apply custom colors
         androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
-        if (toolbar != null && userPreferences.isUsingCustomTheme()) {
+        if (toolbar != null && userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customTopBarColor = userPreferences.getCustomTopBarColor(defaultColor);
             toolbar.setBackgroundColor(customTopBarColor);

@@ -363,7 +363,7 @@ public class MainActivity extends BaseActivity
      * Apply custom theme colors to UI elements
      */
     private void applyCustomThemeColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customNavBarColor = userPreferences.getCustomNavBarColor(defaultColor);
             
@@ -1076,7 +1076,7 @@ public class MainActivity extends BaseActivity
         Toast.makeText(this, getString(R.string.auto_detecting_text, text), Toast.LENGTH_SHORT).show();
 
         // Get preferred language
-        String targetLanguage = userPreferences.getPreferredLanguage();
+        String targetLanguage = userPreferences != null ? userPreferences.getPreferredLanguage() : "en";
 
         // Use TranslationManager to translate
         translationManager.translateText(text, targetLanguage, (success, translatedText, errorMessage) -> {
@@ -1172,7 +1172,7 @@ public class MainActivity extends BaseActivity
     protected void applyCustomColorsToViews() {
         super.applyCustomColorsToViews();
         
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply custom colors to navigation view and FAB
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customNavBarColor = userPreferences.getCustomNavBarColor(defaultColor);

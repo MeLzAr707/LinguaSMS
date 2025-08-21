@@ -482,7 +482,7 @@ public class NewMessageActivity extends BaseActivity {
      * Apply custom button colors if using custom theme
      */
     private void applyCustomButtonColors() {
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
             
@@ -507,7 +507,7 @@ public class NewMessageActivity extends BaseActivity {
     protected void applyCustomColorsToViews() {
         super.applyCustomColorsToViews();
         
-        if (userPreferences.isUsingCustomTheme()) {
+        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply custom colors to buttons
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
