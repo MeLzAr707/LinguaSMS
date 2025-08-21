@@ -389,6 +389,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
      * Get the contact photo URI for a phone number
      */
     private Uri getContactPhotoUri(String phoneNumber) {
+        // Validate phone number to prevent IllegalArgumentException with empty URIs
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return null;
+        }
+        
         ContentResolver contentResolver = context.getContentResolver();
         Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
 

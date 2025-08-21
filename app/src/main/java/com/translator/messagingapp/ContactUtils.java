@@ -48,6 +48,11 @@ public class ContactUtils {
      * Looks up contact name for a specific phone number variant.
      */
     private static String lookupContactName(Context context, String phoneNumber) {
+        // Validate phone number to prevent IllegalArgumentException with empty URIs
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return null;
+        }
+        
         try {
             ContentResolver contentResolver = context.getContentResolver();
             Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
@@ -172,6 +177,11 @@ public class ContactUtils {
                     normalizedNumber = PhoneNumberUtils.normalizeNumber(phoneNumber);
                 } catch (Exception e) {
                     // Ignore normalization errors
+                }
+
+                // Validate normalized number before using in URI
+                if (TextUtils.isEmpty(normalizedNumber)) {
+                    continue;
                 }
 
                 // Query the contact
