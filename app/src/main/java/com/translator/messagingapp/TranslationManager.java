@@ -370,7 +370,7 @@ public class TranslationManager {
 
         // Check cache first
         String cachedTranslation = translationCache.get(cacheKey);
-        if (cachedTranslation != null) {
+        if (cachedTranslation != null && !cachedTranslation.trim().isEmpty()) {
             message.setTranslatedText(cachedTranslation);
             message.setTranslatedLanguage(targetLanguage);
             message.setShowTranslation(true);
@@ -415,9 +415,9 @@ public class TranslationManager {
                 String translatedText = translationService.translate(
                         message.getBody(), detectedLanguage, finalTargetLanguage);
 
-                if (translatedText == null) {
+                if (translatedText == null || translatedText.trim().isEmpty()) {
                     if (callback != null) {
-                        callback.onTranslationComplete(false, null, "Translation failed");
+                        callback.onTranslationComplete(false, null, "Translation failed or returned empty");
                     }
                     return;
                 }
