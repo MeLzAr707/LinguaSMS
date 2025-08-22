@@ -23,6 +23,7 @@ import androidx.appcompat.app.AlertDialog;
 public class PhoneUtils {
     private static final String TAG = "PhoneUtils";
     private static final String PREF_DEFAULT_SMS_REQUESTED = "default_sms_requested";
+    private static final String PREF_USER_DECLINED_SMS = "user_declined_sms";
     private static final int MAX_DEFAULT_SMS_REQUESTS = 3;
 
     /**
@@ -47,12 +48,22 @@ public class PhoneUtils {
 
     /**
      * Check if the app should request to be the default SMS app
-     * based on how many times we've already asked
+     * based on how many times we've already asked and if user has declined
      */
     public static boolean shouldRequestDefaultSmsApp(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        
+        // Don't ask if user has permanently declined
+        if (prefs.getBoolean(PREF_USER_DECLINED_SMS, false)) {
+            Log.d(TAG, "User has permanently declined default SMS app, not asking again");
+            return false;
+        }
+        
+        // Don't ask if we've already asked too many times
         int requestCount = prefs.getInt(PREF_DEFAULT_SMS_REQUESTED, 0);
-        return requestCount < MAX_DEFAULT_SMS_REQUESTS;
+        boolean shouldRequest = requestCount < MAX_DEFAULT_SMS_REQUESTS;
+        Log.d(TAG, "Should request default SMS app: " + shouldRequest + " (count: " + requestCount + "/" + MAX_DEFAULT_SMS_REQUESTS + ")");
+        return shouldRequest;
     }
 
     /**
@@ -70,6 +81,35 @@ public class PhoneUtils {
     public static int getDefaultSmsRequestCount(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
         return prefs.getInt(PREF_DEFAULT_SMS_REQUESTED, 0);
+    }
+
+    /**
+     * Check if the user has permanently declined to set this app as default SMS app
+     */
+    public static boolean hasUserDeclinedDefaultSms(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean(PREF_USER_DECLINED_SMS, false);
+    }
+
+    /**
+     * Mark that the user has permanently declined to set this app as default SMS app
+     */
+    public static void setUserDeclinedDefaultSms(Context context, boolean declined) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        prefs.edit().putBoolean(PREF_USER_DECLINED_SMS, declined).apply();
+        Log.d(TAG, "User declined default SMS setting: " + declined);
+    }
+
+    /**
+     * Reset the SMS app request preferences (for testing or user settings)
+     */
+    public static void resetDefaultSmsRequestPreferences(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        prefs.edit()
+                .remove(PREF_DEFAULT_SMS_REQUESTED)
+                .remove(PREF_USER_DECLINED_SMS)
+                .apply();
+        Log.d(TAG, "Reset default SMS request preferences");
     }
 
 

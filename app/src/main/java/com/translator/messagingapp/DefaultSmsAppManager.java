@@ -88,10 +88,18 @@ public class DefaultSmsAppManager {
      */
     public void checkAndRequestDefaultSmsApp(Activity activity, int requestCode) {
         if (!isDefaultSmsApp()) {
-            Toast.makeText(activity,
-                    "This app needs to be set as the default SMS app to show conversations",
-                    Toast.LENGTH_LONG).show();
-            requestDefaultSmsApp(activity, requestCode);
+            // Check if we should request based on user preferences and request count
+            if (PhoneUtils.shouldRequestDefaultSmsApp(context)) {
+                Toast.makeText(activity,
+                        "This app needs to be set as the default SMS app to show conversations",
+                        Toast.LENGTH_LONG).show();
+                
+                // Increment the request count when we actually make the request
+                PhoneUtils.incrementDefaultSmsRequestCount(context);
+                requestDefaultSmsApp(activity, requestCode);
+            } else {
+                Log.d(TAG, "Not requesting default SMS app - user preferences or limit reached");
+            }
         }
     }
 }

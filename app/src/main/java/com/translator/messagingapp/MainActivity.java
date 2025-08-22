@@ -1120,11 +1120,24 @@ public class MainActivity extends BaseActivity
             // Check if we're now the default SMS app
             if (defaultSmsAppManager != null && defaultSmsAppManager.isDefaultSmsApp()) {
                 Toast.makeText(this, "Successfully set as default SMS app", Toast.LENGTH_SHORT).show();
+                // Reset the declined flag since user accepted
+                PhoneUtils.setUserDeclinedDefaultSms(this, false);
                 loadConversations();
             } else {
-                // If we're not the default SMS app, show a message
+                // User declined or canceled the request
+                Log.d(TAG, "User did not set app as default SMS app");
+                
+                // Check if we've reached the maximum number of requests
+                int requestCount = PhoneUtils.getDefaultSmsRequestCount(this);
+                if (requestCount >= 3) {
+                    // User has been asked 3 times, stop asking
+                    PhoneUtils.setUserDeclinedDefaultSms(this, true);
+                    Log.d(TAG, "Maximum request count reached, setting user declined flag");
+                }
+
+                // Show a less intrusive message
                 Toast.makeText(this,
-                        "This app needs to be the default SMS app to function properly.",
+                        "This app works best as the default SMS app, but you can still use basic features.",
                         Toast.LENGTH_LONG).show();
 
                 // Try to load conversations anyway
