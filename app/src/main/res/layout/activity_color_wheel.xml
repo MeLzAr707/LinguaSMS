@@ -95,7 +95,7 @@
                         android:layout_weight="1"
                         android:text="Selected Background Color:"
                         android:textSize="16sp"
-                        android:textStyle="medium"
+
                         android:textColor="?attr/colorOnSurface" />
 
                     <View
@@ -163,7 +163,6 @@
                         android:layout_weight="1"
                         android:text="Selected Text Color:"
                         android:textSize="16sp"
-                        android:textStyle="medium"
                         android:textColor="?attr/colorOnSurface" />
 
                     <View
@@ -213,7 +212,6 @@
                         android:layout_height="wrap_content"
                         android:text="Sample Text Preview"
                         android:textSize="20sp"
-                        android:textStyle="medium"
                         android:textColor="@android:color/white" />
 
                     <TextView
