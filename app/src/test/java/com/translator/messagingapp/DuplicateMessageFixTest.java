@@ -18,7 +18,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for duplicate message fix.
- * Tests that messages are not stored twice when the app is the default SMS app.
+ * Tests correct SMS storage behavior according to Android documentation:
+ * - Default SMS apps (receive SMS_DELIVER_ACTION) must manually store messages
+ * - Non-default SMS apps (receive SMS_RECEIVED_ACTION) rely on automatic system storage
  */
 @RunWith(RobolectricTestRunner.class)
 public class DuplicateMessageFixTest {
@@ -39,11 +41,11 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is default SMS app, messages are NOT manually stored
-     * (since Android system stores them automatically).
+     * Test that when app is default SMS app, messages ARE manually stored
+     * (since app receives SMS_DELIVER_ACTION and is responsible for storage).
      */
     @Test
-    public void testNoManualStorageWhenDefaultSmsApp() {
+    public void testManualStorageWhenDefaultSmsApp() {
         // Create a mock SMS intent with basic structure
         Intent smsIntent = new Intent();
         Bundle bundle = new Bundle();
@@ -63,10 +65,11 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is NOT default SMS app, messages ARE manually stored.
+     * Test that when app is NOT default SMS app, messages are NOT manually stored
+     * (since Android system automatically stores them via SMS_RECEIVED_ACTION).
      */
     @Test
-    public void testManualStorageWhenNotDefaultSmsApp() {
+    public void testNoManualStorageWhenNotDefaultSmsApp() {
         // Create a mock SMS intent with basic structure
         Intent smsIntent = new Intent();
         Bundle bundle = new Bundle();

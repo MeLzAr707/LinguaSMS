@@ -1601,13 +1601,14 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Only manually store the message if we're NOT the default SMS app
-                    // When we are the default SMS app, Android automatically stores the message
-                    if (!PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Not default SMS app, manually storing message");
+                    // Only manually store the message if we ARE the default SMS app
+                    // When we are the default SMS app, we receive SMS_DELIVER_ACTION and must manually store
+                    // When we are NOT the default SMS app, we receive SMS_RECEIVED_ACTION and Android automatically stores
+                    if (PhoneUtils.isDefaultSmsApp(context)) {
+                        Log.d(TAG, "Default SMS app - manually storing message (SMS_DELIVER_ACTION)");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
-                        Log.d(TAG, "Default SMS app - system will automatically store message");
+                        Log.d(TAG, "Not default SMS app - system will automatically store message (SMS_RECEIVED_ACTION)");
                     }
 
                     // Show notification
