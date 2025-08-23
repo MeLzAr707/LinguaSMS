@@ -325,15 +325,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                 // Update UI on main thread
                 runOnUiThread(() -> {
-                    // Clear existing messages and add loaded ones
-                    messages.clear();
+                    // Update UI with DiffUtil for better performance
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
-                        messages.addAll(loadedMessages);
+                        // Use DiffUtil to efficiently update the RecyclerView
+                        adapter.updateMessages(new ArrayList<>(loadedMessages));
                         
                         // Restore translation state for all loaded messages
                         restoreTranslationStateForMessages(loadedMessages);
                         
-                        Log.d(TAG, "Added " + loadedMessages.size() + " messages to UI list");
+                        Log.d(TAG, "Updated UI with " + loadedMessages.size() + " messages using DiffUtil");
                         
                         // Set up pagination
                         setupPagination();
@@ -343,10 +343,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     } else {
                         Log.d(TAG, "No messages to add to UI list");
                         hasMoreMessages = false;
+                        // Update with empty list
+                        adapter.updateMessages(new ArrayList<>());
                     }
-
-                    // Update UI
-                    adapter.notifyDataSetChanged();
                     hideLoadingIndicator();
 
                     // Scroll to bottom
