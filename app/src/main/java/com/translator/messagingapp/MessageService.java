@@ -1601,14 +1601,13 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Only manually store the message if we ARE the default SMS app
-                    // When we are the default SMS app, we receive SMS_DELIVER_ACTION and must manually store
-                    // When we are NOT the default SMS app, we receive SMS_RECEIVED_ACTION and Android automatically stores
-                    if (PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Default SMS app - manually storing message (SMS_DELIVER_ACTION)");
+                    // Check if message already exists to prevent duplicates
+                    // Always attempt storage regardless of default SMS app status
+                    if (!isMessageAlreadyStored(senderAddress, fullMessageBody.toString(), messageTimestamp)) {
+                        Log.d(TAG, "Message not found in database, storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
-                        Log.d(TAG, "Not default SMS app - system will automatically store message (SMS_RECEIVED_ACTION)");
+                        Log.d(TAG, "Message already exists in database, skipping storage to prevent duplicate");
                     }
 
                     // Show notification
@@ -1675,6 +1674,52 @@ public class MessageService {
         } catch (Exception e) {
             Log.e(TAG, "Error storing sent SMS message to " + address, e);
         }
+    }
+
+    /**
+     * Checks if an incoming SMS message is already stored in the database.
+     * This prevents duplicate messages from being stored.
+     *
+     * @param address The sender's address
+     * @param body The message body
+     * @param timestamp The message timestamp
+     * @return true if message already exists in database, false otherwise
+     */
+    private boolean isMessageAlreadyStored(String address, String body, long timestamp) {
+        try {
+            String selection = Telephony.Sms.ADDRESS + " = ? AND " +
+                    Telephony.Sms.BODY + " = ? AND " +
+                    Telephony.Sms.TYPE + " = ? AND " +
+                    "ABS(" + Telephony.Sms.DATE + " - ?) < ?";
+            
+            String[] selectionArgs = {
+                address,
+                body,
+                String.valueOf(Telephony.Sms.MESSAGE_TYPE_INBOX),
+                String.valueOf(timestamp),
+                String.valueOf(10000) // 10 seconds tolerance
+            };
+            
+            Cursor cursor = context.getContentResolver().query(
+                Telephony.Sms.CONTENT_URI,
+                new String[]{Telephony.Sms._ID},
+                selection,
+                selectionArgs,
+                null
+            );
+            
+            if (cursor != null) {
+                boolean exists = cursor.getCount() > 0;
+                cursor.close();
+                Log.d(TAG, "Duplicate check for message from " + address + ": " + (exists ? "FOUND" : "NOT FOUND"));
+                return exists;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking for duplicate message from " + address, e);
+            // Return false on error to ensure message is stored (fail-safe approach)
+        }
+        
+        return false;
     }
 
     /**

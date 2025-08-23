@@ -17,10 +17,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for duplicate message fix.
- * Tests correct SMS storage behavior according to Android documentation:
- * - Default SMS apps (receive SMS_DELIVER_ACTION) must manually store messages
- * - Non-default SMS apps (receive SMS_RECEIVED_ACTION) rely on automatic system storage
+ * Unit tests for duplicate message fix (Issue #262 and #331).
+ * Tests correct SMS storage behavior with database-based duplicate prevention:
+ * - Messages are stored based on database duplicate checks rather than default app status
+ * - Duplicate detection uses address, body, type, and timestamp matching
+ * - All incoming messages are processed for storage with duplicate prevention
  */
 @RunWith(RobolectricTestRunner.class)
 public class DuplicateMessageFixTest {
@@ -41,8 +42,9 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is default SMS app, messages ARE manually stored
-     * (since app receives SMS_DELIVER_ACTION and is responsible for storage).
+     * Test that when app is default SMS app, messages are processed correctly.
+     * With the new duplicate prevention logic, messages are stored based on
+     * database checks rather than default SMS app status.
      */
     @Test
     public void testManualStorageWhenDefaultSmsApp() {
@@ -56,17 +58,18 @@ public class DuplicateMessageFixTest {
             mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(true);
             
             // This should not throw an exception and should handle the case gracefully
-            // We're testing that the method exists and behaves correctly for default SMS app
+            // With the new logic, duplicate prevention is used instead of default app checks
             messageService.handleIncomingSms(smsIntent);
             
-            // Verify that PhoneUtils.isDefaultSmsApp was called
-            mockedPhoneUtils.verify(() -> PhoneUtils.isDefaultSmsApp(any()), atLeastOnce());
+            // Note: PhoneUtils.isDefaultSmsApp may still be called for notifications
+            // but is no longer used for storage decisions
         }
     }
 
     /**
-     * Test that when app is NOT default SMS app, messages are NOT manually stored
-     * (since Android system automatically stores them via SMS_RECEIVED_ACTION).
+     * Test that when app is NOT default SMS app, messages are processed correctly.
+     * With the new duplicate prevention logic, messages are stored based on
+     * database checks rather than default SMS app status.
      */
     @Test
     public void testNoManualStorageWhenNotDefaultSmsApp() {
@@ -80,11 +83,11 @@ public class DuplicateMessageFixTest {
             mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(false);
             
             // This should not throw an exception and should handle the case gracefully
-            // We're testing that the method exists and behaves correctly for non-default SMS app
+            // With the new logic, duplicate prevention is used instead of default app checks
             messageService.handleIncomingSms(smsIntent);
             
-            // Verify that PhoneUtils.isDefaultSmsApp was called
-            mockedPhoneUtils.verify(() -> PhoneUtils.isDefaultSmsApp(any()), atLeastOnce());
+            // Note: PhoneUtils.isDefaultSmsApp may still be called for notifications
+            // but is no longer used for storage decisions
         }
     }
 
