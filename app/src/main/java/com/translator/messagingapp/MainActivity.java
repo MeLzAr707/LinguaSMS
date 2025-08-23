@@ -76,6 +76,9 @@ public class MainActivity extends BaseActivity
     
     // Message refresh receiver
     private BroadcastReceiver messageRefreshReceiver;
+    
+    // Content observer for database changes
+    private MessageContentObserver messageContentObserver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +116,9 @@ public class MainActivity extends BaseActivity
             
             // Set up message refresh receiver
             setupMessageRefreshReceiver();
+            
+            // Set up content observer for database changes
+            setupMessageContentObserver();
             
             // Apply custom colors if using custom theme
             applyCustomColorsToViews();
@@ -191,6 +197,52 @@ public class MainActivity extends BaseActivity
             
         } catch (Exception e) {
             Log.e(TAG, "Error setting up message refresh receiver", e);
+            // Don't throw the exception to prevent app crash
+        }
+    }
+
+    /**
+     * Set up content observer for monitoring SMS/MMS database changes.
+     * Provides additional reliability for detecting when messages are stored.
+     */
+    private void setupMessageContentObserver() {
+        try {
+            messageContentObserver = new MessageContentObserver(this);
+            
+            // Add listener to refresh conversations when new messages are detected
+            messageContentObserver.addListener(new MessageContentObserver.OnMessageChangeListener() {
+                @Override
+                public void onSmsChanged(Uri uri) {
+                    Log.d(TAG, "SMS database changed, refreshing conversations");
+                    runOnUiThread(() -> refreshConversations());
+                }
+
+                @Override
+                public void onMmsChanged(Uri uri) {
+                    Log.d(TAG, "MMS database changed, refreshing conversations");
+                    runOnUiThread(() -> refreshConversations());
+                }
+
+                @Override
+                public void onConversationChanged(Uri uri) {
+                    Log.d(TAG, "Conversation database changed, refreshing conversations");
+                    runOnUiThread(() -> refreshConversations());
+                }
+
+                @Override
+                public void onMessageContentChanged(Uri uri) {
+                    Log.d(TAG, "Message content changed, refreshing conversations");
+                    runOnUiThread(() -> refreshConversations());
+                }
+            });
+            
+            // Register the content observer
+            messageContentObserver.register();
+            
+            Log.d(TAG, "Message content observer set up successfully");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up message content observer", e);
             // Don't throw the exception to prevent app crash
         }
     }
@@ -1165,6 +1217,18 @@ public class MainActivity extends BaseActivity
                 Log.e(TAG, "Error unregistering message refresh receiver", e);
             }
             messageRefreshReceiver = null;
+        }
+        
+        // Unregister message content observer
+        if (messageContentObserver != null) {
+            try {
+                messageContentObserver.unregister();
+                messageContentObserver.clearListeners();
+                Log.d(TAG, "Message content observer unregistered successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering message content observer", e);
+            }
+            messageContentObserver = null;
         }
     }
     

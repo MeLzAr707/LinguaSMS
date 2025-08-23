@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
@@ -1606,15 +1608,25 @@ public class MessageService {
                     if (!PhoneUtils.isDefaultSmsApp(context)) {
                         Log.d(TAG, "Not default SMS app, manually storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                        
+                        // Show notification
+                        showSmsNotification(senderAddress, fullMessageBody.toString());
+                        
+                        // Broadcast message received to refresh UI immediately since we stored it manually
+                        broadcastMessageReceived();
                     } else {
                         Log.d(TAG, "Default SMS app - system will automatically store message");
+                        
+                        // Show notification
+                        showSmsNotification(senderAddress, fullMessageBody.toString());
+                        
+                        // When we're the default SMS app, add a small delay to allow Android 
+                        // to complete automatic storage before broadcasting UI refresh
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            Log.d(TAG, "Broadcasting message received after delay for default SMS app");
+                            broadcastMessageReceived();
+                        }, 100); // 100ms delay to allow automatic storage to complete
                     }
-
-                    // Show notification
-                    showSmsNotification(senderAddress, fullMessageBody.toString());
-                    
-                    // Broadcast message received to refresh UI
-                    broadcastMessageReceived();
                 }
             }
         }
