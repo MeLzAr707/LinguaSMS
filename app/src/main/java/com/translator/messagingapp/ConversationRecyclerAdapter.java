@@ -17,6 +17,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -471,5 +472,26 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             contactImage = itemView.findViewById(R.id.contact_image);
             contactInitials = itemView.findViewById(R.id.contact_initials);
         }
+    }
+
+    /**
+     * Updates the conversations list using DiffUtil for efficient RecyclerView updates.
+     * This method calculates the difference between the old and new conversation lists
+     * and only updates the items that have changed, improving performance.
+     *
+     * @param newConversations The new list of conversations to display
+     */
+    public void updateConversations(List<Conversation> newConversations) {
+        if (newConversations == null) {
+            return;
+        }
+        
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+                new ConversationDiffCallback(conversations, newConversations));
+        
+        conversations.clear();
+        conversations.addAll(newConversations);
+        
+        diffResult.dispatchUpdatesTo(this);
     }
 }
