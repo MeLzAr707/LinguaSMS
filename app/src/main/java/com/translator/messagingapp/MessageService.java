@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
@@ -219,14 +220,7 @@ public class MessageService {
     private Conversation loadConversationDetails(String threadId) {
         ContentResolver contentResolver = context.getContentResolver();
 
-        // Variables to track the most recent message (SMS or MMS)
-        String address = null;
-        String snippet = null;
-        long latestDate = 0;
-        boolean read = true;
-        boolean isMms = false;
-
-        // First try to get the latest SMS message for this thread
+        // First try to get SMS messages for this thread
         Uri smsUri = Uri.parse("content://sms");
         String smsSelection = "thread_id = ?";
         String[] smsSelectionArgs = new String[] { threadId };
@@ -234,74 +228,45 @@ public class MessageService {
 
         try (Cursor cursor = contentResolver.query(smsUri, null, smsSelection, smsSelectionArgs, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
-                address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-                snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
-                latestDate = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
-                read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
+                // Get the address (phone number)
+                String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+
+                // Get the latest message details
+                String snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
+
+                // Create the conversation object
+                Conversation conversation = new Conversation();
+                conversation.setThreadId(threadId);
+                conversation.setAddress(address);
+                conversation.setSnippet(snippet);
+                conversation.setLastMessage(snippet); // Also set lastMessage for consistency
+                conversation.setDate(date);
+                conversation.setRead(read);
+
+                // Resolve contact name with improved handling
+                String contactName = ContactUtils.getContactName(context, address);
+                // Ensure we never set string "null" - keep it as actual null if no contact found
+                if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+                    contactName = null;
+                }
+                conversation.setContactName(contactName);
+
+                // Count unread messages
+                int unreadCount = countUnreadMessages(threadId);
+                conversation.setUnreadCount(unreadCount);
+
+                return conversation;
+            } else {
+                // If no SMS messages, try MMS
+                return loadMmsConversationDetails(threadId);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading SMS conversation details for thread " + threadId, e);
+            // Try MMS as fallback
+            return loadMmsConversationDetails(threadId);
         }
-
-        // Now check MMS messages to see if any are more recent than the latest SMS
-        try {
-            Uri mmsUri = Uri.parse("content://mms");
-            String mmsSelection = "thread_id = ?";
-            String mmsSortOrder = "date DESC LIMIT 1";
-
-            try (Cursor mmsCursor = contentResolver.query(mmsUri, null, mmsSelection, smsSelectionArgs, mmsSortOrder)) {
-                if (mmsCursor != null && mmsCursor.moveToFirst()) {
-                    long mmsDate = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
-                    
-                    // If MMS is more recent than SMS (or if we have no SMS), use MMS data
-                    if (mmsDate > latestDate || address == null) {
-                        Log.d(TAG, "Using MMS message as most recent for thread " + threadId + 
-                              ". MMS date: " + mmsDate + ", SMS date: " + latestDate);
-                        latestDate = mmsDate;
-                        read = mmsCursor.getInt(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
-                        snippet = "[MMS]";
-                        isMms = true;
-                        
-                        // For MMS, get address if we don't have one from SMS
-                        if (address == null) {
-                            address = "Unknown"; // Simplified approach for MMS address
-                        }
-                    } else {
-                        Log.d(TAG, "Using SMS message as most recent for thread " + threadId + 
-                              ". SMS date: " + latestDate + ", MMS date: " + mmsDate);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error loading MMS conversation details for thread " + threadId, e);
-        }
-
-        // If we found any message (SMS or MMS), create the conversation
-        if (address != null) {
-            Conversation conversation = new Conversation();
-            conversation.setThreadId(threadId);
-            conversation.setAddress(address);
-            conversation.setSnippet(snippet != null ? snippet : "");
-            conversation.setLastMessage(snippet != null ? snippet : "");
-            conversation.setDate(latestDate);
-            conversation.setRead(read);
-
-            // Resolve contact name with improved handling
-            String contactName = ContactUtils.getContactName(context, address);
-            // Ensure we never set string "null" - keep it as actual null if no contact found
-            if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
-                contactName = null;
-            }
-            conversation.setContactName(contactName);
-
-            // Count unread messages
-            int unreadCount = countUnreadMessages(threadId);
-            conversation.setUnreadCount(unreadCount);
-
-            return conversation;
-        }
-
-        return null;
     }
 
     /**
@@ -1625,7 +1590,7 @@ public class MessageService {
 
                 // Process all PDUs to handle multi-part messages
                 for (Object pdu : pdus) {
-                    android.telephony.SmsMessage smsMessage = android.telephony.SmsMessage.createFromPdu((byte[]) pdu, format);
+                    SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdu, format);
                     if (senderAddress == null) {
                         senderAddress = smsMessage.getOriginatingAddress();
                         messageTimestamp = smsMessage.getTimestampMillis();
@@ -1636,17 +1601,15 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // If we are the default SMS app, we are responsible for storing the message
-                    // When we are NOT the default SMS app, Android system handles storage automatically
+                    // Only manually store the message if we ARE the default SMS app
+                    // When we are the default SMS app, we receive SMS_DELIVER_ACTION and must manually store
+                    // When we are NOT the default SMS app, we receive SMS_RECEIVED_ACTION and Android automatically stores
                     if (PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Default SMS app - manually storing message");
+                        Log.d(TAG, "Default SMS app - manually storing message (SMS_DELIVER_ACTION)");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
-                        Log.d(TAG, "Not default SMS app - system will automatically store message");
+                        Log.d(TAG, "Not default SMS app - system will automatically store message (SMS_RECEIVED_ACTION)");
                     }
-
-                    // Attempt automatic translation for incoming messages
-                    translateIncomingSmsIfEnabled(senderAddress, fullMessageBody.toString(), messageTimestamp);
 
                     // Show notification
                     showSmsNotification(senderAddress, fullMessageBody.toString());
@@ -1655,75 +1618,6 @@ public class MessageService {
                     broadcastMessageReceived();
                 }
             }
-        }
-    }
-
-    /**
-     * Attempts to automatically translate an incoming SMS message if auto-translate is enabled.
-     *
-     * @param senderAddress The sender's address
-     * @param messageBody The message body text
-     * @param timestamp The message timestamp
-     */
-    private void translateIncomingSmsIfEnabled(String senderAddress, String messageBody, long timestamp) {
-        try {
-            // Check if translation manager is available
-            if (translationManager == null) {
-                Log.d(TAG, "Translation manager not available for incoming SMS translation");
-                return;
-            }
-
-            // Create SmsMessage object for translation
-            SmsMessage smsMessage = new SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
-            smsMessage.setIncoming(true);
-            smsMessage.setRead(false); // Incoming messages are initially unread
-
-            // Attempt translation - TranslationManager will check if auto-translate is enabled
-            translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
-                @Override
-                public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
-                    if (success && translatedMessage != null && translatedMessage.isTranslated()) {
-                        Log.d(TAG, "Successfully translated incoming SMS from " + senderAddress + 
-                              ": '" + translatedMessage.getOriginalText() + "' -> '" + 
-                              translatedMessage.getTranslatedText() + "'");
-                        
-                        // Store the translation result in cache for UI access
-                        // The translated text will be available when the UI loads the message
-                        
-                        // Broadcast translation completed to refresh UI with translated content
-                        broadcastTranslationCompleted(senderAddress, translatedMessage);
-                    } else {
-                        Log.d(TAG, "Translation not performed for incoming SMS from " + senderAddress + 
-                              " (auto-translate disabled, service unavailable, or translation failed)");
-                    }
-                }
-            });
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error attempting to translate incoming SMS from " + senderAddress, e);
-        }
-    }
-
-    /**
-     * Broadcasts that a message translation has been completed to refresh the UI.
-     *
-     * @param address The sender's address
-     * @param translatedMessage The translated message
-     */
-    private void broadcastTranslationCompleted(String address, SmsMessage translatedMessage) {
-        try {
-            Intent broadcastIntent = new Intent("com.translator.messagingapp.TRANSLATION_COMPLETED");
-            broadcastIntent.putExtra("address", address);
-            broadcastIntent.putExtra("original_text", translatedMessage.getOriginalText());
-            broadcastIntent.putExtra("translated_text", translatedMessage.getTranslatedText());
-            broadcastIntent.putExtra("original_language", translatedMessage.getOriginalLanguage());
-            broadcastIntent.putExtra("translated_language", translatedMessage.getTranslatedLanguage());
-            
-            // Use LocalBroadcastManager for reliable intra-app communication
-            LocalBroadcastManager.getInstance(context).sendBroadcast(broadcastIntent);
-            Log.d(TAG, "Broadcasted translation completed event for message from " + address);
-        } catch (Exception e) {
-            Log.e(TAG, "Error broadcasting translation completed event", e);
         }
     }
 
@@ -1799,13 +1693,6 @@ public class MessageService {
             
             // Get thread ID for the notification
             String threadId = getThreadIdForAddress(address);
-            
-            // Check if the user is currently viewing this conversation
-            // If so, don't show a notification as they can already see the message
-            if (ConversationActivity.isThreadCurrentlyActive(threadId)) {
-                Log.d(TAG, "Suppressing notification for thread " + threadId + " as conversation is currently active");
-                return;
-            }
             
             // Get contact name or use address as fallback
             String displayName = getContactNameForAddress(address);
@@ -2004,29 +1891,5 @@ public class MessageService {
         } catch (Exception e) {
             Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
-    }
-
-    /**
-     * Creates a custom SmsMessage object for internal use.
-     * This method demonstrates the class confusion issue that was causing build errors.
-     * 
-     * @param senderAddress The sender's address
-     * @param messageBody The message body
-     * @param timestamp The message timestamp
-     * @return A custom SmsMessage object
-     */
-    public com.translator.messagingapp.SmsMessage createCustomSmsMessage(String senderAddress, String messageBody, long timestamp) {
-        // This line would cause a build error due to class confusion:
-        // SmsMessage smsMessage = new SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
-        // 
-        // The error would be: "constructor SmsMessage in class SmsMessage cannot be applied to given types"
-        // because it's trying to use android.telephony.SmsMessage instead of our custom class
-        
-        // Fix: Use fully qualified name for our custom SmsMessage class
-        com.translator.messagingapp.SmsMessage smsMessage = new com.translator.messagingapp.SmsMessage(senderAddress, messageBody, new java.util.Date(timestamp));
-        smsMessage.setIncoming(true);
-        smsMessage.setRead(false); // Incoming messages are initially unread
-        
-        return smsMessage;
     }
 }

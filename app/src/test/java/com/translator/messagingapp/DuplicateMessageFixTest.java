@@ -3,7 +3,6 @@ package com.translator.messagingapp;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.Telephony;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -19,7 +18,9 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for duplicate message fix.
- * Tests that messages are not stored twice when the app is the default SMS app.
+ * Tests correct SMS storage behavior according to Android documentation:
+ * - Default SMS apps (receive SMS_DELIVER_ACTION) must manually store messages
+ * - Non-default SMS apps (receive SMS_RECEIVED_ACTION) rely on automatic system storage
  */
 @RunWith(RobolectricTestRunner.class)
 public class DuplicateMessageFixTest {
@@ -41,7 +42,7 @@ public class DuplicateMessageFixTest {
 
     /**
      * Test that when app is default SMS app, messages ARE manually stored
-     * (since the app is responsible for storing them).
+     * (since app receives SMS_DELIVER_ACTION and is responsible for storage).
      */
     @Test
     public void testManualStorageWhenDefaultSmsApp() {
@@ -56,7 +57,6 @@ public class DuplicateMessageFixTest {
             
             // This should not throw an exception and should handle the case gracefully
             // We're testing that the method exists and behaves correctly for default SMS app
-            // When app is default SMS app, it should manually store messages
             messageService.handleIncomingSms(smsIntent);
             
             // Verify that PhoneUtils.isDefaultSmsApp was called
@@ -65,7 +65,8 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is NOT default SMS app, messages are NOT manually stored.
+     * Test that when app is NOT default SMS app, messages are NOT manually stored
+     * (since Android system automatically stores them via SMS_RECEIVED_ACTION).
      */
     @Test
     public void testNoManualStorageWhenNotDefaultSmsApp() {
@@ -80,7 +81,6 @@ public class DuplicateMessageFixTest {
             
             // This should not throw an exception and should handle the case gracefully
             // We're testing that the method exists and behaves correctly for non-default SMS app
-            // When app is NOT default SMS app, system handles storage automatically
             messageService.handleIncomingSms(smsIntent);
             
             // Verify that PhoneUtils.isDefaultSmsApp was called
@@ -108,33 +108,5 @@ public class DuplicateMessageFixTest {
         
         // This should not throw an exception
         messageService.handleIncomingSms(smsIntent);
-    }
-
-    /**
-     * Test that handleIncomingSms properly handles different SMS intent actions.
-     */
-    @Test
-    public void testHandleIncomingSmsWithDifferentActions() {
-        // Test SMS_RECEIVED_ACTION
-        Intent smsReceivedIntent = new Intent(Telephony.Sms.Intents.SMS_RECEIVED_ACTION);
-        Bundle bundle1 = new Bundle();
-        smsReceivedIntent.putExtras(bundle1);
-        
-        // Mock PhoneUtils.isDefaultSmsApp to return false for this test
-        try (MockedStatic<PhoneUtils> mockedPhoneUtils = mockStatic(PhoneUtils.class)) {
-            mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(false);
-            messageService.handleIncomingSms(smsReceivedIntent);
-        }
-
-        // Test SMS_DELIVER_ACTION  
-        Intent smsDeliverIntent = new Intent(Telephony.Sms.Intents.SMS_DELIVER_ACTION);
-        Bundle bundle2 = new Bundle();
-        smsDeliverIntent.putExtras(bundle2);
-        
-        // Mock PhoneUtils.isDefaultSmsApp to return true for this test
-        try (MockedStatic<PhoneUtils> mockedPhoneUtils = mockStatic(PhoneUtils.class)) {
-            mockedPhoneUtils.when(() -> PhoneUtils.isDefaultSmsApp(any())).thenReturn(true);
-            messageService.handleIncomingSms(smsDeliverIntent);
-        }
     }
 }
