@@ -185,10 +185,16 @@ public class TranslationManager {
                             return;
                         }
                     } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "No translation service available");
+                        // Check if we have offline capability as fallback
+                        if (offlineTranslationService != null && offlineTranslationService.hasAnyDownloadedModels()) {
+                            // Use English as source for offline translation
+                            finalSourceLanguage = "en";
+                        } else {
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, "No translation service available");
+                            }
+                            return;
                         }
-                        return;
                     }
                 }
 
@@ -574,8 +580,15 @@ public class TranslationManager {
      */
     private void translateOnline(String text, String sourceLanguage, String targetLanguage, String cacheKey, TranslationCallback callback) {
         if (translationService == null || !translationService.hasApiKey()) {
+            // If online service is not available, try offline as fallback
+            if (offlineTranslationService != null && offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                Log.d(TAG, "Online service not available, falling back to offline translation");
+                translateOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                return;
+            }
+            
             if (callback != null) {
-                callback.onTranslationComplete(false, null, "Online translation service not available");
+                callback.onTranslationComplete(false, null, "Translation service not available");
             }
             return;
         }
@@ -584,6 +597,13 @@ public class TranslationManager {
             // Translate using online service
             String translatedText = translationService.translate(text, sourceLanguage, targetLanguage);
             if (translatedText == null) {
+                // If online translation fails, try offline as fallback
+                if (offlineTranslationService != null && offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                    Log.d(TAG, "Online translation failed, falling back to offline translation");
+                    translateOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                    return;
+                }
+                
                 if (callback != null) {
                     callback.onTranslationComplete(false, null, "Online translation failed");
                 }
@@ -602,8 +622,16 @@ public class TranslationManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Online translation error", e);
+            
+            // Try offline as fallback
+            if (offlineTranslationService != null && offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                Log.d(TAG, "Online translation error, falling back to offline translation");
+                translateOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                return;
+            }
+            
             if (callback != null) {
-                callback.onTranslationComplete(false, null, "Online translation error: " + e.getMessage());
+                callback.onTranslationComplete(false, null, "Translation error: " + e.getMessage());
             }
         }
     }

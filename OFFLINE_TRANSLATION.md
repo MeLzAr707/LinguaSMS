@@ -2,7 +2,7 @@
 
 ## Overview
 
-LinguaSMS now supports offline translation capabilities alongside the existing online translation system. This allows users to translate messages even without an internet connection by downloading language models locally.
+LinguaSMS now supports offline translation capabilities alongside the existing online translation system. This allows users to translate messages even without an internet connection by downloading language models locally. **Most importantly, offline translation works without requiring any API key setup**, making the app fully functional for translation even without online services.
 
 ## Key Features
 
@@ -24,12 +24,16 @@ LinguaSMS now supports offline translation capabilities alongside the existing o
 
 ## How to Use
 
-### 1. Enable Offline Translation
+### 1. Enable Offline Translation (No API Key Required)
 1. Open the app and go to **Settings**
-2. Find the **Translation** section
-3. Set **Translation Mode** to either:
-   - **Offline Only** - Only use offline models
-   - **Auto (Prefer Offline)** - Use offline when available, online as fallback
+2. Find the **Translation** section  
+3. Tap **Manage Offline Models**
+4. Download language models you want to use
+5. Set **Translation Mode** to either:
+   - **Offline Only** - Only use offline models (works without API key)
+   - **Auto (Prefer Offline)** - Use offline when available, online as fallback (API key optional)
+
+**Note**: You can use offline translation without setting up any API key. The app will work completely offline once you download language models.
 
 ### 2. Download Language Models
 1. In Settings → Translation, tap **Manage Offline Models**
@@ -64,6 +68,7 @@ User Request → Check Translation Mode
 
 ### Benefits
 - **No Internet Required**: Translate messages anywhere
+- **No API Key Required**: Works completely offline without any setup
 - **Privacy**: Translation happens locally on your device
 - **Speed**: Faster translation without network latency
 - **Cost**: No API usage charges for offline translations
