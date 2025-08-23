@@ -1600,13 +1600,13 @@ public class MessageService {
                 if (senderAddress != null && fullMessageBody.length() > 0) {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
-                    // Only manually store the message if we're NOT the default SMS app
-                    // When we are the default SMS app, Android automatically stores the message
-                    if (!PhoneUtils.isDefaultSmsApp(context)) {
-                        Log.d(TAG, "Not default SMS app, manually storing message");
+                    // If we are the default SMS app, we are responsible for storing the message
+                    // When we are NOT the default SMS app, Android system handles storage automatically
+                    if (PhoneUtils.isDefaultSmsApp(context)) {
+                        Log.d(TAG, "Default SMS app - manually storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
-                        Log.d(TAG, "Default SMS app - system will automatically store message");
+                        Log.d(TAG, "Not default SMS app - system will automatically store message");
                     }
 
                     // Attempt automatic translation for incoming messages

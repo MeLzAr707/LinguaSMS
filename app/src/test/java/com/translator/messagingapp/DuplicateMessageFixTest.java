@@ -40,11 +40,11 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is default SMS app, messages are NOT manually stored
-     * (since Android system stores them automatically).
+     * Test that when app is default SMS app, messages ARE manually stored
+     * (since the app is responsible for storing them).
      */
     @Test
-    public void testNoManualStorageWhenDefaultSmsApp() {
+    public void testManualStorageWhenDefaultSmsApp() {
         // Create a mock SMS intent with basic structure
         Intent smsIntent = new Intent();
         Bundle bundle = new Bundle();
@@ -56,6 +56,7 @@ public class DuplicateMessageFixTest {
             
             // This should not throw an exception and should handle the case gracefully
             // We're testing that the method exists and behaves correctly for default SMS app
+            // When app is default SMS app, it should manually store messages
             messageService.handleIncomingSms(smsIntent);
             
             // Verify that PhoneUtils.isDefaultSmsApp was called
@@ -64,10 +65,10 @@ public class DuplicateMessageFixTest {
     }
 
     /**
-     * Test that when app is NOT default SMS app, messages ARE manually stored.
+     * Test that when app is NOT default SMS app, messages are NOT manually stored.
      */
     @Test
-    public void testManualStorageWhenNotDefaultSmsApp() {
+    public void testNoManualStorageWhenNotDefaultSmsApp() {
         // Create a mock SMS intent with basic structure
         Intent smsIntent = new Intent();
         Bundle bundle = new Bundle();
@@ -79,6 +80,7 @@ public class DuplicateMessageFixTest {
             
             // This should not throw an exception and should handle the case gracefully
             // We're testing that the method exists and behaves correctly for non-default SMS app
+            // When app is NOT default SMS app, system handles storage automatically
             messageService.handleIncomingSms(smsIntent);
             
             // Verify that PhoneUtils.isDefaultSmsApp was called
