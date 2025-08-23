@@ -220,7 +220,14 @@ public class MessageService {
     private Conversation loadConversationDetails(String threadId) {
         ContentResolver contentResolver = context.getContentResolver();
 
-        // First try to get SMS messages for this thread
+        // Variables to track the most recent message (SMS or MMS)
+        String address = null;
+        String snippet = null;
+        long latestDate = 0;
+        boolean read = true;
+        boolean isMms = false;
+
+        // First try to get the latest SMS message for this thread
         Uri smsUri = Uri.parse("content://sms");
         String smsSelection = "thread_id = ?";
         String[] smsSelectionArgs = new String[] { threadId };
@@ -228,45 +235,74 @@ public class MessageService {
 
         try (Cursor cursor = contentResolver.query(smsUri, null, smsSelection, smsSelectionArgs, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
-                // Get the address (phone number)
-                String address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
-
-                // Get the latest message details
-                String snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
-                long date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
-                boolean read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
-
-                // Create the conversation object
-                Conversation conversation = new Conversation();
-                conversation.setThreadId(threadId);
-                conversation.setAddress(address);
-                conversation.setSnippet(snippet);
-                conversation.setLastMessage(snippet); // Also set lastMessage for consistency
-                conversation.setDate(date);
-                conversation.setRead(read);
-
-                // Resolve contact name with improved handling
-                String contactName = ContactUtils.getContactName(context, address);
-                // Ensure we never set string "null" - keep it as actual null if no contact found
-                if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
-                    contactName = null;
-                }
-                conversation.setContactName(contactName);
-
-                // Count unread messages
-                int unreadCount = countUnreadMessages(threadId);
-                conversation.setUnreadCount(unreadCount);
-
-                return conversation;
-            } else {
-                // If no SMS messages, try MMS
-                return loadMmsConversationDetails(threadId);
+                address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
+                snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
+                latestDate = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading SMS conversation details for thread " + threadId, e);
-            // Try MMS as fallback
-            return loadMmsConversationDetails(threadId);
         }
+
+        // Now check MMS messages to see if any are more recent than the latest SMS
+        try {
+            Uri mmsUri = Uri.parse("content://mms");
+            String mmsSelection = "thread_id = ?";
+            String mmsSortOrder = "date DESC LIMIT 1";
+
+            try (Cursor mmsCursor = contentResolver.query(mmsUri, null, mmsSelection, smsSelectionArgs, mmsSortOrder)) {
+                if (mmsCursor != null && mmsCursor.moveToFirst()) {
+                    long mmsDate = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
+                    
+                    // If MMS is more recent than SMS (or if we have no SMS), use MMS data
+                    if (mmsDate > latestDate || address == null) {
+                        Log.d(TAG, "Using MMS message as most recent for thread " + threadId + 
+                              ". MMS date: " + mmsDate + ", SMS date: " + latestDate);
+                        latestDate = mmsDate;
+                        read = mmsCursor.getInt(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
+                        snippet = "[MMS]";
+                        isMms = true;
+                        
+                        // For MMS, get address if we don't have one from SMS
+                        if (address == null) {
+                            address = "Unknown"; // Simplified approach for MMS address
+                        }
+                    } else {
+                        Log.d(TAG, "Using SMS message as most recent for thread " + threadId + 
+                              ". SMS date: " + latestDate + ", MMS date: " + mmsDate);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS conversation details for thread " + threadId, e);
+        }
+
+        // If we found any message (SMS or MMS), create the conversation
+        if (address != null) {
+            Conversation conversation = new Conversation();
+            conversation.setThreadId(threadId);
+            conversation.setAddress(address);
+            conversation.setSnippet(snippet != null ? snippet : "");
+            conversation.setLastMessage(snippet != null ? snippet : "");
+            conversation.setDate(latestDate);
+            conversation.setRead(read);
+
+            // Resolve contact name with improved handling
+            String contactName = ContactUtils.getContactName(context, address);
+            // Ensure we never set string "null" - keep it as actual null if no contact found
+            if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+                contactName = null;
+            }
+            conversation.setContactName(contactName);
+
+            // Count unread messages
+            int unreadCount = countUnreadMessages(threadId);
+            conversation.setUnreadCount(unreadCount);
+
+            return conversation;
+        }
+
+        return null;
     }
 
     /**

@@ -204,23 +204,24 @@ public class OptimizedConversationService {
     }
     
     /**
-     * Loads conversation details using a more efficient single-query approach.
+     * Loads conversation details using a more efficient approach that correctly handles
+     * both SMS and MMS messages to find the most recent message.
      */
     private Conversation loadConversationDetailsEfficient(String threadId) {
         ContentResolver contentResolver = context.getContentResolver();
         
-        // Use standard ContentResolver queries instead of raw SQL
-        // First, get the latest SMS message for this thread
+        // Variables to track the most recent message (SMS or MMS)
         String address = null;
         String snippet = null;
-        long date = 0;
+        long latestDate = 0;
         boolean read = true;
         int unreadCount = 0;
+        boolean isMms = false;
         
         try {
-            // Query SMS messages for this thread
+            // First, query SMS messages for this thread
             Uri smsUri = Telephony.Sms.CONTENT_URI;
-            String[] projection = {
+            String[] smsProjection = {
                 Telephony.Sms.ADDRESS,
                 Telephony.Sms.BODY,
                 Telephony.Sms.DATE,
@@ -230,16 +231,50 @@ public class OptimizedConversationService {
             String[] selectionArgs = {threadId};
             String sortOrder = Telephony.Sms.DATE + " DESC LIMIT 1";
             
-            try (Cursor cursor = contentResolver.query(smsUri, projection, selection, selectionArgs, sortOrder)) {
+            try (Cursor cursor = contentResolver.query(smsUri, smsProjection, selection, selectionArgs, sortOrder)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     address = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
                     snippet = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY));
-                    date = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                    latestDate = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE));
                     read = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1;
                 }
             }
             
-            // Get unread count for this thread
+            // Now check MMS messages to see if any are more recent than the latest SMS
+            Uri mmsUri = Telephony.Mms.CONTENT_URI;
+            String[] mmsProjection = {
+                Telephony.Mms.DATE,
+                Telephony.Mms.READ
+            };
+            String mmsSelection = Telephony.Mms.THREAD_ID + " = ?";
+            String mmsSortOrder = Telephony.Mms.DATE + " DESC LIMIT 1";
+            
+            try (Cursor mmsCursor = contentResolver.query(mmsUri, mmsProjection, mmsSelection, selectionArgs, mmsSortOrder)) {
+                if (mmsCursor != null && mmsCursor.moveToFirst()) {
+                    long mmsDate = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
+                    
+                    // If MMS is more recent than SMS (or if we have no SMS), use MMS data
+                    if (mmsDate > latestDate || address == null) {
+                        Log.d(TAG, "Using MMS message as most recent for thread " + threadId + 
+                              ". MMS date: " + mmsDate + ", SMS date: " + latestDate);
+                        latestDate = mmsDate;
+                        read = mmsCursor.getInt(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
+                        snippet = "[MMS]";
+                        isMms = true;
+                        
+                        // For MMS, we need to get the address from a different table
+                        // This is a simplified approach - in production you'd query the MMS address table
+                        if (address == null) {
+                            address = "Unknown";
+                        }
+                    } else {
+                        Log.d(TAG, "Using SMS message as most recent for thread " + threadId + 
+                              ". SMS date: " + latestDate + ", MMS date: " + mmsDate);
+                    }
+                }
+            }
+            
+            // Get unread count for SMS messages in this thread
             String unreadSelection = Telephony.Sms.THREAD_ID + " = ? AND " + Telephony.Sms.READ + " = 0";
             try (Cursor unreadCursor = contentResolver.query(smsUri, new String[]{"COUNT(*)"}, unreadSelection, selectionArgs, null)) {
                 if (unreadCursor != null && unreadCursor.moveToFirst()) {
@@ -247,27 +282,11 @@ public class OptimizedConversationService {
                 }
             }
             
-            // If we didn't find SMS data, try MMS
-            if (address == null) {
-                // Check MMS messages for this thread
-                Uri mmsUri = Telephony.Mms.CONTENT_URI;
-                String[] mmsProjection = {
-                    Telephony.Mms.DATE,
-                    Telephony.Mms.READ
-                };
-                String mmsSelection = Telephony.Mms.THREAD_ID + " = ?";
-                String mmsSortOrder = Telephony.Mms.DATE + " DESC LIMIT 1";
-                
-                try (Cursor mmsCursor = contentResolver.query(mmsUri, mmsProjection, mmsSelection, selectionArgs, mmsSortOrder)) {
-                    if (mmsCursor != null && mmsCursor.moveToFirst()) {
-                        date = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE)) * 1000; // Convert to milliseconds
-                        read = mmsCursor.getInt(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.READ)) == 1;
-                        snippet = "[MMS]";
-                        
-                        // For MMS, we need to get the address from a different table
-                        // This is a simplified approach - in production you'd query the MMS address table
-                        address = "Unknown";
-                    }
+            // Add unread MMS count
+            String mmsUnreadSelection = Telephony.Mms.THREAD_ID + " = ? AND " + Telephony.Mms.READ + " = 0";
+            try (Cursor mmsUnreadCursor = contentResolver.query(mmsUri, new String[]{"COUNT(*)"}, mmsUnreadSelection, selectionArgs, null)) {
+                if (mmsUnreadCursor != null && mmsUnreadCursor.moveToFirst()) {
+                    unreadCount += mmsUnreadCursor.getInt(0);
                 }
             }
             
@@ -277,7 +296,7 @@ public class OptimizedConversationService {
                 conversation.setAddress(address);
                 conversation.setSnippet(snippet != null ? snippet : "");
                 conversation.setLastMessage(snippet != null ? snippet : "");
-                conversation.setDate(date);
+                conversation.setDate(latestDate);
                 conversation.setRead(read);
                 conversation.setUnreadCount(unreadCount);
                 
