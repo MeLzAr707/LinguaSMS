@@ -9,6 +9,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
@@ -49,9 +50,24 @@ public class OfflineModelAdapter extends RecyclerView.Adapter<OfflineModelAdapte
         return models.size();
     }
     
+    /**
+     * Updates the models list using DiffUtil for efficient RecyclerView updates.
+     * This method calculates the difference between the old and new model lists
+     * and only updates the items that have changed, improving performance.
+     *
+     * @param newModels The new list of offline models to display
+     */
     public void updateModels(List<OfflineModelInfo> newModels) {
+        if (newModels == null) {
+            return;
+        }
+        
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+                new OfflineModelDiffCallback(models, newModels));
+        
         this.models = newModels;
-        notifyDataSetChanged();
+        
+        diffResult.dispatchUpdatesTo(this);
     }
     
     public void updateProgress(OfflineModelInfo model, int progress) {

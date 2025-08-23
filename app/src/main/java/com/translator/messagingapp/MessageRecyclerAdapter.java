@@ -13,6 +13,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -617,6 +618,27 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
 
         return body;
+    }
+
+    /**
+     * Updates the messages list using DiffUtil for efficient RecyclerView updates.
+     * This method calculates the difference between the old and new message lists
+     * and only updates the items that have changed, improving performance.
+     *
+     * @param newMessages The new list of messages to display
+     */
+    public void updateMessages(List<Message> newMessages) {
+        if (newMessages == null) {
+            return;
+        }
+        
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+                new MessageDiffCallback(messages, newMessages));
+        
+        messages.clear();
+        messages.addAll(newMessages);
+        
+        diffResult.dispatchUpdatesTo(this);
     }
 
     /**

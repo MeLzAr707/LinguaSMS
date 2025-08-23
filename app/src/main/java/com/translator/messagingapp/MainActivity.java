@@ -431,9 +431,8 @@ public class MainActivity extends BaseActivity
         currentPage = 0;
         hasMoreConversations = true;
         
-        // Clear existing conversations for fresh load
-        conversations.clear();
-        conversationAdapter.notifyDataSetChanged();
+        // Clear existing conversations for fresh load and update with empty list
+        conversationAdapter.updateConversations(new ArrayList<>());
         
         // Load first page of conversations
         loadMoreConversations();
@@ -477,8 +476,8 @@ public class MainActivity extends BaseActivity
                         
                         // Notify adapter of new items
                         if (currentPage == 0) {
-                            // First load - notify entire dataset changed
-                            conversationAdapter.notifyDataSetChanged();
+                            // First load - use DiffUtil for efficient updates
+                            conversationAdapter.updateConversations(new ArrayList<>(conversations));
                         } else {
                             // Subsequent loads - notify items inserted
                             conversationAdapter.notifyItemRangeInserted(oldSize, loadedConversations.size());
@@ -571,14 +570,12 @@ public class MainActivity extends BaseActivity
                 // Update UI on main thread
                 List<Conversation> finalLoadedConversations = loadedConversations;
                 runOnUiThread(() -> {
-                    // Clear existing conversations and add loaded ones
-                    conversations.clear();
+                    // Update UI with DiffUtil for better performance
+                    List<Conversation> newConversations = new ArrayList<>();
                     if (finalLoadedConversations != null) {
-                        conversations.addAll(finalLoadedConversations);
+                        newConversations.addAll(finalLoadedConversations);
                     }
-
-                    // Update UI
-                    conversationAdapter.notifyDataSetChanged();
+                    conversationAdapter.updateConversations(newConversations);
                     hideLoadingIndicator();
                     isLoading = false;
                     hasMoreConversations = false; // No pagination in fallback mode
@@ -782,14 +779,15 @@ public class MainActivity extends BaseActivity
                     hideLoadingIndicator();
 
                     if (success) {
-                        // Remove from list and update UI
-                        conversations.remove(position);
-                        conversationAdapter.notifyDataSetChanged();
+                        // Create updated list without deleted conversation
+                        List<Conversation> updatedConversations = new ArrayList<>(conversations);
+                        updatedConversations.remove(position);
+                        conversationAdapter.updateConversations(updatedConversations);
 
                         Toast.makeText(MainActivity.this, R.string.conversation_deleted, Toast.LENGTH_SHORT).show();
 
                         // Show empty state if no conversations left
-                        if (conversations.isEmpty()) {
+                        if (updatedConversations.isEmpty()) {
                             emptyStateTextView.setText(R.string.no_conversations);
                             emptyStateTextView.setVisibility(View.VISIBLE);
                         }
