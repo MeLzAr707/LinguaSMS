@@ -14,7 +14,7 @@ else
     echo "   ✗ PhoneUtils.isDefaultSmsApp check NOT found in MessageService"
 fi
 
-if grep -q "Not default SMS app, manually storing message" app/src/main/java/com/translator/messagingapp/MessageService.java; then
+if grep -q "Default SMS app - manually storing message" app/src/main/java/com/translator/messagingapp/MessageService.java; then
     echo "   ✓ Found conditional storage logic with proper logging"
 else
     echo "   ✗ Conditional storage logic NOT found"
@@ -63,13 +63,14 @@ echo
 
 # Summary
 echo "=== Summary ==="
-echo "The fix addresses duplicate received messages by:"
-echo "• Only manually storing SMS messages when app is NOT the default SMS app"
+echo "The fix addresses reversed SMS message storage logic by:"
+echo "• Manually storing SMS messages when app IS the default SMS app (app responsibility)"
+echo "• Relying on Android system storage when app is NOT the default SMS app"
 echo "• Ensuring MainActivity receives MESSAGE_RECEIVED broadcasts via LocalBroadcastManager"
-echo "• Adding comprehensive test coverage for the fix"
+echo "• Adding comprehensive test coverage for the corrected logic"
 echo
-echo "This prevents duplicate message storage that occurred when Android system"
-echo "and our app both stored the same incoming SMS message."
+echo "This ensures proper message handling according to Android SMS system requirements"
+echo "where default SMS apps are responsible for storing incoming messages."
 echo
 
 echo "Verification complete!"
