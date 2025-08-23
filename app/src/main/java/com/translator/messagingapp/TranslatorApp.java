@@ -210,12 +210,32 @@ public class TranslatorApp extends Application {
 
 
     /**
-     * Checks if the app has a valid API key.
+     * Checks if the app has offline translation capability.
      *
-     * @return true if a valid API key is available, false otherwise
+     * @return true if offline translation models are available, false otherwise
+     */
+    public boolean hasOfflineTranslationCapability() {
+        if (translationManager != null) {
+            OfflineTranslationService offlineService = translationManager.getOfflineTranslationService();
+            if (offlineService != null) {
+                // Check if any offline models are downloaded
+                return offlineService.hasAnyDownloadedModels();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the app has a valid API key or offline translation capability.
+     *
+     * @return true if a valid API key is available or offline translation is possible, false otherwise
      */
     public boolean hasValidApiKey() {
-        return translationService != null && translationService.hasApiKey();
+        // Allow translation if we have either online API key OR offline capability
+        boolean hasOnlineCapability = translationService != null && translationService.hasApiKey();
+        boolean hasOfflineCapability = hasOfflineTranslationCapability();
+        
+        return hasOnlineCapability || hasOfflineCapability;
     }
 
     private void schedulePeriodicCacheMaintenance() {

@@ -242,6 +242,15 @@ public class OfflineTranslationService {
     }
 
     /**
+     * Checks if any offline models are downloaded.
+     *
+     * @return true if at least one language model is downloaded, false otherwise
+     */
+    public boolean hasAnyDownloadedModels() {
+        return !downloadedModels.isEmpty();
+    }
+
+    /**
      * Converts standard language codes to MLKit language codes.
      *
      * @param languageCode The standard language code
