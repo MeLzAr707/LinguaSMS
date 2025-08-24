@@ -610,6 +610,11 @@ public class TranslationManager {
             default:
                 // In auto mode, check if offline is available and preferred
                 if (preferOffline && offlineTranslationService != null) {
+                    // If source language is not yet known (null), return true to try offline detection
+                    // The actual availability check will happen later when both languages are known
+                    if (sourceLanguage == null) {
+                        return true;
+                    }
                     return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
                 }
                 return false;
