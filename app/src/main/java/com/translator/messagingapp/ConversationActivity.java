@@ -725,7 +725,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Translate in background
         executorService.execute(() -> {
-            translationManager.translateText(message.getBody(), targetLanguage, (success, translatedText, errorMessage) -> {
+            translationManager.translateText(message.getBody(), targetLanguage, (success, translatedText, errorMessage) -> {, true
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
 
