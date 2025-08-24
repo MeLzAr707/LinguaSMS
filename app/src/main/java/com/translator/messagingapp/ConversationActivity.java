@@ -717,8 +717,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             return;
         }
 
-        // Get target language
-        String targetLanguage = userPreferences.getPreferredLanguage();
+        // Get target language (use same logic as input translation)
+        String targetLanguage = userPreferences.getPreferredOutgoingLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            targetLanguage = userPreferences.getPreferredLanguage();
+        }
 
         // Show translation in progress
         showLoadingIndicator();
