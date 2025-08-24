@@ -685,6 +685,16 @@ public class TranslationManager {
     }
 
     /**
+     * Refreshes the offline translation service to pick up any newly downloaded models.
+     * This should be called after models are downloaded/deleted via OfflineModelManager.
+     */
+    public void refreshOfflineModels() {
+        if (offlineTranslationService != null) {
+            offlineTranslationService.refreshDownloadedModels();
+        }
+    }
+
+    /**
      * Cleans up resources.
      */
     public void cleanup() {

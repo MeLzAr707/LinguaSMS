@@ -1,6 +1,7 @@
 package com.translator.messagingapp;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.google.android.gms.tasks.Task;
@@ -24,6 +25,10 @@ import java.util.concurrent.TimeoutException;
 public class OfflineTranslationService {
     private static final String TAG = "OfflineTranslationService";
     private static final int OPERATION_TIMEOUT_SECONDS = 30;
+    
+    // Use same preferences as OfflineModelManager for synchronization
+    private static final String OFFLINE_MODELS_PREFS = "offline_models";
+    private static final String KEY_DOWNLOADED_MODELS = "downloaded_models";
 
     private final Context context;
     private final UserPreferences userPreferences;
@@ -174,6 +179,10 @@ public class OfflineTranslationService {
                     Log.d(TAG, "Language model downloaded successfully: " + mlkitLanguageCode);
                     downloadedModels.add(mlkitLanguageCode);
                     saveDownloadedModels();
+                    
+                    // Refresh the model list to ensure synchronization
+                    loadDownloadedModels();
+                    
                     if (callback != null) {
                         callback.onDownloadComplete(true, languageCode, null);
                     }
@@ -306,20 +315,84 @@ public class OfflineTranslationService {
     }
 
     /**
-     * Loads the list of downloaded models from preferences.
+     * Converts MLKit language codes back to standard language codes.
+     *
+     * @param mlkitLanguageCode The MLKit language code
+     * @return The standard language code, or null if not recognized
+     */
+    private String convertFromMLKitLanguageCode(String mlkitLanguageCode) {
+        if (mlkitLanguageCode == null) {
+            return null;
+        }
+
+        // Map MLKit codes back to standard language codes
+        switch (mlkitLanguageCode) {
+            case TranslateLanguage.ENGLISH: return "en";
+            case TranslateLanguage.SPANISH: return "es";
+            case TranslateLanguage.FRENCH: return "fr";
+            case TranslateLanguage.GERMAN: return "de";
+            case TranslateLanguage.ITALIAN: return "it";
+            case TranslateLanguage.PORTUGUESE: return "pt";
+            case TranslateLanguage.RUSSIAN: return "ru";
+            case TranslateLanguage.CHINESE: return "zh";
+            case TranslateLanguage.JAPANESE: return "ja";
+            case TranslateLanguage.KOREAN: return "ko";
+            case TranslateLanguage.ARABIC: return "ar";
+            case TranslateLanguage.HINDI: return "hi";
+            case TranslateLanguage.DUTCH: return "nl";
+            case TranslateLanguage.SWEDISH: return "sv";
+            case TranslateLanguage.DANISH: return "da";
+            case TranslateLanguage.NORWEGIAN: return "no";
+            case TranslateLanguage.FINNISH: return "fi";
+            case TranslateLanguage.POLISH: return "pl";
+            case TranslateLanguage.CZECH: return "cs";
+            case TranslateLanguage.SLOVAK: return "sk";
+            case TranslateLanguage.HUNGARIAN: return "hu";
+            case TranslateLanguage.ROMANIAN: return "ro";
+            case TranslateLanguage.BULGARIAN: return "bg";
+            case TranslateLanguage.CROATIAN: return "hr";
+            case TranslateLanguage.SLOVENIAN: return "sl";
+            case TranslateLanguage.ESTONIAN: return "et";
+            case TranslateLanguage.LATVIAN: return "lv";
+            case TranslateLanguage.LITHUANIAN: return "lt";
+            case TranslateLanguage.THAI: return "th";
+            case TranslateLanguage.VIETNAMESE: return "vi";
+            case TranslateLanguage.INDONESIAN: return "id";
+            case TranslateLanguage.MALAY: return "ms";
+            case TranslateLanguage.TAGALOG: return "tl";
+            case TranslateLanguage.SWAHILI: return "sw";
+            case TranslateLanguage.TURKISH: return "tr";
+            case TranslateLanguage.HEBREW: return "he";
+            case TranslateLanguage.PERSIAN: return "fa";
+            case TranslateLanguage.URDU: return "ur";
+            case TranslateLanguage.BENGALI: return "bn";
+            case TranslateLanguage.GUJARATI: return "gu";
+            case TranslateLanguage.KANNADA: return "kn";
+            case TranslateLanguage.MARATHI: return "mr";
+            case TranslateLanguage.TAMIL: return "ta";
+            case TranslateLanguage.TELUGU: return "te";
+            default: return null; // Unknown MLKit language code
+        }
+    }
+     * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
      */
     private void loadDownloadedModels() {
         try {
-            String modelsString = userPreferences.getString("downloaded_offline_models", "");
-            if (!modelsString.isEmpty()) {
-                String[] models = modelsString.split(",");
-                for (String model : models) {
-                    if (!model.trim().isEmpty()) {
-                        downloadedModels.add(model.trim());
-                    }
+            // Use same SharedPreferences as OfflineModelManager
+            SharedPreferences modelPrefs = context.getSharedPreferences(OFFLINE_MODELS_PREFS, Context.MODE_PRIVATE);
+            Set<String> rawDownloadedModels = modelPrefs.getStringSet(KEY_DOWNLOADED_MODELS, new HashSet<>());
+            
+            // Convert raw language codes to MLKit format for internal use
+            downloadedModels.clear();
+            for (String rawCode : rawDownloadedModels) {
+                String mlkitCode = convertToMLKitLanguageCode(rawCode);
+                if (mlkitCode != null) {
+                    downloadedModels.add(mlkitCode);
+                    Log.d(TAG, "Loaded model: " + rawCode + " -> " + mlkitCode);
                 }
             }
-            Log.d(TAG, "Loaded " + downloadedModels.size() + " downloaded models");
+            
+            Log.d(TAG, "Loaded " + downloadedModels.size() + " downloaded models from OfflineModelManager prefs");
         } catch (Exception e) {
             Log.e(TAG, "Error loading downloaded models", e);
         }
@@ -327,21 +400,37 @@ public class OfflineTranslationService {
 
     /**
      * Saves the list of downloaded models to preferences.
+     * Now saves to the same SharedPreferences as OfflineModelManager for synchronization.
      */
     private void saveDownloadedModels() {
         try {
-            StringBuilder modelsString = new StringBuilder();
-            for (String model : downloadedModels) {
-                if (modelsString.length() > 0) {
-                    modelsString.append(",");
+            // Convert MLKit codes back to raw language codes for storage
+            Set<String> rawCodes = new HashSet<>();
+            for (String mlkitCode : downloadedModels) {
+                String rawCode = convertFromMLKitLanguageCode(mlkitCode);
+                if (rawCode != null) {
+                    rawCodes.add(rawCode);
                 }
-                modelsString.append(model);
             }
-            userPreferences.setString("downloaded_offline_models", modelsString.toString());
-            Log.d(TAG, "Saved " + downloadedModels.size() + " downloaded models");
+            
+            // Save to same SharedPreferences as OfflineModelManager
+            SharedPreferences modelPrefs = context.getSharedPreferences(OFFLINE_MODELS_PREFS, Context.MODE_PRIVATE);
+            modelPrefs.edit().putStringSet(KEY_DOWNLOADED_MODELS, rawCodes).apply();
+            
+            Log.d(TAG, "Saved " + rawCodes.size() + " downloaded models to OfflineModelManager prefs");
         } catch (Exception e) {
             Log.e(TAG, "Error saving downloaded models", e);
         }
+    }
+
+    /**
+     * Refreshes the list of downloaded models from SharedPreferences.
+     * This method should be called when models are downloaded/deleted via OfflineModelManager
+     * to ensure synchronization between the two systems.
+     */
+    public void refreshDownloadedModels() {
+        loadDownloadedModels();
+        Log.d(TAG, "Refreshed downloaded models list");
     }
 
     /**
