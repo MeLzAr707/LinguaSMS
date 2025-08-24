@@ -107,12 +107,20 @@ public class OfflineModelsActivity extends BaseActivity {
         }
         
         try {
-            List<OfflineModelInfo> models = modelManager.getAvailableModels();
-            if (models.isEmpty()) {
-                showNoModelsMessage();
-            } else {
-                showModels(models);
-            }
+            // Sync with MLKit to ensure accurate state
+            new Thread(() -> {
+                modelManager.syncWithMLKit();
+                runOnUiThread(() -> {
+                    // Reload models after sync
+                    List<OfflineModelInfo> models = modelManager.getAvailableModels();
+                    if (models.isEmpty()) {
+                        showNoModelsMessage();
+                    } else {
+                        showModels(models);
+                    }
+                });
+            }).start();
+            
         } catch (Exception e) {
             Log.e(TAG, "Error loading offline models", e);
             showNoModelsMessage();
@@ -159,6 +167,11 @@ public class OfflineModelsActivity extends BaseActivity {
                         if (translationManager != null) {
                             translationManager.refreshOfflineModels();
                         }
+                        
+                        // Sync model manager state with MLKit
+                        if (modelManager != null) {
+                            new Thread(() -> modelManager.syncWithMLKit()).start();
+                        }
                     });
                 }
                 
@@ -193,6 +206,11 @@ public class OfflineModelsActivity extends BaseActivity {
                 // Refresh the translation service to remove the deleted model
                 if (translationManager != null) {
                     translationManager.refreshOfflineModels();
+                }
+                
+                // Sync model manager state with MLKit
+                if (modelManager != null) {
+                    new Thread(() -> modelManager.syncWithMLKit()).start();
                 }
             } else {
                 Toast.makeText(this, getString(R.string.model_delete_error, "Unknown error"), Toast.LENGTH_LONG).show();

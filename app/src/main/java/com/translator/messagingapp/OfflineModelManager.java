@@ -182,6 +182,7 @@ public class OfflineModelManager {
     
     /**
      * Check if a model is downloaded.
+     * This method now synchronizes with MLKit to ensure accuracy.
      */
     public boolean isModelDownloaded(String languageCode) {
         // Check both our preferences and the actual MLKit availability
@@ -191,24 +192,64 @@ public class OfflineModelManager {
         // Also check with OfflineTranslationService to ensure MLKit has the model
         boolean inMLKit = offlineTranslationService.isLanguageModelDownloaded(languageCode);
         
-        // If there's a mismatch, log it and sync
+        // If there's a mismatch, log it and sync only if it's safe to do so
         if (inPrefs != inMLKit) {
             Log.w(TAG, "Model tracking mismatch for " + languageCode + 
                   ": prefs=" + inPrefs + ", MLKit=" + inMLKit);
             
-            // Trust MLKit as the source of truth
+            // Only sync if MLKit has the model but we don't track it
+            // (Don't remove from prefs immediately as model might be downloading)
             if (inMLKit && !inPrefs) {
-                // Model exists in MLKit but not tracked in prefs - add it
                 saveDownloadedModel(languageCode);
                 Log.d(TAG, "Synced model to preferences: " + languageCode);
-            } else if (!inMLKit && inPrefs) {
-                // Model tracked in prefs but not in MLKit - remove from prefs
-                removeDownloadedModel(languageCode);
-                Log.d(TAG, "Removed stale model from preferences: " + languageCode);
             }
         }
         
+        // Return the more authoritative source (MLKit)
         return inMLKit;
+    }
+    
+    /**
+     * Performs a full synchronization of model state with MLKit.
+     * This should be called periodically or after download operations.
+     */
+    public void syncWithMLKit() {
+        try {
+            Set<String> prefsModels = new HashSet<>(getDownloadedModelCodes());
+            Set<String> actualModels = new HashSet<>();
+            
+            // Check each language we support to see if MLKit has it
+            String[] supportedLanguages = {"en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", 
+                "zh", "ar", "hi", "nl", "sv", "fi", "da", "no", "pl", "tr", "el", "th", "vi", "id", "he"};
+            
+            for (String lang : supportedLanguages) {
+                if (offlineTranslationService.isLanguageModelDownloaded(lang)) {
+                    actualModels.add(lang);
+                }
+            }
+            
+            // Sync preferences to match MLKit reality
+            for (String lang : actualModels) {
+                if (!prefsModels.contains(lang)) {
+                    saveDownloadedModel(lang);
+                    Log.d(TAG, "Added missing model to preferences: " + lang);
+                }
+            }
+            
+            // Remove stale entries (models we think we have but MLKit doesn't)
+            for (String lang : prefsModels) {
+                if (!actualModels.contains(lang)) {
+                    removeDownloadedModel(lang);
+                    Log.d(TAG, "Removed stale model from preferences: " + lang);
+                }
+            }
+            
+            Log.d(TAG, "Sync complete. MLKit models: " + actualModels.size() + 
+                      ", Preference models: " + actualModels.size());
+                      
+        } catch (Exception e) {
+            Log.e(TAG, "Error during MLKit sync", e);
+        }
     }
     
     /**
