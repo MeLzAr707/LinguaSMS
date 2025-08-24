@@ -143,7 +143,7 @@ public class OfflineTranslationService {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
-                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
+                    if (errorMsg.contains("model") && (errorMsg.contains("download") || errorMsg.contains("not found") || errorMsg.contains("file"))) {
                         Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
                         return false;
                     }
@@ -187,8 +187,11 @@ public class OfflineTranslationService {
 
         // Check if models are available
         if (!isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+            String errorMessage = String.format("Translation models not available for %s -> %s. " +
+                "Please download the required language models first.", sourceLanguage, targetLanguage);
+            Log.w(TAG, errorMessage);
             if (callback != null) {
-                callback.onTranslationComplete(false, null, "Language models not downloaded");
+                callback.onTranslationComplete(false, null, errorMessage);
             }
             return;
         }
@@ -210,9 +213,18 @@ public class OfflineTranslationService {
                     }
                 })
                 .addOnFailureListener(exception -> {
-                    Log.e(TAG, "Offline translation failed", exception);
+                    String errorMessage = "Offline translation failed";
+                    if (exception.getMessage() != null) {
+                        String exMsg = exception.getMessage().toLowerCase();
+                        if (exMsg.contains("model") && (exMsg.contains("download") || exMsg.contains("not found"))) {
+                            errorMessage = "Translation model files not found. Make sure to call downloadModelIfNeeded and if that fails, delete the models and retry.";
+                        } else {
+                            errorMessage = "Offline translation failed: " + exception.getMessage();
+                        }
+                    }
+                    Log.e(TAG, errorMessage, exception);
                     if (callback != null) {
-                        callback.onTranslationComplete(false, null, exception.getMessage());
+                        callback.onTranslationComplete(false, null, errorMessage);
                     }
                 });
     }

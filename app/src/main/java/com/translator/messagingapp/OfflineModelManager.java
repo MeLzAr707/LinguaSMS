@@ -20,6 +20,7 @@ public class OfflineModelManager {
     
     private Context context;
     private SharedPreferences preferences;
+    private OfflineTranslationService offlineTranslationService;
     
     public interface DownloadListener {
         void onProgress(int progress);
@@ -30,6 +31,10 @@ public class OfflineModelManager {
     public OfflineModelManager(Context context) {
         this.context = context;
         this.preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        
+        // Initialize offline translation service for actual MLKit integration
+        UserPreferences userPrefs = new UserPreferences(context);
+        this.offlineTranslationService = new OfflineTranslationService(context, userPrefs);
     }
     
     /**
@@ -85,15 +90,55 @@ public class OfflineModelManager {
         }
         
         model.setDownloading(true);
+        Log.d(TAG, "Starting actual MLKit download for model: " + model.getLanguageCode());
         
-        // Simulate download process in a background thread
+        // Use OfflineTranslationService to actually download the MLKit model
+        offlineTranslationService.downloadLanguageModel(model.getLanguageCode(), 
+            new OfflineTranslationService.ModelDownloadCallback() {
+                @Override
+                public void onDownloadComplete(boolean success, String languageCode, String errorMessage) {
+                    model.setDownloading(false);
+                    
+                    if (success) {
+                        model.setDownloaded(true);
+                        
+                        // Save to preferences (this is handled by OfflineTranslationService, but ensure sync)
+                        saveDownloadedModel(model.getLanguageCode());
+                        
+                        // Create placeholder file for UI consistency
+                        createModelFile(model);
+                        
+                        Log.d(TAG, "MLKit model download completed for: " + languageCode);
+                        
+                        if (listener != null) {
+                            listener.onSuccess();
+                        }
+                    } else {
+                        Log.e(TAG, "MLKit model download failed for " + languageCode + ": " + errorMessage);
+                        if (listener != null) {
+                            listener.onError("Download failed: " + errorMessage);
+                        }
+                    }
+                }
+                
+                @Override
+                public void onDownloadProgress(String languageCode, int progress) {
+                    // MLKit doesn't provide detailed progress, so simulate it
+                    model.setDownloadProgress(progress);
+                    if (listener != null) {
+                        listener.onProgress(progress);
+                    }
+                }
+            });
+        
+        // Since MLKit doesn't provide real-time progress, simulate progress updates
         new Thread(() -> {
             try {
-                Log.d(TAG, "Starting download for model: " + model.getLanguageCode());
-                
-                // Simulate download progress
-                for (int progress = 0; progress <= 100; progress += 10) {
-                    Thread.sleep(500); // Simulate download time
+                for (int progress = 10; progress <= 90; progress += 10) {
+                    if (!model.isDownloading()) {
+                        break; // Download completed or failed
+                    }
+                    Thread.sleep(1000); // Update every second
                     
                     final int currentProgress = progress;
                     model.setDownloadProgress(currentProgress);
@@ -102,35 +147,8 @@ public class OfflineModelManager {
                         listener.onProgress(currentProgress);
                     }
                 }
-                
-                // Mark as downloaded
-                model.setDownloading(false);
-                model.setDownloaded(true);
-                
-                // Save to preferences
-                saveDownloadedModel(model.getLanguageCode());
-                
-                // Create placeholder file
-                createModelFile(model);
-                
-                Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
-                
-                if (listener != null) {
-                    listener.onSuccess();
-                }
-                
             } catch (InterruptedException e) {
-                Log.e(TAG, "Download interrupted", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download interrupted");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Download failed", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download failed: " + e.getMessage());
-                }
+                Log.w(TAG, "Progress simulation interrupted", e);
             }
         }).start();
     }
@@ -144,13 +162,16 @@ public class OfflineModelManager {
                 return false;
             }
             
+            // Delete the actual MLKit model
+            offlineTranslationService.deleteLanguageModel(model.getLanguageCode());
+            
             // Remove from preferences
             removeDownloadedModel(model.getLanguageCode());
             
-            // Delete model file
+            // Delete placeholder model file
             deleteModelFile(model);
             
-            Log.d(TAG, "Model deleted: " + model.getLanguageCode());
+            Log.d(TAG, "Model deleted (including MLKit model): " + model.getLanguageCode());
             return true;
             
         } catch (Exception e) {
@@ -163,8 +184,31 @@ public class OfflineModelManager {
      * Check if a model is downloaded.
      */
     public boolean isModelDownloaded(String languageCode) {
+        // Check both our preferences and the actual MLKit availability
         Set<String> downloadedModels = getDownloadedModelCodes();
-        return downloadedModels.contains(languageCode);
+        boolean inPrefs = downloadedModels.contains(languageCode);
+        
+        // Also check with OfflineTranslationService to ensure MLKit has the model
+        boolean inMLKit = offlineTranslationService.isLanguageModelDownloaded(languageCode);
+        
+        // If there's a mismatch, log it and sync
+        if (inPrefs != inMLKit) {
+            Log.w(TAG, "Model tracking mismatch for " + languageCode + 
+                  ": prefs=" + inPrefs + ", MLKit=" + inMLKit);
+            
+            // Trust MLKit as the source of truth
+            if (inMLKit && !inPrefs) {
+                // Model exists in MLKit but not tracked in prefs - add it
+                saveDownloadedModel(languageCode);
+                Log.d(TAG, "Synced model to preferences: " + languageCode);
+            } else if (!inMLKit && inPrefs) {
+                // Model tracked in prefs but not in MLKit - remove from prefs
+                removeDownloadedModel(languageCode);
+                Log.d(TAG, "Removed stale model from preferences: " + languageCode);
+            }
+        }
+        
+        return inMLKit;
     }
     
     /**
