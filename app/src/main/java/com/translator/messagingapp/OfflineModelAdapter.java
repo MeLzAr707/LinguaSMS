@@ -74,7 +74,16 @@ public class OfflineModelAdapter extends RecyclerView.Adapter<OfflineModelAdapte
         int position = models.indexOf(model);
         if (position != -1) {
             model.setDownloadProgress(progress);
-            model.setDownloading(progress >= 0 && progress < 100);
+            // Keep downloading state true until success callback explicitly sets it to false
+            // This ensures progress bar shows 100% while still in downloading state
+            if (progress < 0) {
+                // Hide progress (error case)
+                model.setDownloading(false);
+            } else if (progress < 100) {
+                // Still downloading
+                model.setDownloading(true);
+            }
+            // For progress == 100, don't change downloading state - let success callback handle it
             notifyItemChanged(position);
         }
     }

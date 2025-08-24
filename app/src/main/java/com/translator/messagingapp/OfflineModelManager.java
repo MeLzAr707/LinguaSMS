@@ -103,6 +103,9 @@ public class OfflineModelManager {
                     }
                 }
                 
+                // Add a small delay after 100% progress to ensure UI thread processes it
+                Thread.sleep(200);
+                
                 // Mark as downloaded
                 model.setDownloading(false);
                 model.setDownloaded(true);

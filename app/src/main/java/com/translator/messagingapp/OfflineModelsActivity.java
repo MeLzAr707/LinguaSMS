@@ -150,10 +150,14 @@ public class OfflineModelsActivity extends BaseActivity {
                 @Override
                 public void onSuccess() {
                     runOnUiThread(() -> {
-                        Toast.makeText(OfflineModelsActivity.this, 
-                            getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
+                        // Ensure final progress state is set correctly
+                        model.setDownloadProgress(100);
+                        model.setDownloading(false);
                         model.setDownloaded(true);
                         modelAdapter.notifyDataSetChanged();
+                        
+                        Toast.makeText(OfflineModelsActivity.this, 
+                            getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
                         
                         // Refresh the translation service to pick up the new model
                         if (translationManager != null) {
