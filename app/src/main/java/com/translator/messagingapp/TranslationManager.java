@@ -222,7 +222,8 @@ public class TranslationManager {
                 } else {
                     // No API key available, check if we can use offline translation as fallback
                     if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                        (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
+                        (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) ||
+                        (offlineTranslationService != null && offlineTranslationService.isOfflineTranslationAvailable(finalSourceLanguage, targetLanguage))) {
                         // Try offline translation as fallback
                         translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
@@ -611,6 +612,12 @@ public class TranslationManager {
                 // In auto mode, check if offline is available and preferred
                 if (preferOffline && offlineTranslationService != null) {
                     return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
+                }
+                // If online service is not available (no API key), prefer offline if models are available
+                if (translationService == null || !translationService.hasApiKey()) {
+                    if (offlineTranslationService != null) {
+                        return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
+                    }
                 }
                 return false;
         }
