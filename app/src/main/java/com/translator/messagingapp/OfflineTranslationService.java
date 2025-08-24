@@ -204,9 +204,18 @@ public class OfflineTranslationService {
         // Perform translation
         translator.translate(text)
                 .addOnSuccessListener(translatedText -> {
-                    Log.d(TAG, "Offline translation successful");
-                    if (callback != null) {
-                        callback.onTranslationComplete(true, translatedText, null);
+                    Log.d(TAG, "Offline translation successful: '" + text + "' -> '" + translatedText + "'");
+                    
+                    // Check if translation returned identical text
+                    if (text.equals(translatedText)) {
+                        Log.w(TAG, "Translation returned identical text for '" + text + "', likely model issue");
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Translation returned original text");
+                        }
+                    } else {
+                        if (callback != null) {
+                            callback.onTranslationComplete(true, translatedText, null);
+                        }
                     }
                 })
                 .addOnFailureListener(exception -> {

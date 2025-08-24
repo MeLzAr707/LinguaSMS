@@ -172,15 +172,21 @@ public class TranslationManager {
                 
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
-                    // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
-                        // For offline, we'll try English as source and let MLKit handle detection
-                        finalSourceLanguage = "en";
-                    } else if (translationService != null && translationService.hasApiKey()) {
+                    // Try online detection first if available, even for offline translation
+                    if (translationService != null && translationService.hasApiKey()) {
                         finalSourceLanguage = translationService.detectLanguage(text);
                         if (finalSourceLanguage == null) {
                             if (callback != null) {
                                 callback.onTranslationComplete(false, null, "Could not detect language");
+                            }
+                            return;
+                        }
+                    } else if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
+                        // For offline, try to infer source language based on available models
+                        finalSourceLanguage = inferSourceLanguageForOffline(text, targetLanguage);
+                        if (finalSourceLanguage == null) {
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, "Could not infer source language for offline translation");
                             }
                             return;
                         }
@@ -189,8 +195,14 @@ public class TranslationManager {
                         // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
                         if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
                             (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
-                            // Try offline translation as fallback
-                            finalSourceLanguage = "en"; // Let MLKit handle detection
+                            // Try to infer source language for offline translation
+                            finalSourceLanguage = inferSourceLanguageForOffline(text, targetLanguage);
+                            if (finalSourceLanguage == null) {
+                                if (callback != null) {
+                                    callback.onTranslationComplete(false, null, "Could not infer source language for offline translation");
+                                }
+                                return;
+                            }
                         } else {
                             if (callback != null) {
                                 callback.onTranslationComplete(false, null, "No translation service available");
@@ -686,6 +698,46 @@ public class TranslationManager {
                 callback.onTranslationComplete(false, null, "Online translation error: " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * Infers the source language for offline translation by trying common languages
+     * against the target language based on available models.
+     *
+     * @param text The text to translate
+     * @param targetLanguage The target language
+     * @return The inferred source language code, or null if unable to infer
+     */
+    private String inferSourceLanguageForOffline(String text, String targetLanguage) {
+        if (offlineTranslationService == null || text == null || text.trim().isEmpty()) {
+            return null;
+        }
+
+        // Common languages to try, ordered by likelihood
+        String[] commonLanguages = {"en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi", "nl"};
+        
+        // Try each common language to see which models are available
+        for (String sourceLanguage : commonLanguages) {
+            // Skip if source and target are the same
+            if (sourceLanguage.equals(targetLanguage)) {
+                continue;
+            }
+            
+            // Check if we have models for this language pair
+            if (offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+                Log.d(TAG, "Inferred source language for offline translation: " + sourceLanguage);
+                return sourceLanguage;
+            }
+        }
+        
+        // If no models available, try the target language as source (for reverse translation)
+        if (offlineTranslationService.isOfflineTranslationAvailable(targetLanguage, targetLanguage)) {
+            Log.d(TAG, "Using target language as source for offline translation: " + targetLanguage);
+            return targetLanguage;
+        }
+        
+        Log.w(TAG, "Could not infer source language for offline translation");
+        return null;
     }
 
     /**
