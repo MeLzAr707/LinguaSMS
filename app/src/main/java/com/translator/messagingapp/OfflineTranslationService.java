@@ -452,8 +452,8 @@ public class OfflineTranslationService {
             default: return null; // Unknown MLKit language code
         }
     }
-     * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
-     */
+   //  * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
+
     private void loadDownloadedModels() {
         try {
             // Use same SharedPreferences as OfflineModelManager
