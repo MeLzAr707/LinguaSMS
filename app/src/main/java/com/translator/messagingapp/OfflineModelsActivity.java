@@ -28,6 +28,7 @@ public class OfflineModelsActivity extends BaseActivity {
     private OfflineModelAdapter modelAdapter;
     private OfflineModelManager modelManager;
     private UserPreferences userPreferences;
+    private TranslationManager translationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +42,7 @@ public class OfflineModelsActivity extends BaseActivity {
             if (app != null) {
                 userPreferences = app.getUserPreferences();
                 modelManager = new OfflineModelManager(this);
+                translationManager = app.getTranslationManager();
             }
             
             // Setup toolbar
@@ -152,6 +154,11 @@ public class OfflineModelsActivity extends BaseActivity {
                             getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
                         model.setDownloaded(true);
                         modelAdapter.notifyDataSetChanged();
+                        
+                        // Refresh the translation service to pick up the new model
+                        if (translationManager != null) {
+                            translationManager.refreshOfflineModels();
+                        }
                     });
                 }
                 
@@ -182,6 +189,11 @@ public class OfflineModelsActivity extends BaseActivity {
                 model.setDownloaded(false);
                 modelAdapter.notifyDataSetChanged();
                 Toast.makeText(this, getString(R.string.model_delete_success), Toast.LENGTH_SHORT).show();
+                
+                // Refresh the translation service to remove the deleted model
+                if (translationManager != null) {
+                    translationManager.refreshOfflineModels();
+                }
             } else {
                 Toast.makeText(this, getString(R.string.model_delete_error, "Unknown error"), Toast.LENGTH_LONG).show();
             }
