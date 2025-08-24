@@ -79,8 +79,77 @@ public class OfflineTranslationService {
             return false;
         }
 
-        // Check if both language models are downloaded
-        return downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
+        // Check if both language models are downloaded (internal tracking)
+        boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
+        
+        // If internal tracking says models are available, verify with MLKit
+        if (internalTracking) {
+            return verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+        }
+        
+        // If internal tracking says not available, also check with MLKit in case tracking is out of sync
+        boolean mlkitAvailable = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+        if (mlkitAvailable) {
+            // Update our internal tracking to sync with MLKit
+            downloadedModels.add(sourceMLKit);
+            downloadedModels.add(targetMLKit);
+            saveDownloadedModels();
+            Log.d(TAG, "Synced internal tracking with MLKit - models were available but not tracked");
+        }
+        
+        return mlkitAvailable;
+    }
+
+    /**
+     * Verifies model availability directly with MLKit.
+     * This is more reliable than our internal tracking.
+     *
+     * @param sourceMLKit The source language code in MLKit format
+     * @param targetMLKit The target language code in MLKit format
+     * @return true if both models are available in MLKit, false otherwise
+     */
+    private boolean verifyModelAvailabilityWithMLKit(String sourceMLKit, String targetMLKit) {
+        try {
+            // Create translator to check model availability
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(sourceMLKit)
+                    .setTargetLanguage(targetMLKit)
+                    .build();
+
+            Translator translator = Translation.getClient(options);
+            
+            // Try a simple translation to test if models are available
+            // We'll use a very short timeout to avoid waiting for downloads
+            try {
+                Task<String> translateTask = translator.translate("test");
+                
+                // Wait briefly to see if translation can complete immediately
+                String result = Tasks.await(translateTask, 2, TimeUnit.SECONDS);
+                
+                // If we got a result, models are available
+                Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
+                return true;
+                
+            } catch (TimeoutException e) {
+                // Timeout likely means models need to be downloaded
+                Log.d(TAG, "MLKit model verification timeout (models likely not downloaded): " + sourceMLKit + " -> " + targetMLKit);
+                return false;
+            } catch (ExecutionException e) {
+                // Check if the error indicates missing models
+                if (e.getCause() != null && e.getCause().getMessage() != null) {
+                    String errorMsg = e.getCause().getMessage().toLowerCase();
+                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
+                        Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
+                        return false;
+                    }
+                }
+                Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying model availability with MLKit", e);
+            return false;
+        }
     }
 
     /**
