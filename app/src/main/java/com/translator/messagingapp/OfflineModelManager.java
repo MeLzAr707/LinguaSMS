@@ -4,11 +4,19 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.nl.translate.TranslateLanguage;
+import com.google.mlkit.nl.translate.Translation;
+import com.google.mlkit.nl.translate.Translator;
+import com.google.mlkit.nl.translate.TranslatorOptions;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Manages offline translation models including downloading and deletion.
@@ -234,5 +242,140 @@ public class OfflineModelManager {
         Set<String> downloadedModels = new HashSet<>(getDownloadedModelCodes());
         downloadedModels.remove(languageCode);
         preferences.edit().putStringSet(KEY_DOWNLOADED_MODELS, downloadedModels).apply();
+    }
+    
+    /**
+     * Synchronize internal model tracking with MLKit's actual model state.
+     * This method checks which models are actually available in MLKit
+     * and updates the internal tracking to match.
+     */
+    public void syncWithMLKit() {
+        Log.d(TAG, "Starting MLKit synchronization...");
+        
+        // Run synchronization in background thread to avoid blocking UI
+        new Thread(() -> {
+            try {
+                Set<String> actuallyDownloadedModels = new HashSet<>();
+                Set<String> currentTrackedModels = getDownloadedModelCodes();
+                
+                // Check each tracked model to see if it's actually available in MLKit
+                for (String languageCode : currentTrackedModels) {
+                    if (verifyModelWithMLKit(languageCode)) {
+                        actuallyDownloadedModels.add(languageCode);
+                        Log.d(TAG, "Verified model available in MLKit: " + languageCode);
+                    } else {
+                        Log.d(TAG, "Model not available in MLKit: " + languageCode);
+                    }
+                }
+                
+                // Also check if there are models available in MLKit that we're not tracking
+                // For common languages, verify if they're available in MLKit
+                String[] commonLanguages = {"en", "es", "fr", "de", "it", "pt", "ru", "ja", "ko", "zh-CN", "ar", "hi", "nl"};
+                for (String languageCode : commonLanguages) {
+                    if (!currentTrackedModels.contains(languageCode) && verifyModelWithMLKit(languageCode)) {
+                        actuallyDownloadedModels.add(languageCode);
+                        Log.d(TAG, "Found untracked model available in MLKit: " + languageCode);
+                    }
+                }
+                
+                // Update preferences with the synchronized state
+                preferences.edit().putStringSet(KEY_DOWNLOADED_MODELS, actuallyDownloadedModels).apply();
+                
+                Log.d(TAG, "MLKit synchronization complete. " + 
+                      "Previous: " + currentTrackedModels.size() + " models, " +
+                      "Current: " + actuallyDownloadedModels.size() + " models");
+                      
+            } catch (Exception e) {
+                Log.e(TAG, "Error during MLKit synchronization", e);
+            }
+        }).start();
+    }
+    
+    /**
+     * Verify if a specific language model is available in MLKit.
+     * Uses a similar pattern to OfflineTranslationService.verifyModelAvailabilityWithMLKit().
+     * 
+     * @param languageCode The language code to verify
+     * @return true if the model is available in MLKit, false otherwise
+     */
+    private boolean verifyModelWithMLKit(String languageCode) {
+        try {
+            String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+            if (mlkitLanguageCode == null) {
+                return false;
+            }
+            
+            // Create translator to check model availability
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(TranslateLanguage.ENGLISH)
+                    .setTargetLanguage(mlkitLanguageCode)
+                    .build();
+                    
+            Translator translator = Translation.getClient(options);
+            
+            try {
+                // Try a simple translation with short timeout to test if model is available
+                Task<String> translateTask = translator.translate("test");
+                Tasks.await(translateTask, 2, TimeUnit.SECONDS);
+                
+                // If we got here without exception, model is available
+                translator.close();
+                return true;
+                
+            } catch (Exception e) {
+                // Any exception likely means model is not available
+                translator.close();
+                return false;
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying model with MLKit: " + languageCode, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Convert standard language codes to MLKit language codes.
+     * This is a simplified version of the method in OfflineTranslationService.
+     * 
+     * @param languageCode The standard language code
+     * @return The MLKit language code, or null if not supported
+     */
+    private String convertToMLKitLanguageCode(String languageCode) {
+        if (languageCode == null) {
+            return null;
+        }
+        
+        // Remove region code if present (e.g., "en-US" -> "en")
+        String baseCode = languageCode.split("-")[0].toLowerCase();
+        
+        // Map common language codes to MLKit codes
+        switch (baseCode) {
+            case "en": return TranslateLanguage.ENGLISH;
+            case "es": return TranslateLanguage.SPANISH;
+            case "fr": return TranslateLanguage.FRENCH;
+            case "de": return TranslateLanguage.GERMAN;
+            case "it": return TranslateLanguage.ITALIAN;
+            case "pt": return TranslateLanguage.PORTUGUESE;
+            case "ru": return TranslateLanguage.RUSSIAN;
+            case "zh": return TranslateLanguage.CHINESE;
+            case "ja": return TranslateLanguage.JAPANESE;
+            case "ko": return TranslateLanguage.KOREAN;
+            case "ar": return TranslateLanguage.ARABIC;
+            case "hi": return TranslateLanguage.HINDI;
+            case "nl": return TranslateLanguage.DUTCH;
+            case "sv": return TranslateLanguage.SWEDISH;
+            case "da": return TranslateLanguage.DANISH;
+            case "no": return TranslateLanguage.NORWEGIAN;
+            case "fi": return TranslateLanguage.FINNISH;
+            case "pl": return TranslateLanguage.POLISH;
+            case "tr": return TranslateLanguage.TURKISH;
+            case "el": return TranslateLanguage.GREEK;
+            case "th": return TranslateLanguage.THAI;
+            case "vi": return TranslateLanguage.VIETNAMESE;
+            case "id": return TranslateLanguage.INDONESIAN;
+            case "he": return TranslateLanguage.HEBREW;
+            default: return null; // Unsupported language
+        }
     }
 }

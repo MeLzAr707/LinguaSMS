@@ -107,6 +107,8 @@ public class OfflineModelsActivity extends BaseActivity {
         }
         
         try {
+            // Sync with MLKit before loading models to ensure accuracy
+            modelManager.syncWithMLKit();
             List<OfflineModelInfo> models = modelManager.getAvailableModels();
             if (models.isEmpty()) {
                 showNoModelsMessage();
@@ -159,6 +161,9 @@ public class OfflineModelsActivity extends BaseActivity {
                         if (translationManager != null) {
                             translationManager.refreshOfflineModels();
                         }
+                        
+                        // Sync with MLKit after successful download
+                        new Thread(() -> modelManager.syncWithMLKit()).start();
                     });
                 }
                 
@@ -194,6 +199,9 @@ public class OfflineModelsActivity extends BaseActivity {
                 if (translationManager != null) {
                     translationManager.refreshOfflineModels();
                 }
+                
+                // Sync with MLKit after successful deletion
+                new Thread(() -> modelManager.syncWithMLKit()).start();
             } else {
                 Toast.makeText(this, getString(R.string.model_delete_error, "Unknown error"), Toast.LENGTH_LONG).show();
             }
