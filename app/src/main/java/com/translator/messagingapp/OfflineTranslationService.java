@@ -87,12 +87,14 @@ public class OfflineTranslationService {
         // Check if both language models are downloaded (internal tracking)
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
-        // If internal tracking says models are available, verify with MLKit
+        // If internal tracking says models are available, trust it (with improved MLKit verification as fallback)
         if (internalTracking) {
+            Log.d(TAG, "Models found in internal tracking: " + sourceMLKit + " -> " + targetMLKit);
             return verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
         }
         
-        // If internal tracking says not available, also check with MLKit in case tracking is out of sync
+        // If internal tracking says not available, check with MLKit in case tracking is out of sync
+        Log.d(TAG, "Models not in internal tracking, checking with MLKit: " + sourceMLKit + " -> " + targetMLKit);
         boolean mlkitAvailable = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
         if (mlkitAvailable) {
             // Update our internal tracking to sync with MLKit
@@ -124,35 +126,56 @@ public class OfflineTranslationService {
             Translator translator = Translation.getClient(options);
             
             // Try a simple translation to test if models are available
-            // We'll use a very short timeout to avoid waiting for downloads
+            // Use a longer timeout to allow for MLKit initialization
             try {
                 Task<String> translateTask = translator.translate("test");
                 
-                // Wait briefly to see if translation can complete immediately
-                String result = Tasks.await(translateTask, 2, TimeUnit.SECONDS);
+                // Wait longer to allow MLKit to initialize if models are downloaded
+                String result = Tasks.await(translateTask, 10, TimeUnit.SECONDS);
                 
                 // If we got a result, models are available
                 Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
                 return true;
                 
             } catch (TimeoutException e) {
-                // Timeout likely means models need to be downloaded
-                Log.d(TAG, "MLKit model verification timeout (models likely not downloaded): " + sourceMLKit + " -> " + targetMLKit);
+                // Timeout could mean models need to be downloaded OR MLKit is still initializing
+                // Let's try a different approach - check if models are downloaded first
+                Log.d(TAG, "MLKit model verification timeout: " + sourceMLKit + " -> " + targetMLKit);
+                
+                // If we think models are downloaded based on our tracking, give MLKit more time
+                if (downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit)) {
+                    Log.d(TAG, "Models appear downloaded, assuming available despite timeout");
+                    return true;
+                }
                 return false;
             } catch (ExecutionException e) {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
-                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
+                    if (errorMsg.contains("model") && (errorMsg.contains("download") || errorMsg.contains("not available"))) {
                         Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
                         return false;
                     }
                 }
+                
+                // For other execution exceptions, check our internal tracking
+                // MLKit may fail for other reasons even when models are available
+                if (downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit)) {
+                    Log.d(TAG, "MLKit verification failed but models appear downloaded, assuming available: " + e.getMessage());
+                    return true;
+                }
+                
                 Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
                 return false;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error verifying model availability with MLKit", e);
+            
+            // As a fallback, check our internal tracking
+            if (downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit)) {
+                Log.d(TAG, "MLKit verification error but models appear downloaded, assuming available");
+                return true;
+            }
             return false;
         }
     }
@@ -204,9 +227,32 @@ public class OfflineTranslationService {
         // Perform translation
         translator.translate(text)
                 .addOnSuccessListener(translatedText -> {
-                    Log.d(TAG, "Offline translation successful");
-                    if (callback != null) {
-                        callback.onTranslationComplete(true, translatedText, null);
+                    Log.d(TAG, "Offline translation successful: '" + text + "' -> '" + translatedText + "'");
+                    
+                    // Check if the translation is actually different from the original
+                    // MLKit sometimes returns the original text when models aren't properly loaded
+                    // But allow for legitimate cases where text might be similar (e.g., proper nouns)
+                    if (translatedText != null && translatedText.trim().length() > 0) {
+                        String originalTrimmed = text.trim().toLowerCase();
+                        String translatedTrimmed = translatedText.trim().toLowerCase();
+                        
+                        // If text is exactly the same and longer than a few characters, it's suspicious
+                        if (originalTrimmed.equals(translatedTrimmed) && originalTrimmed.length() > 3) {
+                            Log.w(TAG, "Translation returned identical text for '" + text + "', likely model issue");
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, "Translation returned original text - models may not be properly loaded");
+                            }
+                        } else {
+                            // Translation looks valid (different or short text where identity is OK)
+                            if (callback != null) {
+                                callback.onTranslationComplete(true, translatedText, null);
+                            }
+                        }
+                    } else {
+                        Log.w(TAG, "Translation returned empty or null result");
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Translation returned empty result");
+                        }
                     }
                 })
                 .addOnFailureListener(exception -> {
