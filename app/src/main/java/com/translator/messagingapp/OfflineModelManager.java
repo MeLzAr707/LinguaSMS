@@ -27,9 +27,20 @@ public class OfflineModelManager {
         void onError(String error);
     }
     
+    public interface ModelChangeListener {
+        void onModelDownloaded(String languageCode);
+        void onModelDeleted(String languageCode);
+    }
+    
+    private ModelChangeListener modelChangeListener;
+    
     public OfflineModelManager(Context context) {
         this.context = context;
         this.preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+    
+    public void setModelChangeListener(ModelChangeListener listener) {
+        this.modelChangeListener = listener;
     }
     
     /**
@@ -49,8 +60,7 @@ public class OfflineModelManager {
         addModel(models, "ru", "Russian", 32 * 1024 * 1024, downloadedModels.contains("ru"));
         addModel(models, "ja", "Japanese", 35 * 1024 * 1024, downloadedModels.contains("ja"));
         addModel(models, "ko", "Korean", 33 * 1024 * 1024, downloadedModels.contains("ko"));
-        addModel(models, "zh-CN", "Chinese (Simplified)", 38 * 1024 * 1024, downloadedModels.contains("zh-CN"));
-        addModel(models, "zh-TW", "Chinese (Traditional)", 38 * 1024 * 1024, downloadedModels.contains("zh-TW"));
+        addModel(models, "zh", "Chinese", 38 * 1024 * 1024, downloadedModels.contains("zh"));
         addModel(models, "ar", "Arabic", 30 * 1024 * 1024, downloadedModels.contains("ar"));
         addModel(models, "hi", "Hindi", 29 * 1024 * 1024, downloadedModels.contains("hi"));
         addModel(models, "nl", "Dutch", 25 * 1024 * 1024, downloadedModels.contains("nl"));
@@ -110,6 +120,11 @@ public class OfflineModelManager {
                 // Save to preferences
                 saveDownloadedModel(model.getLanguageCode());
                 
+                // Notify listeners of model download
+                if (modelChangeListener != null) {
+                    modelChangeListener.onModelDownloaded(model.getLanguageCode());
+                }
+                
                 // Create placeholder file
                 createModelFile(model);
                 
@@ -146,6 +161,11 @@ public class OfflineModelManager {
             
             // Remove from preferences
             removeDownloadedModel(model.getLanguageCode());
+            
+            // Notify listeners of model deletion
+            if (modelChangeListener != null) {
+                modelChangeListener.onModelDeleted(model.getLanguageCode());
+            }
             
             // Delete model file
             deleteModelFile(model);

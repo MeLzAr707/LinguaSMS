@@ -22,7 +22,7 @@ import java.util.concurrent.TimeoutException;
  * Service for offline translation using Google MLKit.
  * Provides offline translation capabilities with downloadable language models.
  */
-public class OfflineTranslationService {
+public class OfflineTranslationService implements OfflineModelManager.ModelChangeListener {
     private static final String TAG = "OfflineTranslationService";
     private static final int OPERATION_TIMEOUT_SECONDS = 30;
     
@@ -129,7 +129,7 @@ public class OfflineTranslationService {
                 Task<String> translateTask = translator.translate("test");
                 
                 // Wait briefly to see if translation can complete immediately
-                String result = Tasks.await(translateTask, 2, TimeUnit.SECONDS);
+                String result = Tasks.await(translateTask, 5, TimeUnit.SECONDS);
                 
                 // If we got a result, models are available
                 Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
@@ -143,8 +143,12 @@ public class OfflineTranslationService {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
-                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
+                    if (errorMsg.contains("model") && (errorMsg.contains("download") || errorMsg.contains("not available") || errorMsg.contains("missing"))) {
                         Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
+                        return false;
+                    }
+                    if (errorMsg.contains("network") || errorMsg.contains("connection")) {
+                        Log.d(TAG, "MLKit network error (models should be offline): " + e.getCause().getMessage());
                         return false;
                     }
                 }
@@ -379,6 +383,7 @@ public class OfflineTranslationService {
             case "tl": return TranslateLanguage.TAGALOG;
             case "sw": return TranslateLanguage.SWAHILI;
             case "tr": return TranslateLanguage.TURKISH;
+            case "el": return TranslateLanguage.GREEK;
             case "he": return TranslateLanguage.HEBREW;
             case "fa": return TranslateLanguage.PERSIAN;
             case "ur": return TranslateLanguage.URDU;
@@ -440,6 +445,7 @@ public class OfflineTranslationService {
             case TranslateLanguage.TAGALOG: return "tl";
             case TranslateLanguage.SWAHILI: return "sw";
             case TranslateLanguage.TURKISH: return "tr";
+            case TranslateLanguage.GREEK: return "el";
             case TranslateLanguage.HEBREW: return "he";
             case TranslateLanguage.PERSIAN: return "fa";
             case TranslateLanguage.URDU: return "ur";
@@ -517,5 +523,17 @@ public class OfflineTranslationService {
     public void cleanup() {
         // Clean up any resources if needed
         Log.d(TAG, "OfflineTranslationService cleanup complete");
+    }
+
+    @Override
+    public void onModelDownloaded(String languageCode) {
+        Log.d(TAG, "Model downloaded notification received: " + languageCode);
+        refreshDownloadedModels();
+    }
+
+    @Override
+    public void onModelDeleted(String languageCode) {
+        Log.d(TAG, "Model deleted notification received: " + languageCode);
+        refreshDownloadedModels();
     }
 }
