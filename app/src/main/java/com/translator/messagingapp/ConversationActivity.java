@@ -725,7 +725,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Translate in background
         executorService.execute(() -> {
-            translationManager.translateText(message.getBody(), targetLanguage, (success, translatedText, errorMessage) -> {, true
+            translationManager.translateText(message.getBody(), targetLanguage, (success, translatedText, errorMessage) -> {
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
 
@@ -752,7 +752,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                 Toast.LENGTH_LONG).show();
                     }
                 });
-            }, true); // Force translation for incoming messages
+            }, true); // Force translation for messages
         });
     }
 
