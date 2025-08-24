@@ -6,6 +6,8 @@ import android.util.Log;
 
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
+import com.google.mlkit.nl.languageid.LanguageIdentification;
+import com.google.mlkit.nl.languageid.LanguageIdentifier;
 import com.google.mlkit.nl.translate.TranslateLanguage;
 import com.google.mlkit.nl.translate.Translation;
 import com.google.mlkit.nl.translate.Translator;
@@ -47,6 +49,13 @@ public class OfflineTranslationService {
     public interface ModelDownloadCallback {
         void onDownloadComplete(boolean success, String languageCode, String errorMessage);
         void onDownloadProgress(String languageCode, int progress);
+    }
+
+    /**
+     * Interface for offline language detection callbacks.
+     */
+    public interface OfflineLanguageDetectionCallback {
+        void onLanguageDetected(boolean success, String languageCode, String errorMessage);
     }
 
     /**
@@ -326,6 +335,92 @@ public class OfflineTranslationService {
      */
     public boolean hasAnyDownloadedModels() {
         return !downloadedModels.isEmpty();
+    }
+
+    /**
+     * Detects the language of the given text using MLKit Language Identification.
+     * This provides offline language detection capabilities.
+     *
+     * @param text The text to detect language for
+     * @param callback The callback to receive the result
+     */
+    public void detectLanguageOffline(String text, OfflineLanguageDetectionCallback callback) {
+        if (text == null || text.trim().isEmpty()) {
+            if (callback != null) {
+                callback.onLanguageDetected(false, null, "Text is empty");
+            }
+            return;
+        }
+
+        // Use MLKit Language Identification for offline language detection
+        LanguageIdentifier languageIdentifier = LanguageIdentification.getClient();
+        
+        languageIdentifier.identifyLanguage(text)
+            .addOnSuccessListener(languageCode -> {
+                if (languageCode.equals("und")) {
+                    // "und" means undetermined - language could not be identified
+                    Log.d(TAG, "Language detection failed - could not determine language for: " + text.substring(0, Math.min(50, text.length())));
+                    if (callback != null) {
+                        callback.onLanguageDetected(false, null, "Could not determine language");
+                    }
+                } else {
+                    // Successfully detected language
+                    Log.d(TAG, "Detected language: " + languageCode + " for text: " + text.substring(0, Math.min(50, text.length())));
+                    if (callback != null) {
+                        callback.onLanguageDetected(true, languageCode, null);
+                    }
+                }
+            })
+            .addOnFailureListener(e -> {
+                Log.e(TAG, "Language detection failed", e);
+                if (callback != null) {
+                    callback.onLanguageDetected(false, null, "Language detection error: " + e.getMessage());
+                }
+            });
+    }
+
+    /**
+     * Synchronous version of offline language detection with timeout.
+     * This method blocks until detection completes or times out.
+     *
+     * @param text The text to detect language for
+     * @return The detected language code, or null if detection failed
+     */
+    public String detectLanguageOfflineSync(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            LanguageIdentifier languageIdentifier = LanguageIdentification.getClient();
+            Task<String> task = languageIdentifier.identifyLanguage(text);
+            
+            // Wait for the result with timeout
+            String result = Tasks.await(task, 10, TimeUnit.SECONDS);
+            
+            if ("und".equals(result)) {
+                // "und" means undetermined
+                Log.d(TAG, "Language detection failed - could not determine language");
+                return null;
+            }
+            
+            Log.d(TAG, "Detected language: " + result);
+            return result;
+            
+        } catch (ExecutionException e) {
+            Log.e(TAG, "Language detection execution failed", e);
+            return null;
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Language detection interrupted", e);
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (TimeoutException e) {
+            Log.e(TAG, "Language detection timed out", e);
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Language detection error", e);
+            return null;
+        }
     }
 
     /**
