@@ -96,8 +96,8 @@
                 android:gravity="center_vertical">
 
                 <ImageButton
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="@dimen/compact_button_size"
+                    android:layout_height="@dimen/compact_button_size"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/add_attachment"
                     android:src="@drawable/ic_attachment"
@@ -115,8 +115,8 @@
                     android:inputType="textMultiLine|textShortMessage"
                     android:imeOptions="actionNone"
                     android:maxLines="4"
-                    android:minHeight="48dp"
-                    android:padding="12dp" />
+                    android:minHeight="@dimen/message_input_min_height"
+                    android:padding="@dimen/message_input_padding" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -124,8 +124,8 @@
         <!-- Translation Button -->
         <ImageButton
             android:id="@+id/translate_outgoing_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/compact_button_size"
+            android:layout_height="@dimen/compact_button_size"
             android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/translate_outgoing_message"
@@ -145,7 +145,7 @@
             android:text="@string/send"
             android:textColor="@android:color/white"
             android:minWidth="72dp"
-            android:minHeight="48dp"
+            android:minHeight="@dimen/send_button_min_height"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

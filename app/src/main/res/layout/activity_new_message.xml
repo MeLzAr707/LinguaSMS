@@ -56,8 +56,8 @@
 
             <ImageButton
                 android:id="@+id/contact_button"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="@dimen/compact_button_size"
+                android:layout_height="@dimen/compact_button_size"
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/select_contact"
@@ -85,13 +85,14 @@
         <EditText
             android:id="@+id/message_input"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:background="@drawable/message_input_background"
             android:gravity="top|start"
             android:hint="@string/type_message"
             android:inputType="textMultiLine|textCapSentences"
-            android:padding="12dp"
+            android:maxLines="4"
+            android:minHeight="@dimen/message_input_min_height"
+            android:padding="@dimen/message_input_padding"
             android:scrollbars="vertical"
             android:importantForAutofill="no" />
 
@@ -105,8 +106,8 @@
 
             <ImageButton
                 android:id="@+id/translate_button"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="@dimen/compact_button_size"
+                android:layout_height="@dimen/compact_button_size"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/translate_message"
                 android:src="@android:drawable/ic_menu_sort_alphabetically"
@@ -117,6 +118,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
+                android:minHeight="@dimen/send_button_min_height"
                 android:text="@string/send"
                 android:textColor="@android:color/white"
                 app:icon="@android:drawable/ic_menu_send"
