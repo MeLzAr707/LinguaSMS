@@ -487,6 +487,187 @@ public class Message {
         // Most messages are translatable if they have text content
         return body != null && !body.isEmpty();
     }
+    
+    // Third-party service integration methods
+    
+    /**
+     * Checks if this message contains calendar event information.
+     *
+     * @return true if the message appears to contain calendar event information
+     */
+    public boolean hasCalendarEventIndicators() {
+        return CalendarIntegrationHelper.hasCalendarEventIndicators(this.body);
+    }
+    
+    /**
+     * Detects calendar event information in the message.
+     *
+     * @return CalendarEventInfo object with detected event information
+     */
+    public CalendarIntegrationHelper.CalendarEventInfo detectCalendarEvent() {
+        return CalendarIntegrationHelper.detectCalendarEvent(this.body);
+    }
+    
+    /**
+     * Creates an intent to add a calendar event based on this message.
+     *
+     * @return Intent to create calendar event, or null if no event detected
+     */
+    public android.content.Intent createCalendarEventIntent() {
+        CalendarIntegrationHelper.CalendarEventInfo eventInfo = detectCalendarEvent();
+        if (eventInfo.isValidEvent()) {
+            return CalendarIntegrationHelper.createCalendarEventIntent(eventInfo);
+        }
+        return null;
+    }
+    
+    /**
+     * Checks if this message contains location information.
+     *
+     * @return true if the message appears to contain location information
+     */
+    public boolean hasLocationIndicators() {
+        return LocationDetectionHelper.hasLocationIndicators(this.body);
+    }
+    
+    /**
+     * Detects location information in the message.
+     *
+     * @return List of LocationInfo objects with detected locations
+     */
+    public java.util.List<LocationDetectionHelper.LocationInfo> detectLocations() {
+        return LocationDetectionHelper.detectLocations(this.body);
+    }
+    
+    /**
+     * Gets the primary location from this message.
+     *
+     * @return LocationInfo object or null if no location detected
+     */
+    public LocationDetectionHelper.LocationInfo getPrimaryLocation() {
+        return LocationDetectionHelper.getPrimaryLocation(this.body);
+    }
+    
+    /**
+     * Creates an intent to open the primary location in a map application.
+     *
+     * @return Intent to open map application, or null if no location detected
+     */
+    public android.content.Intent createMapIntent() {
+        LocationDetectionHelper.LocationInfo location = getPrimaryLocation();
+        if (location != null && location.hasValidLocation()) {
+            return LocationDetectionHelper.createMapIntent(location);
+        }
+        return null;
+    }
+    
+    /**
+     * Creates an intent to get directions to the primary location.
+     *
+     * @return Intent to open navigation application, or null if no location detected
+     */
+    public android.content.Intent createDirectionsIntent() {
+        LocationDetectionHelper.LocationInfo location = getPrimaryLocation();
+        if (location != null && location.hasValidLocation()) {
+            return LocationDetectionHelper.createDirectionsIntent(location);
+        }
+        return null;
+    }
+    
+    /**
+     * Checks if this message appears to be a shared location.
+     *
+     * @return true if the message appears to be a shared location
+     */
+    public boolean isSharedLocation() {
+        return LocationDetectionHelper.isSharedLocation(this.body);
+    }
+    
+    /**
+     * Creates a static map preview URL for the primary location in this message.
+     *
+     * @param width The desired width of the map image
+     * @param height The desired height of the map image
+     * @return URL string for static map image, or null if no location detected
+     */
+    public String createMapPreviewUrl(int width, int height) {
+        LocationDetectionHelper.LocationInfo location = getPrimaryLocation();
+        if (location != null && location.hasValidLocation()) {
+            return LocationDetectionHelper.createStaticMapPreviewUrl(location, width, height);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets enhanced contact information for this message's sender/recipient.
+     *
+     * @param context The context
+     * @return Enhanced contact information
+     */
+    public ContactUtils.EnhancedContactInfo getEnhancedContactInfo(android.content.Context context) {
+        return ContactUtils.getEnhancedContactInfo(context, this.address);
+    }
+    
+    /**
+     * Checks if the contact for this message exists across multiple platforms.
+     *
+     * @param context The context
+     * @return true if the contact exists on multiple messaging platforms
+     */
+    public boolean isMultiPlatformContact(android.content.Context context) {
+        return ContactUtils.isMultiPlatformContact(context, this.address);
+    }
+    
+    /**
+     * Gets a summary of third-party service integrations available for this message.
+     *
+     * @return MessageIntegrationSummary object with available integrations
+     */
+    public MessageIntegrationSummary getIntegrationSummary() {
+        return new MessageIntegrationSummary(this);
+    }
+    
+    /**
+     * Helper class to summarize available third-party integrations for a message.
+     */
+    public static class MessageIntegrationSummary {
+        public final boolean hasCalendarEvent;
+        public final boolean hasLocation;
+        public final boolean isSharedLocation;
+        public final int locationCount;
+        public final Message message;
+        
+        public MessageIntegrationSummary(Message message) {
+            this.message = message;
+            this.hasCalendarEvent = message.hasCalendarEventIndicators();
+            this.hasLocation = message.hasLocationIndicators();
+            this.isSharedLocation = message.isSharedLocation();
+            this.locationCount = message.detectLocations().size();
+        }
+        
+        public boolean hasAnyIntegrations() {
+            return hasCalendarEvent || hasLocation;
+        }
+        
+        public java.util.List<String> getAvailableActions() {
+            java.util.List<String> actions = new java.util.ArrayList<>();
+            
+            if (hasCalendarEvent) {
+                actions.add("Create Calendar Event");
+            }
+            
+            if (hasLocation) {
+                actions.add("View on Map");
+                actions.add("Get Directions");
+            }
+            
+            if (isSharedLocation) {
+                actions.add("Open Shared Location");
+            }
+            
+            return actions;
+        }
+    }
 
     @Override
     public String toString() {

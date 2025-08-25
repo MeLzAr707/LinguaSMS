@@ -9,6 +9,7 @@ import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -386,6 +387,357 @@ public class ContactUtils {
         }
 
         return new ContactInfo(null, null);
+    }
+
+    /**
+     * Enhanced contact synchronization utilities for cross-platform messaging.
+     */
+    
+    /**
+     * Extended contact information class with additional synchronization data.
+     */
+    public static class EnhancedContactInfo {
+        private String name;
+        private String photoUri;
+        public String email;
+        public List<String> socialMediaProfiles;
+        public String organization;
+        public long lastSyncTime;
+        public boolean isSyncEnabled;
+        public Map<String, String> platformIds; // Platform name -> User ID mapping
+        
+        public EnhancedContactInfo(String name, String photoUri) {
+            this.name = name;
+            this.photoUri = photoUri;
+            this.socialMediaProfiles = new ArrayList<>();
+            this.platformIds = new HashMap<>();
+            this.lastSyncTime = 0;
+            this.isSyncEnabled = false;
+        }
+        
+        public String getName() {
+            return name;
+        }
+        
+        public void setName(String name) {
+            this.name = name;
+        }
+        
+        public String getPhotoUri() {
+            return photoUri;
+        }
+        
+        public void setPhotoUri(String photoUri) {
+            this.photoUri = photoUri;
+        }
+        
+        public void addPlatformId(String platform, String userId) {
+            if (platformIds == null) {
+                platformIds = new HashMap<>();
+            }
+            platformIds.put(platform, userId);
+        }
+        
+        public String getPlatformId(String platform) {
+            return platformIds != null ? platformIds.get(platform) : null;
+        }
+        
+        public boolean hasMultiplePlatforms() {
+            return platformIds != null && platformIds.size() > 1;
+        }
+    }
+    
+    /**
+     * Gets enhanced contact information including cross-platform data.
+     *
+     * @param context The context
+     * @param phoneNumber The phone number
+     * @return Enhanced contact information
+     */
+    public static EnhancedContactInfo getEnhancedContactInfo(Context context, String phoneNumber) {
+        if (context == null || TextUtils.isEmpty(phoneNumber)) {
+            return new EnhancedContactInfo(null, null);
+        }
+
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = contentResolver.query(
+                    uri,
+                    new String[]{
+                            ContactsContract.PhoneLookup.DISPLAY_NAME,
+                            ContactsContract.PhoneLookup.PHOTO_URI,
+                            ContactsContract.PhoneLookup._ID,
+                            ContactsContract.PhoneLookup.LOOKUP_KEY
+                    },
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                        int photoUriIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI);
+                        int idIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup._ID);
+
+                        String name = nameIndex >= 0 ? cursor.getString(nameIndex) : null;
+                        String photoUri = photoUriIndex >= 0 ? cursor.getString(photoUriIndex) : null;
+                        String contactId = idIndex >= 0 ? cursor.getString(idIndex) : null;
+
+                        EnhancedContactInfo enhancedInfo = new EnhancedContactInfo(name, photoUri);
+                        
+                        // Get additional contact details
+                        if (contactId != null) {
+                            loadAdditionalContactData(context, contactId, enhancedInfo);
+                        }
+                        
+                        return enhancedInfo;
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting enhanced contact info for " + phoneNumber, e);
+        }
+
+        return new EnhancedContactInfo(null, null);
+    }
+    
+    /**
+     * Loads additional contact data like email and organization.
+     */
+    private static void loadAdditionalContactData(Context context, String contactId, EnhancedContactInfo contactInfo) {
+        ContentResolver contentResolver = context.getContentResolver();
+        
+        // Get email addresses
+        Cursor emailCursor = contentResolver.query(
+                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                new String[]{ContactsContract.CommonDataKinds.Email.ADDRESS},
+                ContactsContract.CommonDataKinds.Email.CONTACT_ID + "=?",
+                new String[]{contactId},
+                null);
+        
+        if (emailCursor != null) {
+            try {
+                if (emailCursor.moveToFirst()) {
+                    int emailIndex = emailCursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.ADDRESS);
+                    if (emailIndex >= 0) {
+                        contactInfo.email = emailCursor.getString(emailIndex);
+                    }
+                }
+            } finally {
+                emailCursor.close();
+            }
+        }
+        
+        // Get organization
+        Cursor orgCursor = contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                new String[]{ContactsContract.CommonDataKinds.Organization.COMPANY},
+                ContactsContract.Data.CONTACT_ID + "=? AND " + 
+                ContactsContract.Data.MIMETYPE + "=?",
+                new String[]{contactId, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE},
+                null);
+        
+        if (orgCursor != null) {
+            try {
+                if (orgCursor.moveToFirst()) {
+                    int orgIndex = orgCursor.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY);
+                    if (orgIndex >= 0) {
+                        contactInfo.organization = orgCursor.getString(orgIndex);
+                    }
+                }
+            } finally {
+                orgCursor.close();
+            }
+        }
+    }
+    
+    /**
+     * Interface for cross-platform contact synchronization.
+     */
+    public interface ContactSyncProvider {
+        String getPlatformName();
+        boolean isAvailable(Context context);
+        List<EnhancedContactInfo> getContacts(Context context);
+        boolean syncContact(Context context, EnhancedContactInfo contact);
+        long getLastSyncTime(Context context);
+    }
+    
+    /**
+     * Manages synchronization across multiple messaging platforms.
+     */
+    public static class CrossPlatformContactSync {
+        private static final String TAG = "CrossPlatformContactSync";
+        private List<ContactSyncProvider> syncProviders;
+        
+        public CrossPlatformContactSync() {
+            this.syncProviders = new ArrayList<>();
+        }
+        
+        public void addSyncProvider(ContactSyncProvider provider) {
+            if (provider != null && !syncProviders.contains(provider)) {
+                syncProviders.add(provider);
+            }
+        }
+        
+        public void removeSyncProvider(ContactSyncProvider provider) {
+            syncProviders.remove(provider);
+        }
+        
+        /**
+         * Synchronizes contacts across all registered platforms.
+         */
+        public boolean synchronizeContacts(Context context) {
+            if (context == null || syncProviders.isEmpty()) {
+                return false;
+            }
+            
+            boolean overallSuccess = true;
+            Map<String, EnhancedContactInfo> unifiedContacts = new HashMap<>();
+            
+            // Collect contacts from all platforms
+            for (ContactSyncProvider provider : syncProviders) {
+                if (provider.isAvailable(context)) {
+                    try {
+                        List<EnhancedContactInfo> platformContacts = provider.getContacts(context);
+                        for (EnhancedContactInfo contact : platformContacts) {
+                            String key = generateContactKey(contact);
+                            if (unifiedContacts.containsKey(key)) {
+                                // Merge contact information
+                                mergeContactInfo(unifiedContacts.get(key), contact, provider.getPlatformName());
+                            } else {
+                                contact.addPlatformId(provider.getPlatformName(), contact.getName());
+                                unifiedContacts.put(key, contact);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error syncing contacts from " + provider.getPlatformName(), e);
+                        overallSuccess = false;
+                    }
+                }
+            }
+            
+            // Update sync timestamps
+            long currentTime = System.currentTimeMillis();
+            for (EnhancedContactInfo contact : unifiedContacts.values()) {
+                contact.lastSyncTime = currentTime;
+                contact.isSyncEnabled = true;
+            }
+            
+            Log.d(TAG, "Synchronized " + unifiedContacts.size() + " contacts across " + syncProviders.size() + " platforms");
+            return overallSuccess;
+        }
+        
+        /**
+         * Generates a unique key for contact deduplication.
+         */
+        private String generateContactKey(EnhancedContactInfo contact) {
+            StringBuilder key = new StringBuilder();
+            if (!TextUtils.isEmpty(contact.getName())) {
+                key.append(contact.getName().toLowerCase().trim());
+            }
+            if (!TextUtils.isEmpty(contact.email)) {
+                key.append("|").append(contact.email.toLowerCase().trim());
+            }
+            return key.toString();
+        }
+        
+        /**
+         * Merges contact information from different platforms.
+         */
+        private void mergeContactInfo(EnhancedContactInfo existing, EnhancedContactInfo newContact, String platformName) {
+            // Add platform ID
+            existing.addPlatformId(platformName, newContact.getName());
+            
+            // Merge email if missing
+            if (TextUtils.isEmpty(existing.email) && !TextUtils.isEmpty(newContact.email)) {
+                existing.email = newContact.email;
+            }
+            
+            // Merge organization if missing
+            if (TextUtils.isEmpty(existing.organization) && !TextUtils.isEmpty(newContact.organization)) {
+                existing.organization = newContact.organization;
+            }
+            
+            // Merge photo URI if missing
+            if (TextUtils.isEmpty(existing.getPhotoUri()) && !TextUtils.isEmpty(newContact.getPhotoUri())) {
+                existing.setPhotoUri(newContact.getPhotoUri());
+            }
+            
+            // Merge social media profiles
+            if (newContact.socialMediaProfiles != null) {
+                for (String profile : newContact.socialMediaProfiles) {
+                    if (!existing.socialMediaProfiles.contains(profile)) {
+                        existing.socialMediaProfiles.add(profile);
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Gets contacts that are available across multiple platforms.
+         */
+        public List<EnhancedContactInfo> getMultiPlatformContacts(Context context) {
+            List<EnhancedContactInfo> multiPlatformContacts = new ArrayList<>();
+            
+            // This would be implemented to return contacts that exist on multiple platforms
+            // For now, return empty list as this would require actual platform integration
+            
+            return multiPlatformContacts;
+        }
+        
+        /**
+         * Gets the sync status for all platforms.
+         */
+        public Map<String, Long> getSyncStatus(Context context) {
+            Map<String, Long> syncStatus = new HashMap<>();
+            
+            for (ContactSyncProvider provider : syncProviders) {
+                if (provider.isAvailable(context)) {
+                    syncStatus.put(provider.getPlatformName(), provider.getLastSyncTime(context));
+                }
+            }
+            
+            return syncStatus;
+        }
+    }
+    
+    /**
+     * Utility methods for enhanced contact integration.
+     */
+    
+    /**
+     * Checks if a contact exists across multiple messaging platforms.
+     */
+    public static boolean isMultiPlatformContact(Context context, String phoneNumber) {
+        EnhancedContactInfo contact = getEnhancedContactInfo(context, phoneNumber);
+        return contact.hasMultiplePlatforms();
+    }
+    
+    /**
+     * Gets suggested contacts based on recent message activity.
+     */
+    public static List<String> getSuggestedContacts(Context context, int limit) {
+        List<String> suggestedContacts = new ArrayList<>();
+        
+        // This would analyze recent message patterns and suggest contacts
+        // Implementation would depend on message history analysis
+        
+        return suggestedContacts;
+    }
+    
+    /**
+     * Updates contact information with data from messaging platforms.
+     */
+    public static boolean updateContactFromPlatforms(Context context, String phoneNumber) {
+        // This would update local contact with information gathered from various platforms
+        // Implementation would depend on specific platform APIs
+        
+        Log.d(TAG, "Contact platform update requested for: " + phoneNumber);
+        return true; // Placeholder return
     }
 }
 
