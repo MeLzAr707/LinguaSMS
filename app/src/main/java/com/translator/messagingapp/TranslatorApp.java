@@ -25,6 +25,7 @@ public class TranslatorApp extends Application {
     private UserPreferences userPreferences;
     private MessageWorkManager messageWorkManager;
     private MessageContentObserver messageContentObserver;
+    private OfflineMessageQueue offlineMessageQueue;
 
     @Override
     public void onCreate() {
@@ -98,6 +99,14 @@ public class TranslatorApp extends Application {
             messageWorkManager.initializePeriodicWork();
         } catch (Exception e) {
             android.util.Log.e(TAG, "Error initializing MessageWorkManager", e);
+        }
+
+        try {
+            // Initialize offline message queue
+            offlineMessageQueue = new OfflineMessageQueue(this);
+            offlineMessageQueue.startNetworkMonitoring();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing offline message queue", e);
         }
 
         try {
@@ -193,6 +202,17 @@ public class TranslatorApp extends Application {
             }
         }
         return messageWorkManager;
+    }
+
+    public OfflineMessageQueue getOfflineMessageQueue() {
+        if (offlineMessageQueue == null) {
+            try {
+                offlineMessageQueue = new OfflineMessageQueue(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback OfflineMessageQueue", e);
+            }
+        }
+        return offlineMessageQueue;
     }
 
     public MessageContentObserver getMessageContentObserver() {

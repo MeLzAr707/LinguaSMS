@@ -158,7 +158,7 @@ public class OfflineTranslationService {
     }
 
     /**
-     * Translates text using offline models.
+     * Translates text using offline models with enhanced handling for complex sentences.
      *
      * @param text The text to translate
      * @param sourceLanguage The source language code
@@ -193,6 +193,20 @@ public class OfflineTranslationService {
             return;
         }
 
+        // For complex or long text, use enhanced translation with chunking
+        if (isComplexText(text)) {
+            translateComplexTextOffline(text, sourceMLKit, targetMLKit, callback);
+        } else {
+            // Use standard translation for simple text
+            translateSimpleTextOffline(text, sourceMLKit, targetMLKit, callback);
+        }
+    }
+
+    /**
+     * Translates simple text using standard MLKit translation.
+     */
+    private void translateSimpleTextOffline(String text, String sourceMLKit, String targetMLKit, 
+                                          OfflineTranslationCallback callback) {
         // Create translator
         TranslatorOptions options = new TranslatorOptions.Builder()
                 .setSourceLanguage(sourceMLKit)
@@ -215,6 +229,184 @@ public class OfflineTranslationService {
                         callback.onTranslationComplete(false, null, exception.getMessage());
                     }
                 });
+    }
+
+    /**
+     * Translates complex text by breaking it into chunks and preserving context.
+     */
+    private void translateComplexTextOffline(String text, String sourceMLKit, String targetMLKit, 
+                                           OfflineTranslationCallback callback) {
+        Log.d(TAG, "Using enhanced translation for complex text");
+        
+        // Split text into sentences while preserving context
+        java.util.List<String> sentences = splitIntoSentences(text);
+        
+        if (sentences.size() <= 1) {
+            // If only one sentence, use simple translation
+            translateSimpleTextOffline(text, sourceMLKit, targetMLKit, callback);
+            return;
+        }
+
+        // Create translator
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(sourceMLKit)
+                .setTargetLanguage(targetMLKit)
+                .build();
+
+        Translator translator = Translation.getClient(options);
+        
+        // Translate sentences with context preservation
+        translateSentencesWithContext(translator, sentences, callback);
+    }
+
+    /**
+     * Determines if text is complex enough to require enhanced translation.
+     */
+    private boolean isComplexText(String text) {
+        if (text == null) return false;
+        
+        // Consider text complex if it has:
+        // 1. Multiple sentences (contains sentence-ending punctuation)
+        // 2. Is longer than 100 characters
+        // 3. Contains complex punctuation or formatting
+        
+        int length = text.length();
+        boolean hasMultipleSentences = text.split("[.!?]+").length > 1;
+        boolean isLong = length > 100;
+        boolean hasComplexPunctuation = text.contains(";") || text.contains(":") || 
+                                       text.contains("\"") || text.contains("'");
+        
+        return hasMultipleSentences || isLong || hasComplexPunctuation;
+    }
+
+    /**
+     * Splits text into sentences while preserving punctuation and context.
+     */
+    private java.util.List<String> splitIntoSentences(String text) {
+        java.util.List<String> sentences = new java.util.ArrayList<>();
+        
+        // Enhanced sentence splitting that preserves context
+        String[] parts = text.split("(?<=[.!?])\\s+");
+        
+        StringBuilder currentSentence = new StringBuilder();
+        for (String part : parts) {
+            if (currentSentence.length() + part.length() > 150) {
+                // If adding this part would make the sentence too long, finish current sentence
+                if (currentSentence.length() > 0) {
+                    sentences.add(currentSentence.toString().trim());
+                    currentSentence = new StringBuilder();
+                }
+            }
+            
+            if (currentSentence.length() > 0) {
+                currentSentence.append(" ");
+            }
+            currentSentence.append(part);
+        }
+        
+        // Add remaining text
+        if (currentSentence.length() > 0) {
+            sentences.add(currentSentence.toString().trim());
+        }
+        
+        // If no proper sentences found, split by length
+        if (sentences.isEmpty() && text.length() > 150) {
+            sentences = splitByLength(text, 150);
+        } else if (sentences.isEmpty()) {
+            sentences.add(text);
+        }
+        
+        return sentences;
+    }
+
+    /**
+     * Splits text by character length while trying to preserve word boundaries.
+     */
+    private java.util.List<String> splitByLength(String text, int maxLength) {
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        
+        int start = 0;
+        while (start < text.length()) {
+            int end = Math.min(start + maxLength, text.length());
+            
+            // Try to split at word boundary
+            if (end < text.length()) {
+                int lastSpace = text.lastIndexOf(' ', end);
+                if (lastSpace > start) {
+                    end = lastSpace;
+                }
+            }
+            
+            chunks.add(text.substring(start, end).trim());
+            start = end;
+            
+            // Skip any leading whitespace
+            while (start < text.length() && Character.isWhitespace(text.charAt(start))) {
+                start++;
+            }
+        }
+        
+        return chunks;
+    }
+
+    /**
+     * Translates sentences with context preservation and combines results.
+     */
+    private void translateSentencesWithContext(Translator translator, java.util.List<String> sentences, 
+                                             OfflineTranslationCallback callback) {
+        java.util.concurrent.atomic.AtomicInteger completedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicBoolean hasError = new java.util.concurrent.atomic.AtomicBoolean(false);
+        String[] translatedSentences = new String[sentences.size()];
+        
+        for (int i = 0; i < sentences.size(); i++) {
+            final int index = i;
+            String sentence = sentences.get(i);
+            
+            translator.translate(sentence)
+                    .addOnSuccessListener(translatedText -> {
+                        synchronized (translatedSentences) {
+                            translatedSentences[index] = translatedText;
+                            
+                            if (completedCount.incrementAndGet() == sentences.size() && !hasError.get()) {
+                                // All sentences translated successfully
+                                String finalResult = combineTranslatedSentences(translatedSentences);
+                                if (callback != null) {
+                                    callback.onTranslationComplete(true, finalResult, null);
+                                }
+                            }
+                        }
+                    })
+                    .addOnFailureListener(exception -> {
+                        if (hasError.compareAndSet(false, true)) {
+                            Log.e(TAG, "Complex translation failed at sentence " + index, exception);
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, 
+                                    "Translation failed: " + exception.getMessage());
+                            }
+                        }
+                    });
+        }
+    }
+
+    /**
+     * Combines translated sentences back into coherent text.
+     */
+    private String combineTranslatedSentences(String[] translatedSentences) {
+        StringBuilder result = new StringBuilder();
+        
+        for (int i = 0; i < translatedSentences.length; i++) {
+            if (translatedSentences[i] != null) {
+                if (result.length() > 0) {
+                    // Add appropriate spacing between sentences
+                    if (!result.toString().endsWith(" ")) {
+                        result.append(" ");
+                    }
+                }
+                result.append(translatedSentences[i]);
+            }
+        }
+        
+        return result.toString().trim();
     }
 
     /**

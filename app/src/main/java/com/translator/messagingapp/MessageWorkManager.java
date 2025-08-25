@@ -44,10 +44,46 @@ public class MessageWorkManager {
     }
 
     /**
-     * Schedules an SMS to be sent in the background.
+     * Schedules an SMS to be sent in the background with offline queue support.
      * Uses constraints to ensure network availability and battery optimization.
      */
     public void scheduleSendSms(String recipient, String messageBody, String threadId) {
+        scheduleSendSms(recipient, messageBody, threadId, OfflineMessageQueue.PRIORITY_NORMAL);
+    }
+
+    /**
+     * Schedules an SMS to be sent in the background with priority and offline queue support.
+     */
+    public void scheduleSendSms(String recipient, String messageBody, String threadId, int priority) {
+        // Try to get the offline message queue for queuing
+        try {
+            Context appContext = context.getApplicationContext();
+            if (appContext instanceof TranslatorApp) {
+                TranslatorApp app = (TranslatorApp) appContext;
+                OfflineMessageQueue messageQueue = app.getOfflineMessageQueue();
+                
+                if (messageQueue != null) {
+                    // Queue the message for offline handling
+                    long queueId = messageQueue.queueMessage(recipient, messageBody, threadId, 
+                        0, // SMS type
+                        null, // No attachments for SMS
+                        priority);
+                    Log.d(TAG, "SMS queued for offline handling with ID: " + queueId);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not use offline queue, falling back to direct scheduling", e);
+        }
+
+        // Fallback to direct scheduling if offline queue is not available
+        scheduleDirectSms(recipient, messageBody, threadId);
+    }
+
+    /**
+     * Directly schedules SMS sending without offline queue.
+     */
+    private void scheduleDirectSms(String recipient, String messageBody, String threadId) {
         Data inputData = new Data.Builder()
             .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SEND_SMS)
             .putString(MessageProcessingWorker.KEY_RECIPIENT, recipient)
@@ -80,6 +116,92 @@ public class MessageWorkManager {
      * Schedules an MMS to be sent in the background.
      */
     public void scheduleSendMms(String recipient, String messageBody, List<Uri> attachments) {
+        Data.Builder dataBuilder = new Data.Builder()
+            .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SEND_MMS)
+            .putString(MessageProcessingWorker.KEY_RECIPIENT, recipient)
+            .putString(MessageProcessingWorker.KEY_MESSAGE_BODY, messageBody);
+
+    /**
+     * Directly schedules SMS sending without offline queue.
+     */
+    private void scheduleDirectSms(String recipient, String messageBody, String threadId) {
+        Data inputData = new Data.Builder()
+            .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SEND_SMS)
+            .putString(MessageProcessingWorker.KEY_RECIPIENT, recipient)
+            .putString(MessageProcessingWorker.KEY_MESSAGE_BODY, messageBody)
+            .putString(MessageProcessingWorker.KEY_THREAD_ID, threadId)
+            .build();
+
+        Constraints constraints = new Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build();
+
+        OneTimeWorkRequest sendSmsWork = new OneTimeWorkRequest.Builder(MessageProcessingWorker.class)
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .addTag(TAG_MESSAGE_PROCESSING)
+            .addTag(TAG_SMS_SENDING)
+            .build();
+
+        workManager.enqueueUniqueWork(
+            "send_sms_" + System.currentTimeMillis(),
+            ExistingWorkPolicy.APPEND,
+            sendSmsWork
+        );
+
+        Log.d(TAG, "Scheduled direct SMS sending work for recipient: " + recipient);
+    }
+
+    /**
+     * Schedules an MMS to be sent in the background with offline queue support.
+     */
+    public void scheduleSendMms(String recipient, String messageBody, List<Uri> attachments) {
+        scheduleSendMms(recipient, messageBody, attachments, OfflineMessageQueue.PRIORITY_NORMAL);
+    }
+
+    /**
+     * Schedules an MMS to be sent in the background with priority and offline queue support.
+     */
+    public void scheduleSendMms(String recipient, String messageBody, List<Uri> attachments, int priority) {
+        // Try to use offline message queue first
+        try {
+            Context appContext = context.getApplicationContext();
+            if (appContext instanceof TranslatorApp) {
+                TranslatorApp app = (TranslatorApp) appContext;
+                OfflineMessageQueue messageQueue = app.getOfflineMessageQueue();
+                
+                if (messageQueue != null) {
+                    // Convert attachments to string array
+                    String[] attachmentUris = null;
+                    if (attachments != null && !attachments.isEmpty()) {
+                        attachmentUris = new String[attachments.size()];
+                        for (int i = 0; i < attachments.size(); i++) {
+                            attachmentUris[i] = attachments.get(i).toString();
+                        }
+                    }
+                    
+                    // Queue the message for offline handling
+                    long queueId = messageQueue.queueMessage(recipient, messageBody, null, 
+                        1, // MMS type
+                        attachmentUris,
+                        priority);
+                    Log.d(TAG, "MMS queued for offline handling with ID: " + queueId);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not use offline queue for MMS, falling back to direct scheduling", e);
+        }
+
+        // Fallback to direct scheduling if offline queue is not available
+        scheduleDirectMms(recipient, messageBody, attachments);
+    }
+
+    /**
+     * Directly schedules MMS sending without offline queue.
+     */
+    private void scheduleDirectMms(String recipient, String messageBody, List<Uri> attachments) {
         Data.Builder dataBuilder = new Data.Builder()
             .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SEND_MMS)
             .putString(MessageProcessingWorker.KEY_RECIPIENT, recipient)

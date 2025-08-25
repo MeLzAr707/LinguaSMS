@@ -21,6 +21,7 @@ public class MessageProcessingWorker extends Worker {
     public static final String WORK_TYPE_TRANSLATE_MESSAGE = "translate_message";
     public static final String WORK_TYPE_SYNC_MESSAGES = "sync_messages";
     public static final String WORK_TYPE_CLEANUP_OLD_MESSAGES = "cleanup_old_messages";
+    public static final String WORK_TYPE_PROCESS_MESSAGE_QUEUE = "process_message_queue";
 
     // Input data keys
     public static final String KEY_WORK_TYPE = "work_type";
@@ -66,6 +67,9 @@ public class MessageProcessingWorker extends Worker {
                 case WORK_TYPE_CLEANUP_OLD_MESSAGES:
                     return handleCleanupOldMessages(inputData);
                 
+                case WORK_TYPE_PROCESS_MESSAGE_QUEUE:
+                    return handleProcessMessageQueue(inputData);
+                
                 default:
                     Log.e(TAG, "Unknown work type: " + workType);
                     return Result.failure();
@@ -77,16 +81,20 @@ public class MessageProcessingWorker extends Worker {
     }
 
     /**
-     * Handles SMS sending in the background.
+     * Handles SMS sending in the background with queue integration.
      */
     private Result handleSendSms(Data inputData) {
         try {
             String recipient = inputData.getString(KEY_RECIPIENT);
             String messageBody = inputData.getString(KEY_MESSAGE_BODY);
             String threadId = inputData.getString(KEY_THREAD_ID);
+            long queueMessageId = inputData.getLong("queue_message_id", -1);
 
             if (recipient == null || messageBody == null) {
                 Log.e(TAG, "SMS sending failed: missing recipient or message body");
+                if (queueMessageId != -1) {
+                    notifyQueueOfFailure(queueMessageId, "Missing recipient or message body");
+                }
                 return Result.failure();
             }
 
@@ -95,6 +103,9 @@ public class MessageProcessingWorker extends Worker {
 
             if (messageService == null) {
                 Log.e(TAG, "MessageService not available");
+                if (queueMessageId != -1) {
+                    notifyQueueOfFailure(queueMessageId, "MessageService not available");
+                }
                 return Result.retry();
             }
 
@@ -102,13 +113,23 @@ public class MessageProcessingWorker extends Worker {
             
             if (success) {
                 Log.d(TAG, "SMS sent successfully to: " + recipient);
+                if (queueMessageId != -1) {
+                    notifyQueueOfSuccess(queueMessageId);
+                }
                 return Result.success();
             } else {
                 Log.e(TAG, "Failed to send SMS to: " + recipient);
+                if (queueMessageId != -1) {
+                    notifyQueueOfFailure(queueMessageId, "SMS sending failed");
+                }
                 return Result.retry();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error sending SMS", e);
+            long queueMessageId = inputData.getLong("queue_message_id", -1);
+            if (queueMessageId != -1) {
+                notifyQueueOfFailure(queueMessageId, "Exception: " + e.getMessage());
+            }
             return Result.retry();
         }
     }
@@ -304,6 +325,60 @@ public class MessageProcessingWorker extends Worker {
         } catch (Exception e) {
             Log.e(TAG, "Error during cleanup", e);
             return Result.retry();
+        }
+    }
+
+    /**
+     * Handles processing of the offline message queue.
+     */
+    private Result handleProcessMessageQueue(Data inputData) {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplicationContext();
+            OfflineMessageQueue messageQueue = app.getOfflineMessageQueue();
+            
+            if (messageQueue != null) {
+                Log.d(TAG, "Processing offline message queue");
+                messageQueue.processQueuedMessages();
+                return Result.success();
+            } else {
+                Log.w(TAG, "OfflineMessageQueue not available");
+                return Result.failure();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing message queue", e);
+            return Result.retry();
+        }
+    }
+
+    /**
+     * Notifies the message queue of successful message sending.
+     */
+    private void notifyQueueOfSuccess(long queueMessageId) {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplicationContext();
+            OfflineMessageQueue messageQueue = app.getOfflineMessageQueue();
+            
+            if (messageQueue != null) {
+                messageQueue.markMessageSent(queueMessageId);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error notifying queue of success", e);
+        }
+    }
+
+    /**
+     * Notifies the message queue of failed message sending.
+     */
+    private void notifyQueueOfFailure(long queueMessageId, String error) {
+        try {
+            TranslatorApp app = (TranslatorApp) getApplicationContext();
+            OfflineMessageQueue messageQueue = app.getOfflineMessageQueue();
+            
+            if (messageQueue != null) {
+                messageQueue.markMessageFailed(queueMessageId, error);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error notifying queue of failure", e);
         }
     }
 }
