@@ -1247,11 +1247,26 @@ public class MessageService {
      * @return A list of messages matching the query
      */
     public List<Message> searchMessages(String query) {
+        return searchMessages(query, new SearchFilter());
+    }
+
+    /**
+     * Searches for messages containing the specified query text with advanced filters.
+     *
+     * @param query The search query
+     * @param filter Search filter criteria
+     * @return A list of messages matching the query and filters
+     */
+    public List<Message> searchMessages(String query, SearchFilter filter) {
         List<Message> results = new ArrayList<>();
 
         if (query == null || query.trim().isEmpty()) {
             Log.e(TAG, "Cannot search with empty query");
             return results;
+        }
+
+        if (filter == null) {
+            filter = new SearchFilter();
         }
 
         // Normalize the query for case-insensitive search
@@ -1261,17 +1276,20 @@ public class MessageService {
 
         try {
             // Search SMS messages
-            searchSmsMessages(contentResolver, normalizedQuery, results);
+            searchSmsMessages(contentResolver, normalizedQuery, filter, results);
 
             // Search MMS messages
-            searchMmsMessages(contentResolver, normalizedQuery, results);
+            searchMmsMessages(contentResolver, normalizedQuery, filter, results);
+
+            // Apply post-search filtering for translation-specific criteria
+            results = applyTranslationFilters(results, normalizedQuery, filter);
 
             // Sort results by date (newest first)
             if (!results.isEmpty()) {
                 results.sort((m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
             }
 
-            Log.d(TAG, "Found " + results.size() + " messages matching query: " + query);
+            Log.d(TAG, "Found " + results.size() + " messages matching query: " + query + " with filters: " + filter);
 
         } catch (Exception e) {
             Log.e(TAG, "Error searching messages", e);
@@ -1376,6 +1394,18 @@ public class MessageService {
      * @param results The list to add results to
      */
     private void searchSmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
+        searchSmsMessages(contentResolver, query, new SearchFilter(), results);
+    }
+
+    /**
+     * Searches for SMS messages containing the specified query text with advanced filters.
+     *
+     * @param contentResolver The content resolver
+     * @param query The search query (normalized)
+     * @param filter Search filter criteria
+     * @param results The list to add results to
+     */
+    private void searchSmsMessages(ContentResolver contentResolver, String query, SearchFilter filter, List<Message> results) {
         Cursor cursor = null;
         try {
             // Query the SMS content provider with optimized column selection and LIMIT
@@ -1389,8 +1419,52 @@ public class MessageService {
                 Telephony.Sms.READ,
                 Telephony.Sms.THREAD_ID
             };
-            String selection = "body LIKE ?";
-            String[] selectionArgs = {"%" + query + "%"};
+            
+            // Build selection criteria based on filters
+            StringBuilder selectionBuilder = new StringBuilder();
+            List<String> selectionArgsList = new ArrayList<>();
+            
+            // Always include the search query for original text (if searching original)
+            if (filter.shouldSearchOriginal()) {
+                selectionBuilder.append("body LIKE ?");
+                selectionArgsList.add("%" + query + "%");
+            }
+            
+            // Add date filter if specified
+            if (filter.hasDateFilter()) {
+                if (selectionBuilder.length() > 0) {
+                    selectionBuilder.append(" AND ");
+                }
+                if (filter.getDateFromMs() != null) {
+                    selectionBuilder.append("date >= ?");
+                    selectionArgsList.add(String.valueOf(filter.getDateFromMs()));
+                }
+                if (filter.getDateToMs() != null) {
+                    if (filter.getDateFromMs() != null) {
+                        selectionBuilder.append(" AND ");
+                    }
+                    selectionBuilder.append("date <= ?");
+                    selectionArgsList.add(String.valueOf(filter.getDateToMs()));
+                }
+            }
+            
+            // Add address filter if specified
+            if (filter.hasAddressFilter()) {
+                if (selectionBuilder.length() > 0) {
+                    selectionBuilder.append(" AND ");
+                }
+                selectionBuilder.append("address LIKE ?");
+                selectionArgsList.add("%" + filter.getAddressFilter() + "%");
+            }
+            
+            // Skip if no original text search and no other filters would apply at SQL level
+            if (!filter.shouldSearchOriginal() && !filter.hasDateFilter() && !filter.hasAddressFilter()) {
+                // We'll handle translation-only search in applyTranslationFilters
+                return;
+            }
+            
+            String selection = selectionBuilder.length() > 0 ? selectionBuilder.toString() : null;
+            String[] selectionArgs = selectionArgsList.isEmpty() ? null : selectionArgsList.toArray(new String[0]);
             String sortOrder = "date DESC LIMIT 100"; // Limit results for better performance
 
             cursor = contentResolver.query(
@@ -1426,6 +1500,11 @@ public class MessageService {
                     boolean read = readIndex >= 0 && cursor.getInt(readIndex) > 0;
                     String threadId = threadIdIndex >= 0 ? cursor.getString(threadIdIndex) : "";
 
+                    // Apply message type filtering
+                    if (!filter.shouldIncludeByMessageType(Message.MESSAGE_TYPE_SMS)) {
+                        continue;
+                    }
+
                     // Create message object
                     Message message = new Message();
                     message.setId(Long.parseLong(id));
@@ -1460,6 +1539,18 @@ public class MessageService {
      * @param results The list to add results to
      */
     private void searchMmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
+        searchMmsMessages(contentResolver, query, new SearchFilter(), results);
+    }
+
+    /**
+     * Searches for MMS messages containing the specified query text with advanced filters.
+     *
+     * @param contentResolver The content resolver
+     * @param query The search query (normalized)
+     * @param filter Search filter criteria
+     * @param results The list to add results to
+     */
+    private void searchMmsMessages(ContentResolver contentResolver, String query, SearchFilter filter, List<Message> results) {
         Cursor cursor = null;
         int resultCount = 0;
         final int MAX_MMS_RESULTS = 50; // Limit MMS results for performance
@@ -1474,13 +1565,35 @@ public class MessageService {
                 Telephony.Mms.READ,
                 Telephony.Mms.THREAD_ID
             };
+            
+            // Build selection criteria based on filters
+            StringBuilder selectionBuilder = new StringBuilder();
+            List<String> selectionArgsList = new ArrayList<>();
+            
+            // Add date filter if specified
+            if (filter.hasDateFilter()) {
+                if (filter.getDateFromMs() != null) {
+                    selectionBuilder.append("date >= ?");
+                    selectionArgsList.add(String.valueOf(filter.getDateFromMs() / 1000)); // MMS dates are in seconds
+                }
+                if (filter.getDateToMs() != null) {
+                    if (filter.getDateFromMs() != null) {
+                        selectionBuilder.append(" AND ");
+                    }
+                    selectionBuilder.append("date <= ?");
+                    selectionArgsList.add(String.valueOf(filter.getDateToMs() / 1000)); // MMS dates are in seconds
+                }
+            }
+            
+            String selection = selectionBuilder.length() > 0 ? selectionBuilder.toString() : null;
+            String[] selectionArgs = selectionArgsList.isEmpty() ? null : selectionArgsList.toArray(new String[0]);
             String sortOrder = "date DESC LIMIT 200"; // Get more than needed to filter by content
 
             cursor = contentResolver.query(
                     uri,
                     projection, // Use specific columns instead of null
-                    null,
-                    null,
+                    selection,
+                    selectionArgs,
                     sortOrder
             );
 
@@ -1514,8 +1627,30 @@ public class MessageService {
                     String body = getMmsText(contentResolver, id);
                     String address = getMmsAddress(contentResolver, id, type);
 
-                    // Skip if body doesn't contain search query
-                    if (body == null || !body.toLowerCase().contains(query)) {
+                    // Apply filter checks before creating message object
+                    
+                    // Apply message type filtering
+                    if (!filter.shouldIncludeByMessageType(Message.MESSAGE_TYPE_MMS)) {
+                        continue;
+                    }
+                    
+                    // Apply address filter if specified
+                    if (filter.hasAddressFilter() && 
+                        (address == null || !address.toLowerCase().contains(filter.getAddressFilter().toLowerCase()))) {
+                        continue;
+                    }
+
+                    // Check if body contains search query (if searching original text)
+                    boolean matchesOriginal = filter.shouldSearchOriginal() && 
+                                              body != null && body.toLowerCase().contains(query);
+                    
+                    // For translation search, we'll check this in applyTranslationFilters
+                    if (!matchesOriginal && filter.getSearchScope() == SearchFilter.SearchScope.ORIGINAL_ONLY) {
+                        continue;
+                    }
+                    
+                    // Skip if neither original search matches and we're not doing translation search
+                    if (!matchesOriginal && !filter.shouldSearchTranslation()) {
                         continue;
                     }
 
@@ -1543,6 +1678,119 @@ public class MessageService {
                 cursor.close();
             }
         }
+    }
+
+    /**
+     * Applies translation-specific filters and searches to message results.
+     * This handles translation-only search and language filtering.
+     *
+     * @param messages The list of messages to filter
+     * @param query The search query (normalized)
+     * @param filter Search filter criteria
+     * @return Filtered list of messages
+     */
+    private List<Message> applyTranslationFilters(List<Message> messages, String query, SearchFilter filter) {
+        if (messages == null || messages.isEmpty()) {
+            return messages;
+        }
+
+        List<Message> filteredResults = new ArrayList<>();
+        TranslationCache translationCache = getTranslationCache();
+
+        for (Message message : messages) {
+            boolean shouldInclude = false;
+            
+            // Restore translation state for the message
+            if (translationCache != null) {
+                message.restoreTranslationState(translationCache);
+            }
+            
+            // Check translation status filtering
+            boolean hasTranslation = message.isTranslated();
+            if (!filter.shouldIncludeByTranslationStatus(hasTranslation)) {
+                continue;
+            }
+            
+            // Check language filtering
+            if (filter.hasLanguageFilter()) {
+                boolean matchesLanguageFilter = false;
+                if (message.getOriginalLanguage() != null && 
+                    filter.getLanguageFilters().contains(message.getOriginalLanguage())) {
+                    matchesLanguageFilter = true;
+                }
+                if (message.getTranslatedLanguage() != null && 
+                    filter.getLanguageFilters().contains(message.getTranslatedLanguage())) {
+                    matchesLanguageFilter = true;
+                }
+                if (!matchesLanguageFilter) {
+                    continue;
+                }
+            }
+            
+            // Check search scope
+            switch (filter.getSearchScope()) {
+                case ALL_CONTENT:
+                    // Check both original and translated content
+                    shouldInclude = messageContainsQuery(message, query, true, true);
+                    break;
+                case ORIGINAL_ONLY:
+                    // Check only original content
+                    shouldInclude = messageContainsQuery(message, query, true, false);
+                    break;
+                case TRANSLATION_ONLY:
+                    // Check only translated content
+                    shouldInclude = messageContainsQuery(message, query, false, true);
+                    break;
+            }
+            
+            if (shouldInclude) {
+                filteredResults.add(message);
+            }
+        }
+
+        return filteredResults;
+    }
+
+    /**
+     * Checks if a message contains the search query in specified content areas.
+     *
+     * @param message The message to check
+     * @param query The search query (normalized)
+     * @param checkOriginal Whether to check original text
+     * @param checkTranslation Whether to check translated text
+     * @return true if the message contains the query in the specified areas
+     */
+    private boolean messageContainsQuery(Message message, String query, boolean checkOriginal, boolean checkTranslation) {
+        if (checkOriginal && message.getBody() != null) {
+            if (message.getBody().toLowerCase().contains(query)) {
+                return true;
+            }
+        }
+        
+        if (checkTranslation && message.getTranslatedText() != null) {
+            if (message.getTranslatedText().toLowerCase().contains(query)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Gets the translation cache instance.
+     * 
+     * @return TranslationCache instance or null if not available
+     */
+    private TranslationCache getTranslationCache() {
+        try {
+            if (context instanceof android.app.Application) {
+                TranslatorApp app = (TranslatorApp) context.getApplicationContext();
+                return app.getTranslationCache();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not get TranslationCache", e);
+        }
+        return null;
     }
 
     /**
