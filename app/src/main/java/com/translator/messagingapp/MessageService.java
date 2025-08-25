@@ -1937,4 +1937,27 @@ public class MessageService {
             Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
     }
+
+    /**
+     * Gets messages by thread ID with pagination.
+     *
+     * @param threadId The thread ID
+     * @param offset The number of messages to skip
+     * @param limit The maximum number of messages to load
+     * @return A list of messages for the thread
+     */
+    public List<Message> getMessagesByThreadIdPaginated(String threadId, int offset, int limit) {
+        return loadMessagesPaginated(threadId, offset, limit);
+    }
+
+    /**
+     * Gets all messages by thread ID.
+     *
+     * @param threadId The thread ID
+     * @return A list of all messages for the thread
+     */
+    public List<Message> getMessagesByThreadId(String threadId) {
+        // Load with a large limit to get all messages
+        return loadMessagesPaginated(threadId, 0, Integer.MAX_VALUE);
+    }
 }

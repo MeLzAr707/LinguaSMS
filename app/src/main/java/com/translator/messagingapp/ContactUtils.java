@@ -387,6 +387,122 @@ public class ContactUtils {
 
         return new ContactInfo(null, null);
     }
+
+    /**
+     * Enhanced contact information class with additional fields.
+     */
+    public static class EnhancedContactInfo extends ContactInfo {
+        private final boolean isMultiPlatform;
+        private final String contactId;
+        private final String lookupKey;
+
+        /**
+         * Creates a new EnhancedContactInfo.
+         *
+         * @param name The contact name
+         * @param photoUri The photo URI as a string
+         * @param isMultiPlatform Whether this is a multi-platform contact
+         * @param contactId The contact ID
+         * @param lookupKey The lookup key
+         */
+        public EnhancedContactInfo(String name, String photoUri, boolean isMultiPlatform, 
+                                 String contactId, String lookupKey) {
+            super(name, photoUri);
+            this.isMultiPlatform = isMultiPlatform;
+            this.contactId = contactId;
+            this.lookupKey = lookupKey;
+        }
+
+        /**
+         * Checks if this is a multi-platform contact.
+         *
+         * @return True if this is a multi-platform contact
+         */
+        public boolean isMultiPlatform() {
+            return isMultiPlatform;
+        }
+
+        /**
+         * Gets the contact ID.
+         *
+         * @return The contact ID
+         */
+        public String getContactId() {
+            return contactId;
+        }
+
+        /**
+         * Gets the lookup key.
+         *
+         * @return The lookup key
+         */
+        public String getLookupKey() {
+            return lookupKey;
+        }
+    }
+
+    /**
+     * Gets enhanced contact information for a phone number.
+     *
+     * @param context The context
+     * @param phoneNumber The phone number
+     * @return The EnhancedContactInfo object, or a EnhancedContactInfo with null values if not found
+     */
+    public static EnhancedContactInfo getEnhancedContactInfo(Context context, String phoneNumber) {
+        if (context == null || TextUtils.isEmpty(phoneNumber)) {
+            return new EnhancedContactInfo(null, null, false, null, null);
+        }
+
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = contentResolver.query(
+                    uri,
+                    new String[]{
+                            ContactsContract.PhoneLookup.DISPLAY_NAME,
+                            ContactsContract.PhoneLookup.PHOTO_URI,
+                            ContactsContract.PhoneLookup._ID,
+                            ContactsContract.PhoneLookup.LOOKUP_KEY
+                    },
+                    null,
+                    null,
+                    null);
+
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        String name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.DISPLAY_NAME));
+                        String photoUri = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.PHOTO_URI));
+                        String contactId = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID));
+                        String lookupKey = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup.LOOKUP_KEY));
+                        
+                        // Simple check for multi-platform (could be enhanced based on specific requirements)
+                        boolean isMultiPlatform = lookupKey != null && lookupKey.contains(".");
+                        
+                        return new EnhancedContactInfo(name, photoUri, isMultiPlatform, contactId, lookupKey);
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting enhanced contact info for " + phoneNumber, e);
+        }
+
+        return new EnhancedContactInfo(null, null, false, null, null);
+    }
+
+    /**
+     * Checks if a contact is a multi-platform contact.
+     *
+     * @param context The context
+     * @param phoneNumber The phone number to check
+     * @return True if the contact is multi-platform, false otherwise
+     */
+    public static boolean isMultiPlatformContact(Context context, String phoneNumber) {
+        EnhancedContactInfo info = getEnhancedContactInfo(context, phoneNumber);
+        return info.isMultiPlatform();
+    }
 }
 
 

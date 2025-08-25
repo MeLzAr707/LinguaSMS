@@ -25,6 +25,7 @@ public class TranslatorApp extends Application {
     private UserPreferences userPreferences;
     private MessageWorkManager messageWorkManager;
     private MessageContentObserver messageContentObserver;
+    private ScheduledMessageManager scheduledMessageManager;
 
     @Override
     public void onCreate() {
@@ -205,6 +206,22 @@ public class TranslatorApp extends Application {
             }
         }
         return messageContentObserver;
+    }
+
+    /**
+     * Gets the scheduled message manager.
+     *
+     * @return The scheduled message manager instance
+     */
+    public ScheduledMessageManager getScheduledMessageManager() {
+        if (scheduledMessageManager == null) {
+            try {
+                scheduledMessageManager = new ScheduledMessageManager(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating ScheduledMessageManager", e);
+            }
+        }
+        return scheduledMessageManager;
     }
     
 

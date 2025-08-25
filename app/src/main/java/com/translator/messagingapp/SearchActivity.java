@@ -347,6 +347,54 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         Toast.makeText(this, "Open the conversation to interact with this attachment", Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * Handles TTS (Text-to-Speech) click events for messages.
+     *
+     * @param message The message to speak
+     * @param position The position of the message in the list
+     */
+    public void onTTSClick(Message message, int position) {
+        if (message == null) {
+            Log.w(TAG, "Cannot perform TTS on null message");
+            return;
+        }
+        
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            UserPreferences userPreferences = app.getUserPreferences();
+            
+            if (!userPreferences.isTTSEnabled()) {
+                Toast.makeText(this, "Text-to-Speech is disabled in settings", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            TTSManager ttsManager = new TTSManager(this, userPreferences);
+            String textToSpeak;
+            
+            if (userPreferences.shouldTTSReadOriginal()) {
+                textToSpeak = message.getBody();
+            } else {
+                // Try to get translated text from cache
+                String translatedText = translationCache.getTranslation(
+                    message.getBody(), 
+                    userPreferences.getPreferredLanguage()
+                );
+                textToSpeak = translatedText != null ? translatedText : message.getBody();
+            }
+            
+            if (textToSpeak != null && !textToSpeak.trim().isEmpty()) {
+                ttsManager.speak(textToSpeak);
+                Log.d(TAG, "Speaking message at position " + position);
+            } else {
+                Toast.makeText(this, "No text to speak", Toast.LENGTH_SHORT).show();
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error performing TTS on message", e);
+            Toast.makeText(this, "Error speaking message", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
