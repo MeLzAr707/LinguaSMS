@@ -190,6 +190,19 @@
     <string name="pref_manage_offline_models">Manage Offline Models</string>
     <string name="pref_category_offline_models">Offline Translation</string>
 
+    <!-- TTS (Text-to-Speech) Settings -->
+    <string name="tts_settings">Text-to-Speech</string>
+    <string name="enable_tts">Enable Text-to-Speech</string>
+    <string name="tts_speech_rate">Speech Rate</string>
+    <string name="tts_speed_slow">Slow (0.5x)</string>
+    <string name="tts_speed_normal">Normal (1.0x)</string>
+    <string name="tts_speed_fast">Fast (1.5x)</string>
+    <string name="tts_speed_very_fast">Very Fast (2.0x)</string>
+    <string name="tts_language">TTS Language</string>
+    <string name="select_tts_language">Select TTS Language</string>
+    <string name="tts_read_original">Read Original Text</string>
+    <string name="tts_read_original_description">When enabled, TTS will read the original message text instead of translated text</string>
+
     <!-- Missing strings for offline models -->
         <string name="model_size">Model size: %1$s</string>
         <string name="download_progress">Download progress: %1$d%%</string>

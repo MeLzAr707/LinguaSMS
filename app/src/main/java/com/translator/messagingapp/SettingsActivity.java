@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +29,12 @@ public class SettingsActivity extends BaseActivity {
     private Button saveButton;
     private Button manageOfflineModelsButton;
     private Switch autoTranslateSwitch;
+    private Switch ttsEnabledSwitch;
+    private SeekBar ttsSpeedSeekBar;
+    private TextView ttsSpeedLabel;
+    private Button selectTTSLanguageButton;
+    private TextView ttsLanguageText;
+    private Switch ttsReadOriginalSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
     private TextView outgoingLanguageText;
@@ -79,6 +86,14 @@ public class SettingsActivity extends BaseActivity {
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
         outgoingLanguageText = findViewById(R.id.outgoing_language_text);
+        
+        // TTS components
+        ttsEnabledSwitch = findViewById(R.id.tts_enabled_switch);
+        ttsSpeedSeekBar = findViewById(R.id.tts_speed_seekbar);
+        ttsSpeedLabel = findViewById(R.id.tts_speed_label);
+        selectTTSLanguageButton = findViewById(R.id.select_tts_language_button);
+        ttsLanguageText = findViewById(R.id.tts_language_text);
+        ttsReadOriginalSwitch = findViewById(R.id.tts_read_original_switch);
     }
 
     private void setupClickListeners() {
@@ -136,6 +151,34 @@ public class SettingsActivity extends BaseActivity {
                 }
             }
         });
+        
+        // Set up TTS language selection button
+        selectTTSLanguageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTTSLanguageSelectionDialog();
+            }
+        });
+        
+        // Set up TTS speed SeekBar
+        ttsSpeedSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    updateTTSSpeedLabel(progress);
+                }
+            }
+            
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // Not needed
+            }
+            
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // Not needed
+            }
+        });
     }
 
     private void loadPreferences() {
@@ -184,6 +227,27 @@ public class SettingsActivity extends BaseActivity {
                 break;
         }
         themeRadioGroup.check(radioButtonId);
+        
+        // Load TTS settings
+        ttsEnabledSwitch.setChecked(userPreferences.isTTSEnabled());
+        
+        // Load TTS speed
+        float ttsSpeed = userPreferences.getTTSSpeechRate();
+        int speedProgress = (int) ((ttsSpeed - 0.5f) / 1.5f * 150); // Convert 0.5-2.0 to 0-150
+        ttsSpeedSeekBar.setProgress(speedProgress);
+        updateTTSSpeedLabel(speedProgress);
+        
+        // Load TTS language
+        String ttsLanguage = userPreferences.getTTSLanguage();
+        if (!TextUtils.isEmpty(ttsLanguage)) {
+            ttsLanguageText.setText(getLanguageName(ttsLanguage));
+            ttsLanguageText.setVisibility(View.VISIBLE);
+        } else {
+            ttsLanguageText.setVisibility(View.GONE);
+        }
+        
+        // Load TTS read original setting
+        ttsReadOriginalSwitch.setChecked(userPreferences.shouldTTSReadOriginal());
     }
 
     private void showLanguageSelectionDialog(final String selectionType) {
@@ -301,6 +365,16 @@ public class SettingsActivity extends BaseActivity {
 
         // Save auto-translate setting
         userPreferences.setAutoTranslateEnabled(autoTranslateSwitch.isChecked());
+        
+        // Save TTS settings
+        userPreferences.setTTSEnabled(ttsEnabledSwitch.isChecked());
+        
+        // Save TTS speed (convert seekbar progress 0-150 to speed 0.5-2.0)
+        int speedProgress = ttsSpeedSeekBar.getProgress();
+        float ttsSpeed = 0.5f + (speedProgress / 150.0f) * 1.5f;
+        userPreferences.setTTSSpeechRate(ttsSpeed);
+        
+        userPreferences.setTTSReadOriginal(ttsReadOriginalSwitch.isChecked());
 
         // Show success message
         Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
@@ -377,5 +451,70 @@ public class SettingsActivity extends BaseActivity {
                 selectOutgoingLanguageButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
         }
+    }
+    
+    /**
+     * Updates the TTS speed label based on seekbar progress.
+     */
+    private void updateTTSSpeedLabel(int progress) {
+        float speed = 0.5f + (progress / 150.0f) * 1.5f;
+        String speedText;
+        
+        if (speed <= 0.6f) {
+            speedText = getString(R.string.tts_speed_slow);
+        } else if (speed <= 1.2f) {
+            speedText = getString(R.string.tts_speed_normal);
+        } else if (speed <= 1.7f) {
+            speedText = getString(R.string.tts_speed_fast);
+        } else {
+            speedText = getString(R.string.tts_speed_very_fast);
+        }
+        
+        speedText += String.format(" (%.1fx)", speed);
+        ttsSpeedLabel.setText(speedText);
+    }
+    
+    /**
+     * Shows the TTS language selection dialog.
+     */
+    private void showTTSLanguageSelectionDialog() {
+        // List of commonly supported TTS languages
+        final String[] languageCodes = {
+            "en", "es", "fr", "de", "it", "pt", "ja", "ko", "zh", "ar", "hi", "ru"
+        };
+        
+        final String[] languageNames = {
+            "English", "Spanish", "French", "German", "Italian", "Portuguese",
+            "Japanese", "Korean", "Chinese", "Arabic", "Hindi", "Russian"
+        };
+        
+        // Find current selection
+        String currentLanguage = userPreferences.getTTSLanguage();
+        int currentSelection = -1;
+        for (int i = 0; i < languageCodes.length; i++) {
+            if (languageCodes[i].equals(currentLanguage)) {
+                currentSelection = i;
+                break;
+            }
+        }
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.select_tts_language));
+        builder.setSingleChoiceItems(languageNames, currentSelection, 
+            new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    String selectedLanguage = languageCodes[which];
+                    userPreferences.setTTSLanguage(selectedLanguage);
+                    
+                    // Update UI
+                    ttsLanguageText.setText(languageNames[which]);
+                    ttsLanguageText.setVisibility(View.VISIBLE);
+                    
+                    dialog.dismiss();
+                }
+            });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 }
