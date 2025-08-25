@@ -185,4 +185,102 @@ public class OptimizedMessageCache {
         
         Log.d(TAG, "Cache maintenance completed");
     }
+    
+    /**
+     * Adds a message to the cache.
+     * 
+     * @param threadId The thread ID
+     * @param message The message to add
+     */
+    public void addMessage(String threadId, Message message) {
+        if (threadId == null || threadId.isEmpty() || message == null) {
+            return;
+        }
+        
+        List<Message> messages = messageCache.get(threadId);
+        if (messages == null) {
+            messages = new ArrayList<>();
+        } else {
+            // Create a copy to avoid modifying cached data
+            messages = new ArrayList<>(messages);
+        }
+        
+        messages.add(message);
+        messageCache.put(threadId, messages);
+        Log.d(TAG, "Added message to cache for thread: " + threadId);
+    }
+    
+    /**
+     * Gets a specific message from the cache.
+     * 
+     * @param threadId The thread ID
+     * @param messageId The message ID
+     * @return The message if found, null otherwise
+     */
+    public Message getMessage(String threadId, long messageId) {
+        if (threadId == null || threadId.isEmpty()) {
+            return null;
+        }
+        
+        List<Message> messages = messageCache.get(threadId);
+        if (messages != null) {
+            for (Message message : messages) {
+                if (message.getId() == messageId) {
+                    Log.d(TAG, "Found message " + messageId + " in cache for thread: " + threadId);
+                    return message;
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Updates a message in the cache.
+     * 
+     * @param threadId The thread ID
+     * @param messageId The message ID
+     * @param updatedMessage The updated message
+     */
+    public void updateMessage(String threadId, long messageId, Message updatedMessage) {
+        if (threadId == null || threadId.isEmpty() || updatedMessage == null) {
+            return;
+        }
+        
+        List<Message> messages = messageCache.get(threadId);
+        if (messages != null) {
+            // Create a copy to avoid modifying cached data
+            messages = new ArrayList<>(messages);
+            
+            for (int i = 0; i < messages.size(); i++) {
+                if (messages.get(i).getId() == messageId) {
+                    messages.set(i, updatedMessage);
+                    messageCache.put(threadId, messages);
+                    Log.d(TAG, "Updated message " + messageId + " in cache for thread: " + threadId);
+                    return;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Removes a message from the cache.
+     * 
+     * @param threadId The thread ID
+     * @param messageId The message ID
+     */
+    public void removeMessage(String threadId, long messageId) {
+        if (threadId == null || threadId.isEmpty()) {
+            return;
+        }
+        
+        List<Message> messages = messageCache.get(threadId);
+        if (messages != null) {
+            // Create a copy to avoid modifying cached data
+            messages = new ArrayList<>(messages);
+            
+            messages.removeIf(message -> message.getId() == messageId);
+            messageCache.put(threadId, messages);
+            Log.d(TAG, "Removed message " + messageId + " from cache for thread: " + threadId);
+        }
+    }
 }

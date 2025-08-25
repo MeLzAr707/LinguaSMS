@@ -518,4 +518,16 @@ public class OfflineTranslationService {
         // Clean up any resources if needed
         Log.d(TAG, "OfflineTranslationService cleanup complete");
     }
+    
+    /**
+     * Gets the offline message queue for processing messages when network is unavailable.
+     * This queue stores messages that need to be translated when offline models are available.
+     * 
+     * @return List of messages queued for offline translation
+     */
+    public java.util.List<Object> getOfflineMessageQueue() {
+        Log.d(TAG, "Getting offline message queue");
+        // Return an empty list for now - this would be implemented with proper message storage
+        return new java.util.ArrayList<>();
+    }
 }
