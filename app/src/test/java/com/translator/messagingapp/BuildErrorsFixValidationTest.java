@@ -142,4 +142,112 @@ public class BuildErrorsFixValidationTest {
             fail("SearchActivity should exist and be compilable: " + e.getMessage());
         }
     }
+    
+    // Tests for issue #393 build error fixes
+    
+    @Test
+    public void testOfflineMessageQueueClassExists() {
+        try {
+            Class.forName("com.translator.messagingapp.OfflineMessageQueue");
+            assertTrue("OfflineMessageQueue class should exist", true);
+        } catch (ClassNotFoundException e) {
+            fail("OfflineMessageQueue class should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testOfflineMessageQueueMethodsExist() {
+        try {
+            OfflineMessageQueue.class.getMethod("getFailedMessages");
+            OfflineMessageQueue.class.getMethod("retryFailedMessage", long.class);
+            OfflineMessageQueue.class.getMethod("clearFailedMessages");
+            OfflineMessageQueue.class.getMethod("getNextMessage");
+            assertTrue("All OfflineMessageQueue methods should exist", true);
+        } catch (NoSuchMethodException e) {
+            fail("OfflineMessageQueue method should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testScheduledMessageManagerClassExists() {
+        try {
+            Class.forName("com.translator.messagingapp.ScheduledMessageManager");
+            assertTrue("ScheduledMessageManager class should exist", true);
+        } catch (ClassNotFoundException e) {
+            fail("ScheduledMessageManager class should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testScheduledMessageManagerMethodsExist() {
+        try {
+            ScheduledMessageManager.class.getMethod("rescheduleAllPendingMessages");
+            ScheduledMessageManager.class.getMethod("addMessage", Message.class);
+            ScheduledMessageManager.class.getMethod("getMessage", long.class);
+            ScheduledMessageManager.class.getMethod("updateMessage", Message.class);
+            ScheduledMessageManager.class.getMethod("removeMessage", long.class);
+            ScheduledMessageManager.class.getMethod("shutdown");
+            ScheduledMessageManager.class.getMethod("isInitialized");
+            ScheduledMessageManager.class.getMethod("getMessagesForThread", long.class);
+            ScheduledMessageManager.class.getMethod("getStats");
+            ScheduledMessageManager.class.getMethod("clear");
+            ScheduledMessageManager.class.getMethod("getPendingScheduledMessages");
+            ScheduledMessageManager.class.getMethod("processReadyMessages");
+            ScheduledMessageManager.class.getMethod("getSchedulingReliabilityMessage");
+            assertTrue("All ScheduledMessageManager methods should exist", true);
+        } catch (NoSuchMethodException e) {
+            fail("ScheduledMessageManager method should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testTTSManagerClassExists() {
+        try {
+            Class.forName("com.translator.messagingapp.TTSManager");
+            assertTrue("TTSManager class should exist", true);
+        } catch (ClassNotFoundException e) {
+            fail("TTSManager class should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testTTSManagerSpeakMethods() {
+        try {
+            TTSManager.class.getMethod("speak", String.class);
+            TTSManager.class.getMethod("speak", String.class, TTSPlaybackListener.class);
+            assertTrue("TTSManager speak methods should exist", true);
+        } catch (NoSuchMethodException e) {
+            fail("TTSManager speak method should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testTTSPlaybackListenerInterfaceExists() {
+        try {
+            Class.forName("com.translator.messagingapp.TTSPlaybackListener");
+            assertTrue("TTSPlaybackListener interface should exist", true);
+        } catch (ClassNotFoundException e) {
+            fail("TTSPlaybackListener interface should exist: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testMessageServiceSendSmsMethod() {
+        try {
+            MessageService.class.getMethod("sendSms", String.class, String.class);
+            assertTrue("sendSms method should exist in MessageService", true);
+        } catch (NoSuchMethodException e) {
+            fail("sendSms method should exist in MessageService: " + e.getMessage());
+        }
+    }
+    
+    @Test
+    public void testQueuedMessageClassExists() {
+        try {
+            Class.forName("com.translator.messagingapp.QueuedMessage");
+            assertTrue("QueuedMessage class should exist", true);
+        } catch (ClassNotFoundException e) {
+            fail("QueuedMessage class should exist: " + e.getMessage());
+        }
+    }
 }

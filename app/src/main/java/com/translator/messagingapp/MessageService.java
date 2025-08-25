@@ -986,6 +986,18 @@ public class MessageService {
     public boolean sendSmsMessage(String address, String body) {
         return sendSmsMessage(address, body, null, null);
     }
+    
+    /**
+     * Sends an SMS message (compatibility method).
+     * This is an alias for sendSmsMessage for backward compatibility.
+     *
+     * @param address The recipient address
+     * @param body The message body
+     * @return True if the message was sent successfully
+     */
+    public boolean sendSms(String address, String body) {
+        return sendSmsMessage(address, body);
+    }
 
     /**
      * Sends an SMS message with additional parameters.
