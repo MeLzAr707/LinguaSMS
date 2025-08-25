@@ -44,6 +44,9 @@ public class UserPreferences {
     private static final String KEY_CUSTOM_OUTGOING_BUBBLE_COLOR = "custom_outgoing_bubble_color";
     private static final String KEY_CUSTOM_BACKGROUND_COLOR = "custom_background_color";
     private static final String KEY_CUSTOM_TEXT_COLOR = "custom_text_color";
+    
+    // Contact language preference key prefix
+    private static final String KEY_CONTACT_LANGUAGE_PREFIX = "contact_lang_preference_";
 
     private final SharedPreferences preferences;
 
@@ -499,6 +502,105 @@ public class UserPreferences {
      */
     public void setCustomTextColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_TEXT_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the preferred language for a specific contact.
+     *
+     * @param phoneNumber The contact's phone number
+     * @return The preferred language code for the contact, or null if not set
+     */
+    public String getContactLanguagePreference(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return null;
+        }
+        String normalizedNumber = normalizePhoneNumber(phoneNumber);
+        return preferences.getString(KEY_CONTACT_LANGUAGE_PREFIX + normalizedNumber, null);
+    }
+
+    /**
+     * Sets the preferred language for a specific contact.
+     *
+     * @param phoneNumber The contact's phone number
+     * @param languageCode The language code to set (e.g., "en", "es", "fr")
+     */
+    public void setContactLanguagePreference(String phoneNumber, String languageCode) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return;
+        }
+        String normalizedNumber = normalizePhoneNumber(phoneNumber);
+        if (languageCode == null || languageCode.trim().isEmpty()) {
+            // Remove the preference if language code is null or empty
+            preferences.edit().remove(KEY_CONTACT_LANGUAGE_PREFIX + normalizedNumber).apply();
+        } else {
+            preferences.edit().putString(KEY_CONTACT_LANGUAGE_PREFIX + normalizedNumber, languageCode.trim()).apply();
+        }
+    }
+
+    /**
+     * Gets the effective outgoing language for a contact.
+     * This method implements the fallback logic: contact preference -> global outgoing preference -> global preference.
+     *
+     * @param phoneNumber The contact's phone number
+     * @return The effective language code to use for outgoing messages to this contact
+     */
+    public String getEffectiveOutgoingLanguageForContact(String phoneNumber) {
+        // First try contact-specific preference
+        String contactLanguage = getContactLanguagePreference(phoneNumber);
+        if (contactLanguage != null && !contactLanguage.isEmpty()) {
+            return contactLanguage;
+        }
+        
+        // Fall back to global outgoing preference
+        String outgoingLanguage = getPreferredOutgoingLanguage();
+        if (outgoingLanguage != null && !outgoingLanguage.isEmpty()) {
+            return outgoingLanguage;
+        }
+        
+        // Final fallback to general preferred language
+        return getPreferredLanguage();
+    }
+
+    /**
+     * Removes the language preference for a specific contact.
+     *
+     * @param phoneNumber The contact's phone number
+     */
+    public void removeContactLanguagePreference(String phoneNumber) {
+        setContactLanguagePreference(phoneNumber, null);
+    }
+
+    /**
+     * Checks if a contact has a specific language preference set.
+     *
+     * @param phoneNumber The contact's phone number
+     * @return true if the contact has a language preference set, false otherwise
+     */
+    public boolean hasContactLanguagePreference(String phoneNumber) {
+        return getContactLanguagePreference(phoneNumber) != null;
+    }
+
+    /**
+     * Normalizes a phone number for consistent storage as preference keys.
+     * Removes non-digit characters and handles common formatting variations.
+     *
+     * @param phoneNumber The phone number to normalize
+     * @return The normalized phone number
+     */
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null) {
+            return "";
+        }
+        
+        // Remove all non-digit characters
+        String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
+        
+        // Handle US numbers with country code
+        if (digitsOnly.length() == 11 && digitsOnly.startsWith("1")) {
+            return digitsOnly.substring(1); // Remove US country code for consistency
+        }
+        
+        return digitsOnly;
     }
 }
 

@@ -387,6 +387,80 @@ public class ContactUtils {
 
         return new ContactInfo(null, null);
     }
+
+    /**
+     * Gets the preferred language for a contact.
+     *
+     * @param context The context
+     * @param phoneNumber The contact's phone number
+     * @return The preferred language code for the contact, or null if not set
+     */
+    public static String getContactLanguagePreference(Context context, String phoneNumber) {
+        if (context == null) {
+            return null;
+        }
+        UserPreferences userPreferences = new UserPreferences(context);
+        return userPreferences.getContactLanguagePreference(phoneNumber);
+    }
+
+    /**
+     * Sets the preferred language for a contact.
+     *
+     * @param context The context
+     * @param phoneNumber The contact's phone number
+     * @param languageCode The language code to set
+     */
+    public static void setContactLanguagePreference(Context context, String phoneNumber, String languageCode) {
+        if (context == null) {
+            return;
+        }
+        UserPreferences userPreferences = new UserPreferences(context);
+        userPreferences.setContactLanguagePreference(phoneNumber, languageCode);
+    }
+
+    /**
+     * Gets the effective outgoing language for a contact with fallback logic.
+     *
+     * @param context The context
+     * @param phoneNumber The contact's phone number
+     * @return The effective language code to use for outgoing messages to this contact
+     */
+    public static String getEffectiveOutgoingLanguageForContact(Context context, String phoneNumber) {
+        if (context == null) {
+            return "en"; // Default fallback
+        }
+        UserPreferences userPreferences = new UserPreferences(context);
+        return userPreferences.getEffectiveOutgoingLanguageForContact(phoneNumber);
+    }
+
+    /**
+     * Checks if a contact has a specific language preference set.
+     *
+     * @param context The context
+     * @param phoneNumber The contact's phone number
+     * @return true if the contact has a language preference set, false otherwise
+     */
+    public static boolean hasContactLanguagePreference(Context context, String phoneNumber) {
+        if (context == null) {
+            return false;
+        }
+        UserPreferences userPreferences = new UserPreferences(context);
+        return userPreferences.hasContactLanguagePreference(phoneNumber);
+    }
+
+    /**
+     * Removes the language preference for a contact.
+     *
+     * @param context The context
+     * @param phoneNumber The contact's phone number
+     */
+    public static void removeContactLanguagePreference(Context context, String phoneNumber) {
+        if (context == null) {
+            return;
+        }
+        UserPreferences userPreferences = new UserPreferences(context);
+        userPreferences.removeContactLanguagePreference(phoneNumber);
+    }
 }
 
 
