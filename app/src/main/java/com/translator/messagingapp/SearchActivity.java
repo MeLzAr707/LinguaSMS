@@ -10,9 +10,15 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,6 +42,12 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
     // UI components
     private EditText searchEditText;
     private ImageButton clearSearchButton;
+    private ImageButton filterButton;
+    private LinearLayout filterPanel;
+    private RadioGroup searchScopeRadioGroup;
+    private Spinner messageTypeSpinner;
+    private Button applyFiltersButton;
+    private Button clearFiltersButton;
     private RecyclerView searchResultsRecyclerView;
     private MessageRecyclerAdapter adapter;
     private ProgressBar progressBar;
@@ -46,6 +58,7 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
     private ExecutorService executorService;
     private MessageService messageService;
     private TranslationCache translationCache;
+    private SearchFilter currentSearchFilter;
     
     // Search debouncing
     private Handler searchHandler;
@@ -79,6 +92,7 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
 
         // Initialize data
         searchResults = new ArrayList<>();
+        currentSearchFilter = new SearchFilter(); // Default filter
 
         // Initialize UI components
         initializeUI();
@@ -97,6 +111,12 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         // Find views
         searchEditText = findViewById(R.id.search_edit_text);
         clearSearchButton = findViewById(R.id.clear_search_button);
+        filterButton = findViewById(R.id.filter_button);
+        filterPanel = findViewById(R.id.filter_panel);
+        searchScopeRadioGroup = findViewById(R.id.search_scope_radio_group);
+        messageTypeSpinner = findViewById(R.id.message_type_spinner);
+        applyFiltersButton = findViewById(R.id.apply_filters_button);
+        clearFiltersButton = findViewById(R.id.clear_filters_button);
         searchResultsRecyclerView = findViewById(R.id.search_results_recycler_view);
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
@@ -106,6 +126,9 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         searchResultsRecyclerView.setLayoutManager(layoutManager);
         adapter = new MessageRecyclerAdapter(this, searchResults, this);
         searchResultsRecyclerView.setAdapter(adapter);
+
+        // Set up filters
+        setupFilters();
 
         // Set up search input
         searchEditText.addTextChangedListener(new TextWatcher() {
@@ -185,8 +208,8 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         // Perform search in background
         executorService.execute(() -> {
             try {
-                // Search messages using MessageService
-                List<Message> results = messageService.searchMessages(query);
+                // Search messages using MessageService with current filter
+                List<Message> results = messageService.searchMessages(query, currentSearchFilter);
 
                 // Restore translation states for search results
                 if (translationCache != null) {
@@ -345,6 +368,145 @@ public class SearchActivity extends BaseActivity implements MessageRecyclerAdapt
         // For attachments, we need to find the message to open the conversation
         // For now, just show a message to the user
         Toast.makeText(this, "Open the conversation to interact with this attachment", Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * Sets up the filter UI components and their event handlers.
+     */
+    private void setupFilters() {
+        // Set up filter button
+        filterButton.setOnClickListener(v -> toggleFilterPanel());
+        
+        // Set up message type spinner
+        setupMessageTypeSpinner();
+        
+        // Set up filter buttons
+        applyFiltersButton.setOnClickListener(v -> applyFilters());
+        clearFiltersButton.setOnClickListener(v -> clearFilters());
+    }
+    
+    /**
+     * Sets up the message type spinner with filter options.
+     */
+    private void setupMessageTypeSpinner() {
+        String[] messageTypeOptions = {
+            getString(R.string.filter_all_messages),
+            getString(R.string.filter_sms_only),
+            getString(R.string.filter_mms_only),
+            getString(R.string.filter_translated_only),
+            getString(R.string.filter_untranslated_only)
+        };
+        
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            this, android.R.layout.simple_spinner_item, messageTypeOptions);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        messageTypeSpinner.setAdapter(adapter);
+        
+        messageTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // Handle selection (will be applied when Apply Filters is clicked)
+            }
+            
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
+    }
+    
+    /**
+     * Toggles the visibility of the filter panel.
+     */
+    private void toggleFilterPanel() {
+        if (filterPanel.getVisibility() == View.GONE) {
+            filterPanel.setVisibility(View.VISIBLE);
+        } else {
+            filterPanel.setVisibility(View.GONE);
+        }
+    }
+    
+    /**
+     * Applies the current filter settings and performs a new search.
+     */
+    private void applyFilters() {
+        // Get search scope from radio group
+        int checkedId = searchScopeRadioGroup.getCheckedRadioButtonId();
+        SearchFilter.SearchScope scope;
+        if (checkedId == R.id.radio_original_only) {
+            scope = SearchFilter.SearchScope.ORIGINAL_ONLY;
+        } else if (checkedId == R.id.radio_translation_only) {
+            scope = SearchFilter.SearchScope.TRANSLATION_ONLY;
+        } else {
+            scope = SearchFilter.SearchScope.ALL_CONTENT;
+        }
+        
+        // Get message type filter from spinner
+        int selectedMessageType = messageTypeSpinner.getSelectedItemPosition();
+        SearchFilter.MessageTypeFilter messageTypeFilter;
+        switch (selectedMessageType) {
+            case 1:
+                messageTypeFilter = SearchFilter.MessageTypeFilter.SMS_ONLY;
+                break;
+            case 2:
+                messageTypeFilter = SearchFilter.MessageTypeFilter.MMS_ONLY;
+                break;
+            case 3:
+                messageTypeFilter = SearchFilter.MessageTypeFilter.TRANSLATED_ONLY;
+                break;
+            case 4:
+                messageTypeFilter = SearchFilter.MessageTypeFilter.UNTRANSLATED_ONLY;
+                break;
+            default:
+                messageTypeFilter = SearchFilter.MessageTypeFilter.ALL;
+                break;
+        }
+        
+        // Update current filter
+        currentSearchFilter.setSearchScope(scope);
+        currentSearchFilter.setMessageTypeFilter(messageTypeFilter);
+        
+        // Hide filter panel
+        filterPanel.setVisibility(View.GONE);
+        
+        // Clear cache since filters changed
+        lastSearchQuery = "";
+        lastSearchResults = null;
+        
+        // Perform search with new filters if there's a query
+        String currentQuery = searchEditText.getText().toString().trim();
+        if (!currentQuery.isEmpty() && currentQuery.length() >= 2) {
+            performSearch(currentQuery);
+        }
+        
+        Toast.makeText(this, "Filters applied", Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * Clears all filter settings and resets to defaults.
+     */
+    private void clearFilters() {
+        // Reset to default filter
+        currentSearchFilter = new SearchFilter();
+        
+        // Reset UI components
+        searchScopeRadioGroup.check(R.id.radio_all_content);
+        messageTypeSpinner.setSelection(0);
+        
+        // Hide filter panel
+        filterPanel.setVisibility(View.GONE);
+        
+        // Clear cache since filters changed
+        lastSearchQuery = "";
+        lastSearchResults = null;
+        
+        // Perform search with cleared filters if there's a query
+        String currentQuery = searchEditText.getText().toString().trim();
+        if (!currentQuery.isEmpty() && currentQuery.length() >= 2) {
+            performSearch(currentQuery);
+        }
+        
+        Toast.makeText(this, "Filters cleared", Toast.LENGTH_SHORT).show();
     }
 
     @Override

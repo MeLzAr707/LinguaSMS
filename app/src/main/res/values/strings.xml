@@ -154,6 +154,23 @@
     <string name="search_messages">Search Messages</string>
     <string name="no_search_results">No messages found matching your search</string>
     <string name="search_error">Error searching messages</string>
+    
+    <!-- Enhanced Search Filters -->
+    <string name="search_filters">Search filters</string>
+    <string name="search_in">Search in</string>
+    <string name="all_content">All content</string>
+    <string name="original_only">Original text</string>
+    <string name="translation_only">Translations</string>
+    <string name="message_type">Message type</string>
+    <string name="apply_filters">Apply filters</string>
+    <string name="clear_filters">Clear filters</string>
+    
+    <!-- Message type filter options -->
+    <string name="filter_all_messages">All messages</string>
+    <string name="filter_sms_only">SMS only</string>
+    <string name="filter_mms_only">MMS only</string>
+    <string name="filter_translated_only">Translated only</string>
+    <string name="filter_untranslated_only">Untranslated only</string>
     <!--  Added missing strings  -->
     <string name="translate_input">Translate input text</string>
 
