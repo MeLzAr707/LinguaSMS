@@ -388,7 +388,169 @@ public class OfflineMessageQueue {
         
         return status;
     }
+
+    /**
+     * Gets a list of failed messages for manual intervention.
+     */
+    public java.util.List<QueuedMessage> getFailedMessages() {
+        java.util.List<QueuedMessage> failedMessages = new java.util.ArrayList<>();
+        
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.state == STATE_FAILED) {
+                    failedMessages.add(message);
+                }
+            }
+        }
+        
+        return failedMessages;
+    }
+
+    /**
+     * Retries a specific failed message.
+     */
+    public boolean retryFailedMessage(long messageId) {
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.id == messageId && message.state == STATE_FAILED) {
+                    message.state = STATE_PENDING;
+                    message.retryCount = 0;
+                    message.lastError = null;
+                    saveQueueToStorage();
+                    
+                    if (isNetworkAvailable) {
+                        processQueuedMessages();
+                    }
+                    
+                    Log.d(TAG, "Manually retrying failed message: " + messageId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clears all failed messages from the queue.
+     */
+    public int clearFailedMessages() {
+        int clearedCount = 0;
+        
+        synchronized (messageQueue) {
+            java.util.Iterator<QueuedMessage> iterator = messageQueue.iterator();
+            while (iterator.hasNext()) {
+                QueuedMessage message = iterator.next();
+                if (message.state == STATE_FAILED) {
+                    iterator.remove();
+                    clearedCount++;
+                }
+            }
+        }
+        
+        if (clearedCount > 0) {
+            saveQueueToStorage();
+            Log.d(TAG, "Cleared " + clearedCount + " failed messages");
+        }
+        
+        return clearedCount;
+    }
+
+    /**
+     * Gets the next message to be processed (highest priority pending/retry).
+     */
+    public QueuedMessage getNextMessage() {
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.state == STATE_PENDING || 
+                    (message.state == STATE_RETRY && isReadyForRetry(message))) {
+                    return message;
+                }
+            }
+        }
+        return null;
+    }
     
+    /**
+     * Gets a list of failed messages for manual intervention.
+     */
+    public java.util.List<QueuedMessage> getFailedMessages() {
+        java.util.List<QueuedMessage> failedMessages = new java.util.ArrayList<>();
+        
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.state == STATE_FAILED) {
+                    failedMessages.add(message);
+                }
+            }
+        }
+        
+        return failedMessages;
+    }
+
+    /**
+     * Retries a specific failed message.
+     */
+    public boolean retryFailedMessage(long messageId) {
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.id == messageId && message.state == STATE_FAILED) {
+                    message.state = STATE_PENDING;
+                    message.retryCount = 0;
+                    message.lastError = null;
+                    saveQueueToStorage();
+                    
+                    if (isNetworkAvailable) {
+                        processQueuedMessages();
+                    }
+                    
+                    Log.d(TAG, "Manually retrying failed message: " + messageId);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clears all failed messages from the queue.
+     */
+    public int clearFailedMessages() {
+        int clearedCount = 0;
+        
+        synchronized (messageQueue) {
+            java.util.Iterator<QueuedMessage> iterator = messageQueue.iterator();
+            while (iterator.hasNext()) {
+                QueuedMessage message = iterator.next();
+                if (message.state == STATE_FAILED) {
+                    iterator.remove();
+                    clearedCount++;
+                }
+            }
+        }
+        
+        if (clearedCount > 0) {
+            saveQueueToStorage();
+            Log.d(TAG, "Cleared " + clearedCount + " failed messages");
+        }
+        
+        return clearedCount;
+    }
+
+    /**
+     * Gets the next message to be processed (highest priority pending/retry).
+     */
+    public QueuedMessage getNextMessage() {
+        synchronized (messageQueue) {
+            for (QueuedMessage message : messageQueue) {
+                if (message.state == STATE_PENDING || 
+                    (message.state == STATE_RETRY && isReadyForRetry(message))) {
+                    return message;
+                }
+            }
+        }
+        return null;
+    }
+
     /**
      * Queue status information.
      */
