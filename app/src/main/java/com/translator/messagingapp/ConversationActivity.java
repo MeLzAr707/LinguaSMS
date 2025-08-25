@@ -952,6 +952,28 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void openAttachment(Uri uri, String contentType) {
         try {
+            // Check if this is an image or video - use MediaGalleryActivity for enhanced viewing
+            if (contentType != null && (contentType.startsWith("image/") || contentType.startsWith("video/"))) {
+                Intent galleryIntent = MediaGalleryActivity.createIntent(this, uri);
+                startActivity(galleryIntent);
+                return;
+            }
+            
+            // For non-media files or unknown content types, try to determine if it's an image/video by URI
+            if (contentType == null) {
+                String uriString = uri.toString().toLowerCase();
+                if (uriString.contains("image") || 
+                    uriString.endsWith(".jpg") || uriString.endsWith(".jpeg") || 
+                    uriString.endsWith(".png") || uriString.endsWith(".gif") ||
+                    uriString.endsWith(".mp4") || uriString.endsWith(".mov") || 
+                    uriString.endsWith(".avi")) {
+                    Intent galleryIntent = MediaGalleryActivity.createIntent(this, uri);
+                    startActivity(galleryIntent);
+                    return;
+                }
+            }
+            
+            // Fall back to default system app for other file types
             Intent intent = new Intent(Intent.ACTION_VIEW);
             
             if (contentType != null) {

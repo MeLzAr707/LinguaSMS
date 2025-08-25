@@ -227,5 +227,13 @@
 
     <!-- Layout IDs -->
 
+    <!-- Media Gallery -->
+    <string name="media_content">Media content</string>
+    <string name="close">Close</string>
+    <string name="share">Share</string>
+    <string name="save">Save</string>
+    <string name="failed_to_load_media">Failed to load media</string>
+    <string name="attachment_image">Attachment image</string>
+    <string name="attachment">Attachment</string>
 
 </resources>
