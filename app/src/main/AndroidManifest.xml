@@ -156,6 +156,8 @@
             <intent-filter>
                 <action android:name="com.translator.messagingapp.SEND_SCHEDULED_MESSAGE" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>
         </receiver>
 

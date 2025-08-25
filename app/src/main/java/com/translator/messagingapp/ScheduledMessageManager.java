@@ -47,6 +47,29 @@ public class ScheduledMessageManager {
     }
 
     /**
+     * Check if the app has permission to schedule exact alarms.
+     * On Android 12+ (API 31+), apps need special permission for exact alarms.
+     */
+    public boolean canScheduleExactAlarms() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return alarmManager.canScheduleExactAlarms();
+        }
+        return true; // Always available on older versions
+    }
+
+    /**
+     * Get user-friendly message about scheduling reliability.
+     */
+    public String getSchedulingReliabilityMessage() {
+        if (canScheduleExactAlarms()) {
+            return "Messages will be delivered at the exact scheduled time.";
+        } else {
+            return "Scheduled messages will be delivered approximately at the scheduled time. " +
+                   "For exact timing, enable 'Alarms & reminders' permission in Settings.";
+        }
+    }
+
+    /**
      * Schedule a message to be sent at the specified time.
      */
     public long scheduleMessage(String recipient, String messageBody, long scheduledTime, String threadId) {
@@ -227,22 +250,32 @@ public class ScheduledMessageManager {
         
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    message.getScheduledTime(),
-                    pendingIntent
-                );
+                if (canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        message.getScheduledTime(),
+                        pendingIntent
+                    );
+                    Log.d(TAG, "Scheduled exact alarm for message " + message.getId());
+                } else {
+                    // Use inexact alarm as fallback
+                    alarmManager.set(
+                        AlarmManager.RTC_WAKEUP,
+                        message.getScheduledTime(),
+                        pendingIntent
+                    );
+                    Log.d(TAG, "Scheduled inexact alarm for message " + message.getId() + " (exact alarms not available)");
+                }
             } else {
                 alarmManager.setExact(
                     AlarmManager.RTC_WAKEUP,
                     message.getScheduledTime(),
                     pendingIntent
                 );
+                Log.d(TAG, "Scheduled exact alarm for message " + message.getId());
             }
-            
-            Log.d(TAG, "Scheduled alarm for message " + message.getId() + " at " + message.getScheduledTime());
         } catch (SecurityException e) {
-            Log.e(TAG, "Failed to schedule exact alarm, falling back to WorkManager", e);
+            Log.w(TAG, "Failed to schedule alarm, falling back to WorkManager", e);
             
             // Fallback to WorkManager if exact alarms are restricted
             long delay = message.getScheduledTime() - System.currentTimeMillis();

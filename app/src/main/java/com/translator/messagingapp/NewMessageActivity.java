@@ -429,9 +429,11 @@ public class NewMessageActivity extends BaseActivity {
                 scheduledTime = selectedTime;
                 updateScheduleUI();
                 
-                Toast.makeText(this, 
-                    "Message will be sent on " + dateTimeFormat.format(new Date(scheduledTime)), 
-                    Toast.LENGTH_LONG).show();
+                // Show confirmation with reliability information
+                String reliabilityMessage = scheduledMessageManager.getSchedulingReliabilityMessage();
+                String confirmationMessage = "Message will be sent on " + dateTimeFormat.format(new Date(scheduledTime)) + "\n\n" + reliabilityMessage;
+                
+                Toast.makeText(this, confirmationMessage, Toast.LENGTH_LONG).show();
             },
             now.get(Calendar.HOUR_OF_DAY),
             now.get(Calendar.MINUTE),

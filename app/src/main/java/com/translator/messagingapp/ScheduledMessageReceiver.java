@@ -29,6 +29,18 @@ public class ScheduledMessageReceiver extends BroadcastReceiver {
             // Reschedule all pending messages after device reboot
             ScheduledMessageManager manager = new ScheduledMessageManager(context);
             manager.rescheduleAllPendingMessages();
+        } else if (Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
+            Log.d(TAG, "Timezone changed, rescheduling pending messages");
+            
+            // Reschedule all pending messages after timezone change
+            ScheduledMessageManager manager = new ScheduledMessageManager(context);
+            manager.rescheduleAllPendingMessages();
+        } else if (Intent.ACTION_TIME_SET.equals(action)) {
+            Log.d(TAG, "Time set, rescheduling pending messages");
+            
+            // Reschedule all pending messages after time change
+            ScheduledMessageManager manager = new ScheduledMessageManager(context);
+            manager.rescheduleAllPendingMessages();
         }
     }
 }
