@@ -109,6 +109,16 @@
             android:exported="false"
             android:theme="@style/AppTheme.NoActionBar" />
 
+        <activity
+            android:name=".ScheduledMessagesActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
+        </activity>
+
         <!-- Receivers -->
         <receiver
             android:name=".SmsReceiver"

@@ -48,6 +48,7 @@ public class NewMessageActivity extends BaseActivity {
     // Scheduling fields
     private long scheduledTime = 0;
     private SimpleDateFormat dateTimeFormat;
+    private ScheduledMessage editingMessage = null; // For editing existing scheduled messages
 
     // Service classes
     private MessageService messageService;
@@ -99,7 +100,26 @@ public class NewMessageActivity extends BaseActivity {
                 isComposedTextTranslated = savedInstanceState.getBoolean("isComposedTextTranslated", false);
                 originalComposedText = savedInstanceState.getString("originalComposedText", "");
                 scheduledTime = savedInstanceState.getLong("scheduledTime", 0);
+                editingMessage = savedInstanceState.getParcelable("editingMessage");
                 updateScheduleUI();
+            }
+
+            // Check if we're editing an existing scheduled message
+            Intent intent = getIntent();
+            if (intent != null && intent.hasExtra("edit_scheduled_message")) {
+                editingMessage = intent.getParcelableExtra("edit_scheduled_message");
+                if (editingMessage != null) {
+                    // Populate fields with existing message data
+                    recipientInput.setText(editingMessage.getRecipient());
+                    messageInput.setText(editingMessage.getMessageBody());
+                    scheduledTime = editingMessage.getScheduledTime();
+                    updateScheduleUI();
+                    
+                    // Update toolbar title
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle("Edit Scheduled Message");
+                    }
+                }
             }
 
             // Set up send button
@@ -155,6 +175,7 @@ public class NewMessageActivity extends BaseActivity {
         outState.putBoolean("isComposedTextTranslated", isComposedTextTranslated);
         outState.putString("originalComposedText", originalComposedText);
         outState.putLong("scheduledTime", scheduledTime);
+        outState.putParcelable("editingMessage", editingMessage);
     }
 
     private void setupTextWatchers() {
@@ -301,24 +322,39 @@ public class NewMessageActivity extends BaseActivity {
             
             // Check if message should be scheduled
             if (scheduledTime > 0 && scheduledTime > System.currentTimeMillis()) {
-                // Schedule the message
-                long messageId = scheduledMessageManager.scheduleMessage(
-                    finalRecipient, 
-                    messageText, 
-                    scheduledTime, 
-                    null
-                );
+                long messageId;
+                
+                if (editingMessage != null) {
+                    // Update existing scheduled message
+                    boolean success = scheduledMessageManager.updateScheduledMessage(
+                        editingMessage.getId(),
+                        finalRecipient,
+                        messageText,
+                        scheduledTime
+                    );
+                    messageId = success ? editingMessage.getId() : -1;
+                } else {
+                    // Schedule new message
+                    messageId = scheduledMessageManager.scheduleMessage(
+                        finalRecipient, 
+                        messageText, 
+                        scheduledTime, 
+                        null
+                    );
+                }
                 
                 if (messageId > 0) {
+                    String action = editingMessage != null ? "updated" : "scheduled";
                     Toast.makeText(this, 
-                        "Message scheduled for " + dateTimeFormat.format(new Date(scheduledTime)), 
+                        "Message " + action + " for " + dateTimeFormat.format(new Date(scheduledTime)), 
                         Toast.LENGTH_LONG).show();
                     
                     // Set result and finish
                     setResult(RESULT_OK);
                     finish();
                 } else {
-                    Toast.makeText(this, "Failed to schedule message", Toast.LENGTH_SHORT).show();
+                    String action = editingMessage != null ? "update" : "schedule";
+                    Toast.makeText(this, "Failed to " + action + " message", Toast.LENGTH_SHORT).show();
                 }
             } else {
                 // Send message immediately using MessageService

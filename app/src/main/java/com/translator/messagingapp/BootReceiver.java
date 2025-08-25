@@ -30,6 +30,15 @@ public class BootReceiver extends BroadcastReceiver {
                 // Intent serviceIntent = new Intent(context, MessageSyncService.class);
                 // context.startService(serviceIntent);
             }
+
+            // Reschedule pending messages after device reboot
+            try {
+                ScheduledMessageManager scheduledMessageManager = new ScheduledMessageManager(context);
+                scheduledMessageManager.rescheduleAllPendingMessages();
+                Log.d(TAG, "Rescheduled pending messages after boot");
+            } catch (Exception e) {
+                Log.e(TAG, "Error rescheduling pending messages after boot", e);
+            }
         }
     }
 }
