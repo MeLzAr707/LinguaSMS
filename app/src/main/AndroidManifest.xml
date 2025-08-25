@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:name=".TranslatorApp"
@@ -133,6 +135,16 @@
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Scheduled message receiver for handling scheduled message alarms -->
+        <receiver
+            android:name=".ScheduledMessageReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.translator.messagingapp.SEND_SCHEDULED_MESSAGE" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>

@@ -100,29 +100,87 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end"
+            android:orientation="vertical"
             android:layout_marginTop="16dp">
 
-            <ImageButton
-                android:id="@+id/translate_button"
-                android:layout_width="@dimen/compact_button_size"
-                android:layout_height="@dimen/compact_button_size"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/translate_message"
-                android:src="@android:drawable/ic_menu_sort_alphabetically"
-                app:tint="?attr/colorPrimary" />
-
-            <Button
-                android:id="@+id/send_button"
-                android:layout_width="wrap_content"
+            <!-- Schedule section -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:minHeight="@dimen/send_button_min_height"
-                android:text="@string/send"
-                android:textColor="@android:color/white"
-                app:icon="@android:drawable/ic_menu_send"
-                style="@style/Widget.MaterialComponents.Button" />
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/schedule_message"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="8dp" />
+
+                <Button
+                    android:id="@+id/select_datetime_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/select_date_time"
+                    android:textSize="12sp"
+                    android:minHeight="32dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                <ImageButton
+                    android:id="@+id/clear_schedule_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Clear schedule"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    android:visibility="gone"
+                    app:tint="?attr/colorPrimary" />
+
+            </LinearLayout>
+
+            <!-- Scheduled time display -->
+            <TextView
+                android:id="@+id/scheduled_time_display"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:textSize="12sp"
+                android:textStyle="italic"
+                android:textColor="?attr/colorPrimary"
+                android:visibility="gone"
+                android:gravity="center" />
+
+            <!-- Send/Schedule buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end">
+
+                <ImageButton
+                    android:id="@+id/translate_button"
+                    android:layout_width="@dimen/compact_button_size"
+                    android:layout_height="@dimen/compact_button_size"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/translate_message"
+                    android:src="@android:drawable/ic_menu_sort_alphabetically"
+                    app:tint="?attr/colorPrimary" />
+
+                <Button
+                    android:id="@+id/send_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:minHeight="@dimen/send_button_min_height"
+                    android:text="@string/send"
+                    android:textColor="@android:color/white"
+                    app:icon="@android:drawable/ic_menu_send"
+                    style="@style/Widget.MaterialComponents.Button" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

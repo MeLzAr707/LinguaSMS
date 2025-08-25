@@ -35,6 +35,12 @@
     <string name="recipient_hint">Enter recipient name or number</string>
     <string name="select_contact">Select Contact</string>
     <string name="message">Message</string>
+    <string name="schedule">Schedule</string>
+    <string name="schedule_message">Schedule Message</string>
+    <string name="select_date_time">Select Date &amp; Time</string>
+    <string name="scheduled_for">Scheduled for: %s</string>
+    <string name="schedule_send">Schedule Send</string>
+    <string name="send_now">Send Now</string>
 
     <!-- Attachments -->
     <string name="attachment_image">Attachment image</string>

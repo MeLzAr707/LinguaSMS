@@ -25,6 +25,7 @@ public class TranslatorApp extends Application {
     private UserPreferences userPreferences;
     private MessageWorkManager messageWorkManager;
     private MessageContentObserver messageContentObserver;
+    private ScheduledMessageManager scheduledMessageManager;
 
     @Override
     public void onCreate() {
@@ -98,6 +99,14 @@ public class TranslatorApp extends Application {
             messageWorkManager.initializePeriodicWork();
         } catch (Exception e) {
             android.util.Log.e(TAG, "Error initializing MessageWorkManager", e);
+        }
+
+        try {
+            // Initialize ScheduledMessageManager and reschedule pending messages
+            scheduledMessageManager = new ScheduledMessageManager(this);
+            scheduledMessageManager.rescheduleAllPendingMessages();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing ScheduledMessageManager", e);
         }
 
         try {
@@ -193,6 +202,17 @@ public class TranslatorApp extends Application {
             }
         }
         return messageWorkManager;
+    }
+
+    public ScheduledMessageManager getScheduledMessageManager() {
+        if (scheduledMessageManager == null) {
+            try {
+                scheduledMessageManager = new ScheduledMessageManager(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback ScheduledMessageManager", e);
+            }
+        }
+        return scheduledMessageManager;
     }
 
     public MessageContentObserver getMessageContentObserver() {

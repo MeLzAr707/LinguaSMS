@@ -13,11 +13,18 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.widget.Toolbar;
 import java.util.concurrent.atomic.AtomicBoolean;
 import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 
 public class NewMessageActivity extends BaseActivity {
     private static final String TAG = "NewMessageActivity";
@@ -28,18 +35,26 @@ public class NewMessageActivity extends BaseActivity {
     private Button sendButton;  // Changed from ImageButton to Button
     private ImageButton contactButton;
     private ImageButton translateButton;
+    private Button selectDateTimeButton;
+    private ImageButton clearScheduleButton;
+    private TextView scheduledTimeDisplay;
     private final AtomicBoolean isTranslating = new AtomicBoolean(false);
     private String originalComposedText = "";
     private boolean isComposedTextTranslated = false;
     private TextWatcher recipientTextWatcher;
     private TextWatcher messageTextWatcher;
     protected boolean isActivityActive = true;
+    
+    // Scheduling fields
+    private long scheduledTime = 0;
+    private SimpleDateFormat dateTimeFormat;
 
     // Service classes
     private MessageService messageService;
     private TranslationManager translationManager;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
+    private ScheduledMessageManager scheduledMessageManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +68,10 @@ public class NewMessageActivity extends BaseActivity {
             translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
             defaultSmsAppManager = ((TranslatorApp) getApplication()).getDefaultSmsAppManager();
             userPreferences = ((TranslatorApp) getApplication()).getUserPreferences();
+            scheduledMessageManager = new ScheduledMessageManager(this);
+
+            // Initialize date/time formatter
+            dateTimeFormat = new SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", Locale.getDefault());
 
             // Set up toolbar
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -71,11 +90,16 @@ public class NewMessageActivity extends BaseActivity {
             sendButton = findViewById(R.id.send_button);  // This is a Button in XML
             contactButton = findViewById(R.id.contact_button);  // This is an ImageButton in XML
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
+            selectDateTimeButton = findViewById(R.id.select_datetime_button);
+            clearScheduleButton = findViewById(R.id.clear_schedule_button);
+            scheduledTimeDisplay = findViewById(R.id.scheduled_time_display);
 
             // Restore state if available
             if (savedInstanceState != null) {
                 isComposedTextTranslated = savedInstanceState.getBoolean("isComposedTextTranslated", false);
                 originalComposedText = savedInstanceState.getString("originalComposedText", "");
+                scheduledTime = savedInstanceState.getLong("scheduledTime", 0);
+                updateScheduleUI();
             }
 
             // Set up send button
@@ -106,6 +130,15 @@ public class NewMessageActivity extends BaseActivity {
                 updateInputTranslationState();
             }
 
+            // Set up scheduling buttons
+            if (selectDateTimeButton != null) {
+                selectDateTimeButton.setOnClickListener(v -> showDateTimePicker());
+            }
+
+            if (clearScheduleButton != null) {
+                clearScheduleButton.setOnClickListener(v -> clearSchedule());
+            }
+
             // Set up text watchers for input validation
             setupTextWatchers();
 
@@ -121,6 +154,7 @@ public class NewMessageActivity extends BaseActivity {
         super.onSaveInstanceState(outState);
         outState.putBoolean("isComposedTextTranslated", isComposedTextTranslated);
         outState.putString("originalComposedText", originalComposedText);
+        outState.putLong("scheduledTime", scheduledTime);
     }
 
     private void setupTextWatchers() {
@@ -263,24 +297,147 @@ public class NewMessageActivity extends BaseActivity {
         recipient = PhoneNumberUtils.stripSeparators(recipient);
 
         try {
-            // Send message using MessageService
             final String finalRecipient = recipient;
-            messageService.sendSmsMessage(recipient, messageText, null, () -> {
-                // Success callback
+            
+            // Check if message should be scheduled
+            if (scheduledTime > 0 && scheduledTime > System.currentTimeMillis()) {
+                // Schedule the message
+                long messageId = scheduledMessageManager.scheduleMessage(
+                    finalRecipient, 
+                    messageText, 
+                    scheduledTime, 
+                    null
+                );
+                
+                if (messageId > 0) {
+                    Toast.makeText(this, 
+                        "Message scheduled for " + dateTimeFormat.format(new Date(scheduledTime)), 
+                        Toast.LENGTH_LONG).show();
+                    
+                    // Set result and finish
+                    setResult(RESULT_OK);
+                    finish();
+                } else {
+                    Toast.makeText(this, "Failed to schedule message", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                // Send message immediately using MessageService
+                messageService.sendSmsMessage(recipient, messageText, null, () -> {
+                    // Success callback
 
-                // Set result and finish
-                setResult(RESULT_OK);
+                    // Set result and finish
+                    setResult(RESULT_OK);
 
-                // Open conversation with this recipient
-                Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
-                intent.putExtra("address", finalRecipient);
-                startActivity(intent);
+                    // Open conversation with this recipient
+                    Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
+                    intent.putExtra("address", finalRecipient);
+                    startActivity(intent);
 
-                finish();
-            });
+                    finish();
+                });
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error sending message", e);
             Toast.makeText(this, "Error sending message: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showDateTimePicker() {
+        Calendar calendar = Calendar.getInstance();
+        
+        // Add one hour to current time as minimum schedule time
+        calendar.add(Calendar.HOUR_OF_DAY, 1);
+        
+        // Show date picker first
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+            this,
+            (view, year, month, dayOfMonth) -> {
+                Calendar selectedDate = Calendar.getInstance();
+                selectedDate.set(year, month, dayOfMonth);
+                
+                // Show time picker after date selection
+                showTimePicker(selectedDate);
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        );
+        
+        // Set minimum date to today
+        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis());
+        datePickerDialog.show();
+    }
+    
+    private void showTimePicker(Calendar selectedDate) {
+        Calendar now = Calendar.getInstance();
+        
+        TimePickerDialog timePickerDialog = new TimePickerDialog(
+            this,
+            (view, hourOfDay, minute) -> {
+                selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                selectedDate.set(Calendar.MINUTE, minute);
+                selectedDate.set(Calendar.SECOND, 0);
+                selectedDate.set(Calendar.MILLISECOND, 0);
+                
+                long selectedTime = selectedDate.getTimeInMillis();
+                
+                // Check if selected time is in the future (at least 1 minute from now)
+                if (selectedTime <= System.currentTimeMillis() + 60000) {
+                    Toast.makeText(this, 
+                        "Please select a future time (at least 1 minute from now)", 
+                        Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // Set the scheduled time
+                scheduledTime = selectedTime;
+                updateScheduleUI();
+                
+                Toast.makeText(this, 
+                    "Message will be sent on " + dateTimeFormat.format(new Date(scheduledTime)), 
+                    Toast.LENGTH_LONG).show();
+            },
+            now.get(Calendar.HOUR_OF_DAY),
+            now.get(Calendar.MINUTE),
+            false // Use 12-hour format
+        );
+        
+        timePickerDialog.show();
+    }
+    
+    private void clearSchedule() {
+        scheduledTime = 0;
+        updateScheduleUI();
+        Toast.makeText(this, "Schedule cleared - message will be sent immediately", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void updateScheduleUI() {
+        if (scheduledTime > 0) {
+            // Show scheduled time
+            String timeText = getString(R.string.scheduled_for, dateTimeFormat.format(new Date(scheduledTime)));
+            scheduledTimeDisplay.setText(timeText);
+            scheduledTimeDisplay.setVisibility(TextView.VISIBLE);
+            
+            // Show clear button
+            clearScheduleButton.setVisibility(ImageButton.VISIBLE);
+            
+            // Update send button text
+            sendButton.setText(R.string.schedule_send);
+            
+            // Update date/time button text
+            selectDateTimeButton.setText("Change Time");
+        } else {
+            // Hide scheduled time
+            scheduledTimeDisplay.setVisibility(TextView.GONE);
+            
+            // Hide clear button
+            clearScheduleButton.setVisibility(ImageButton.GONE);
+            
+            // Reset send button text
+            sendButton.setText(R.string.send);
+            
+            // Reset date/time button text
+            selectDateTimeButton.setText(R.string.select_date_time);
         }
     }
 
