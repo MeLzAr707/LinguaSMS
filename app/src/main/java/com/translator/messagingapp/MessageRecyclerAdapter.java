@@ -46,6 +46,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
         void onTranslateClick(Message message, int position);
 
+        void onTTSClick(Message message, int position);
+
         void onAttachmentClick(MmsMessage.Attachment attachment, int position);
 
         void onAttachmentClick(Uri uri, int position);
@@ -138,6 +140,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView originalText;
         TextView dateText;
         View translateButton;
+        View ttsButton;
         LinearLayout reactionsLayout;
 
         MessageViewHolder(View itemView) {
@@ -146,6 +149,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             originalText = itemView.findViewById(R.id.original_text);
             dateText = itemView.findViewById(R.id.message_date); // Fixed ID
             translateButton = itemView.findViewById(R.id.translate_button);
+            ttsButton = itemView.findViewById(R.id.tts_button);
             reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
         }
 
@@ -243,6 +247,18 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 } else {
                     translateButton.setVisibility(View.GONE);
                 }
+            }
+
+            // Set up TTS button
+            if (ttsButton != null && message.isTranslatable()) {
+                ttsButton.setVisibility(View.VISIBLE);
+                ttsButton.setOnClickListener(v -> {
+                    if (listener != null) {
+                        listener.onTTSClick(message, position);
+                    }
+                });
+            } else if (ttsButton != null) {
+                ttsButton.setVisibility(View.GONE);
             }
 
             // Set up reactions

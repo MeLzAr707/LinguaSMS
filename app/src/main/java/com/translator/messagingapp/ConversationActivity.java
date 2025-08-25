@@ -89,6 +89,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
     private TextSizeManager textSizeManager;
+    private TTSManager ttsManager;
     
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
@@ -107,6 +108,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
         textSizeManager = new TextSizeManager(this);
+        ttsManager = new TTSManager(this, userPreferences);
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -167,6 +169,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onPause() {
         super.onPause();
+        
+        // Stop any ongoing TTS playback
+        if (ttsManager != null) {
+            ttsManager.stop();
+        }
         
         // Clear the active thread ID since this conversation is no longer visible
         currentlyActiveThreadId = null;
@@ -904,6 +911,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     @Override
+    public void onTTSClick(Message message, int position) {
+        // Speak the message using TTS
+        speakMessage(message);
+    }
+
+    @Override
     public void onAttachmentClick(MmsMessage.Attachment attachment, int position) {
         // Handle attachment click - open with appropriate app
         if (attachment != null && attachment.getUri() != null) {
@@ -1133,6 +1146,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             executorService.shutdownNow();
         }
         
+        // Clean up TTS resources
+        if (ttsManager != null) {
+            ttsManager.shutdown();
+        }
+        
         // Note: BroadcastReceiver cleanup is handled in onPause()
         Log.d(TAG, "ConversationActivity destroyed");
     }
@@ -1241,5 +1259,78 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
         }
+    }
+    
+    /**
+     * Speak a message using Text-to-Speech.
+     */
+    private void speakMessage(Message message) {
+        if (message == null || !userPreferences.isTTSEnabled()) {
+            return;
+        }
+        
+        // Determine what text to speak and in what language
+        String textToSpeak;
+        String languageCode;
+        
+        if (userPreferences.shouldTTSReadOriginal() || !message.isTranslated()) {
+            // Speak original text
+            textToSpeak = message.getBody();
+            languageCode = message.getOriginalLanguage();
+            
+            // If original language is not available, try to determine from message
+            if (languageCode == null || languageCode.isEmpty()) {
+                // Use preferred incoming language or default language
+                languageCode = userPreferences.getPreferredIncomingLanguage();
+            }
+        } else {
+            // Speak translated text
+            textToSpeak = message.getTranslatedText();
+            languageCode = message.getTranslatedLanguage();
+            
+            // If translated language is not available, use preferred language
+            if (languageCode == null || languageCode.isEmpty()) {
+                languageCode = userPreferences.getTTSLanguage();
+            }
+        }
+        
+        // Validate text to speak
+        if (textToSpeak == null || textToSpeak.trim().isEmpty()) {
+            Toast.makeText(this, "No text to speak", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Check if TTS is initialized
+        if (!ttsManager.isInitialized()) {
+            Toast.makeText(this, "Text-to-Speech not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Speak the text
+        ttsManager.speak(textToSpeak, languageCode, new TTSManager.TTSPlaybackListener() {
+            @Override
+            public void onStart() {
+                // TTS started - could show a speaking indicator
+                runOnUiThread(() -> {
+                    // Optional: Add visual feedback that TTS is speaking
+                });
+            }
+            
+            @Override
+            public void onDone() {
+                // TTS completed
+                runOnUiThread(() -> {
+                    // Optional: Remove visual feedback
+                });
+            }
+            
+            @Override
+            public void onError() {
+                // TTS error
+                runOnUiThread(() -> {
+                    Toast.makeText(ConversationActivity.this, "Text-to-Speech error", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 }

@@ -44,6 +44,12 @@ public class UserPreferences {
     private static final String KEY_CUSTOM_OUTGOING_BUBBLE_COLOR = "custom_outgoing_bubble_color";
     private static final String KEY_CUSTOM_BACKGROUND_COLOR = "custom_background_color";
     private static final String KEY_CUSTOM_TEXT_COLOR = "custom_text_color";
+    
+    // TTS (Text-to-Speech) preference keys
+    private static final String KEY_TTS_ENABLED = "tts_enabled";
+    private static final String KEY_TTS_SPEECH_RATE = "tts_speech_rate";
+    private static final String KEY_TTS_LANGUAGE = "tts_language";
+    private static final String KEY_TTS_READ_ORIGINAL = "tts_read_original";
 
     private final SharedPreferences preferences;
 
@@ -499,6 +505,82 @@ public class UserPreferences {
      */
     public void setCustomTextColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_TEXT_COLOR, color).apply();
+    }
+    
+    // TTS (Text-to-Speech) preferences
+    
+    /**
+     * Gets whether TTS is enabled.
+     *
+     * @return true if TTS is enabled, false otherwise
+     */
+    public boolean isTTSEnabled() {
+        return preferences.getBoolean(KEY_TTS_ENABLED, true);
+    }
+    
+    /**
+     * Sets whether TTS is enabled.
+     *
+     * @param enabled true to enable TTS, false to disable
+     */
+    public void setTTSEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_TTS_ENABLED, enabled).apply();
+    }
+    
+    /**
+     * Gets the TTS speech rate.
+     *
+     * @return Speech rate (0.5 to 2.0, default 1.0)
+     */
+    public float getTTSSpeechRate() {
+        return preferences.getFloat(KEY_TTS_SPEECH_RATE, 1.0f);
+    }
+    
+    /**
+     * Sets the TTS speech rate.
+     *
+     * @param rate Speech rate (0.5 to 2.0)
+     */
+    public void setTTSSpeechRate(float rate) {
+        // Clamp rate between 0.5 and 2.0
+        float clampedRate = Math.max(0.5f, Math.min(2.0f, rate));
+        preferences.edit().putFloat(KEY_TTS_SPEECH_RATE, clampedRate).apply();
+    }
+    
+    /**
+     * Gets the TTS language preference.
+     *
+     * @return Language code for TTS (defaults to preferred language)
+     */
+    public String getTTSLanguage() {
+        return preferences.getString(KEY_TTS_LANGUAGE, getPreferredLanguage());
+    }
+    
+    /**
+     * Sets the TTS language preference.
+     *
+     * @param languageCode Language code for TTS
+     */
+    public void setTTSLanguage(String languageCode) {
+        preferences.edit().putString(KEY_TTS_LANGUAGE, languageCode).apply();
+    }
+    
+    /**
+     * Gets whether TTS should read original text instead of translated text.
+     *
+     * @return true to read original text, false to read translated text (default)
+     */
+    public boolean shouldTTSReadOriginal() {
+        return preferences.getBoolean(KEY_TTS_READ_ORIGINAL, false);
+    }
+    
+    /**
+     * Sets whether TTS should read original text instead of translated text.
+     *
+     * @param readOriginal true to read original text, false to read translated text
+     */
+    public void setTTSReadOriginal(boolean readOriginal) {
+        preferences.edit().putBoolean(KEY_TTS_READ_ORIGINAL, readOriginal).apply();
     }
 }
 

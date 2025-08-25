@@ -135,6 +135,7 @@
     <string name="original_text">Original</string>
     <string name="translated_to_format">Translated to %1$s: %2$s</string>
     <string name="translate">Translate</string>
+    <string name="speak_message">Speak message</string>
     <!-- Missing string resources -->
     <string name="error_deleting_message">Error deleting message</string>
     <string name="message_deleted">Message deleted</string>

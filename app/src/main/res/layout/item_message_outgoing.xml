@@ -75,6 +75,17 @@
                     android:contentDescription="@string/translate"
                     android:src="@drawable/ic_translate"
                     android:tint="@color/white" />
+
+                <ImageButton
+                    android:id="@+id/tts_button"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginLeft="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/speak_message"
+                    android:src="@drawable/ic_speaker"
+                    android:tint="@color/white" />
             </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
