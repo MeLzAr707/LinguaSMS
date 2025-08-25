@@ -119,6 +119,39 @@ public class MessageWorkManager {
     }
 
     /**
+     * Schedules direct SMS sending in the background.
+     * Uses constraints to ensure network availability and battery optimization.
+     */
+    private void scheduleDirectSms(String recipient, String messageBody, String threadId) {
+        Data inputData = new Data.Builder()
+            .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SEND_SMS)
+            .putString(MessageProcessingWorker.KEY_RECIPIENT, recipient)
+            .putString(MessageProcessingWorker.KEY_MESSAGE_BODY, messageBody)
+            .putString(MessageProcessingWorker.KEY_THREAD_ID, threadId)
+            .build();
+
+        Constraints constraints = new Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build();
+
+        OneTimeWorkRequest sendSmsWork = new OneTimeWorkRequest.Builder(MessageProcessingWorker.class)
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .addTag(TAG_MESSAGE_PROCESSING)
+            .addTag(TAG_SMS_SENDING)
+            .build();
+
+        workManager.enqueueUniqueWork(
+            "send_direct_sms_" + System.currentTimeMillis(),
+            ExistingWorkPolicy.APPEND,
+            sendSmsWork
+        );
+
+        Log.d(TAG, "Scheduled direct SMS sending work for recipient: " + recipient);
+    }
+
+    /**
      * Schedules message translation in the background.
      */
     public void scheduleTranslateMessage(String messageId, String messageBody, 
