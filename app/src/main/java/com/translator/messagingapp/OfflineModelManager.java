@@ -108,7 +108,7 @@ public class OfflineModelManager {
                 model.setDownloaded(true);
                 
                 // Save to preferences
-                saveDownloadedModel(model.getLanguageCode());
+                saveDownloadedModelPrivate(model.getLanguageCode());
                 
                 // Create placeholder file
                 createModelFile(model);
@@ -221,10 +221,17 @@ public class OfflineModelManager {
     /**
      * Save a downloaded model to preferences.
      */
-    private void saveDownloadedModel(String languageCode) {
+    private void saveDownloadedModelPrivate(String languageCode) {
         Set<String> downloadedModels = new HashSet<>(getDownloadedModelCodes());
         downloadedModels.add(languageCode);
         preferences.edit().putStringSet(KEY_DOWNLOADED_MODELS, downloadedModels).apply();
+    }
+    
+    /**
+     * Save a downloaded model to preferences (public method for external access).
+     */
+    public void saveDownloadedModel(String languageCode) {
+        saveDownloadedModelPrivate(languageCode);
     }
     
     /**
