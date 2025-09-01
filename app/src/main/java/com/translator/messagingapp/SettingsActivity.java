@@ -3,10 +3,13 @@ package com.translator.messagingapp;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.Switch;
@@ -25,7 +28,6 @@ public class SettingsActivity extends BaseActivity {
     private Button selectIncomingLanguageButton;
     private Button selectOutgoingLanguageButton;
     private Button testApiKeyButton;
-    private Button saveButton;
     private Button manageOfflineModelsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
@@ -73,7 +75,6 @@ public class SettingsActivity extends BaseActivity {
         selectIncomingLanguageButton = findViewById(R.id.select_incoming_language_button);
         selectOutgoingLanguageButton = findViewById(R.id.select_outgoing_language_button);
         testApiKeyButton = findViewById(R.id.test_api_key_button);
-        saveButton = findViewById(R.id.save_button);
         manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
@@ -82,6 +83,29 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void setupClickListeners() {
+        // Set up API key auto-save
+        apiKeyInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                // Auto-save API key when text changes
+                String apiKey = s.toString().trim();
+                userPreferences.setApiKey(apiKey);
+                
+                // Update translation service
+                GoogleTranslationService translationService =
+                        ((TranslatorApp) getApplication()).getTranslationService();
+                if (translationService != null) {
+                    translationService.setApiKey(apiKey);
+                }
+            }
+        });
+
         // Set up incoming language button
         selectIncomingLanguageButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -109,15 +133,6 @@ public class SettingsActivity extends BaseActivity {
             }
         });
 
-        // Set up save button
-        saveButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(SettingsActivity.this, "Saving settings...", Toast.LENGTH_SHORT).show();
-                saveSettings();
-            }
-        });
-
         // Set up manage offline models button
         manageOfflineModelsButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -126,10 +141,22 @@ public class SettingsActivity extends BaseActivity {
             }
         });
         
-        // Set up theme radio group listener
+        // Set up auto-translate switch auto-save
+        autoTranslateSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                // Auto-save auto-translate setting
+                userPreferences.setAutoTranslateEnabled(isChecked);
+            }
+        });
+        
+        // Set up theme radio group listener with auto-save
         themeRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+                // Auto-save theme setting
+                autoSaveThemeSelection(checkedId);
+                
                 // If custom theme is selected, open color wheel activity
                 if (checkedId == R.id.radio_custom) {
                     openColorWheelActivity();
@@ -266,6 +293,36 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
+    /**
+     * Auto-save theme selection and apply changes if needed
+     */
+    private void autoSaveThemeSelection(int checkedId) {
+        int newThemeId;
+        if (checkedId == R.id.radio_dark) {
+            newThemeId = UserPreferences.THEME_DARK;
+        } else if (checkedId == R.id.radio_black_glass) {
+            newThemeId = UserPreferences.THEME_BLACK_GLASS;
+        } else if (checkedId == R.id.radio_system) {
+            newThemeId = UserPreferences.THEME_SYSTEM;
+        } else if (checkedId == R.id.radio_custom) {
+            newThemeId = UserPreferences.THEME_CUSTOM;
+        } else {
+            newThemeId = UserPreferences.THEME_LIGHT;
+        }
+
+        // Check if theme has changed
+        boolean themeChanged = (newThemeId != userPreferences.getThemeId());
+
+        // Save theme setting
+        userPreferences.setThemeId(newThemeId);
+
+        // Apply theme changes with a smooth transition if needed
+        if (themeChanged) {
+            // Use a fade animation for smoother transition
+            recreateWithFade();
+        }
+    }
+
     private void saveSettings() {
         // Save API key
         String apiKey = apiKeyInput.getText().toString().trim();
@@ -301,9 +358,6 @@ public class SettingsActivity extends BaseActivity {
 
         // Save auto-translate setting
         userPreferences.setAutoTranslateEnabled(autoTranslateSwitch.isChecked());
-
-        // Show success message
-        Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
 
         // Apply theme changes with a smooth transition if needed
         if (themeChanged) {
@@ -352,11 +406,6 @@ public class SettingsActivity extends BaseActivity {
         if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
-            
-            // Apply custom color to save button
-            if (saveButton != null) {
-                saveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
             
             // Apply custom color to test API key button
             if (testApiKeyButton != null) {

@@ -32,11 +32,11 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Translation API Key Section -->
+            <!-- Offline Translation Section -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/translation_api_key"
+                android:text="@string/pref_category_offline_models"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -44,29 +44,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/api_key_description" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:passwordToggleEnabled="true">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/api_key_input"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/api_key"
-                    android:inputType="textPassword" />
-
-            </com.google.android.material.textfield.TextInputLayout>
+                android:text="@string/offline_models_description" />
 
             <Button
-                android:id="@+id/test_api_key_button"
+                android:id="@+id/manage_offline_models_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/test_api_key"
+                android:text="@string/pref_manage_offline_models"
                 android:backgroundTint="@color/colorPrimary"
                 android:textColor="@android:color/white" />
 
@@ -213,12 +198,12 @@
 
             </RadioGroup>
 
-            <!-- Offline Translation Section -->
+            <!-- Translation API Key Section -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="@string/pref_category_offline_models"
+                android:text="@string/translation_api_key"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -226,25 +211,29 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/offline_models_description" />
+                android:text="@string/api_key_description" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:passwordToggleEnabled="true">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/api_key_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/api_key"
+                    android:inputType="textPassword" />
+
+            </com.google.android.material.textfield.TextInputLayout>
 
             <Button
-                android:id="@+id/manage_offline_models_button"
+                android:id="@+id/test_api_key_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/pref_manage_offline_models"
-                android:backgroundTint="@color/colorPrimary"
-                android:textColor="@android:color/white" />
-
-            <!-- Save Button -->
-            <Button
-                android:id="@+id/save_button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="16dp"
-                android:text="@string/save"
+                android:text="@string/test_api_key"
                 android:backgroundTint="@color/colorPrimary"
                 android:textColor="@android:color/white" />
 
