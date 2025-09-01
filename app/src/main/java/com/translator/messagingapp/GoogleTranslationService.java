@@ -171,6 +171,10 @@ public class GoogleTranslationService {
 
     /**
      * Detects the language of the given text.
+     * 
+     * NOTE: This method is now primarily used as a fallback when ML Kit
+     * language detection fails. The primary language detection is handled
+     * by OfflineLanguageDetectionService using ML Kit.
      *
      * @param text The text to detect language for
      * @return The detected language code, or null if detection failed
@@ -234,6 +238,10 @@ public class GoogleTranslationService {
 
     /**
      * Detects language asynchronously.
+     * 
+     * NOTE: This method is now primarily used as a fallback when ML Kit
+     * language detection fails. The primary language detection is handled
+     * by OfflineLanguageDetectionService using ML Kit.
      *
      * @param text The text to detect language for
      * @return A Future that will contain the detected language code

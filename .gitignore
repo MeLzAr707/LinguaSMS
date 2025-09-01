@@ -20,3 +20,6 @@ verify_*.sh
 create_pr*.sh
 commit_to_master_via_api.sh
 demo_*.sh
+
+# Temporary compilation files
+javac.*.args
