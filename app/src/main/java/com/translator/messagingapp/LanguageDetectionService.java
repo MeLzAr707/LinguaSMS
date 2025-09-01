@@ -66,11 +66,16 @@ public class LanguageDetectionService {
      */
     public void detectLanguage(String text, LanguageDetectionCallback callback) {
         if (text == null || text.trim().isEmpty()) {
+            Log.w(TAG, "Language detection called with empty text");
             if (callback != null) {
                 callback.onDetectionComplete(false, null, "Text is empty", DetectionMethod.FAILED);
             }
             return;
         }
+        
+        // Log the detection attempt for debugging
+        Log.d(TAG, "Starting language detection for text: " + text.substring(0, Math.min(text.length(), 50)) + 
+              (text.length() > 50 ? "..." : ""));
         
         // Try ML Kit detection first
         detectLanguageWithMLKit(text, callback);
@@ -85,8 +90,13 @@ public class LanguageDetectionService {
      */
     public String detectLanguageSync(String text) {
         if (text == null || text.trim().isEmpty()) {
+            Log.w(TAG, "Synchronous language detection called with empty text");
             return null;
         }
+        
+        // Log the detection attempt for debugging
+        Log.d(TAG, "Starting synchronous language detection for text: " + 
+              text.substring(0, Math.min(text.length(), 50)) + (text.length() > 50 ? "..." : ""));
         
         // Try ML Kit first
         String mlkitResult = detectLanguageWithMLKitSync(text);
@@ -105,7 +115,8 @@ public class LanguageDetectionService {
             }
         }
         
-        Log.w(TAG, "Both ML Kit and online detection failed");
+        Log.w(TAG, "Both ML Kit and online detection failed for text: " + 
+              text.substring(0, Math.min(text.length(), 20)) + (text.length() > 20 ? "..." : ""));
         return null;
     }
     
