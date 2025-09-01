@@ -139,38 +139,76 @@ public class OfflineModelsActivity extends BaseActivity {
         try {
             Toast.makeText(this, "Starting download for " + model.getLanguageName(), Toast.LENGTH_SHORT).show();
             
-            modelManager.downloadModel(model, new OfflineModelManager.DownloadListener() {
-                @Override
-                public void onProgress(int progress) {
-                    runOnUiThread(() -> {
-                        modelAdapter.updateProgress(model, progress);
-                    });
-                }
-                
-                @Override
-                public void onSuccess() {
-                    runOnUiThread(() -> {
-                        Toast.makeText(OfflineModelsActivity.this, 
-                            getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
-                        model.setDownloaded(true);
-                        modelAdapter.notifyDataSetChanged();
-                        
-                        // Refresh the translation service to pick up the new model
-                        if (translationManager != null) {
-                            translationManager.refreshOfflineModels();
+            // Use OfflineTranslationService for actual MLKit model download
+            if (translationManager != null && translationManager.getOfflineTranslationService() != null) {
+                translationManager.getOfflineTranslationService().downloadLanguageModel(
+                    model.getLanguageCode(), 
+                    new OfflineTranslationService.ModelDownloadCallback() {
+                        @Override
+                        public void onDownloadComplete(boolean success, String languageCode, String errorMessage) {
+                            runOnUiThread(() -> {
+                                if (success) {
+                                    Toast.makeText(OfflineModelsActivity.this, 
+                                        getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
+                                    model.setDownloaded(true);
+                                    
+                                    // Also update the OfflineModelManager's tracking
+                                    modelManager.saveDownloadedModel(model.getLanguageCode());
+                                    
+                                    modelAdapter.notifyDataSetChanged();
+                                    
+                                    // Refresh the translation service to pick up the new model
+                                    translationManager.refreshOfflineModels();
+                                } else {
+                                    Toast.makeText(OfflineModelsActivity.this, 
+                                        getString(R.string.model_download_error, errorMessage), Toast.LENGTH_LONG).show();
+                                }
+                                modelAdapter.updateProgress(model, -1); // Hide progress
+                            });
+                        }
+
+                        @Override
+                        public void onDownloadProgress(String languageCode, int progress) {
+                            runOnUiThread(() -> {
+                                modelAdapter.updateProgress(model, progress);
+                            });
                         }
                     });
-                }
-                
-                @Override
-                public void onError(String error) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(OfflineModelsActivity.this, 
-                            getString(R.string.model_download_error, error), Toast.LENGTH_LONG).show();
-                        modelAdapter.updateProgress(model, -1); // Hide progress
-                    });
-                }
-            });
+            } else {
+                // Fallback to OfflineModelManager simulation
+                modelManager.downloadModel(model, new OfflineModelManager.DownloadListener() {
+                    @Override
+                    public void onProgress(int progress) {
+                        runOnUiThread(() -> {
+                            modelAdapter.updateProgress(model, progress);
+                        });
+                    }
+                    
+                    @Override
+                    public void onSuccess() {
+                        runOnUiThread(() -> {
+                            Toast.makeText(OfflineModelsActivity.this, 
+                                getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
+                            model.setDownloaded(true);
+                            modelAdapter.notifyDataSetChanged();
+                            
+                            // Refresh the translation service to pick up the new model
+                            if (translationManager != null) {
+                                translationManager.refreshOfflineModels();
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(OfflineModelsActivity.this, 
+                                getString(R.string.model_download_error, error), Toast.LENGTH_LONG).show();
+                            modelAdapter.updateProgress(model, -1); // Hide progress
+                        });
+                    }
+                });
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error downloading model", e);
             Toast.makeText(this, "Error downloading model: " + e.getMessage(), Toast.LENGTH_LONG).show();
