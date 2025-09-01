@@ -27,14 +27,31 @@
             android:orientation="vertical"
             android:padding="8dp">
 
-            <ImageView
-                android:id="@+id/media_image"
+            <FrameLayout
                 android:layout_width="200dp"
-                android:layout_height="200dp"
-                android:scaleType="centerCrop"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/attachment_image"
-                tools:src="@drawable/ic_attachment" />
+                android:layout_height="200dp">
+                
+                <ImageView
+                    android:id="@+id/media_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/attachment_image"
+                    tools:src="@drawable/ic_attachment" />
+                
+                <!-- Play button overlay for videos -->
+                <ImageView
+                    android:id="@+id/play_button_overlay"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_play_circle"
+                    android:visibility="gone"
+                    android:contentDescription="Play video"
+                    tools:visibility="visible" />
+                    
+            </FrameLayout>
 
             <!-- Original message text (shown when translation is active) -->
             <TextView

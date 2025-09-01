@@ -366,10 +366,12 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     abstract class MediaMessageViewHolder extends MessageViewHolder {
         ImageView mediaImage;
+        ImageView playButtonOverlay;
 
         MediaMessageViewHolder(View itemView) {
             super(itemView);
             mediaImage = itemView.findViewById(R.id.media_image);
+            playButtonOverlay = itemView.findViewById(R.id.play_button_overlay);
         }
 
         @Override
@@ -391,6 +393,15 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     if (attachmentUri != null && (attachment.isImage() || attachment.isVideo())) {
                         // Load image/video using Glide
                         loadMediaWithGlide(attachmentUri, attachment);
+                        
+                        // Show play button overlay for videos
+                        if (playButtonOverlay != null) {
+                            if (attachment.isVideo()) {
+                                playButtonOverlay.setVisibility(View.VISIBLE);
+                            } else {
+                                playButtonOverlay.setVisibility(View.GONE);
+                            }
+                        }
                         
                         // Hide text when showing image and there's no text content
                         if (messageText != null) {
@@ -415,15 +426,36 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                                 listener.onAttachmentClick(attachment, position);
                             }
                         });
+                        
+                        // Add long press listener for context menu
+                        mediaImage.setOnLongClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentLongClick(attachment, position);
+                            }
+                            return true;
+                        });
                     } else if (attachmentUri != null) {
-                        // For non-image attachments (video, audio), show placeholder
+                        // For audio, document and other non-media attachments, show placeholder
                         mediaImage.setImageResource(R.drawable.ic_attachment);
                         mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                        
+                        // Hide play button overlay for non-video attachments
+                        if (playButtonOverlay != null) {
+                            playButtonOverlay.setVisibility(View.GONE);
+                        }
                         
                         mediaImage.setOnClickListener(v -> {
                             if (listener != null) {
                                 listener.onAttachmentClick(attachment, position);
                             }
+                        });
+                        
+                        // Add long press listener for context menu
+                        mediaImage.setOnLongClickListener(v -> {
+                            if (listener != null) {
+                                listener.onAttachmentLongClick(attachment, position);
+                            }
+                            return true;
                         });
                     }
                 }
@@ -435,6 +467,12 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
 
                     // Load image/video using Glide
                     loadMediaWithGlide(uri, null);
+                    
+                    // For generic URI attachments, we can't easily determine if it's a video
+                    // so we'll hide the play button overlay by default
+                    if (playButtonOverlay != null) {
+                        playButtonOverlay.setVisibility(View.GONE);
+                    }
                     
                     // Hide text when showing image
                     if (messageText != null) {
@@ -450,6 +488,14 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         if (listener != null) {
                             listener.onAttachmentClick(uri, position);
                         }
+                    });
+                    
+                    // Add long press listener for context menu
+                    mediaImage.setOnLongClickListener(v -> {
+                        if (listener != null) {
+                            listener.onAttachmentLongClick(uri, position);
+                        }
+                        return true;
                     });
                 }
             }
