@@ -66,9 +66,9 @@ public class CacheBenchmarkUtils {
         for (int i = 0; i < count; i++) {
             Message message = new Message();
             message.setId(i);
-            message.setOriginalText("Test message " + i);
+            message.setBody("Test message " + i); // Changed from setOriginalText to setBody
             message.setAddress("123456789" + i);
-            message.setThreadId("thread_1");
+            message.setThreadId(Long.valueOf("1")); // Changed from string to long
             messages.add(message);
         }
         

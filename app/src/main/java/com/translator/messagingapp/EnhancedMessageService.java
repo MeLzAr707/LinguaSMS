@@ -49,9 +49,9 @@ public class EnhancedMessageService {
      * @param message The message to add
      */
     public void addMessage(Message message) {
-        if (message != null && message.getThreadId() != null) {
+        if (message != null) {
             Log.d(TAG, "Adding message to enhanced service");
-            optimizedCache.addMessage(message.getThreadId(), message);
+            optimizedCache.addMessage(String.valueOf(message.getThreadId()), message);
         }
     }
     
