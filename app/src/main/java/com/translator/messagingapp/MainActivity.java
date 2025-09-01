@@ -161,6 +161,10 @@ public class MainActivity extends BaseActivity
                                 // Update UI when message is sent
                                 refreshConversations();
                                 break;
+                            case "com.translator.messagingapp.MESSAGE_TRANSLATED":
+                                // Update UI when auto-translation completes
+                                refreshConversations();
+                                break;
                             default:
                                 Log.d(TAG, "Unknown refresh action: " + intent.getAction());
                                 break;
@@ -174,6 +178,7 @@ public class MainActivity extends BaseActivity
             filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
             filter.addAction("com.translator.messagingapp.MESSAGE_RECEIVED");
             filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
+            filter.addAction("com.translator.messagingapp.MESSAGE_TRANSLATED");
 
             // Register receiver with LocalBroadcastManager for intra-app communication
             LocalBroadcastManager.getInstance(this).registerReceiver(messageRefreshReceiver, filter);
