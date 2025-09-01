@@ -153,8 +153,9 @@ public class TranslationManager {
             return;
         }
 
-        // Check rate limiting
-        if (!checkRateLimiting()) {
+        // Check rate limiting - determine if this will be an offline translation
+        boolean willUseOffline = shouldUseOfflineTranslation(sourceLanguage, targetLanguage);
+        if (!checkRateLimiting(willUseOffline)) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
@@ -268,14 +269,6 @@ public class TranslationManager {
             }
         }
 
-        // Check rate limiting
-        if (!checkRateLimiting()) {
-            if (callback != null) {
-                callback.onTranslationComplete(false, null);
-            }
-            return;
-        }
-
         // Create a message ID for deduplication
         String messageId = message.getAddress() + ":" + message.getOriginalText().hashCode();
 
@@ -337,6 +330,15 @@ public class TranslationManager {
                 String baseTarget = targetLanguage.split("-")[0];
 
                 if (baseDetected.equals(baseTarget)) {
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null);
+                    }
+                    return;
+                }
+
+                // Check rate limiting now that we know if this will be offline
+                boolean willUseOffline = shouldUseOfflineTranslation(detectedLanguage, targetLanguage);
+                if (!checkRateLimiting(willUseOffline)) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
@@ -447,8 +449,8 @@ public class TranslationManager {
             return;
         }
 
-        // Check rate limiting
-        if (!checkRateLimiting()) {
+        // Check rate limiting - this method currently only uses online translation
+        if (!checkRateLimiting(false)) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
@@ -517,9 +519,15 @@ public class TranslationManager {
     /**
      * Checks if translation rate limiting allows a new translation.
      *
+     * @param isOfflineTranslation true if this is an offline translation, false for online
      * @return true if a new translation is allowed, false otherwise
      */
-    private boolean checkRateLimiting() {
+    private boolean checkRateLimiting(boolean isOfflineTranslation) {
+        // Skip rate limiting for offline translations since they don't use server resources
+        if (isOfflineTranslation) {
+            return true;
+        }
+        
         long currentTime = System.currentTimeMillis();
         synchronized (SYNC_OBJECT) {
             // Reset daily counter if a new day has started
