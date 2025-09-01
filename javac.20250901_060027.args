@@ -1,0 +1,4 @@
+-cp
+/dev/null
+-Xlint:unchecked
+app/src/main/java/com/translator/messagingapp/ContactAvatarHelper.java
