@@ -12,7 +12,9 @@ import com.google.mlkit.nl.translate.Translator;
 import com.google.mlkit.nl.translate.TranslatorOptions;
 
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -87,9 +89,22 @@ public class OfflineTranslationService {
         // Check if both language models are downloaded (internal tracking)
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
-        // If internal tracking says models are available, verify with MLKit
+        // If internal tracking says models are available, verify with MLKit and integrity
         if (internalTracking) {
-            return verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+            boolean mlkitVerified = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+            // Also check with model manager for integrity if available
+            if (mlkitVerified) {
+                try {
+                    OfflineModelManager modelManager = new OfflineModelManager(context);
+                    boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceLanguage);
+                    boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetLanguage);
+                    return sourceVerified && targetVerified;
+                } catch (Exception e) {
+                    Log.w(TAG, "Could not verify model integrity, falling back to MLKit verification", e);
+                    return mlkitVerified;
+                }
+            }
+            return false;
         }
         
         // If internal tracking says not available, also check with MLKit in case tracking is out of sync
@@ -327,6 +342,69 @@ public class OfflineTranslationService {
      */
     public boolean hasAnyDownloadedModels() {
         return !downloadedModels.isEmpty();
+    }
+    
+    /**
+     * Gets detailed status of offline models including integrity verification.
+     *
+     * @return Map of language codes to their detailed status
+     */
+    public Map<String, DetailedModelStatus> getDetailedModelStatus() {
+        Map<String, DetailedModelStatus> statusMap = new HashMap<>();
+        
+        try {
+            OfflineModelManager modelManager = new OfflineModelManager(context);
+            Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
+            
+            for (String languageCode : getSupportedLanguages()) {
+                boolean isTrackedInService = isLanguageModelDownloaded(languageCode);
+                OfflineModelManager.ModelStatus managerStat = managerStatus.get(languageCode);
+                boolean isDownloadedInManager = managerStat != null && managerStat.isDownloaded;
+                boolean isVerified = managerStat != null && managerStat.isVerified;
+                
+                DetailedModelStatus status = new DetailedModelStatus(
+                    isDownloadedInManager, 
+                    isVerified, 
+                    isTrackedInService,
+                    isTrackedInService == isDownloadedInManager // sync status
+                );
+                
+                statusMap.put(languageCode, status);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting detailed model status", e);
+            // Fallback to basic status
+            for (String languageCode : getSupportedLanguages()) {
+                boolean isTracked = isLanguageModelDownloaded(languageCode);
+                statusMap.put(languageCode, new DetailedModelStatus(isTracked, false, isTracked, true));
+            }
+        }
+        
+        return statusMap;
+    }
+    
+    /**
+     * Detailed model status information.
+     */
+    public static class DetailedModelStatus {
+        public final boolean isDownloaded;
+        public final boolean isVerified;
+        public final boolean isTrackedInService;
+        public final boolean isSynchronized;
+        
+        public DetailedModelStatus(boolean isDownloaded, boolean isVerified, 
+                                 boolean isTrackedInService, boolean isSynchronized) {
+            this.isDownloaded = isDownloaded;
+            this.isVerified = isVerified;
+            this.isTrackedInService = isTrackedInService;
+            this.isSynchronized = isSynchronized;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("DetailedModelStatus{downloaded=%b, verified=%b, tracked=%b, synced=%b}",
+                    isDownloaded, isVerified, isTrackedInService, isSynchronized);
+        }
     }
 
     /**
