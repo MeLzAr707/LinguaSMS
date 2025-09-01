@@ -1625,7 +1625,27 @@ public class MessageService {
                                 public void onTranslationComplete(boolean success, com.translator.messagingapp.SmsMessage translatedMessage) {
                                     if (success && translatedMessage != null) {
                                         Log.d(TAG, "Auto-translation completed for message from " + finalSenderAddress);
-                                        // Translation cache is handled within TranslationManager
+                                        
+                                        // Store translation in the translation cache for UI access
+                                        if (translationCache != null && translatedMessage.getTranslatedText() != null) {
+                                            String cacheKey = translatedMessage.getOriginalText() + "_" + translatedMessage.getTranslatedLanguage();
+                                            translationCache.put(cacheKey, translatedMessage.getTranslatedText());
+                                            Log.d(TAG, "Cached auto-translation for future access");
+                                        }
+                                        
+                                        // Broadcast a specific message for translation completion to notify UI
+                                        try {
+                                            Intent translationIntent = new Intent("com.translator.messagingapp.MESSAGE_TRANSLATED");
+                                            translationIntent.putExtra("address", finalSenderAddress);
+                                            translationIntent.putExtra("original_text", translatedMessage.getOriginalText());
+                                            translationIntent.putExtra("translated_text", translatedMessage.getTranslatedText());
+                                            translationIntent.putExtra("original_language", translatedMessage.getOriginalLanguage());
+                                            translationIntent.putExtra("translated_language", translatedMessage.getTranslatedLanguage());
+                                            LocalBroadcastManager.getInstance(context).sendBroadcast(translationIntent);
+                                            Log.d(TAG, "Broadcasted auto-translation completion event");
+                                        } catch (Exception e) {
+                                            Log.e(TAG, "Error broadcasting translation completion", e);
+                                        }
                                     } else {
                                         Log.d(TAG, "Auto-translation not performed for message from " + finalSenderAddress);
                                     }

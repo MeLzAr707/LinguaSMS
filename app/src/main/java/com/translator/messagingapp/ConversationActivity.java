@@ -613,6 +613,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                     MessageCache.clearCacheForThread(threadId);
                                     loadMessages();
                                     break;
+                                case "com.translator.messagingapp.MESSAGE_TRANSLATED":
+                                    Log.d(TAG, "Auto-translation completed for message in this thread");
+                                    // Refresh to show translation results (cache already updated by MessageService)
+                                    loadMessages();
+                                    break;
                                 case "com.translator.messagingapp.REFRESH_MESSAGES":
                                     Log.d(TAG, "General refresh request received");
                                     MessageCache.clearCacheForThread(threadId);
@@ -632,6 +637,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             filter.addAction("com.translator.messagingapp.MESSAGE_RECEIVED");
             filter.addAction("com.translator.messagingapp.REFRESH_MESSAGES");
             filter.addAction("com.translator.messagingapp.MESSAGE_SENT");
+            filter.addAction("com.translator.messagingapp.MESSAGE_TRANSLATED");
 
             // Register receiver with LocalBroadcastManager for more reliable delivery
             LocalBroadcastManager.getInstance(this).registerReceiver(messageUpdateReceiver, filter);
