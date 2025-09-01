@@ -4,6 +4,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.google.mlkit.nl.translate.TranslateLanguage;
+import com.google.mlkit.nl.translate.Translation;
+import com.google.mlkit.nl.translate.Translator;
+import com.google.mlkit.nl.translate.TranslatorOptions;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -124,25 +129,41 @@ public class OfflineModelManager {
     }
     
     /**
-     * Download an offline model.
+     * Download an offline model using MLKit.
      */
     public void downloadModel(OfflineModelInfo model, DownloadListener listener) {
         if (model.isDownloaded()) {
-            listener.onError("Model already downloaded");
+            if (listener != null) {
+                listener.onError("Model already downloaded");
+            }
+            return;
+        }
+        
+        String mlkitLanguageCode = convertToMLKitLanguageCode(model.getLanguageCode());
+        if (mlkitLanguageCode == null) {
+            if (listener != null) {
+                listener.onError("Unsupported language: " + model.getLanguageCode());
+            }
             return;
         }
         
         model.setDownloading(true);
+        Log.d(TAG, "Starting MLKit download for model: " + model.getLanguageCode() + " -> " + mlkitLanguageCode);
         
-        // Simulate download process in a background thread
+        // Create translator to trigger actual MLKit model download
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(mlkitLanguageCode)
+                .setTargetLanguage(TranslateLanguage.ENGLISH) // Use English as reference target
+                .build();
+        
+        Translator translator = Translation.getClient(options);
+        
+        // Trigger progress updates while MLKit downloads
         new Thread(() -> {
             try {
-                Log.d(TAG, "Starting download for model: " + model.getLanguageCode());
-                
-                // Simulate download progress
-                for (int progress = 0; progress <= 100; progress += 10) {
-                    Thread.sleep(500); // Simulate download time
-                    
+                // Simulate progress while waiting for MLKit
+                for (int progress = 10; progress <= 90; progress += 20) {
+                    Thread.sleep(1000);
                     final int currentProgress = progress;
                     model.setDownloadProgress(currentProgress);
                     
@@ -150,37 +171,49 @@ public class OfflineModelManager {
                         listener.onProgress(currentProgress);
                     }
                 }
-                
-                // Mark as downloaded
-                model.setDownloading(false);
-                model.setDownloaded(true);
-                
-                // Save to preferences
-                saveDownloadedModelPrivate(model.getLanguageCode());
-                
-                // Create placeholder file
-                createModelFile(model);
-                
-                Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
-                
-                if (listener != null) {
-                    listener.onSuccess();
-                }
-                
             } catch (InterruptedException e) {
-                Log.e(TAG, "Download interrupted", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download interrupted");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Download failed", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download failed: " + e.getMessage());
-                }
+                Log.d(TAG, "Progress thread interrupted");
             }
         }).start();
+        
+        // Start actual MLKit model download
+        translator.downloadModelIfNeeded()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "MLKit model downloaded successfully: " + mlkitLanguageCode);
+                    
+                    // Mark as downloaded
+                    model.setDownloading(false);
+                    model.setDownloaded(true);
+                    model.setDownloadProgress(100);
+                    
+                    // Save to preferences
+                    saveDownloadedModelPrivate(model.getLanguageCode());
+                    
+                    // Create marker file for verification
+                    createModelFile(model);
+                    
+                    Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
+                    
+                    if (listener != null) {
+                        listener.onProgress(100);
+                        listener.onSuccess();
+                    }
+                })
+                .addOnFailureListener(exception -> {
+                    Log.e(TAG, "MLKit model download failed: " + mlkitLanguageCode, exception);
+                    
+                    model.setDownloading(false);
+                    model.setDownloaded(false);
+                    
+                    String errorMessage = "Download failed";
+                    if (exception.getMessage() != null) {
+                        errorMessage = "Download failed: " + exception.getMessage();
+                    }
+                    
+                    if (listener != null) {
+                        listener.onError(errorMessage);
+                    }
+                });
     }
     
     /**
@@ -233,6 +266,14 @@ public class OfflineModelManager {
             Log.e(TAG, "Error verifying model file for " + languageCode, e);
             return false;
         }
+    }
+    
+    /**
+     * Verify the integrity of a downloaded model.
+     * This method is an alias for isModelDownloadedAndVerified for backward compatibility.
+     */
+    public boolean verifyModelIntegrity(String languageCode) {
+        return isModelDownloadedAndVerified(languageCode);
     }
     
     /**
@@ -336,5 +377,68 @@ public class OfflineModelManager {
         Set<String> downloadedModels = new HashSet<>(getDownloadedModelCodes());
         downloadedModels.remove(languageCode);
         preferences.edit().putStringSet(KEY_DOWNLOADED_MODELS, downloadedModels).apply();
+    }
+    
+    /**
+     * Converts standard language codes to MLKit language codes.
+     * This method duplicates the conversion logic from OfflineTranslationService
+     * to ensure consistent language code handling.
+     */
+    private String convertToMLKitLanguageCode(String languageCode) {
+        if (languageCode == null) {
+            return null;
+        }
+
+        // Remove region code if present (e.g., "en-US" -> "en")
+        String baseCode = languageCode.split("-")[0].toLowerCase();
+
+        // Map common language codes to MLKit codes
+        switch (baseCode) {
+            case "en": return TranslateLanguage.ENGLISH;
+            case "es": return TranslateLanguage.SPANISH;
+            case "fr": return TranslateLanguage.FRENCH;
+            case "de": return TranslateLanguage.GERMAN;
+            case "it": return TranslateLanguage.ITALIAN;
+            case "pt": return TranslateLanguage.PORTUGUESE;
+            case "ru": return TranslateLanguage.RUSSIAN;
+            case "zh": return TranslateLanguage.CHINESE;
+            case "ja": return TranslateLanguage.JAPANESE;
+            case "ko": return TranslateLanguage.KOREAN;
+            case "ar": return TranslateLanguage.ARABIC;
+            case "hi": return TranslateLanguage.HINDI;
+            case "nl": return TranslateLanguage.DUTCH;
+            case "sv": return TranslateLanguage.SWEDISH;
+            case "da": return TranslateLanguage.DANISH;
+            case "no": return TranslateLanguage.NORWEGIAN;
+            case "fi": return TranslateLanguage.FINNISH;
+            case "pl": return TranslateLanguage.POLISH;
+            case "cs": return TranslateLanguage.CZECH;
+            case "sk": return TranslateLanguage.SLOVAK;
+            case "hu": return TranslateLanguage.HUNGARIAN;
+            case "ro": return TranslateLanguage.ROMANIAN;
+            case "bg": return TranslateLanguage.BULGARIAN;
+            case "hr": return TranslateLanguage.CROATIAN;
+            case "sl": return TranslateLanguage.SLOVENIAN;
+            case "et": return TranslateLanguage.ESTONIAN;
+            case "lv": return TranslateLanguage.LATVIAN;
+            case "lt": return TranslateLanguage.LITHUANIAN;
+            case "th": return TranslateLanguage.THAI;
+            case "vi": return TranslateLanguage.VIETNAMESE;
+            case "id": return TranslateLanguage.INDONESIAN;
+            case "ms": return TranslateLanguage.MALAY;
+            case "tl": return TranslateLanguage.TAGALOG;
+            case "sw": return TranslateLanguage.SWAHILI;
+            case "tr": return TranslateLanguage.TURKISH;
+            case "he": return TranslateLanguage.HEBREW;
+            case "fa": return TranslateLanguage.PERSIAN;
+            case "ur": return TranslateLanguage.URDU;
+            case "bn": return TranslateLanguage.BENGALI;
+            case "gu": return TranslateLanguage.GUJARATI;
+            case "kn": return TranslateLanguage.KANNADA;
+            case "mr": return TranslateLanguage.MARATHI;
+            case "ta": return TranslateLanguage.TAMIL;
+            case "te": return TranslateLanguage.TELUGU;
+            default: return null; // Unsupported language
+        }
     }
 }
