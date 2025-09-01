@@ -34,6 +34,7 @@ public class TranslationManager {
     private final Context context;
     private final GoogleTranslationService translationService;
     private final OfflineTranslationService offlineTranslationService;
+    private final LanguageDetectionService languageDetectionService;
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
@@ -49,6 +50,7 @@ public class TranslationManager {
         this.context = context;
         this.translationService = translationService;
         this.offlineTranslationService = new OfflineTranslationService(context, userPreferences);
+        this.languageDetectionService = new LanguageDetectionService(context, translationService);
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
@@ -172,32 +174,19 @@ public class TranslationManager {
                 
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
-                    // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
-                        // For offline, we'll try English as source and let MLKit handle detection
-                        finalSourceLanguage = "en";
-                    } else if (translationService != null && translationService.hasApiKey()) {
-                        finalSourceLanguage = translationService.detectLanguage(text);
-                        if (finalSourceLanguage == null) {
-                            if (callback != null) {
-                                callback.onTranslationComplete(false, null, "Could not detect language");
-                            }
-                            return;
+                    // Use new ML Kit-based detection with online fallback
+                    Log.d(TAG, "Detecting language using ML Kit with online fallback");
+                    finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
+                    
+                    if (finalSourceLanguage == null) {
+                        // Both ML Kit and online detection failed
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Could not detect language - both ML Kit and online detection failed");
                         }
-                    } else {
-                        // If no API key is available, check if we can use offline translation
-                        // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
-                        if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                            (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
-                            // Try offline translation as fallback
-                            finalSourceLanguage = "en"; // Let MLKit handle detection
-                        } else {
-                            if (callback != null) {
-                                callback.onTranslationComplete(false, null, "No translation service available");
-                            }
-                            return;
-                        }
+                        return;
                     }
+                    
+                    Log.d(TAG, "Language detected: " + finalSourceLanguage);
                 }
 
                 // Skip if already in target language (comparing base language codes)
@@ -327,13 +316,13 @@ public class TranslationManager {
                 
                 String detectedLanguage = null;
                 
-                // Detect language based on available service
+                // Detect language using ML Kit with online fallback
                 if (translationService != null && translationService.hasApiKey()) {
-                    detectedLanguage = translationService.detectLanguage(message.getOriginalText());
+                    detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
                 } else if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
                           userPreferences.isOfflineTranslationEnabled()) {
-                    // For offline mode, assume English as source for now and let offline service handle it
-                    detectedLanguage = "en";
+                    // Use ML Kit detection even for offline mode
+                    detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
                 }
                 
                 if (detectedLanguage == null) {
@@ -471,8 +460,8 @@ public class TranslationManager {
         // Translate in background
         executorService.execute(() -> {
             try {
-                // Detect language
-                String detectedLanguage = translationService.detectLanguage(message.getBody());
+                // Detect language using ML Kit with online fallback
+                String detectedLanguage = languageDetectionService.detectLanguageSync(message.getBody());
                 if (detectedLanguage == null) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null, "Could not detect language");
@@ -728,6 +717,29 @@ public class TranslationManager {
      */
     public OfflineTranslationService getOfflineTranslationService() {
         return offlineTranslationService;
+    }
+
+    /**
+     * Gets the language detection service.
+     *
+     * @return The LanguageDetectionService instance
+     */
+    public LanguageDetectionService getLanguageDetectionService() {
+        return languageDetectionService;
+    }
+
+    /**
+     * Cleanup resources when the TranslationManager is no longer needed.
+     * This should be called when the application is shutting down or when
+     * the TranslationManager instance is being disposed.
+     */
+    public void cleanup() {
+        if (languageDetectionService != null) {
+            languageDetectionService.cleanup();
+        }
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdown();
+        }
     }
     /**
      * Translates a Message object and saves its state to the cache.

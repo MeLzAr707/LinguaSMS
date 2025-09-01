@@ -117,7 +117,7 @@ The implementation includes:
 ### 10. Future Enhancements
 
 Potential improvements:
-- Automatic language detection for offline mode
+- ~~Automatic language detection for offline mode~~ ✅ **IMPLEMENTED**: ML Kit language detection with online fallback
 - Background model updates
 - Compression for smaller model sizes
 - Translation confidence scores
