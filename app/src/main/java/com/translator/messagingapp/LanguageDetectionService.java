@@ -44,6 +44,16 @@ public class LanguageDetectionService {
     }
     
     /**
+     * Constructor for LanguageDetectionService with context only.
+     * Online fallback will not be available.
+     *
+     * @param context The application context
+     */
+    public LanguageDetectionService(Context context) {
+        this(context, null);
+    }
+    
+    /**
      * Constructor for LanguageDetectionService.
      *
      * @param context The application context
@@ -201,6 +211,13 @@ public class LanguageDetectionService {
                 callback.onDetectionComplete(false, null, "ML Kit detection failed and no online service available", DetectionMethod.FAILED);
             }
         }
+    }
+    
+    /**
+     * Checks if language detection is available (ML Kit is always available).
+     */
+    public boolean isLanguageDetectionAvailable() {
+        return languageIdentifier != null;
     }
     
     /**
