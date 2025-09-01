@@ -11,6 +11,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.util.Log;
 import android.widget.Toast;
@@ -24,7 +26,10 @@ public class PhoneUtils {
     private static final String TAG = "PhoneUtils";
     private static final String PREF_DEFAULT_SMS_REQUESTED = "default_sms_requested";
     private static final String PREF_USER_DECLINED_SMS = "user_declined_sms";
+    private static final String PREF_BATTERY_OPTIMIZATION_REQUESTED = "battery_optimization_requested";
+    private static final String PREF_USER_DECLINED_BATTERY_OPT = "user_declined_battery_opt";
     private static final int MAX_DEFAULT_SMS_REQUESTS = 3;
+    private static final int MAX_BATTERY_OPT_REQUESTS = 3;
 
     /**
      * Check if the app is the default SMS app
@@ -271,6 +276,112 @@ public class PhoneUtils {
             Log.e(TAG, "Error making phone call", e);
             Toast.makeText(activity, activity.getString(R.string.error_making_call, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // ========== BATTERY OPTIMIZATION METHODS ==========
+
+    /**
+     * Check if the app is whitelisted from battery optimizations
+     */
+    public static boolean isIgnoringBatteryOptimizations(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                return powerManager.isIgnoringBatteryOptimizations(context.getPackageName());
+            }
+        }
+        return true; // Assume true for older versions
+    }
+
+    /**
+     * Check if we should request battery optimization whitelist
+     */
+    public static boolean shouldRequestBatteryOptimizationWhitelist(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        
+        // Don't ask if user has permanently declined
+        if (prefs.getBoolean(PREF_USER_DECLINED_BATTERY_OPT, false)) {
+            Log.d(TAG, "User has permanently declined battery optimization whitelist, not asking again");
+            return false;
+        }
+        
+        // Don't ask if already whitelisted
+        if (isIgnoringBatteryOptimizations(context)) {
+            Log.d(TAG, "App is already ignoring battery optimizations");
+            return false;
+        }
+        
+        // Don't ask if we've already asked too many times
+        int requestCount = prefs.getInt(PREF_BATTERY_OPTIMIZATION_REQUESTED, 0);
+        boolean shouldRequest = requestCount < MAX_BATTERY_OPT_REQUESTS;
+        
+        Log.d(TAG, "Should request battery optimization whitelist: " + shouldRequest + 
+                  " (count: " + requestCount + "/" + MAX_BATTERY_OPT_REQUESTS + ")");
+        return shouldRequest;
+    }
+
+    /**
+     * Request battery optimization whitelist
+     */
+    public static void requestBatteryOptimizationWhitelist(Activity activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                SharedPreferences prefs = activity.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+                int requestCount = prefs.getInt(PREF_BATTERY_OPTIMIZATION_REQUESTED, 0);
+                prefs.edit().putInt(PREF_BATTERY_OPTIMIZATION_REQUESTED, requestCount + 1).apply();
+
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + activity.getPackageName()));
+                activity.startActivity(intent);
+                
+                Log.d(TAG, "Requested battery optimization whitelist");
+            } catch (Exception e) {
+                Log.e(TAG, "Error requesting battery optimization whitelist", e);
+                // Fallback to general battery optimization settings
+                try {
+                    Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                    activity.startActivity(intent);
+                } catch (Exception fallbackError) {
+                    Log.e(TAG, "Error opening battery optimization settings", fallbackError);
+                }
+            }
+        }
+    }
+
+    /**
+     * Mark that the user has permanently declined battery optimization whitelist
+     */
+    public static void setUserDeclinedBatteryOptimization(Context context, boolean declined) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        prefs.edit().putBoolean(PREF_USER_DECLINED_BATTERY_OPT, declined).apply();
+        Log.d(TAG, "User declined battery optimization whitelist: " + declined);
+    }
+
+    /**
+     * Check if user has permanently declined battery optimization whitelist
+     */
+    public static boolean hasUserDeclinedBatteryOptimization(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("sms_app_prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean(PREF_USER_DECLINED_BATTERY_OPT, false);
+    }
+
+    /**
+     * Show dialog to request battery optimization whitelist
+     */
+    public static void showBatteryOptimizationDialog(Activity activity) {
+        new AlertDialog.Builder(activity)
+            .setTitle("Battery Optimization")
+            .setMessage("To ensure reliable message reception during sleep mode, please disable battery optimization for LinguaSMS. This helps prevent messages from being lost when your phone is in deep sleep.")
+            .setPositiveButton("Open Settings", (dialog, which) -> {
+                requestBatteryOptimizationWhitelist(activity);
+            })
+            .setNegativeButton("Not Now", (dialog, which) -> {
+                // Just dismiss
+            })
+            .setNeutralButton("Don't Ask Again", (dialog, which) -> {
+                setUserDeclinedBatteryOptimization(activity, true);
+            })
+            .show();
     }
 }
 

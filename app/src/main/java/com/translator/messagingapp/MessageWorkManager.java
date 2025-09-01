@@ -181,6 +181,40 @@ public class MessageWorkManager {
     }
 
     /**
+     * Schedules message synchronization optimized for deep sleep compatibility.
+     * Uses minimal constraints to ensure execution even during Doze mode.
+     */
+    public void scheduleDeepSleepCompatibleSync() {
+        Data inputData = new Data.Builder()
+            .putString(MessageProcessingWorker.KEY_WORK_TYPE, MessageProcessingWorker.WORK_TYPE_SYNC_MESSAGES)
+            .putBoolean("deep_sleep_compatible", true)
+            .build();
+
+        // Minimal constraints for deep sleep compatibility
+        Constraints constraints = new Constraints.Builder()
+            .setRequiresBatteryNotLow(false) // Allow even with low battery
+            .setRequiresCharging(false)      // Allow when not charging
+            .setRequiresStorageNotLow(false) // Allow with low storage
+            .build();
+
+        OneTimeWorkRequest syncWork = new OneTimeWorkRequest.Builder(MessageProcessingWorker.class)
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .addTag(TAG_MESSAGE_PROCESSING)
+            .addTag(TAG_SYNC)
+            .addTag("deep_sleep_compatible")
+            .build();
+
+        workManager.enqueueUniqueWork(
+            "sync_messages_deep_sleep",
+            ExistingWorkPolicy.REPLACE,
+            syncWork
+        );
+
+        Log.d(TAG, "Scheduled deep sleep compatible message sync work");
+    }
+
+    /**
      * Schedules periodic message synchronization.
      * Runs every 15 minutes when device is charging and battery is not low.
      */

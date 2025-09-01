@@ -22,13 +22,21 @@ public class BootReceiver extends BroadcastReceiver {
 
             // Check if we're the default SMS app
             if (PhoneUtils.isDefaultSmsApp(context)) {
-                // Start any necessary services
-                // For example, you might want to start a service to check for new messages
-                // or initialize your message database
-
-                // Example: Start a background service
-                // Intent serviceIntent = new Intent(context, MessageSyncService.class);
-                // context.startService(serviceIntent);
+                Log.d(TAG, "App is default SMS app, starting message monitoring service");
+                
+                // Start the message monitoring service for deep sleep handling
+                MessageMonitoringService.startService(context);
+                
+                // Initialize WorkManager periodic tasks
+                try {
+                    MessageWorkManager workManager = new MessageWorkManager(context);
+                    workManager.initializePeriodicWork();
+                    Log.d(TAG, "Initialized periodic work tasks");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing periodic work", e);
+                }
+            } else {
+                Log.d(TAG, "App is not default SMS app, skipping service initialization");
             }
         }
     }

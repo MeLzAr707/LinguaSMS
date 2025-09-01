@@ -19,6 +19,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <!-- Permissions for deep sleep handling -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".TranslatorApp"
@@ -137,6 +144,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Receiver for periodic message checks during deep sleep -->
+        <receiver
+            android:name=".MessageCheckReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.translator.messagingapp.CHECK_MESSAGES" />
+            </intent-filter>
+        </receiver>
+
         <!-- Services -->
         <service
             android:name=".HeadlessSmsSendService"
@@ -151,6 +167,12 @@
                 <data android:scheme="mmsto" />
             </intent-filter>
         </service>
+
+        <!-- Foreground service for message monitoring during deep sleep -->
+        <service
+            android:name=".MessageMonitoringService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Content Providers -->
         <provider

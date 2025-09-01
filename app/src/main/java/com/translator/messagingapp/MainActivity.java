@@ -135,6 +135,20 @@ public class MainActivity extends BaseActivity
     }
 
     /**
+     * Check battery optimization status and request whitelist if needed
+     */
+    private void checkBatteryOptimizationStatus() {
+        if (PhoneUtils.shouldRequestBatteryOptimizationWhitelist(this)) {
+            Log.d(TAG, "Should request battery optimization whitelist");
+            PhoneUtils.showBatteryOptimizationDialog(this);
+        } else if (PhoneUtils.isIgnoringBatteryOptimizations(this)) {
+            Log.d(TAG, "App is already ignoring battery optimizations");
+        } else {
+            Log.d(TAG, "Battery optimization whitelist not needed or user declined");
+        }
+    }
+
+    /**
      * Set up broadcast receiver for message refresh events.
      * Uses proper Android 13+ RECEIVER_EXPORTED/RECEIVER_NOT_EXPORTED flags.
      */
@@ -1130,6 +1144,13 @@ public class MainActivity extends BaseActivity
                 Toast.makeText(this, "Successfully set as default SMS app", Toast.LENGTH_SHORT).show();
                 // Reset the declined flag since user accepted
                 PhoneUtils.setUserDeclinedDefaultSms(this, false);
+                
+                // Start message monitoring service for deep sleep handling
+                MessageMonitoringService.startService(this);
+                
+                // Check and request battery optimization whitelist if needed
+                checkBatteryOptimizationStatus();
+                
                 loadConversations();
             } else {
                 // User declined or canceled the request
@@ -1161,6 +1182,9 @@ public class MainActivity extends BaseActivity
         if (defaultSmsAppManager == null || !defaultSmsAppManager.isDefaultSmsApp()) {
             checkDefaultSmsAppStatus();
         } else {
+            // Start message monitoring service if not already running
+            MessageMonitoringService.startService(this);
+            
             // Refresh conversations when returning to the activity
             refreshConversations();
         }
