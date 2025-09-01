@@ -33,7 +33,7 @@ public class PullToRefreshRemovalTest {
     public void testAutomaticRefreshPreserved() {
         // This test documents that the following automatic refresh mechanisms are preserved:
         // 1. onResume() calls refreshConversations() automatically
-        // 2. refreshConversations() method still clears cache and loads conversations
+        // 2. refreshConversations() method shows cached data instantly then loads fresh data
         // 3. loadConversations() method still works with background threading
         // 4. Message sending operations still trigger refresh
         // 5. SmsReceiver can still trigger message processing and refresh
