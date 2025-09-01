@@ -269,6 +269,14 @@ public class OfflineModelManager {
     }
     
     /**
+     * Verify the integrity of a downloaded model.
+     * This method is an alias for isModelDownloadedAndVerified for backward compatibility.
+     */
+    public boolean verifyModelIntegrity(String languageCode) {
+        return isModelDownloadedAndVerified(languageCode);
+    }
+    
+    /**
      * Get the status map for all available models.
      * @return Map of language code to ModelStatus
      */
