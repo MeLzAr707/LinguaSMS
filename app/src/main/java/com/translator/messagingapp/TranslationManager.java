@@ -172,11 +172,8 @@ public class TranslationManager {
                 
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
-                    // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
-                        // For offline, we'll try English as source and let MLKit handle detection
-                        finalSourceLanguage = "en";
-                    } else if (translationService != null && translationService.hasApiKey()) {
+                    // First try online detection if available, as it's more reliable
+                    if (translationService != null && translationService.hasApiKey()) {
                         finalSourceLanguage = translationService.detectLanguage(text);
                         if (finalSourceLanguage == null) {
                             if (callback != null) {
@@ -184,13 +181,17 @@ public class TranslationManager {
                             }
                             return;
                         }
+                    } else if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
+                        // For offline mode without online detection, we need to handle auto-detection differently
+                        // If we're in offline mode and can't detect online, use a special marker for auto-detection
+                        finalSourceLanguage = "auto-detect-offline";
                     } else {
                         // If no API key is available, check if we can use offline translation
                         // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
                         if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
                             (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
-                            // Try offline translation as fallback
-                            finalSourceLanguage = "en"; // Let MLKit handle detection
+                            // Use auto-detect for offline mode
+                            finalSourceLanguage = "auto-detect-offline";
                         } else {
                             if (callback != null) {
                                 callback.onTranslationComplete(false, null, "No translation service available");
@@ -202,14 +203,17 @@ public class TranslationManager {
 
                 // Skip if already in target language (comparing base language codes)
                 // unless forceTranslation is true (for outgoing messages)
-                String baseDetected = finalSourceLanguage.split("-")[0];
-                String baseTarget = targetLanguage.split("-")[0];
+                // Special handling: Don't skip for auto-detect-offline as we haven't actually detected the language yet
+                if (!finalSourceLanguage.equals("auto-detect-offline")) {
+                    String baseDetected = finalSourceLanguage.split("-")[0];
+                    String baseTarget = targetLanguage.split("-")[0];
 
-                if (baseDetected.equals(baseTarget) && !forceTranslation) {
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null, "Text is already in " + getLanguageName(baseTarget));
+                    if (baseDetected.equals(baseTarget) && !forceTranslation) {
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Text is already in " + getLanguageName(baseTarget));
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 // Try translation based on mode and availability
@@ -620,30 +624,102 @@ public class TranslationManager {
      * Performs offline translation using MLKit.
      */
     private void translateOffline(String text, String sourceLanguage, String targetLanguage, String cacheKey, TranslationCallback callback) {
+        // Handle auto-detection for offline translation
+        if ("auto-detect-offline".equals(sourceLanguage)) {
+            // For offline auto-detection, try common source languages in order of likelihood
+            // This is a workaround since MLKit doesn't have built-in language detection
+            String[] commonLanguages = {"es", "fr", "de", "it", "pt", "nl", "ru", "zh", "ja", "ko", "ar", "hi"};
+            
+            // Try each language in sequence until we find one that works or get a meaningful translation
+            tryOfflineTranslationWithLanguages(text, commonLanguages, 0, targetLanguage, cacheKey, callback);
+        } else {
+            // Normal translation with known source language
+            offlineTranslationService.translateOffline(text, sourceLanguage, targetLanguage, new OfflineTranslationService.OfflineTranslationCallback() {
+                @Override
+                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                    if (success) {
+                        // Cache the translation
+                        translationCache.put(cacheKey, translatedText);
+                        // Update translation counters
+                        updateTranslationCounters();
+                        
+                        if (callback != null) {
+                            callback.onTranslationComplete(true, translatedText, null);
+                        }
+                    } else {
+                        // If offline fails and we're in auto mode, try online as fallback
+                        int translationMode = userPreferences.getTranslationMode();
+                        if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
+                            translationService != null && translationService.hasApiKey()) {
+                            Log.d(TAG, "Offline translation failed, falling back to online: " + errorMessage);
+                            translateOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                        } else {
+                            if (callback != null) {
+                                callback.onTranslationComplete(false, null, "Offline translation failed: " + errorMessage);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * Tries offline translation with different source languages sequentially.
+     * This is used for auto-detection in offline mode.
+     */
+    private void tryOfflineTranslationWithLanguages(String text, String[] languages, int currentIndex, 
+                                                   String targetLanguage, String cacheKey, TranslationCallback callback) {
+        // If we've tried all languages, fall back to online detection or return error
+        if (currentIndex >= languages.length) {
+            // Try online as fallback if available
+            int translationMode = userPreferences.getTranslationMode();
+            if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
+                translationService != null && translationService.hasApiKey()) {
+                Log.d(TAG, "Offline auto-detection failed, falling back to online detection");
+                
+                // Try online detection and translation
+                String detectedLanguage = translationService.detectLanguage(text);
+                if (detectedLanguage != null) {
+                    translateOnline(text, detectedLanguage, targetLanguage, cacheKey, callback);
+                } else {
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, "Could not detect language offline or online");
+                    }
+                }
+            } else {
+                if (callback != null) {
+                    callback.onTranslationComplete(false, null, "Could not auto-detect language in offline mode");
+                }
+            }
+            return;
+        }
+
+        String sourceLanguage = languages[currentIndex];
+        
+        // Check if this language pair is available for offline translation
+        if (!offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
+            // Try next language
+            tryOfflineTranslationWithLanguages(text, languages, currentIndex + 1, targetLanguage, cacheKey, callback);
+            return;
+        }
+
+        // Try translation with this source language
         offlineTranslationService.translateOffline(text, sourceLanguage, targetLanguage, new OfflineTranslationService.OfflineTranslationCallback() {
             @Override
             public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                if (success) {
-                    // Cache the translation
+                if (success && translatedText != null && !translatedText.trim().equals(text.trim())) {
+                    // Translation succeeded and text actually changed - we found the right language
                     translationCache.put(cacheKey, translatedText);
-                    // Update translation counters
                     updateTranslationCounters();
                     
+                    Log.d(TAG, "Auto-detected source language (offline): " + sourceLanguage);
                     if (callback != null) {
                         callback.onTranslationComplete(true, translatedText, null);
                     }
                 } else {
-                    // If offline fails and we're in auto mode, try online as fallback
-                    int translationMode = userPreferences.getTranslationMode();
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                        translationService != null && translationService.hasApiKey()) {
-                        Log.d(TAG, "Offline translation failed, falling back to online: " + errorMessage);
-                        translateOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
-                    } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "Offline translation failed: " + errorMessage);
-                        }
-                    }
+                    // Translation failed or returned same text - try next language
+                    tryOfflineTranslationWithLanguages(text, languages, currentIndex + 1, targetLanguage, cacheKey, callback);
                 }
             }
         });
