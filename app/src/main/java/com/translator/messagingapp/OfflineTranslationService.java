@@ -776,10 +776,7 @@ public class OfflineTranslationService {
     /**
      * Cleanup resources.
      */
-    public void cleanup() {
-        // Clean up any resources if needed
-        Log.d(TAG, "OfflineTranslationService cleanup complete");
-    }
+
     public void cleanup() {
         // Clean up any resources if needed
         Log.d(TAG, "OfflineTranslationService cleanup complete");
