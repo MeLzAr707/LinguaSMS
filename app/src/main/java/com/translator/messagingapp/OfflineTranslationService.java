@@ -157,12 +157,16 @@ public class OfflineTranslationService {
                 Log.d(TAG, "MLKit model verification timeout (models likely not downloaded): " + sourceMLKit + " -> " + targetMLKit);
                 return false;
             } catch (ExecutionException e) {
-                // Check if the error indicates missing models
+                // Check if the error indicates missing models or dictionary loading issues
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
                     if (errorMsg.contains("model") && errorMsg.contains("download")) {
                         Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
                         return false;
+                    } else if (errorMsg.contains("dictionary") || errorMsg.contains("dict")) {
+                        Log.w(TAG, "MLKit dictionary loading failure detected: " + e.getCause().getMessage());
+                        // Try to recover from dictionary loading failure with retry
+                        return retryTranslationWithDictionaryFix(translator, sourceMLKit, targetMLKit);
                     }
                 }
                 Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
@@ -170,6 +174,46 @@ public class OfflineTranslationService {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error verifying model availability with MLKit", e);
+            return false;
+        }
+    }
+
+    /**
+     * Attempts to recover from dictionary loading failures by retrying translation.
+     * This method handles cases where models are present but dictionaries fail to load.
+     *
+     * @param translator The translator instance to retry with
+     * @param sourceMLKit The source language code in MLKit format
+     * @param targetMLKit The target language code in MLKit format
+     * @return true if recovery was successful, false otherwise
+     */
+    private boolean retryTranslationWithDictionaryFix(Translator translator, String sourceMLKit, String targetMLKit) {
+        Log.d(TAG, "Attempting dictionary loading recovery for: " + sourceMLKit + " -> " + targetMLKit);
+        
+        try {
+            // Close and recreate translator to force reinitialization
+            translator.close();
+            
+            // Wait a moment for cleanup
+            Thread.sleep(1000);
+            
+            // Recreate translator options and client
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(sourceMLKit)
+                    .setTargetLanguage(targetMLKit)
+                    .build();
+            
+            Translator newTranslator = Translation.getClient(options);
+            
+            // Try translation again with a longer timeout for dictionary loading
+            Task<String> retryTask = newTranslator.translate("test");
+            String result = Tasks.await(retryTask, 5, TimeUnit.SECONDS);
+            
+            Log.d(TAG, "Dictionary loading recovery successful: " + sourceMLKit + " -> " + targetMLKit);
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Dictionary loading recovery failed: " + sourceMLKit + " -> " + targetMLKit, e);
             return false;
         }
     }
@@ -228,8 +272,21 @@ public class OfflineTranslationService {
                 })
                 .addOnFailureListener(exception -> {
                     Log.e(TAG, "Offline translation failed", exception);
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null, exception.getMessage());
+                    
+                    // Check if this is a dictionary loading error and attempt recovery
+                    String errorMessage = exception.getMessage();
+                    if (errorMessage != null && (errorMessage.toLowerCase().contains("dictionary") || 
+                                               errorMessage.toLowerCase().contains("dict"))) {
+                        Log.w(TAG, "Dictionary loading error detected, attempting recovery");
+                        
+                        // Attempt recovery by retrying with a new translator instance
+                        retryTranslationAfterDictionaryError(text, sourceMLKit, targetMLKit, callback);
+                    } else {
+                        // For other errors, return immediately with specific error message
+                        String enhancedErrorMessage = enhanceErrorMessage(errorMessage);
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, enhancedErrorMessage);
+                        }
                     }
                 });
     }
@@ -264,20 +321,15 @@ public class OfflineTranslationService {
         translator.downloadModelIfNeeded()
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Language model downloaded successfully: " + mlkitLanguageCode);
-                    downloadedModels.add(mlkitLanguageCode);
-                    saveDownloadedModels();
                     
-                    // Refresh the model list to ensure synchronization
-                    loadDownloadedModels();
-                    
-                    if (callback != null) {
-                        callback.onDownloadComplete(true, languageCode, null);
-                    }
+                    // Verify the download actually worked by testing translation
+                    verifyModelDownloadSuccess(mlkitLanguageCode, languageCode, callback);
                 })
                 .addOnFailureListener(exception -> {
                     Log.e(TAG, "Failed to download language model: " + mlkitLanguageCode, exception);
+                    String enhancedErrorMessage = enhanceErrorMessage(exception.getMessage());
                     if (callback != null) {
-                        callback.onDownloadComplete(false, languageCode, exception.getMessage());
+                        callback.onDownloadComplete(false, languageCode, enhancedErrorMessage);
                     }
                 });
     }
@@ -567,8 +619,167 @@ public class OfflineTranslationService {
     }
 
     /**
+     * Verifies that a downloaded model actually works by testing a simple translation.
+     * This helps detect cases where models download but dictionaries fail to load.
+     *
+     * @param mlkitLanguageCode The MLKit language code that was downloaded
+     * @param originalLanguageCode The original language code for the callback
+     * @param callback The callback to receive the final download result
+     */
+    private void verifyModelDownloadSuccess(String mlkitLanguageCode, String originalLanguageCode, 
+                                          ModelDownloadCallback callback) {
+        Log.d(TAG, "Verifying model download success for: " + mlkitLanguageCode);
+        
+        try {
+            // Create translator for verification
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(mlkitLanguageCode)
+                    .setTargetLanguage(mlkitLanguageCode)
+                    .build();
+            
+            Translator verifyTranslator = Translation.getClient(options);
+            
+            // Test with a simple translation to verify dictionaries load properly
+            verifyTranslator.translate("test")
+                    .addOnSuccessListener(result -> {
+                        Log.d(TAG, "Model verification successful, dictionaries loaded properly: " + mlkitLanguageCode);
+                        
+                        // Only mark as downloaded if verification succeeds
+                        downloadedModels.add(mlkitLanguageCode);
+                        saveDownloadedModels();
+                        
+                        // Refresh the model list to ensure synchronization
+                        loadDownloadedModels();
+                        
+                        if (callback != null) {
+                            callback.onDownloadComplete(true, originalLanguageCode, null);
+                        }
+                    })
+                    .addOnFailureListener(verifyException -> {
+                        Log.e(TAG, "Model verification failed, dictionaries may not have loaded properly: " + mlkitLanguageCode, verifyException);
+                        
+                        String errorMessage = verifyException.getMessage();
+                        if (errorMessage != null && (errorMessage.toLowerCase().contains("dictionary") || 
+                                                   errorMessage.toLowerCase().contains("dict"))) {
+                            Log.w(TAG, "Dictionary loading failure detected during model verification");
+                            errorMessage = "Model downloaded but dictionary files failed to load. Please try downloading again or check available storage space.";
+                        } else {
+                            errorMessage = enhanceErrorMessage(errorMessage);
+                        }
+                        
+                        if (callback != null) {
+                            callback.onDownloadComplete(false, originalLanguageCode, errorMessage);
+                        }
+                    });
+                    
+        } catch (Exception e) {
+            Log.e(TAG, "Error during model download verification", e);
+            if (callback != null) {
+                callback.onDownloadComplete(false, originalLanguageCode, 
+                    "Model download verification failed: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Attempts to retry translation after a dictionary loading error.
+     * This method creates a new translator instance and retries the translation.
+     *
+     * @param text The text to translate
+     * @param sourceMLKit The source language code in MLKit format
+     * @param targetMLKit The target language code in MLKit format
+     * @param callback The callback to receive the result
+     */
+    private void retryTranslationAfterDictionaryError(String text, String sourceMLKit, String targetMLKit, 
+                                                    OfflineTranslationCallback callback) {
+        Log.d(TAG, "Retrying translation after dictionary error: " + sourceMLKit + " -> " + targetMLKit);
+        
+        try {
+            // Wait a moment before retry
+            Thread.sleep(500);
+            
+            // Create a new translator instance
+            TranslatorOptions retryOptions = new TranslatorOptions.Builder()
+                    .setSourceLanguage(sourceMLKit)
+                    .setTargetLanguage(targetMLKit)
+                    .build();
+            
+            Translator retryTranslator = Translation.getClient(retryOptions);
+            
+            // Try translation again
+            retryTranslator.translate(text)
+                    .addOnSuccessListener(translatedText -> {
+                        Log.d(TAG, "Dictionary error recovery successful");
+                        if (callback != null) {
+                            callback.onTranslationComplete(true, translatedText, null);
+                        }
+                    })
+                    .addOnFailureListener(retryException -> {
+                        Log.e(TAG, "Dictionary error recovery failed", retryException);
+                        String enhancedErrorMessage = enhanceErrorMessage(retryException.getMessage());
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, enhancedErrorMessage);
+                        }
+                    });
+                    
+        } catch (Exception e) {
+            Log.e(TAG, "Error during dictionary recovery retry", e);
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, 
+                    "Dictionary loading failed and recovery attempt unsuccessful. Please try redownloading the language models.");
+            }
+        }
+    }
+
+    /**
+     * Enhances error messages to provide more user-friendly information.
+     *
+     * @param originalMessage The original error message
+     * @return Enhanced error message with user-friendly information
+     */
+    private String enhanceErrorMessage(String originalMessage) {
+        if (originalMessage == null || originalMessage.trim().isEmpty()) {
+            return "Translation failed due to an unknown error";
+        }
+        
+        String lowerMessage = originalMessage.toLowerCase();
+        
+        // Dictionary loading errors
+        if (lowerMessage.contains("dictionary") || lowerMessage.contains("dict")) {
+            return "Dictionary files failed to load. Please try redownloading the language models or check available storage space.";
+        }
+        
+        // Model not found errors
+        if (lowerMessage.contains("model") && (lowerMessage.contains("not found") || lowerMessage.contains("missing"))) {
+            return "Language model not found. Please download the required language models for offline translation.";
+        }
+        
+        // Generic model errors
+        if (lowerMessage.contains("model")) {
+            return "Language model error. Please try redownloading the language models.";
+        }
+        
+        // Network/download errors
+        if (lowerMessage.contains("network") || lowerMessage.contains("download")) {
+            return "Network error during model download. Please check your internet connection and try again.";
+        }
+        
+        // Storage errors
+        if (lowerMessage.contains("storage") || lowerMessage.contains("space")) {
+            return "Insufficient storage space for language models. Please free up some space and try again.";
+        }
+        
+        // Return original message if no specific pattern matched
+        return "Translation failed: " + originalMessage;
+    }
+
+    /**
      * Cleanup resources.
      */
+    public void cleanup() {
+        // Clean up any resources if needed
+        Log.d(TAG, "OfflineTranslationService cleanup complete");
+    }
     public void cleanup() {
         // Clean up any resources if needed
         Log.d(TAG, "OfflineTranslationService cleanup complete");
