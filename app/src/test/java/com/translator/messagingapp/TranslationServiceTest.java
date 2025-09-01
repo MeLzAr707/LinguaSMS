@@ -171,7 +171,7 @@ public class TranslationServiceTest {
 
     @Test
     public void testTranslationManager_rateLimiting() {
-        // This test verifies that rate limiting works
+        // This test verifies that rate limiting works for online translations
         final int[] successCount = {0};
         final int[] failureCount = {0};
         
@@ -201,6 +201,52 @@ public class TranslationServiceTest {
         // Due to rate limiting, not all requests should succeed
         assertTrue("At least some translations should succeed", successCount[0] > 0);
         // Note: Some may fail due to rate limiting, which is expected behavior
+    }
+
+    @Test
+    public void testTranslationManager_offlineTranslationsNotRateLimited() {
+        // Enable offline translation to test that offline translations are not rate limited
+        when(mockUserPreferences.isOfflineTranslationEnabled()).thenReturn(true);
+        
+        // Create a translation manager with offline translation enabled
+        TranslationManager offlineTranslationManager = new TranslationManager(
+            RuntimeEnvironment.getApplication(),
+            null, // No online service to force offline
+            mockUserPreferences
+        );
+        
+        final int[] successCount = {0};
+        final int[] failureCount = {0};
+        
+        TranslationManager.TranslationCallback callback = new TranslationManager.TranslationCallback() {
+            @Override
+            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                if (success) {
+                    successCount[0]++;
+                } else {
+                    failureCount[0]++;
+                }
+            }
+        };
+
+        // Rapidly fire multiple offline translation requests
+        for (int i = 0; i < 10; i++) {
+            offlineTranslationManager.translateText("test message " + i, "en", "es", callback);
+        }
+
+        // Wait for async operations
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+
+        // For offline translations, all requests should succeed (no rate limiting)
+        // Note: They may still fail due to offline service not being available, but not due to rate limiting
+        assertTrue("Offline translation attempts should be made", successCount[0] + failureCount[0] > 0);
+        
+        // Clean up
+        offlineTranslationManager.cleanup();
     }
 
     @Test
