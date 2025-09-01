@@ -16,14 +16,14 @@ import static org.junit.Assert.*;
 public class MLKitLanguageDetectionTest {
 
     private Context context;
-    private OfflineLanguageDetectionService languageDetectionService;
+    private LanguageDetectionService languageDetectionService;
     private TranslationManager translationManager;
     private UserPreferences userPreferences;
 
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
-        languageDetectionService = new OfflineLanguageDetectionService(context);
+        languageDetectionService = new LanguageDetectionService(context);
         userPreferences = new UserPreferences(context);
         translationManager = new TranslationManager(context, null, userPreferences);
     }
