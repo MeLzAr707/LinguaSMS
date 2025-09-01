@@ -1610,6 +1610,27 @@ public class MessageService {
                         Log.d(TAG, "Message already exists in database, skipping storage to prevent duplicate");
                     }
 
+                    // Auto-translate the message if enabled
+                    if (translationManager != null) {
+                        // Create SmsMessage object for translation
+                        com.translator.messagingapp.SmsMessage smsMessage = 
+                            new com.translator.messagingapp.SmsMessage(senderAddress, fullMessageBody.toString(), new java.util.Date(messageTimestamp));
+                        smsMessage.setIncoming(true);
+                        
+                        // Attempt auto-translation
+                        translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
+                            @Override
+                            public void onTranslationComplete(boolean success, com.translator.messagingapp.SmsMessage translatedMessage) {
+                                if (success && translatedMessage != null) {
+                                    Log.d(TAG, "Auto-translation completed for message from " + senderAddress);
+                                    // Translation cache is handled within TranslationManager
+                                } else {
+                                    Log.d(TAG, "Auto-translation not performed for message from " + senderAddress);
+                                }
+                            }
+                        });
+                    }
+
                     // Show notification
                     showSmsNotification(senderAddress, fullMessageBody.toString());
                     
