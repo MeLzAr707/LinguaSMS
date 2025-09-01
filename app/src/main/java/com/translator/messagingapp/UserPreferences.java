@@ -57,7 +57,24 @@ public class UserPreferences {
     }
 
     public String getPreferredLanguage() {
-        return preferences.getString(KEY_PREFERRED_LANGUAGE, "en");
+        // Instead of defaulting to English, use device language if not set
+        String defaultLanguage = getDeviceLanguage();
+        return preferences.getString(KEY_PREFERRED_LANGUAGE, defaultLanguage);
+    }
+
+    /**
+     * Gets the device's primary language instead of defaulting to English.
+     *
+     * @return The device's language code
+     */
+    private String getDeviceLanguage() {
+        try {
+            java.util.Locale deviceLocale = java.util.Locale.getDefault();
+            return deviceLocale.getLanguage();
+        } catch (Exception e) {
+            // Only as a last resort, return "en"
+            return "en";
+        }
     }
 
     public void setPreferredLanguage(String language) {

@@ -235,8 +235,9 @@ public class OfflineTranslationService {
         Log.d(TAG, "Starting download for language model: " + mlkitLanguageCode);
 
         // Create a translator to trigger model download
+        // Use the target language as both source and target to download the model
         TranslatorOptions options = new TranslatorOptions.Builder()
-                .setSourceLanguage(TranslateLanguage.ENGLISH) // Use English as default source
+                .setSourceLanguage(mlkitLanguageCode)
                 .setTargetLanguage(mlkitLanguageCode)
                 .build();
 
@@ -276,7 +277,7 @@ public class OfflineTranslationService {
         }
 
         TranslatorOptions options = new TranslatorOptions.Builder()
-                .setSourceLanguage(TranslateLanguage.ENGLISH)
+                .setSourceLanguage(mlkitLanguageCode)
                 .setTargetLanguage(mlkitLanguageCode)
                 .build();
 
