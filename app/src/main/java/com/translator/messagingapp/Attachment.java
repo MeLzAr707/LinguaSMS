@@ -1,4 +1,3 @@
-
 package com.translator.messagingapp;
 
 import android.net.Uri;
