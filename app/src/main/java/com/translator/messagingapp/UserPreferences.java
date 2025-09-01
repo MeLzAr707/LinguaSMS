@@ -26,12 +26,9 @@ public class UserPreferences {
     public static final int THEME_CUSTOM = 4;
 
     // Translation mode constants
-    public static final int TRANSLATION_MODE_AUTO = 0;
     public static final int TRANSLATION_MODE_ONLINE_ONLY = 1;
-    public static final int TRANSLATION_MODE_OFFLINE_ONLY = 2;
 
     // Additional preference keys for missing functionality
-    private static final String KEY_TRANSLATION_MODE = "translation_mode";
     private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
     
     // Custom theme color keys
@@ -247,24 +244,6 @@ public class UserPreferences {
     }
 
     /**
-     * Gets the translation mode.
-     *
-     * @return The translation mode (AUTO, ONLINE_ONLY, or OFFLINE_ONLY)
-     */
-    public int getTranslationMode() {
-        return preferences.getInt(KEY_TRANSLATION_MODE, TRANSLATION_MODE_AUTO);
-    }
-
-    /**
-     * Sets the translation mode.
-     *
-     * @param mode The translation mode to set
-     */
-    public void setTranslationMode(int mode) {
-        preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
-    }
-
-    /**
      * Checks if offline translation is preferred.
      *
      * @return true if offline translation is preferred, false otherwise
@@ -288,7 +267,7 @@ public class UserPreferences {
      * @return true if offline translation is enabled, false otherwise
      */
     public boolean isOfflineTranslationEnabled() {
-        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, false);
+        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, true);
     }
 
     /**

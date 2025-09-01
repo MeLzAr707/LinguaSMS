@@ -162,8 +162,7 @@ public class TranslationManager {
         }
 
         // Determine which translation service to use based on user preferences
-        int translationMode = userPreferences.getTranslationMode();
-        boolean preferOffline = userPreferences.getPreferOfflineTranslation();
+        boolean useOffline = shouldUseOfflineTranslation(sourceLanguage, targetLanguage);
 
         // Translate in background
         executorService.execute(() -> {
@@ -173,7 +172,7 @@ public class TranslationManager {
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
                     // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
+                    if (shouldUseOfflineTranslation(null, targetLanguage)) {
                         // For offline, we'll try English as source and let MLKit handle detection
                         finalSourceLanguage = "en";
                     } else if (translationService != null && translationService.hasApiKey()) {
@@ -186,9 +185,7 @@ public class TranslationManager {
                         }
                     } else {
                         // If no API key is available, check if we can use offline translation
-                        // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
-                        if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                            (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
+                        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
                             // Try offline translation as fallback
                             finalSourceLanguage = "en"; // Let MLKit handle detection
                         } else {
@@ -212,8 +209,8 @@ public class TranslationManager {
                     return;
                 }
 
-                // Try translation based on mode and availability
-                if (shouldUseOfflineTranslation(translationMode, preferOffline, finalSourceLanguage, targetLanguage)) {
+                // Try translation based on availability
+                if (shouldUseOfflineTranslation(finalSourceLanguage, targetLanguage)) {
                     // Try offline translation first
                     translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else if (translationService != null && translationService.hasApiKey()) {
@@ -221,8 +218,7 @@ public class TranslationManager {
                     translateOnline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else {
                     // No API key available, check if we can use offline translation as fallback
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                        (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
+                    if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
                         // Try offline translation as fallback
                         translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
@@ -257,7 +253,6 @@ public class TranslationManager {
 
         // Check if auto-translate is enabled
         if (!userPreferences.isAutoTranslateEnabled()) {
-            Log.d(TAG, "Auto-translation disabled in user preferences - enable it in Settings to auto-translate incoming messages");
             if (callback != null) {
                 callback.onTranslationComplete(false, null);
             }
@@ -265,27 +260,15 @@ public class TranslationManager {
         }
 
         // Check if translation service is available
-        // Priority: 1) Online with API key, 2) Offline if available, 3) Fail if neither available
-        boolean hasApiKey = translationService != null && translationService.hasApiKey();
-        int translationMode = userPreferences.getTranslationMode();
-        boolean isOfflineEnabled = userPreferences.isOfflineTranslationEnabled();
-        
-        Log.d(TAG, "Translation service check: hasApiKey=" + hasApiKey + 
-                  ", translationMode=" + translationMode + 
-                  ", isOfflineEnabled=" + isOfflineEnabled);
-        
-        // Only fail early if we have no way to translate at all
-        if (!hasApiKey && translationMode == UserPreferences.TRANSLATION_MODE_ONLINE_ONLY) {
-            Log.d(TAG, "No API key available and mode is ONLINE_ONLY");
-            if (callback != null) {
-                callback.onTranslationComplete(false, null);
+        // For offline translation, we don't require an API key
+        if (translationService == null || !translationService.hasApiKey()) {
+            if (!userPreferences.isOfflineTranslationEnabled()) {
+                if (callback != null) {
+                    callback.onTranslationComplete(false, null);
+                }
+                return;
             }
-            return;
         }
-        
-        // For AUTO mode without API key, we'll try offline translation later
-        // For OFFLINE_ONLY mode, we proceed regardless of API key
-        // For modes with offline enabled, we proceed
 
         // Check rate limiting
         if (!checkRateLimiting()) {
@@ -316,10 +299,6 @@ public class TranslationManager {
 
         // Generate cache key
         String targetLanguage = userPreferences.getPreferredLanguage();
-        if (targetLanguage == null || targetLanguage.isEmpty()) {
-            targetLanguage = "en"; // Default to English if no preference set
-            Log.d(TAG, "No preferred language set, defaulting to English");
-        }
         String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first
@@ -336,30 +315,14 @@ public class TranslationManager {
         // Translate in background
         executorService.execute(() -> {
             try {
-                // Determine translation mode and whether to use offline
-                int translationMode = userPreferences.getTranslationMode();
-                boolean preferOffline = userPreferences.getPreferOfflineTranslation();
-                
                 String detectedLanguage = null;
                 
                 // Detect language based on available service
                 if (translationService != null && translationService.hasApiKey()) {
                     detectedLanguage = translationService.detectLanguage(message.getOriginalText());
-                } else {
-                    // For cases without API key, we need to support AUTO mode fallback to offline
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                        userPreferences.isOfflineTranslationEnabled() ||
-                        translationMode == UserPreferences.TRANSLATION_MODE_AUTO) {
-                        
-                        // For AUTO mode without API key, assume a different language to trigger translation
-                        String targetLanguage = userPreferences.getPreferredLanguage();
-                        if ("en".equals(targetLanguage)) {
-                            detectedLanguage = "es"; // Assume Spanish if target is English
-                        } else {
-                            detectedLanguage = "en"; // Assume English for other target languages
-                        }
-                        Log.d(TAG, "No API key available, assuming source language: " + detectedLanguage + " for AUTO mode fallback");
-                    }
+                } else if (userPreferences.isOfflineTranslationEnabled()) {
+                    // For offline mode, assume English as source for now and let offline service handle it
+                    detectedLanguage = "en";
                 }
                 
                 if (detectedLanguage == null) {
@@ -383,7 +346,7 @@ public class TranslationManager {
                 }
 
                 // Choose translation method based on availability and preferences
-                if (shouldUseOfflineTranslation(translationMode, preferOffline, detectedLanguage, targetLanguage)) {
+                if (shouldUseOfflineTranslation(detectedLanguage, targetLanguage)) {
                     // Use offline translation
                     offlineTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
                         new OfflineTranslationService.OfflineTranslationCallback() {
@@ -431,39 +394,9 @@ public class TranslationManager {
                         callback.onTranslationComplete(true, message);
                     }
                 } else {
-                    // Final fallback: try offline if available, regardless of preferences (AUTO mode only)
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                        offlineTranslationService != null &&
-                        offlineTranslationService.isOfflineTranslationAvailable(detectedLanguage, targetLanguage)) {
-                        
-                        Log.d(TAG, "Using offline translation as final fallback");
-                        offlineTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
-                            new OfflineTranslationService.OfflineTranslationCallback() {
-                                @Override
-                                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                                    if (success) {
-                                        message.setTranslatedText(translatedText);
-                                        message.setTranslatedLanguage(targetLanguage);
-                                        translationCache.put(cacheKey, translatedText);
-                                        updateTranslationCounters();
-                                        
-                                        if (callback != null) {
-                                            callback.onTranslationComplete(true, message);
-                                        }
-                                    } else {
-                                        Log.d(TAG, "Final fallback offline translation failed: " + errorMessage);
-                                        if (callback != null) {
-                                            callback.onTranslationComplete(false, null);
-                                        }
-                                    }
-                                }
-                            });
-                    } else {
-                        // No translation service available at all
-                        Log.d(TAG, "No translation service available - online service unavailable and offline not available/enabled");
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null);
-                        }
+                    // No translation service available
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null);
                     }
                 }
             } catch (Exception e) {
@@ -650,43 +583,16 @@ public class TranslationManager {
     /**
      * Determines whether to use offline translation based on user preferences and availability.
      *
-     * @param translationMode The current translation mode
-     * @param preferOffline Whether user prefers offline translation
      * @param sourceLanguage The source language
      * @param targetLanguage The target language
      * @return true if offline translation should be used
      */
-    private boolean shouldUseOfflineTranslation(int translationMode, boolean preferOffline, String sourceLanguage, String targetLanguage) {
-        switch (translationMode) {
-            case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
-                return true;
-            case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
-                return false;
-            case UserPreferences.TRANSLATION_MODE_AUTO:
-            default:
-                // In auto mode, use offline if:
-                // 1. User prefers offline and it's available, OR
-                // 2. No API key available (fallback to offline), OR 
-                // 3. Offline translation is explicitly enabled
-                boolean hasApiKey = translationService != null && translationService.hasApiKey();
-                boolean isOfflineAvailable = offlineTranslationService != null && 
-                    offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
-                    
-                if (preferOffline && isOfflineAvailable) {
-                    return true;
-                }
-                
-                if (!hasApiKey && isOfflineAvailable) {
-                    Log.d(TAG, "Using offline translation as fallback (no API key available)");
-                    return true;
-                }
-                
-                if (userPreferences.isOfflineTranslationEnabled() && isOfflineAvailable) {
-                    return true;
-                }
-                
-                return false;
+    private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
+        // Use offline translation if it's enabled and available
+        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
+            return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
         }
+        return false;
     }
 
     /**
@@ -706,10 +612,8 @@ public class TranslationManager {
                         callback.onTranslationComplete(true, translatedText, null);
                     }
                 } else {
-                    // If offline fails and we're in auto mode, try online as fallback
-                    int translationMode = userPreferences.getTranslationMode();
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                        translationService != null && translationService.hasApiKey()) {
+                    // If offline fails, try online as fallback if available
+                    if (translationService != null && translationService.hasApiKey()) {
                         Log.d(TAG, "Offline translation failed, falling back to online: " + errorMessage);
                         translateOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
