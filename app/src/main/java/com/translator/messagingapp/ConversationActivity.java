@@ -961,11 +961,35 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             }
             
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             
             if (intent.resolveActivity(getPackageManager()) != null) {
                 startActivity(intent);
             } else {
-                Toast.makeText(this, "No app available to open this attachment", Toast.LENGTH_SHORT).show();
+                // Try with a more generic content type for videos
+                if (contentType != null && contentType.startsWith("video/")) {
+                    Intent fallbackIntent = new Intent(Intent.ACTION_VIEW);
+                    fallbackIntent.setDataAndType(uri, "video/*");
+                    fallbackIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    
+                    if (fallbackIntent.resolveActivity(getPackageManager()) != null) {
+                        startActivity(fallbackIntent);
+                        return;
+                    }
+                }
+                
+                // Try without content type as a final fallback
+                Intent genericIntent = new Intent(Intent.ACTION_VIEW);
+                genericIntent.setData(uri);
+                genericIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                genericIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                
+                if (genericIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(genericIntent);
+                } else {
+                    Toast.makeText(this, "No app available to open this attachment", Toast.LENGTH_SHORT).show();
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error opening attachment", e);
