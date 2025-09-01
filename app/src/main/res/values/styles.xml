@@ -154,6 +154,15 @@
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+        
+        <!-- Material Design 3 color attributes required by ColorWheelActivity layout -->
+        <item name="colorSurface">@color/background_light</item>
+        <item name="colorOnSurface">@color/textColorPrimary</item>
+        <item name="colorOnSurfaceVariant">@color/textColorSecondary</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorSecondary">@color/colorAccent</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+        
         <!-- Ensure proper text appearance attributes -->
         <item name="textAppearanceHeadline1">@style/TextAppearance.MaterialComponents.Headline1</item>
         <item name="textAppearanceHeadline2">@style/TextAppearance.MaterialComponents.Headline2</item>
