@@ -18,6 +18,7 @@ import java.util.Date;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -138,6 +139,10 @@ public class IncomingMessageAutoTranslationTest {
         // In a real scenario, this would trigger UI updates via broadcasts
         assertTrue("Translation completed successfully", translatedMessage.isTranslated());
         assertEquals("Translated text should be correct", "Hola mundo", translatedMessage.getTranslatedText());
+        
+        // Verify that the translation result is cached for UI access
+        String expectedCacheKey = "Hello world_es";
+        verify(mockTranslationCache).put(expectedCacheKey, "Hola mundo");
     }
 
     @Test
@@ -165,6 +170,9 @@ public class IncomingMessageAutoTranslationTest {
         
         // Then: Translation failure should be handled gracefully (no exceptions)
         // This verifies that the callback handles failures properly
+        
+        // Verify that no translation was cached for failed translation
+        verify(mockTranslationCache, never()).put(anyString(), anyString());
     }
 
     @Test
