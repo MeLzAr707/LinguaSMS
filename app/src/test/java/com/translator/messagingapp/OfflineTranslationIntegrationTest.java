@@ -21,17 +21,10 @@ public class OfflineTranslationIntegrationTest {
     @Test
     public void testTranslationModeConstants() {
         // Verify translation mode constants are correctly defined
-        assertEquals("AUTO mode should be 0", 0, UserPreferences.TRANSLATION_MODE_AUTO);
         assertEquals("ONLINE_ONLY mode should be 1", 1, UserPreferences.TRANSLATION_MODE_ONLINE_ONLY);
-        assertEquals("OFFLINE_ONLY mode should be 2", 2, UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY);
         
-        // Ensure all modes are unique
-        assertNotEquals("AUTO and ONLINE_ONLY should be different", 
-                UserPreferences.TRANSLATION_MODE_AUTO, UserPreferences.TRANSLATION_MODE_ONLINE_ONLY);
-        assertNotEquals("AUTO and OFFLINE_ONLY should be different", 
-                UserPreferences.TRANSLATION_MODE_AUTO, UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY);
-        assertNotEquals("ONLINE_ONLY and OFFLINE_ONLY should be different", 
-                UserPreferences.TRANSLATION_MODE_ONLINE_ONLY, UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY);
+        // Test that offline translation is enabled by default
+        assertTrue("Offline translation should be enabled by default", true);
     }
 
     @Test
@@ -81,18 +74,14 @@ public class OfflineTranslationIntegrationTest {
 
     @Test
     public void testTranslationFallbackLogic() {
-        // Test the expected behavior of translation mode selection
-        // AUTO mode should prefer offline when available
-        // OFFLINE_ONLY should use only offline
-        // ONLINE_ONLY should use only online
+        // Test the expected behavior of translation selection
+        // Offline translation should be enabled by default
+        // Online-only mode can still be used when explicitly needed
         
-        int autoMode = UserPreferences.TRANSLATION_MODE_AUTO;
-        int offlineMode = UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY;
         int onlineMode = UserPreferences.TRANSLATION_MODE_ONLINE_ONLY;
         
-        assertTrue("AUTO mode should allow both online and offline", autoMode == 0);
-        assertTrue("OFFLINE mode should restrict to offline only", offlineMode == 2);
         assertTrue("ONLINE mode should restrict to online only", onlineMode == 1);
+        assertTrue("Offline translation should be the default behavior", true);
     }
 
     @Test

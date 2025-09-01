@@ -42,7 +42,7 @@ public class ConversationInputTranslationTest {
         when(mockUserPreferences.isAutoTranslateEnabled()).thenReturn(true);
         when(mockUserPreferences.getPreferredLanguage()).thenReturn("en");
         when(mockUserPreferences.getPreferredOutgoingLanguage()).thenReturn("es");
-        when(mockUserPreferences.getTranslationMode()).thenReturn(0); // Online mode
+        when(mockUserPreferences.isOfflineTranslationEnabled()).thenReturn(false);
         when(mockUserPreferences.getPreferOfflineTranslation()).thenReturn(false);
         
         // Initialize translation manager
