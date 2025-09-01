@@ -94,17 +94,20 @@ public class MessageMonitoringService extends Service {
     }
     
     /**
-     * Creates notification channel for the foreground service
+     * Creates notification channel for the foreground service with minimal visibility
      */
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "Message Monitoring",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN
             );
-            channel.setDescription("Ensures reliable message reception during deep sleep");
+            channel.setDescription("Background message monitoring service");
             channel.setShowBadge(false);
+            channel.enableLights(false);
+            channel.enableVibration(false);
+            channel.setSound(null, null);
             
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             if (notificationManager != null) {
@@ -114,7 +117,7 @@ public class MessageMonitoringService extends Service {
     }
     
     /**
-     * Creates the persistent notification for the foreground service
+     * Creates the minimal notification for the foreground service
      */
     private Notification createNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -124,13 +127,15 @@ public class MessageMonitoringService extends Service {
         );
         
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("LinguaSMS Message Monitoring")
-            .setContentText("Ensuring reliable message reception")
-            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Background Service")
+            .setContentText("Running")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setSilent(true)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .build();
     }
     
