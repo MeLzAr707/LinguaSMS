@@ -26,6 +26,15 @@ public class BootReceiver extends BroadcastReceiver {
                 // For example, you might want to start a service to check for new messages
                 // or initialize your message database
 
+                // Reschedule pending messages
+                try {
+                    ScheduledMessageManager scheduledMessageManager = new ScheduledMessageManager();
+                    scheduledMessageManager.rescheduleAllPendingMessages();
+                    Log.d(TAG, "Rescheduled pending messages after boot");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error rescheduling messages after boot", e);
+                }
+
                 // Example: Start a background service
                 // Intent serviceIntent = new Intent(context, MessageSyncService.class);
                 // context.startService(serviceIntent);

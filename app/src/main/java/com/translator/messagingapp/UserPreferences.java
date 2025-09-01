@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 
-public class UserPreferences {
+public class UserPreferences implements TTSManager.TTSPlaybackListener {
     private static final String PREFS_NAME = "translator_prefs";
     private static final String KEY_API_KEY = "api_key";
     private static final String KEY_PREFERRED_LANGUAGE = "preferred_language";
@@ -499,6 +499,23 @@ public class UserPreferences {
      */
     public void setCustomTextColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_TEXT_COLOR, color).apply();
+    }
+    
+    // TTSPlaybackListener implementation
+    @Override
+    public void onStart() {
+        // TTS playback started - can be used for UI updates
+    }
+    
+    @Override
+    public void onDone() {
+        // TTS playback completed - can be used for UI updates
+    }
+    
+    @Override
+    public void onError(String error) {
+        // TTS playback error - can be used for error handling
+        android.util.Log.w("UserPreferences", "TTS error: " + error);
     }
 }
 

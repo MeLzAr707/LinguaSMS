@@ -425,6 +425,24 @@ public class TranslationCache {
     }
 
     /**
+     * Gets a translation for the given text and target language.
+     * This method creates a cache key and retrieves the translation.
+     * 
+     * @param text The text to translate
+     * @param targetLanguage The target language code
+     * @return The translated text, or null if not found in cache
+     */
+    public String getTranslation(String text, String targetLanguage) {
+        if (text == null || targetLanguage == null) {
+            return null;
+        }
+        
+        // Create cache key from text and target language
+        String cacheKey = text + "_" + targetLanguage;
+        return get(cacheKey);
+    }
+
+    /**
      * Closes the database helper.
      * Should be called when the app is being destroyed.
      */

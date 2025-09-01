@@ -25,6 +25,7 @@ public class TranslatorApp extends Application {
     private UserPreferences userPreferences;
     private MessageWorkManager messageWorkManager;
     private MessageContentObserver messageContentObserver;
+    private OfflineMessageQueue offlineMessageQueue;
 
     @Override
     public void onCreate() {
@@ -106,6 +107,13 @@ public class TranslatorApp extends Application {
             messageContentObserver.register();
         } catch (Exception e) {
             android.util.Log.e(TAG, "Error initializing MessageContentObserver", e);
+        }
+
+        try {
+            // Initialize OfflineMessageQueue
+            offlineMessageQueue = new OfflineMessageQueue(this);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing OfflineMessageQueue", e);
         }
     }
 
@@ -207,7 +215,16 @@ public class TranslatorApp extends Application {
         return messageContentObserver;
     }
     
-
+    public OfflineMessageQueue getOfflineMessageQueue() {
+        if (offlineMessageQueue == null) {
+            try {
+                offlineMessageQueue = new OfflineMessageQueue(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback OfflineMessageQueue", e);
+            }
+        }
+        return offlineMessageQueue;
+    }
 
     /**
      * Checks if the app has offline translation capability.
