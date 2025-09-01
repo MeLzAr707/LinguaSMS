@@ -25,9 +25,6 @@ public class UserPreferences {
     public static final int THEME_SYSTEM = 3;
     public static final int THEME_CUSTOM = 4;
 
-    // Translation mode constants
-    public static final int TRANSLATION_MODE_ONLINE_ONLY = 1;
-
     // Additional preference keys for missing functionality
     private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
     
@@ -57,24 +54,7 @@ public class UserPreferences {
     }
 
     public String getPreferredLanguage() {
-        // Instead of defaulting to English, use device language if not set
-        String defaultLanguage = getDeviceLanguage();
-        return preferences.getString(KEY_PREFERRED_LANGUAGE, defaultLanguage);
-    }
-
-    /**
-     * Gets the device's primary language instead of defaulting to English.
-     *
-     * @return The device's language code
-     */
-    private String getDeviceLanguage() {
-        try {
-            java.util.Locale deviceLocale = java.util.Locale.getDefault();
-            return deviceLocale.getLanguage();
-        } catch (Exception e) {
-            // Only as a last resort, return "en"
-            return "en";
-        }
+        return preferences.getString(KEY_PREFERRED_LANGUAGE, "en");
     }
 
     public void setPreferredLanguage(String language) {
@@ -284,7 +264,7 @@ public class UserPreferences {
      * @return true if offline translation is enabled, false otherwise
      */
     public boolean isOfflineTranslationEnabled() {
-        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, true);
+        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, false);
     }
 
     /**

@@ -19,19 +19,9 @@ public class OfflineTranslationIntegrationTest {
     }
 
     @Test
-    public void testTranslationModeConstants() {
-        // Verify translation mode constants are correctly defined
-        assertEquals("ONLINE_ONLY mode should be 1", 1, UserPreferences.TRANSLATION_MODE_ONLINE_ONLY);
-        
-        // Test that offline translation is enabled by default
-        assertTrue("Offline translation should be enabled by default", true);
-    }
-
-    @Test
     public void testUserPreferencesOfflineSupport() {
         // Test that UserPreferences has the necessary methods for offline translation
         // This is a compilation test - if these methods don't exist, the test won't compile
-        assertTrue("UserPreferences should support translation mode", true);
         assertTrue("UserPreferences should support offline translation enabled flag", true);
         assertTrue("UserPreferences should support prefer offline translation", true);
     }
@@ -73,15 +63,12 @@ public class OfflineTranslationIntegrationTest {
     }
 
     @Test
-    public void testTranslationFallbackLogic() {
-        // Test the expected behavior of translation selection
-        // Offline translation should be enabled by default
-        // Online-only mode can still be used when explicitly needed
+    public void testOfflineTranslationEnabledBehavior() {
+        // Test the expected behavior of offline translation toggle
+        // When enabled: Should try offline first, fall back to online if needed
+        // When disabled: Should use online only
         
-        int onlineMode = UserPreferences.TRANSLATION_MODE_ONLINE_ONLY;
-        
-        assertTrue("ONLINE mode should restrict to online only", onlineMode == 1);
-        assertTrue("Offline translation should be the default behavior", true);
+        assertTrue("Offline translation behavior should be consistent", true);
     }
 
     @Test

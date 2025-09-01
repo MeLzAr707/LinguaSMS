@@ -37,7 +37,6 @@ public class TranslationManager {
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
-    private final LanguageDetectionService languageDetectionService;
 
     /**
      * Creates a new TranslationManager.
@@ -53,7 +52,6 @@ public class TranslationManager {
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
-        this.languageDetectionService = new LanguageDetectionService(context);
     }
 
     /**
@@ -164,9 +162,6 @@ public class TranslationManager {
         }
 
         // Determine which translation service to use based on user preferences
-        int translationMode = userPreferences.getTranslationMode();
-        boolean preferOffline = userPreferences.getPreferOfflineTranslation();
-
         // Translate in background
         executorService.execute(() -> {
             try {
@@ -175,9 +170,9 @@ public class TranslationManager {
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
                     // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
-                        // For offline, use MLKit language identification instead of assuming English
-                        finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
+                    if (shouldUseOfflineTranslation(null, targetLanguage)) {
+                        // For offline, we'll try English as source and let MLKit handle detection
+                        finalSourceLanguage = "en";
                     } else if (translationService != null && translationService.hasApiKey()) {
                         finalSourceLanguage = translationService.detectLanguage(text);
                         if (finalSourceLanguage == null) {
@@ -188,11 +183,9 @@ public class TranslationManager {
                         }
                     } else {
                         // If no API key is available, check if we can use offline translation
-                        // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
-                        if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                            (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
-                            // Use MLKit language identification instead of assuming English
-                            finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
+                        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
+                            // Try offline translation as fallback
+                            finalSourceLanguage = "en"; // Let MLKit handle detection
                         } else {
                             if (callback != null) {
                                 callback.onTranslationComplete(false, null, "No translation service available");
@@ -214,8 +207,8 @@ public class TranslationManager {
                     return;
                 }
 
-                // Try translation based on mode and availability
-                if (shouldUseOfflineTranslation(translationMode, preferOffline, finalSourceLanguage, targetLanguage)) {
+                // Try translation based on availability
+                if (shouldUseOfflineTranslation(finalSourceLanguage, targetLanguage)) {
                     // Try offline translation first
                     translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else if (translationService != null && translationService.hasApiKey()) {
@@ -223,8 +216,7 @@ public class TranslationManager {
                     translateOnline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else {
                     // No API key available, check if we can use offline translation as fallback
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                        (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
+                    if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
                         // Try offline translation as fallback
                         translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
@@ -266,11 +258,9 @@ public class TranslationManager {
         }
 
         // Check if translation service is available
-        // For offline-only mode or when offline is enabled, we don't require an API key
+        // When offline is enabled, we don't require an API key
         if (translationService == null || !translationService.hasApiKey()) {
-            int translationMode = userPreferences.getTranslationMode();
-            if (translationMode != UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY && 
-                !userPreferences.isOfflineTranslationEnabled()) {
+            if (!userPreferences.isOfflineTranslationEnabled()) {
                 if (callback != null) {
                     callback.onTranslationComplete(false, null);
                 }
@@ -323,19 +313,14 @@ public class TranslationManager {
         // Translate in background
         executorService.execute(() -> {
             try {
-                // Determine translation mode and whether to use offline
-                int translationMode = userPreferences.getTranslationMode();
-                boolean preferOffline = userPreferences.getPreferOfflineTranslation();
-                
                 String detectedLanguage = null;
                 
                 // Detect language based on available service
                 if (translationService != null && translationService.hasApiKey()) {
                     detectedLanguage = translationService.detectLanguage(message.getOriginalText());
-                } else if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
-                          userPreferences.isOfflineTranslationEnabled()) {
-                    // For offline mode, use MLKit language identification instead of assuming English
-                    detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
+                } else if (userPreferences.isOfflineTranslationEnabled()) {
+                    // For offline mode, assume English as source for now and let offline service handle it
+                    detectedLanguage = "en";
                 }
                 
                 if (detectedLanguage == null) {
@@ -358,8 +343,8 @@ public class TranslationManager {
                     return;
                 }
 
-                // Choose translation method based on availability and preferences
-                if (shouldUseOfflineTranslation(translationMode, preferOffline, detectedLanguage, targetLanguage)) {
+                // Choose translation method based on availability
+                if (shouldUseOfflineTranslation(detectedLanguage, targetLanguage)) {
                     // Use offline translation
                     offlineTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
                         new OfflineTranslationService.OfflineTranslationCallback() {
@@ -596,26 +581,16 @@ public class TranslationManager {
     /**
      * Determines whether to use offline translation based on user preferences and availability.
      *
-     * @param translationMode The current translation mode
-     * @param preferOffline Whether user prefers offline translation
      * @param sourceLanguage The source language
      * @param targetLanguage The target language
      * @return true if offline translation should be used
      */
-    private boolean shouldUseOfflineTranslation(int translationMode, boolean preferOffline, String sourceLanguage, String targetLanguage) {
-        switch (translationMode) {
-            case UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY:
-                return true;
-            case UserPreferences.TRANSLATION_MODE_ONLINE_ONLY:
-                return false;
-            case UserPreferences.TRANSLATION_MODE_AUTO:
-            default:
-                // In auto mode, check if offline is available and preferred
-                if (preferOffline && offlineTranslationService != null) {
-                    return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
-                }
-                return false;
+    private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
+        // Use offline translation if it's enabled and available
+        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
+            return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
         }
+        return false;
     }
 
     /**
@@ -635,10 +610,8 @@ public class TranslationManager {
                         callback.onTranslationComplete(true, translatedText, null);
                     }
                 } else {
-                    // If offline fails and we're in auto mode, try online as fallback
-                    int translationMode = userPreferences.getTranslationMode();
-                    if (translationMode == UserPreferences.TRANSLATION_MODE_AUTO && 
-                        translationService != null && translationService.hasApiKey()) {
+                    // If offline fails, try online as fallback when online service is available
+                    if (translationService != null && translationService.hasApiKey()) {
                         Log.d(TAG, "Offline translation failed, falling back to online: " + errorMessage);
                         translateOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
@@ -788,9 +761,6 @@ public class TranslationManager {
         }
         if (offlineTranslationService != null) {
             offlineTranslationService.cleanup();
-        }
-        if (languageDetectionService != null) {
-            languageDetectionService.cleanup();
         }
     }
 
