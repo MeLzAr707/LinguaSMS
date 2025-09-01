@@ -107,7 +107,7 @@ The offline translation service supports these languages:
 ## Future Enhancements
 
 Potential improvements for future versions:
-- Automatic language detection for offline mode
+- ~~Automatic language detection for offline mode~~ ✅ **IMPLEMENTED**: ML Kit language detection with online fallback
 - Background model updates
 - Compression for smaller model sizes
 - More language pairs

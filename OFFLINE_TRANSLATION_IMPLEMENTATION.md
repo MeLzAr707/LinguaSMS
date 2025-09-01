@@ -3,8 +3,6 @@
 ## Overview
 The LinguaSMS app now has complete offline translation capabilities integrated into the existing translation system. Users can download language models and translate messages without an internet connection.
 
-**New: ML Kit Language Detection** - Language detection is now powered by ML Kit Language Identification, providing accurate offline language detection as the primary method, with Google Cloud API as fallback.
-
 ## Implementation Details
 
 ### 1. Core Architecture
@@ -12,9 +10,8 @@ The LinguaSMS app now has complete offline translation capabilities integrated i
 The offline translation system consists of several key components:
 
 - **OfflineTranslationService**: MLKit-based translation service
-- **OfflineLanguageDetectionService**: MLKit-based language detection service (NEW)
 - **OfflineModelManager**: Handles model downloads and management
-- **TranslationManager**: Enhanced to support both online and offline translation and detection
+- **TranslationManager**: Enhanced to support both online and offline translation
 - **OfflineModelsActivity**: UI for managing offline language models
 - **UserPreferences**: Stores translation mode and offline preferences
 
@@ -120,7 +117,7 @@ The implementation includes:
 ### 10. Future Enhancements
 
 Potential improvements:
-- ✅ **Automatic language detection for offline mode** - IMPLEMENTED via ML Kit Language Identification
+- ~~Automatic language detection for offline mode~~ ✅ **IMPLEMENTED**: ML Kit language detection with online fallback
 - Background model updates
 - Compression for smaller model sizes
 - Translation confidence scores
