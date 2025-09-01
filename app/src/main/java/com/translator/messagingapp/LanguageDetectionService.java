@@ -8,7 +8,9 @@ import com.google.mlkit.nl.languageid.LanguageIdentification;
 import com.google.mlkit.nl.languageid.LanguageIdentificationOptions;
 import com.google.mlkit.nl.languageid.LanguageIdentifier;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -164,27 +166,34 @@ public class LanguageDetectionService {
     private void detectLanguageWithOnlineFallback(String text, LanguageDetectionCallback callback) {
         if (onlineService != null && onlineService.hasApiKey()) {
             // Use online detection as fallback
-            onlineService.detectLanguageAsync(text)
-                .thenAccept(result -> {
-                    if (result != null) {
-                        Log.d(TAG, "Online detection successful: " + result);
-                        if (callback != null) {
-                            callback.onDetectionComplete(true, result, null, DetectionMethod.ONLINE_FALLBACK);
-                        }
-                    } else {
-                        Log.e(TAG, "Online detection also failed");
-                        if (callback != null) {
-                            callback.onDetectionComplete(false, null, "Both ML Kit and online detection failed", DetectionMethod.FAILED);
-                        }
-                    }
-                })
-                .exceptionally(throwable -> {
-                    Log.e(TAG, "Online detection error", throwable);
+            Future<String> future = onlineService.detectLanguageAsync(text);
+            
+            // Convert Future to CompletableFuture to use completion stage methods
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    return future.get();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }).thenAccept(result -> {
+                if (result != null) {
+                    Log.d(TAG, "Online detection successful: " + result);
                     if (callback != null) {
-                        callback.onDetectionComplete(false, null, "Both ML Kit and online detection failed: " + throwable.getMessage(), DetectionMethod.FAILED);
+                        callback.onDetectionComplete(true, result, null, DetectionMethod.ONLINE_FALLBACK);
                     }
-                    return null;
-                });
+                } else {
+                    Log.e(TAG, "Online detection also failed");
+                    if (callback != null) {
+                        callback.onDetectionComplete(false, null, "Both ML Kit and online detection failed", DetectionMethod.FAILED);
+                    }
+                }
+            }).exceptionally(throwable -> {
+                Log.e(TAG, "Online detection error", throwable);
+                if (callback != null) {
+                    callback.onDetectionComplete(false, null, "Both ML Kit and online detection failed: " + throwable.getMessage(), DetectionMethod.FAILED);
+                }
+                return null;
+            });
         } else {
             // No online service available
             Log.e(TAG, "No online service available for fallback");
