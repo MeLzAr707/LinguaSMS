@@ -37,6 +37,7 @@ public class TranslationManager {
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
+    private final LanguageDetectionService languageDetectionService;
 
     /**
      * Creates a new TranslationManager.
@@ -52,6 +53,7 @@ public class TranslationManager {
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
+        this.languageDetectionService = new LanguageDetectionService(context);
     }
 
     /**
@@ -174,8 +176,8 @@ public class TranslationManager {
                 if (finalSourceLanguage == null) {
                     // First try offline detection if available, then fall back to online
                     if (shouldUseOfflineTranslation(translationMode, preferOffline, null, targetLanguage)) {
-                        // For offline, we'll try English as source and let MLKit handle detection
-                        finalSourceLanguage = "en";
+                        // For offline, use MLKit language identification instead of assuming English
+                        finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
                     } else if (translationService != null && translationService.hasApiKey()) {
                         finalSourceLanguage = translationService.detectLanguage(text);
                         if (finalSourceLanguage == null) {
@@ -189,8 +191,8 @@ public class TranslationManager {
                         // This handles OFFLINE_ONLY mode and cases where offline is enabled but not preferred
                         if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
                             (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null)) {
-                            // Try offline translation as fallback
-                            finalSourceLanguage = "en"; // Let MLKit handle detection
+                            // Use MLKit language identification instead of assuming English
+                            finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
                         } else {
                             if (callback != null) {
                                 callback.onTranslationComplete(false, null, "No translation service available");
@@ -332,8 +334,8 @@ public class TranslationManager {
                     detectedLanguage = translationService.detectLanguage(message.getOriginalText());
                 } else if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY || 
                           userPreferences.isOfflineTranslationEnabled()) {
-                    // For offline mode, assume English as source for now and let offline service handle it
-                    detectedLanguage = "en";
+                    // For offline mode, use MLKit language identification instead of assuming English
+                    detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
                 }
                 
                 if (detectedLanguage == null) {
@@ -786,6 +788,9 @@ public class TranslationManager {
         }
         if (offlineTranslationService != null) {
             offlineTranslationService.cleanup();
+        }
+        if (languageDetectionService != null) {
+            languageDetectionService.cleanup();
         }
     }
 
