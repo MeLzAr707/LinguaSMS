@@ -71,14 +71,19 @@ public class ColorWheelActivity extends BaseActivity {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_color_wheel);
         } catch (Exception e) {
-            // If theme application fails, fallback to light theme and recreate
-            Log.e(TAG, "Error applying custom theme, falling back to light theme", e);
+            // If theme application fails, fallback to light theme but don't recreate
+            // to avoid infinite loops. Instead, show error and finish.
+            Log.e(TAG, "Error applying custom theme in ColorWheelActivity", e);
             if (userPreferences != null) {
                 userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
-                recreate();
-                return;
             }
-            throw e; // Re-throw if we can't handle it
+            
+            // Show error message and finish activity instead of recreating
+            android.widget.Toast.makeText(this, 
+                "Error loading custom theme. Returning to settings.", 
+                android.widget.Toast.LENGTH_LONG).show();
+            finish();
+            return;
         }
         
         userPreferences = new UserPreferences(this);
@@ -267,8 +272,18 @@ public class ColorWheelActivity extends BaseActivity {
     
     private void loadCurrentColors() {
         if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
-            int defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
-            int defaultTextColor = getResources().getColor(android.R.color.black);
+            int defaultBackgroundColor;
+            int defaultTextColor;
+            
+            try {
+                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
+                defaultTextColor = getResources().getColor(android.R.color.black);
+            } catch (Exception e) {
+                // Fallback to hardcoded colors if system resources are not available
+                Log.w(TAG, "Failed to resolve system colors, using fallbacks", e);
+                defaultBackgroundColor = 0xFF33B5E5; // Holo blue dark equivalent
+                defaultTextColor = 0xFF000000; // Black
+            }
             
             selectedBackgroundColor = userPreferences.getCustomPrimaryColor(defaultBackgroundColor);
             selectedTextColor = userPreferences.getCustomTextColor(defaultTextColor);

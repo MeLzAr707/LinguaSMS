@@ -242,7 +242,16 @@ public class BaseActivity extends AppCompatActivity {
      */
     protected void applyCustomBackgroundColor() {
         if (userPreferences.isUsingCustomTheme()) {
-            int defaultBackgroundColor = getResources().getColor(R.color.background_light);
+            int defaultBackgroundColor;
+            try {
+                // Try to get the background_light color resource
+                defaultBackgroundColor = getResources().getColor(R.color.background_light);
+            } catch (Exception e) {
+                // Fallback to white if resource is not available
+                Log.w(TAG, "Failed to resolve background_light color, using white fallback", e);
+                defaultBackgroundColor = 0xFFFFFFFF; // White
+            }
+            
             int customBackgroundColor = userPreferences.getCustomBackgroundColor(defaultBackgroundColor);
             
             // Apply to the main content view
@@ -260,7 +269,16 @@ public class BaseActivity extends AppCompatActivity {
         // Find toolbar and apply custom colors
         androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null && userPreferences.isUsingCustomTheme()) {
-            int defaultColor = getResources().getColor(R.color.colorPrimary);
+            int defaultColor;
+            try {
+                // Try to get the colorPrimary color resource
+                defaultColor = getResources().getColor(R.color.colorPrimary);
+            } catch (Exception e) {
+                // Fallback to blue if resource is not available
+                Log.w(TAG, "Failed to resolve colorPrimary, using blue fallback", e);
+                defaultColor = 0xFF2196F3; // Material Blue
+            }
+            
             int customTopBarColor = userPreferences.getCustomTopBarColor(defaultColor);
             toolbar.setBackgroundColor(customTopBarColor);
         }
