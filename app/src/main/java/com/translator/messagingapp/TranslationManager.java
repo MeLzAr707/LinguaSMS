@@ -37,6 +37,7 @@ public class TranslationManager {
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
+    private final LanguageDetectionService languageDetectionService;
 
     /**
      * Creates a new TranslationManager.
@@ -52,6 +53,7 @@ public class TranslationManager {
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
+        this.languageDetectionService = new LanguageDetectionService(context, translationService);
     }
 
     /**
@@ -169,29 +171,14 @@ public class TranslationManager {
                 
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
-                    // First try offline detection if available, then fall back to online
-                    if (shouldUseOfflineTranslation(null, targetLanguage)) {
-                        // For offline, we'll try English as source and let MLKit handle detection
-                        finalSourceLanguage = "en";
-                    } else if (translationService != null && translationService.hasApiKey()) {
-                        finalSourceLanguage = translationService.detectLanguage(text);
-                        if (finalSourceLanguage == null) {
-                            if (callback != null) {
-                                callback.onTranslationComplete(false, null, "Could not detect language");
-                            }
-                            return;
+                    // Use ML Kit language detection service with fallback to online detection
+                    finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
+                    
+                    if (finalSourceLanguage == null) {
+                        if (callback != null) {
+                            callback.onTranslationComplete(false, null, "Could not detect language");
                         }
-                    } else {
-                        // If no API key is available, check if we can use offline translation
-                        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
-                            // Try offline translation as fallback
-                            finalSourceLanguage = "en"; // Let MLKit handle detection
-                        } else {
-                            if (callback != null) {
-                                callback.onTranslationComplete(false, null, "No translation service available");
-                            }
-                            return;
-                        }
+                        return;
                     }
                 }
 
@@ -315,13 +302,8 @@ public class TranslationManager {
             try {
                 String detectedLanguage = null;
                 
-                // Detect language based on available service
-                if (translationService != null && translationService.hasApiKey()) {
-                    detectedLanguage = translationService.detectLanguage(message.getOriginalText());
-                } else if (userPreferences.isOfflineTranslationEnabled()) {
-                    // For offline mode, assume English as source for now and let offline service handle it
-                    detectedLanguage = "en";
-                }
+                // Use ML Kit language detection service with fallback to online detection
+                detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
                 
                 if (detectedLanguage == null) {
                     if (callback != null) {
@@ -761,6 +743,9 @@ public class TranslationManager {
         }
         if (offlineTranslationService != null) {
             offlineTranslationService.cleanup();
+        }
+        if (languageDetectionService != null) {
+            languageDetectionService.cleanup();
         }
     }
 
