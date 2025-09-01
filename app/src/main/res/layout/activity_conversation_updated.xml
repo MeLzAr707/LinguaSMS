@@ -104,16 +104,15 @@
                     app:tint="?attr/colorPrimary" />
 
 
-
                 <EditText
                     android:id="@+id/message_input"
-                    android:layout_width="0dp"
+                    android:layout_width="327dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
                     android:hint="@string/type_message"
-                    android:inputType="textMultiLine|textShortMessage"
                     android:imeOptions="actionNone"
+                    android:inputType="textMultiLine|textShortMessage"
                     android:maxLines="4"
                     android:minHeight="@dimen/message_input_min_height"
                     android:padding="@dimen/message_input_padding" />
@@ -144,7 +143,7 @@
             android:background="@drawable/rounded_button_bg"
             android:text="@string/send"
             android:textColor="@android:color/white"
-            android:minWidth="72dp"
+            android:minWidth="52dp"
             android:minHeight="@dimen/send_button_min_height"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

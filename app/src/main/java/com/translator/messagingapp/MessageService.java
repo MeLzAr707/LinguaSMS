@@ -1619,14 +1619,15 @@ public class MessageService {
                             smsMessage.setIncoming(true);
                             
                             // Attempt auto-translation
+                            String finalSenderAddress = senderAddress;
                             translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
                                 @Override
                                 public void onTranslationComplete(boolean success, com.translator.messagingapp.SmsMessage translatedMessage) {
                                     if (success && translatedMessage != null) {
-                                        Log.d(TAG, "Auto-translation completed for message from " + senderAddress);
+                                        Log.d(TAG, "Auto-translation completed for message from " + finalSenderAddress);
                                         // Translation cache is handled within TranslationManager
                                     } else {
-                                        Log.d(TAG, "Auto-translation not performed for message from " + senderAddress);
+                                        Log.d(TAG, "Auto-translation not performed for message from " + finalSenderAddress);
                                     }
                                 }
                             });

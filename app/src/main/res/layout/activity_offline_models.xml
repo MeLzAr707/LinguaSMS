@@ -71,7 +71,7 @@
                 android:id="@+id/recycler_offline_models"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false" />
+                android:nestedScrollingEnabled="true" />
 
             <TextView
                 android:id="@+id/text_no_models"
