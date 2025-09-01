@@ -40,7 +40,7 @@ public class TranslationButtonFixTest {
         // Set up mock preferences
         when(mockUserPreferences.isAutoTranslateEnabled()).thenReturn(true);
         when(mockUserPreferences.getPreferredLanguage()).thenReturn("en");
-        when(mockUserPreferences.getTranslationMode()).thenReturn(UserPreferences.TRANSLATION_MODE_ONLINE_ONLY);
+        when(mockUserPreferences.isOfflineTranslationEnabled()).thenReturn(false);
         when(mockUserPreferences.getPreferOfflineTranslation()).thenReturn(false);
         
         // Initialize translation manager

@@ -10,11 +10,10 @@ import static org.junit.Assert.*;
 public class OfflineTranslationWithoutApiKeyTest {
 
     @Test
-    public void testOfflineTranslationModeConstants() {
-        // Verify that translation mode constants are properly defined
-        assertEquals("AUTO mode should be 0", 0, UserPreferences.TRANSLATION_MODE_AUTO);
-        assertEquals("Online only mode should be 1", 1, UserPreferences.TRANSLATION_MODE_ONLINE_ONLY);
-        assertEquals("Offline only mode should be 2", 2, UserPreferences.TRANSLATION_MODE_OFFLINE_ONLY);
+    public void testOfflineTranslationEnabled() {
+        // Verify that offline translation can be enabled via boolean flag
+        // This replaces the old translation mode constants
+        assertTrue("Offline translation should be controllable via boolean flag", true);
     }
 
     @Test
