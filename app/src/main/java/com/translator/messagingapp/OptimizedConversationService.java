@@ -315,6 +315,15 @@ public class OptimizedConversationService {
     }
     
     /**
+     * Gets all cached conversations without querying the database.
+     *
+     * @return List of cached conversations, or empty list if no conversations cached
+     */
+    public List<Conversation> getCachedConversations() {
+        return cache.getAllCachedConversations();
+    }
+    
+    /**
      * Clears the conversation cache.
      */
     public void clearCache() {

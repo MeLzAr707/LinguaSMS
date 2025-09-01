@@ -431,8 +431,24 @@ public class MainActivity extends BaseActivity
         currentPage = 0;
         hasMoreConversations = true;
         
-        // Clear existing conversations for fresh load and update with empty list
-        conversationAdapter.updateConversations(new ArrayList<>());
+        // Try to show cached conversations first to minimize blank state
+        if (optimizedConversationService != null) {
+            List<Conversation> cachedConversations = optimizedConversationService.getCachedConversations();
+            if (!cachedConversations.isEmpty()) {
+                Log.d(TAG, "Showing " + cachedConversations.size() + " cached conversations during initial load");
+                // Update UI with cached data immediately
+                conversationAdapter.updateConversations(new ArrayList<>(cachedConversations));
+                // Update our local list
+                conversations.clear();
+                conversations.addAll(cachedConversations);
+            } else {
+                // Clear existing conversations for fresh load if no cache available
+                conversationAdapter.updateConversations(new ArrayList<>());
+            }
+        } else {
+            // Clear existing conversations for fresh load if no optimized service
+            conversationAdapter.updateConversations(new ArrayList<>());
+        }
         
         // Load first page of conversations
         loadMoreConversations();
@@ -688,14 +704,121 @@ public class MainActivity extends BaseActivity
     private void refreshConversations() {
         Log.d(TAG, "Refreshing conversations");
         
-        // Clear cache to ensure fresh data
+        // Try to show cached conversations first to avoid blank state
+        if (optimizedConversationService != null) {
+            List<Conversation> cachedConversations = optimizedConversationService.getCachedConversations();
+            if (!cachedConversations.isEmpty()) {
+                Log.d(TAG, "Showing " + cachedConversations.size() + " cached conversations instantly");
+                // Update UI with cached data immediately to avoid blank state
+                conversationAdapter.updateConversations(new ArrayList<>(cachedConversations));
+                // Update our local list
+                conversations.clear();
+                conversations.addAll(cachedConversations);
+            }
+        }
+        
+        // Load fresh data in background without clearing the UI first
+        loadConversationsInBackground();
+    }
+    
+    /**
+     * Loads conversations in background without clearing the UI first.
+     * This prevents the blank state issue when refreshing conversations.
+     */
+    private void loadConversationsInBackground() {
+        // Reset pagination state for fresh data load
+        currentPage = 0;
+        hasMoreConversations = true;
+        
+        // Load fresh data without clearing the UI first
+        loadMoreConversationsInBackground();
+    }
+    
+    /**
+     * Loads more conversations in background and replaces existing data using DiffUtil.
+     * This method doesn't clear the UI first, preventing blank state.
+     */
+    private void loadMoreConversationsInBackground() {
+        if (isLoading || !hasMoreConversations) {
+            return;
+        }
+        
+        // Check if optimized service is available, fallback to original if needed
+        if (optimizedConversationService == null) {
+            loadConversationsFallback();
+            return;
+        }
+        
+        isLoading = true;
+        
+        // Clear cache to ensure fresh data only for background refresh
         MessageCache.clearCache();
         if (optimizedConversationService != null) {
             optimizedConversationService.clearCache();
         }
-
-        // Load conversations with automatic refresh
-        loadConversations();
+        
+        // Calculate offset for pagination (start from 0 for refresh)
+        int offset = currentPage * OptimizedConversationService.DEFAULT_PAGE_SIZE;
+        
+        // Load conversations using optimized service with pagination
+        optimizedConversationService.loadConversationsPaginated(
+            offset, 
+            OptimizedConversationService.DEFAULT_PAGE_SIZE,
+            new OptimizedConversationService.ConversationLoadCallback() {
+                @Override
+                public void onConversationsLoaded(List<Conversation> loadedConversations, boolean hasMore) {
+                    runOnUiThread(() -> {
+                        // For refresh, replace all conversations instead of adding
+                        if (currentPage == 0) {
+                            // Replace existing conversations with fresh data
+                            List<Conversation> newConversations = new ArrayList<>(loadedConversations);
+                            conversationAdapter.updateConversations(newConversations);
+                            conversations.clear();
+                            conversations.addAll(newConversations);
+                        } else {
+                            // Add new conversations to existing list (for pagination)
+                            int oldSize = conversations.size();
+                            conversations.addAll(loadedConversations);
+                            conversationAdapter.notifyItemRangeInserted(oldSize, loadedConversations.size());
+                        }
+                        
+                        // Update pagination state
+                        currentPage++;
+                        hasMoreConversations = hasMore;
+                        isLoading = false;
+                        
+                        // Show empty state if no conversations after first load
+                        if (conversations.isEmpty() && currentPage == 1) {
+                            emptyStateTextView.setText(R.string.no_conversations);
+                            emptyStateTextView.setVisibility(View.VISIBLE);
+                        } else {
+                            emptyStateTextView.setVisibility(View.GONE);
+                        }
+                        
+                        Log.d(TAG, "Background loaded page " + (currentPage - 1) + " with " + 
+                              loadedConversations.size() + " conversations. Total: " + conversations.size() + 
+                              ", Has more: " + hasMore);
+                    });
+                }
+                
+                @Override
+                public void onError(Exception error) {
+                    Log.e(TAG, "Error loading conversations in background", error);
+                    runOnUiThread(() -> {
+                        isLoading = false;
+                        
+                        // Don't show error message for background refresh to avoid disrupting user
+                        Log.w(TAG, "Background conversation refresh failed, keeping existing data");
+                        
+                        // Fallback to original method if first page fails
+                        if (currentPage == 0 && conversations.isEmpty()) {
+                            Log.d(TAG, "No cached data available, falling back to original conversation loading method");
+                            loadConversationsFallback();
+                        }
+                    });
+                }
+            }
+        );
     }
 
     /**

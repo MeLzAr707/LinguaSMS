@@ -121,6 +121,21 @@ public class OptimizedMessageCache {
     }
     
     /**
+     * Gets all cached conversations as a list.
+     *
+     * @return List of all cached conversations, or empty list if no conversations cached
+     */
+    public List<Conversation> getAllCachedConversations() {
+        List<Conversation> cachedConversations = new ArrayList<>();
+        Map<String, Conversation> snapshot = conversationCache.snapshot();
+        if (snapshot != null && !snapshot.isEmpty()) {
+            cachedConversations.addAll(snapshot.values());
+            Log.d(TAG, "Retrieved " + cachedConversations.size() + " cached conversations");
+        }
+        return cachedConversations;
+    }
+    
+    /**
      * Caches conversation details.
      *
      * @param threadId The thread ID
