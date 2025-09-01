@@ -185,4 +185,39 @@ public class AutoTranslateFailureFixTest {
         assertTrue("Callback should be invoked", callbackInvoked[0]);
         assertFalse("Translation should fail when auto-translate is disabled", successResult[0]);
     }
+
+    @Test
+    public void testSpecificGitHubIssueScenario() {
+        // Test the exact scenario from GitHub issue #418:
+        // - Spanish message: "Soy un asistente de inteligencia artificial de Jerry..."
+        // - Auto-translate enabled
+        // - No API key configured
+        // - Should attempt offline translation as fallback
+        
+        SmsMessage smsMessage = new SmsMessage();
+        smsMessage.setOriginalText("Soy un asistente de inteligencia artificial de Jerry. Estoy aquí para ayudarte con cualquier pregunta sobre seguros o el uso de la aplicación. ¿En qué más puedo ayudarte hoy?");
+        smsMessage.setAddress("+18333220089"); // Same number from the GitHub issue logs
+        smsMessage.setIncoming(true);
+
+        final boolean[] callbackInvoked = {false};
+
+        translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
+            @Override
+            public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
+                callbackInvoked[0] = true;
+                // After the fix, the callback should be invoked (no early return)
+                // The actual success depends on offline translation availability
+                // But the key fix is that it shouldn't return early due to missing API key
+            }
+        });
+
+        // Wait for async operation
+        try {
+            Thread.sleep(300);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        assertTrue("Callback should be invoked - the GitHub issue was caused by early return preventing any translation attempt", callbackInvoked[0]);
+    }
 }

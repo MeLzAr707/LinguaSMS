@@ -257,7 +257,7 @@ public class TranslationManager {
 
         // Check if auto-translate is enabled
         if (!userPreferences.isAutoTranslateEnabled()) {
-            Log.d(TAG, "Auto-translation disabled in user preferences");
+            Log.d(TAG, "Auto-translation disabled in user preferences - enable it in Settings to auto-translate incoming messages");
             if (callback != null) {
                 callback.onTranslationComplete(false, null);
             }
@@ -316,6 +316,10 @@ public class TranslationManager {
 
         // Generate cache key
         String targetLanguage = userPreferences.getPreferredLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            targetLanguage = "en"; // Default to English if no preference set
+            Log.d(TAG, "No preferred language set, defaulting to English");
+        }
         String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first
