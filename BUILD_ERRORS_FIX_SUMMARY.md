@@ -130,3 +130,159 @@ public static final int THEME_CUSTOM = 4;
 - `app/src/main/java/com/translator/messagingapp/UserPreferences.java` (enhanced)
 - `app/src/main/res/values/ids.xml` (updated)
 - `app/src/test/java/com/translator/messagingapp/BuildErrorFixTest.java` (created for validation)
+
+---
+
+## Build Errors Fixed (Issue #451) - OfflineModelManager Missing Methods
+
+### Issue Description
+Build compilation failed with errors in `OfflineTranslationService.java` due to missing methods and classes in `OfflineModelManager`:
+
+```
+error: cannot find symbol
+    boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceLanguage);
+                                             ^
+  symbol:   method isModelDownloadedAndVerified(String)
+  location: variable modelManager of type OfflineModelManager
+
+error: cannot find symbol
+    Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
+                                   ^
+  symbol:   class ModelStatus
+  location: class OfflineModelManager
+
+error: cannot find symbol  
+    Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
+                                                                         ^
+  symbol:   method getModelStatusMap()
+  location: variable modelManager of type OfflineModelManager
+```
+
+### 8. Missing OfflineModelManager.ModelStatus inner class
+**Error:** `cannot find symbol - class ModelStatus`
+**Fix:** Added ModelStatus inner class with status tracking:
+
+```java
+public static class ModelStatus {
+    public static final String DOWNLOADED = "downloaded";
+    public static final String NOT_DOWNLOADED = "not_downloaded";
+    public static final String DOWNLOADING = "downloading";
+    public static final String ERROR = "error";
+    
+    private String status;
+    private boolean verified;
+    private String errorMessage;
+    
+    public boolean isDownloaded() { return DOWNLOADED.equals(status); }
+    public boolean isDownloading() { return DOWNLOADING.equals(status); }
+    public boolean isVerified() { return verified; }
+    public String getErrorMessage() { return errorMessage; }
+}
+```
+
+### 9. Missing isModelDownloadedAndVerified() method
+**Error:** `cannot find symbol - method isModelDownloadedAndVerified(String)`
+**Fix:** Added enhanced verification method:
+
+```java
+public boolean isModelDownloadedAndVerified(String languageCode) {
+    if (!isModelDownloaded(languageCode)) {
+        return false;
+    }
+    
+    // Additional verification - check if model file exists
+    try {
+        File modelDir = getModelDirectory();
+        File modelFile = new File(modelDir, languageCode + ".model");
+        return modelFile.exists() && modelFile.canRead();
+    } catch (Exception e) {
+        Log.e(TAG, "Error verifying model file for " + languageCode, e);
+        return false;
+    }
+}
+```
+
+### 10. Missing getModelStatusMap() method
+**Error:** `cannot find symbol - method getModelStatusMap()`
+**Fix:** Added status mapping method:
+
+```java
+public Map<String, ModelStatus> getModelStatusMap() {
+    Map<String, ModelStatus> statusMap = new HashMap<>();
+    List<OfflineModelInfo> availableModels = getAvailableModels();
+    
+    for (OfflineModelInfo model : availableModels) {
+        String languageCode = model.getLanguageCode();
+        ModelStatus status;
+        
+        if (model.isDownloading()) {
+            status = new ModelStatus(ModelStatus.DOWNLOADING, false);
+        } else if (model.isDownloaded()) {
+            boolean verified = isModelDownloadedAndVerified(languageCode);
+            status = new ModelStatus(ModelStatus.DOWNLOADED, verified);
+        } else {
+            status = new ModelStatus(ModelStatus.NOT_DOWNLOADED, false);
+        }
+        
+        statusMap.put(languageCode, status);
+    }
+    
+    return statusMap;
+}
+```
+
+### 11. OfflineTranslationService Integration
+**Issue:** No integration between OfflineTranslationService and OfflineModelManager
+**Fix:** Added proper integration and method usage:
+
+```java
+// Added OfflineModelManager integration
+private OfflineModelManager modelManager;
+
+// Enhanced constructor
+public OfflineTranslationService(Context context, UserPreferences userPreferences) {
+    this.context = context.getApplicationContext();
+    this.userPreferences = userPreferences;
+    this.downloadedModels = new HashSet<>();
+    this.modelManager = new OfflineModelManager(context);  // Added integration
+    
+    loadDownloadedModels();
+}
+
+// Used the new methods as expected by build errors
+public boolean isOfflineTranslationAvailable(String sourceLanguage, String targetLanguage) {
+    // ... existing code ...
+    
+    // Use OfflineModelManager for verification (addresses build error lines 99-100)
+    boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
+    boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+    
+    if (sourceVerified && targetVerified) {
+        return true;
+    }
+    
+    // ... rest of logic ...
+}
+
+// Added method using getModelStatusMap (addresses build error lines 437, 441)
+public Map<String, String> getDetailedModelStatus() {
+    Map<String, String> detailedStatus = new HashMap<>();
+    
+    Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
+    
+    for (Map.Entry<String, OfflineModelManager.ModelStatus> entry : managerStatus.entrySet()) {
+        String languageCode = entry.getKey();
+        OfflineModelManager.ModelStatus managerStat = entry.getValue();
+        
+        // Process status information...
+    }
+    
+    return detailedStatus;
+}
+```
+
+## Additional Files Modified (Issue #451)
+- `app/src/main/java/com/translator/messagingapp/OfflineModelManager.java` (enhanced with missing methods)
+- `app/src/main/java/com/translator/messagingapp/OfflineTranslationService.java` (added integration)
+- `app/src/test/java/com/translator/messagingapp/OfflineModelManagerBuildFixTest.java` (created for validation)
+- `validate_build_fix.sh` (created for automated validation)

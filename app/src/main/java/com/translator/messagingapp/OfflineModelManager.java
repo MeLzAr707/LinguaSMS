@@ -6,8 +6,10 @@ import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,6 +27,52 @@ public class OfflineModelManager {
         void onProgress(int progress);
         void onSuccess();
         void onError(String error);
+    }
+    
+    /**
+     * Represents the status of an offline model.
+     */
+    public static class ModelStatus {
+        public static final String DOWNLOADED = "downloaded";
+        public static final String NOT_DOWNLOADED = "not_downloaded";
+        public static final String DOWNLOADING = "downloading";
+        public static final String ERROR = "error";
+        
+        private String status;
+        private boolean verified;
+        private String errorMessage;
+        
+        public ModelStatus(String status, boolean verified) {
+            this.status = status;
+            this.verified = verified;
+            this.errorMessage = null;
+        }
+        
+        public ModelStatus(String status, boolean verified, String errorMessage) {
+            this.status = status;
+            this.verified = verified;
+            this.errorMessage = errorMessage;
+        }
+        
+        public String getStatus() {
+            return status;
+        }
+        
+        public boolean isVerified() {
+            return verified;
+        }
+        
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+        
+        public boolean isDownloaded() {
+            return DOWNLOADED.equals(status);
+        }
+        
+        public boolean isDownloading() {
+            return DOWNLOADING.equals(status);
+        }
     }
     
     public OfflineModelManager(Context context) {
@@ -165,6 +213,53 @@ public class OfflineModelManager {
     public boolean isModelDownloaded(String languageCode) {
         Set<String> downloadedModels = getDownloadedModelCodes();
         return downloadedModels.contains(languageCode);
+    }
+    
+    /**
+     * Check if a model is downloaded and verified.
+     * This extends the basic download check with additional verification.
+     */
+    public boolean isModelDownloadedAndVerified(String languageCode) {
+        if (!isModelDownloaded(languageCode)) {
+            return false;
+        }
+        
+        // Additional verification - check if model file exists
+        try {
+            File modelDir = getModelDirectory();
+            File modelFile = new File(modelDir, languageCode + ".model");
+            return modelFile.exists() && modelFile.canRead();
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying model file for " + languageCode, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Get the status map for all available models.
+     * @return Map of language code to ModelStatus
+     */
+    public Map<String, ModelStatus> getModelStatusMap() {
+        Map<String, ModelStatus> statusMap = new HashMap<>();
+        List<OfflineModelInfo> availableModels = getAvailableModels();
+        
+        for (OfflineModelInfo model : availableModels) {
+            String languageCode = model.getLanguageCode();
+            ModelStatus status;
+            
+            if (model.isDownloading()) {
+                status = new ModelStatus(ModelStatus.DOWNLOADING, false);
+            } else if (model.isDownloaded()) {
+                boolean verified = isModelDownloadedAndVerified(languageCode);
+                status = new ModelStatus(ModelStatus.DOWNLOADED, verified);
+            } else {
+                status = new ModelStatus(ModelStatus.NOT_DOWNLOADED, false);
+            }
+            
+            statusMap.put(languageCode, status);
+        }
+        
+        return statusMap;
     }
     
     /**

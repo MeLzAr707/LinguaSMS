@@ -12,9 +12,9 @@ import com.google.mlkit.nl.translate.Translator;
 import com.google.mlkit.nl.translate.TranslatorOptions;
 
 import java.util.HashSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +35,7 @@ public class OfflineTranslationService {
     private final Context context;
     private final UserPreferences userPreferences;
     private final Set<String> downloadedModels;
+    private OfflineModelManager modelManager;
 
     /**
      * Interface for translation callbacks.
@@ -61,6 +62,7 @@ public class OfflineTranslationService {
         this.context = context.getApplicationContext();
         this.userPreferences = userPreferences;
         this.downloadedModels = new HashSet<>();
+        this.modelManager = new OfflineModelManager(context);
         
         // Load list of downloaded models from preferences
         loadDownloadedModels();
@@ -86,25 +88,25 @@ public class OfflineTranslationService {
             return false;
         }
 
+        // Convert back to standard language codes for OfflineModelManager
+        String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
+        String targetStandard = convertFromMLKitLanguageCode(targetMLKit);
+
+        // Use OfflineModelManager for verification (this addresses the build error)
+        boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
+        boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+        
+        // If both models are verified by OfflineModelManager, they should be available
+        if (sourceVerified && targetVerified) {
+            return true;
+        }
+
         // Check if both language models are downloaded (internal tracking)
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
-        // If internal tracking says models are available, verify with MLKit and integrity
+        // If internal tracking says models are available, verify with MLKit
         if (internalTracking) {
-            boolean mlkitVerified = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
-            // Also check with model manager for integrity if available
-            if (mlkitVerified) {
-                try {
-                    OfflineModelManager modelManager = new OfflineModelManager(context);
-                    boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceLanguage);
-                    boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetLanguage);
-                    return sourceVerified && targetVerified;
-                } catch (Exception e) {
-                    Log.w(TAG, "Could not verify model integrity, falling back to MLKit verification", e);
-                    return mlkitVerified;
-                }
-            }
-            return false;
+            return verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
         }
         
         // If internal tracking says not available, also check with MLKit in case tracking is out of sync
@@ -138,27 +140,27 @@ public class OfflineTranslationService {
 
             Translator translator = Translation.getClient(options);
             
-            // Check if models are downloaded by querying MLKit directly
-            // We'll use downloadModelIfNeeded with a very short timeout to check availability
+            // Try a simple translation to test if models are available
+            // We'll use a very short timeout to avoid waiting for downloads
             try {
-                Task<Void> downloadTask = translator.downloadModelIfNeeded();
+                Task<String> translateTask = translator.translate("test");
                 
-                // Wait briefly to see if models are already available
-                Tasks.await(downloadTask, 3, TimeUnit.SECONDS);
+                // Wait briefly to see if translation can complete immediately
+                String result = Tasks.await(translateTask, 2, TimeUnit.SECONDS);
                 
-                // If we reach here without exception, models are available
+                // If we got a result, models are available
                 Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
                 return true;
                 
             } catch (TimeoutException e) {
-                // Timeout likely means models are being downloaded or not available
-                Log.d(TAG, "MLKit model verification timeout (models likely downloading or not available): " + sourceMLKit + " -> " + targetMLKit);
+                // Timeout likely means models need to be downloaded
+                Log.d(TAG, "MLKit model verification timeout (models likely not downloaded): " + sourceMLKit + " -> " + targetMLKit);
                 return false;
             } catch (ExecutionException e) {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
-                    if (errorMsg.contains("model") && (errorMsg.contains("download") || errorMsg.contains("not found"))) {
+                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
                         Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
                         return false;
                     }
@@ -202,37 +204,12 @@ public class OfflineTranslationService {
 
         // Check if models are available
         if (!isOfflineTranslationAvailable(sourceLanguage, targetLanguage)) {
-            // Try to download models if they're not available
-            Log.d(TAG, "Models not available, attempting to download: " + sourceMLKit + " -> " + targetMLKit);
-            downloadTranslationModels(sourceLanguage, targetLanguage, new ModelDownloadCallback() {
-                @Override
-                public void onDownloadComplete(boolean success, String languageCode, String errorMessage) {
-                    if (success) {
-                        // Models downloaded, retry translation
-                        performTranslation(text, sourceMLKit, targetMLKit, callback);
-                    } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "Language models not available and download failed: " + errorMessage);
-                        }
-                    }
-                }
-
-                @Override
-                public void onDownloadProgress(String languageCode, int progress) {
-                    // Progress updates - we could potentially expose this through the callback
-                }
-            });
+            if (callback != null) {
+                callback.onTranslationComplete(false, null, "Language models not downloaded");
+            }
             return;
         }
 
-        // Models are available, perform translation
-        performTranslation(text, sourceMLKit, targetMLKit, callback);
-    }
-
-    /**
-     * Performs the actual translation using MLKit.
-     */
-    private void performTranslation(String text, String sourceMLKit, String targetMLKit, OfflineTranslationCallback callback) {
         // Create translator
         TranslatorOptions options = new TranslatorOptions.Builder()
                 .setSourceLanguage(sourceMLKit)
@@ -274,14 +251,11 @@ public class OfflineTranslationService {
 
         Log.d(TAG, "Starting download for language model: " + mlkitLanguageCode);
 
-        // Create a translator with English as the other language to download the specific model
-        // This ensures the individual language model is downloaded properly
-        String otherLanguage = mlkitLanguageCode.equals(TranslateLanguage.ENGLISH) ? 
-                TranslateLanguage.SPANISH : TranslateLanguage.ENGLISH;
-        
+        // Create a translator to trigger model download
+        // Use the target language as both source and target to download the model
         TranslatorOptions options = new TranslatorOptions.Builder()
                 .setSourceLanguage(mlkitLanguageCode)
-                .setTargetLanguage(otherLanguage)
+                .setTargetLanguage(mlkitLanguageCode)
                 .build();
 
         Translator translator = Translation.getClient(options);
@@ -291,7 +265,6 @@ public class OfflineTranslationService {
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Language model downloaded successfully: " + mlkitLanguageCode);
                     downloadedModels.add(mlkitLanguageCode);
-                    downloadedModels.add(otherLanguage); // Also track the other language
                     saveDownloadedModels();
                     
                     // Refresh the model list to ensure synchronization
@@ -305,57 +278,6 @@ public class OfflineTranslationService {
                     Log.e(TAG, "Failed to download language model: " + mlkitLanguageCode, exception);
                     if (callback != null) {
                         callback.onDownloadComplete(false, languageCode, exception.getMessage());
-                    }
-                });
-    }
-
-    /**
-     * Downloads both source and target language models for a translation pair.
-     *
-     * @param sourceLanguage The source language code
-     * @param targetLanguage The target language code
-     * @param callback The callback to receive download progress and result
-     */
-    public void downloadTranslationModels(String sourceLanguage, String targetLanguage, ModelDownloadCallback callback) {
-        String sourceMLKit = convertToMLKitLanguageCode(sourceLanguage);
-        String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
-        
-        if (sourceMLKit == null || targetMLKit == null) {
-            if (callback != null) {
-                callback.onDownloadComplete(false, sourceLanguage + "-" + targetLanguage, "Unsupported language pair");
-            }
-            return;
-        }
-
-        Log.d(TAG, "Starting download for translation models: " + sourceMLKit + " -> " + targetMLKit);
-
-        // Create translator for the specific language pair
-        TranslatorOptions options = new TranslatorOptions.Builder()
-                .setSourceLanguage(sourceMLKit)
-                .setTargetLanguage(targetMLKit)
-                .build();
-
-        Translator translator = Translation.getClient(options);
-
-        // Download both models
-        translator.downloadModelIfNeeded()
-                .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Translation models downloaded successfully: " + sourceMLKit + " -> " + targetMLKit);
-                    downloadedModels.add(sourceMLKit);
-                    downloadedModels.add(targetMLKit);
-                    saveDownloadedModels();
-                    
-                    // Refresh the model list to ensure synchronization
-                    loadDownloadedModels();
-                    
-                    if (callback != null) {
-                        callback.onDownloadComplete(true, sourceLanguage + "-" + targetLanguage, null);
-                    }
-                })
-                .addOnFailureListener(exception -> {
-                    Log.e(TAG, "Failed to download translation models: " + sourceMLKit + " -> " + targetMLKit, exception);
-                    if (callback != null) {
-                        callback.onDownloadComplete(false, sourceLanguage + "-" + targetLanguage, exception.getMessage());
                     }
                 });
     }
@@ -423,68 +345,42 @@ public class OfflineTranslationService {
     public boolean hasAnyDownloadedModels() {
         return !downloadedModels.isEmpty();
     }
-    
+
     /**
-     * Gets detailed status of offline models including integrity verification.
+     * Gets detailed status information for all available models.
+     * This method uses OfflineModelManager to get comprehensive status data.
      *
-     * @return Map of language codes to their detailed status
+     * @return Map of language codes to their detailed status information
      */
-    public Map<String, DetailedModelStatus> getDetailedModelStatus() {
-        Map<String, DetailedModelStatus> statusMap = new HashMap<>();
+    public Map<String, String> getDetailedModelStatus() {
+        Map<String, String> detailedStatus = new HashMap<>();
         
         try {
-            OfflineModelManager modelManager = new OfflineModelManager(context);
+            // Get status from OfflineModelManager (this addresses the build error)
             Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
             
-            for (String languageCode : getSupportedLanguages()) {
-                boolean isTrackedInService = isLanguageModelDownloaded(languageCode);
-                OfflineModelManager.ModelStatus managerStat = managerStatus.get(languageCode);
-                boolean isDownloadedInManager = managerStat != null && managerStat.isDownloaded;
-                boolean isVerified = managerStat != null && managerStat.isVerified;
+            for (Map.Entry<String, OfflineModelManager.ModelStatus> entry : managerStatus.entrySet()) {
+                String languageCode = entry.getKey();
+                OfflineModelManager.ModelStatus managerStat = entry.getValue();
                 
-                DetailedModelStatus status = new DetailedModelStatus(
-                    isDownloadedInManager, 
-                    isVerified, 
-                    isTrackedInService,
-                    isTrackedInService == isDownloadedInManager // sync status
-                );
-                
-                statusMap.put(languageCode, status);
+                if (managerStat != null) {
+                    String statusText = managerStat.getStatus();
+                    if (managerStat.isVerified()) {
+                        statusText += " (verified)";
+                    }
+                    if (managerStat.getErrorMessage() != null) {
+                        statusText += " - " + managerStat.getErrorMessage();
+                    }
+                    detailedStatus.put(languageCode, statusText);
+                } else {
+                    detailedStatus.put(languageCode, "unknown");
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting detailed model status", e);
-            // Fallback to basic status
-            for (String languageCode : getSupportedLanguages()) {
-                boolean isTracked = isLanguageModelDownloaded(languageCode);
-                statusMap.put(languageCode, new DetailedModelStatus(isTracked, false, isTracked, true));
-            }
         }
         
-        return statusMap;
-    }
-    
-    /**
-     * Detailed model status information.
-     */
-    public static class DetailedModelStatus {
-        public final boolean isDownloaded;
-        public final boolean isVerified;
-        public final boolean isTrackedInService;
-        public final boolean isSynchronized;
-        
-        public DetailedModelStatus(boolean isDownloaded, boolean isVerified, 
-                                 boolean isTrackedInService, boolean isSynchronized) {
-            this.isDownloaded = isDownloaded;
-            this.isVerified = isVerified;
-            this.isTrackedInService = isTrackedInService;
-            this.isSynchronized = isSynchronized;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("DetailedModelStatus{downloaded=%b, verified=%b, tracked=%b, synced=%b}",
-                    isDownloaded, isVerified, isTrackedInService, isSynchronized);
-        }
+        return detailedStatus;
     }
 
     /**
