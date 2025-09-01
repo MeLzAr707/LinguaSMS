@@ -37,6 +37,7 @@
         android:layout_marginEnd="8dp"
         android:ellipsize="end"
         android:maxLines="1"
+        android:textColor="@color/textColorPrimary"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@+id/timestamp"
@@ -51,6 +52,7 @@
         android:layout_marginEnd="8dp"
         android:ellipsize="end"
         android:maxLines="2"
+        android:textColor="@color/textColorSecondary"
         android:textSize="14sp"
         app:layout_constraintEnd_toStartOf="@+id/unread_count"
         app:layout_constraintStart_toEndOf="@+id/contact_image_container"
@@ -60,6 +62,7 @@
         android:id="@+id/timestamp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:textColor="@color/textColorSecondary"
         android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
