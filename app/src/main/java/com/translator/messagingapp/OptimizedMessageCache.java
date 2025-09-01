@@ -5,6 +5,7 @@ import android.util.Log;
 import android.util.LruCache;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Optimized cache for storing messages using LRU eviction policy.
