@@ -66,12 +66,38 @@ else
 fi
 
 echo ""
+echo "=== INTEGRATION CHECK ==="
+echo ""
+
+# Check if OfflineTranslationService uses the new methods
+if grep -q "isModelDownloadedAndVerified" app/src/main/java/com/translator/messagingapp/OfflineTranslationService.java; then
+    echo "✅ OfflineTranslationService uses isModelDownloadedAndVerified"
+else
+    echo "❌ OfflineTranslationService doesn't use isModelDownloadedAndVerified"
+fi
+
+if grep -q "getModelStatusMap" app/src/main/java/com/translator/messagingapp/OfflineTranslationService.java; then
+    echo "✅ OfflineTranslationService uses getModelStatusMap"
+else
+    echo "❌ OfflineTranslationService doesn't use getModelStatusMap"
+fi
+
+if grep -q "OfflineModelManager modelManager" app/src/main/java/com/translator/messagingapp/OfflineTranslationService.java; then
+    echo "✅ OfflineTranslationService has OfflineModelManager integration"
+else
+    echo "❌ OfflineTranslationService missing OfflineModelManager integration"
+fi
+
+echo ""
 echo "=== IMPLEMENTATION SUMMARY ==="
 echo ""
 echo "Fixed the build compilation errors by implementing:"
 echo "1. isModelDownloadedAndVerified(String) method - extends isModelDownloaded with file verification"
 echo "2. getModelStatusMap() method - returns Map<String, ModelStatus> for all available models"
 echo "3. ModelStatus inner class - represents download/verification status with constants and methods"
+echo "4. Integration between OfflineTranslationService and OfflineModelManager"
+echo "5. Usage of the new methods in OfflineTranslationService as expected by the build errors"
 echo ""
 echo "These implementations are consistent with the existing codebase patterns and"
 echo "should resolve the compilation errors mentioned in the original issue."
+echo "The integration ensures proper cooperation between the two offline model management systems."

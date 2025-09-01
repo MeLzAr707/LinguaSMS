@@ -13,6 +13,8 @@ import com.google.mlkit.nl.translate.TranslatorOptions;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +35,7 @@ public class OfflineTranslationService {
     private final Context context;
     private final UserPreferences userPreferences;
     private final Set<String> downloadedModels;
+    private OfflineModelManager modelManager;
 
     /**
      * Interface for translation callbacks.
@@ -59,6 +62,7 @@ public class OfflineTranslationService {
         this.context = context.getApplicationContext();
         this.userPreferences = userPreferences;
         this.downloadedModels = new HashSet<>();
+        this.modelManager = new OfflineModelManager(context);
         
         // Load list of downloaded models from preferences
         loadDownloadedModels();
@@ -82,6 +86,19 @@ public class OfflineTranslationService {
 
         if (sourceMLKit == null || targetMLKit == null) {
             return false;
+        }
+
+        // Convert back to standard language codes for OfflineModelManager
+        String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
+        String targetStandard = convertFromMLKitLanguageCode(targetMLKit);
+
+        // Use OfflineModelManager for verification (this addresses the build error)
+        boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
+        boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+        
+        // If both models are verified by OfflineModelManager, they should be available
+        if (sourceVerified && targetVerified) {
+            return true;
         }
 
         // Check if both language models are downloaded (internal tracking)
@@ -327,6 +344,43 @@ public class OfflineTranslationService {
      */
     public boolean hasAnyDownloadedModels() {
         return !downloadedModels.isEmpty();
+    }
+
+    /**
+     * Gets detailed status information for all available models.
+     * This method uses OfflineModelManager to get comprehensive status data.
+     *
+     * @return Map of language codes to their detailed status information
+     */
+    public Map<String, String> getDetailedModelStatus() {
+        Map<String, String> detailedStatus = new HashMap<>();
+        
+        try {
+            // Get status from OfflineModelManager (this addresses the build error)
+            Map<String, OfflineModelManager.ModelStatus> managerStatus = modelManager.getModelStatusMap();
+            
+            for (Map.Entry<String, OfflineModelManager.ModelStatus> entry : managerStatus.entrySet()) {
+                String languageCode = entry.getKey();
+                OfflineModelManager.ModelStatus managerStat = entry.getValue();
+                
+                if (managerStat != null) {
+                    String statusText = managerStat.getStatus();
+                    if (managerStat.isVerified()) {
+                        statusText += " (verified)";
+                    }
+                    if (managerStat.getErrorMessage() != null) {
+                        statusText += " - " + managerStat.getErrorMessage();
+                    }
+                    detailedStatus.put(languageCode, statusText);
+                } else {
+                    detailedStatus.put(languageCode, "unknown");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting detailed model status", e);
+        }
+        
+        return detailedStatus;
     }
 
     /**

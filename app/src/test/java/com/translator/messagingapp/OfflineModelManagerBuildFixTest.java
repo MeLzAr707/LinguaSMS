@@ -104,6 +104,29 @@ public class OfflineModelManagerBuildFixTest {
     }
 
     @Test
+    public void testOfflineTranslationServiceIntegration() {
+        // Test that OfflineTranslationService properly integrates with OfflineModelManager
+        
+        // Create both components
+        OfflineModelManager modelManager = new OfflineModelManager(context);
+        OfflineTranslationService translationService = new OfflineTranslationService(context, userPreferences);
+        
+        // Test the detailed model status method that uses getModelStatusMap
+        Map<String, String> detailedStatus = translationService.getDetailedModelStatus();
+        assertNotNull("Detailed status should not be null", detailedStatus);
+        
+        // Should contain common language models
+        assertTrue("Should have status for English", detailedStatus.containsKey("en"));
+        assertTrue("Should have status for Spanish", detailedStatus.containsKey("es"));
+        
+        // Status should be meaningful
+        String englishStatus = detailedStatus.get("en");
+        assertNotNull("English status should not be null", englishStatus);
+        assertTrue("English status should indicate not downloaded", 
+                  englishStatus.contains("not_downloaded"));
+    }
+
+    @Test
     public void testCompilationFix() {
         // This test verifies that the methods mentioned in the build error now exist
         // and can be called without compilation errors
