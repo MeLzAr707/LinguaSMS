@@ -272,7 +272,7 @@ public class UserPreferences {
      * @return true if offline translation is enabled, false otherwise
      */
     public boolean isOfflineTranslationEnabled() {
-        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, false);
+        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, true);
     }
 
     /**
