@@ -158,6 +158,10 @@ public class OfflineModelManager {
     
     /**
      * Download an offline model.
+     * 
+     * NOTE: This method uses simulated progress for UI demonstration.
+     * For real ML Kit downloads, use OfflineTranslationService.downloadLanguageModel()
+     * which properly handles Task<Void> API without using non-existent methods like addOnProgressListener.
      */
     public void downloadModel(OfflineModelInfo model, DownloadListener listener) {
         if (model.isDownloaded()) {
