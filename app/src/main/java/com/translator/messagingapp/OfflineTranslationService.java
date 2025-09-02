@@ -77,6 +77,7 @@ public class OfflineTranslationService {
      */
     public boolean isOfflineTranslationAvailable(String sourceLanguage, String targetLanguage) {
         if (sourceLanguage == null || targetLanguage == null) {
+            Log.d(TAG, "Null language codes provided: " + sourceLanguage + " -> " + targetLanguage);
             return false;
         }
 
@@ -89,6 +90,8 @@ public class OfflineTranslationService {
             return false;
         }
 
+        Log.d(TAG, "Checking availability for: " + sourceLanguage + " (" + sourceMLKit + ") -> " + targetLanguage + " (" + targetMLKit + ")");
+
         // PRIMARY CHECK: Use OfflineModelManager as the authoritative source
         // Convert back to standard language codes for OfflineModelManager verification
         String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
@@ -97,6 +100,9 @@ public class OfflineTranslationService {
         // If OfflineModelManager says models are downloaded and verified, trust that
         boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
         boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+        
+        Log.d(TAG, "OfflineModelManager verification - Source (" + sourceStandard + "): " + sourceVerified + 
+                  ", Target (" + targetStandard + "): " + targetVerified);
         
         if (sourceVerified && targetVerified) {
             Log.d(TAG, "Models verified by OfflineModelManager: " + sourceLanguage + " -> " + targetLanguage);
@@ -110,7 +116,11 @@ public class OfflineTranslationService {
         // check our internal tracking and verify with MLKit directly
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
+        Log.d(TAG, "Internal tracking - Source (" + sourceMLKit + "): " + downloadedModels.contains(sourceMLKit) + 
+                  ", Target (" + targetMLKit + "): " + downloadedModels.contains(targetMLKit));
+        
         if (internalTracking) {
+            Log.d(TAG, "Verifying models with MLKit direct test...");
             // Test with MLKit to see if models actually work
             boolean mlkitWorks = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
             if (mlkitWorks) {
@@ -158,6 +168,12 @@ public class OfflineTranslationService {
                 
                 // If we got a result, models are available
                 Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
+                
+                // Important: Update our internal tracking to match reality
+                downloadedModels.add(sourceMLKit);
+                downloadedModels.add(targetMLKit);
+                saveDownloadedModels();
+                
                 return true;
                 
             } catch (TimeoutException e) {
@@ -179,6 +195,13 @@ public class OfflineTranslationService {
                 }
                 Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
                 return false;
+            } finally {
+                // Clean up translator
+                try {
+                    translator.close();
+                } catch (Exception e) {
+                    // Ignore cleanup errors
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error verifying model availability with MLKit", e);
@@ -639,10 +662,14 @@ public class OfflineTranslationService {
         Log.d(TAG, "Verifying model download success for: " + mlkitLanguageCode);
         
         try {
-            // Create translator for verification
+            // Create translator for verification with English as the other language
+            // This tests actual translation capability rather than same-language translation
+            String verifyTargetLanguage = mlkitLanguageCode.equals(TranslateLanguage.ENGLISH) 
+                    ? TranslateLanguage.SPANISH : TranslateLanguage.ENGLISH;
+            
             TranslatorOptions options = new TranslatorOptions.Builder()
                     .setSourceLanguage(mlkitLanguageCode)
-                    .setTargetLanguage(mlkitLanguageCode)
+                    .setTargetLanguage(verifyTargetLanguage)
                     .build();
             
             Translator verifyTranslator = Translation.getClient(options);
@@ -655,6 +682,12 @@ public class OfflineTranslationService {
                         // Only mark as downloaded if verification succeeds
                         downloadedModels.add(mlkitLanguageCode);
                         saveDownloadedModels();
+                        
+                        // Also update OfflineModelManager to ensure synchronization
+                        if (modelManager != null) {
+                            modelManager.saveDownloadedModel(originalLanguageCode);
+                            Log.d(TAG, "Updated OfflineModelManager with verified model: " + originalLanguageCode);
+                        }
                         
                         // Refresh the model list to ensure synchronization
                         loadDownloadedModels();
