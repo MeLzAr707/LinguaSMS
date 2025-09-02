@@ -85,41 +85,49 @@ public class OfflineTranslationService {
         String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
 
         if (sourceMLKit == null || targetMLKit == null) {
+            Log.d(TAG, "Unsupported language pair: " + sourceLanguage + " -> " + targetLanguage);
             return false;
         }
 
-        // Convert back to standard language codes for OfflineModelManager
+        // PRIMARY CHECK: Use OfflineModelManager as the authoritative source
+        // Convert back to standard language codes for OfflineModelManager verification
         String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
         String targetStandard = convertFromMLKitLanguageCode(targetMLKit);
 
-        // Use OfflineModelManager for verification (this addresses the build error)
+        // If OfflineModelManager says models are downloaded and verified, trust that
         boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
         boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
         
-        // If both models are verified by OfflineModelManager, they should be available
         if (sourceVerified && targetVerified) {
+            Log.d(TAG, "Models verified by OfflineModelManager: " + sourceLanguage + " -> " + targetLanguage);
+            // Ensure our internal tracking is synchronized
+            downloadedModels.add(sourceMLKit);
+            downloadedModels.add(targetMLKit);
             return true;
         }
 
-        // Check if both language models are downloaded (internal tracking)
+        // SECONDARY CHECK: If OfflineModelManager says models are not verified,
+        // check our internal tracking and verify with MLKit directly
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
-        // If internal tracking says models are available, verify with MLKit
         if (internalTracking) {
-            return verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+            // Test with MLKit to see if models actually work
+            boolean mlkitWorks = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
+            if (mlkitWorks) {
+                Log.d(TAG, "Models verified by MLKit test: " + sourceLanguage + " -> " + targetLanguage);
+                return true;
+            } else {
+                Log.w(TAG, "Models in internal tracking but MLKit verification failed: " + sourceLanguage + " -> " + targetLanguage);
+                // Remove from internal tracking since they don't actually work
+                downloadedModels.remove(sourceMLKit);
+                downloadedModels.remove(targetMLKit);
+                saveDownloadedModels();
+                return false;
+            }
         }
         
-        // If internal tracking says not available, also check with MLKit in case tracking is out of sync
-        boolean mlkitAvailable = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
-        if (mlkitAvailable) {
-            // Update our internal tracking to sync with MLKit
-            downloadedModels.add(sourceMLKit);
-            downloadedModels.add(targetMLKit);
-            saveDownloadedModels();
-            Log.d(TAG, "Synced internal tracking with MLKit - models were available but not tracked");
-        }
-        
-        return mlkitAvailable;
+        Log.d(TAG, "Models not available for translation: " + sourceLanguage + " -> " + targetLanguage);
+        return false;
     }
 
     /**

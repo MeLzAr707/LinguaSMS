@@ -740,6 +740,73 @@ public class TranslationManager {
     }
 
     /**
+     * Runs diagnostic checks on offline translation functionality.
+     * This can be used to identify and troubleshoot issues with offline translation.
+     *
+     * @return A diagnostic report as a string
+     */
+    public String runOfflineTranslationDiagnostics() {
+        try {
+            OfflineTranslationDiagnostics diagnostics = new OfflineTranslationDiagnostics(context);
+            String report = diagnostics.generateDiagnosticReport();
+            
+            // Also log to Android log for debugging
+            diagnostics.logDiagnosticResults();
+            
+            return report;
+        } catch (Exception e) {
+            Log.e(TAG, "Error running offline translation diagnostics", e);
+            return "Error generating diagnostic report: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Attempts to fix common offline translation synchronization issues.
+     * This method should be called when offline translation is not working as expected.
+     *
+     * @return true if automatic fixes were applied, false otherwise
+     */
+    public boolean attemptOfflineTranslationAutoFix() {
+        try {
+            Log.d(TAG, "Attempting automatic offline translation fixes");
+            
+            // Refresh offline models to ensure synchronization
+            refreshOfflineModels();
+            
+            // Run diagnostics to identify specific issues
+            OfflineTranslationDiagnostics diagnostics = new OfflineTranslationDiagnostics(context);
+            var results = diagnostics.performComprehensiveDiagnostics();
+            
+            boolean fixesApplied = false;
+            
+            // Check for synchronization issues
+            var syncResults = results.get("synchronization");
+            if (syncResults != null) {
+                for (var result : syncResults) {
+                    if ("ERROR".equals(result.severity) && result.issue.contains("Service/Manager Sync")) {
+                        Log.w(TAG, "Detected synchronization issue, applying fix");
+                        // Force refresh of offline models
+                        refreshOfflineModels();
+                        fixesApplied = true;
+                    }
+                }
+            }
+            
+            if (fixesApplied) {
+                Log.i(TAG, "Applied automatic fixes for offline translation issues");
+            } else {
+                Log.d(TAG, "No automatic fixes needed or available");
+            }
+            
+            return fixesApplied;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during automatic offline translation fix attempt", e);
+            return false;
+        }
+    }
+
+    /**
      * Cleans up resources.
      */
     public void cleanup() {
