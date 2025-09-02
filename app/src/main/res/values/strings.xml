@@ -172,6 +172,8 @@
     <string name="debug_check_button">Check</string>
     <string name="debug_open_button">Open</string>
     <string name="debug_direct_open_button">Direct Open</string>
+    <string name="debug_offline_diagnostics_button">Run Offline Diagnostics</string>
+    <string name="debug_offline_fix_button">Attempt Offline Fix</string>
 
     <!-- Message Layout Strings -->
 
