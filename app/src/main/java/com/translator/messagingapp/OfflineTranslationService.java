@@ -348,8 +348,11 @@ public class OfflineTranslationService {
 
         Translator translator = Translation.getClient(options);
 
-        // Download the model
-        translator.downloadModelIfNeeded()
+        // Download the model using correct Task<Void> API
+        // NOTE: Task<Void> does NOT have addOnProgressListener method - that would cause build error
+        // Use addOnSuccessListener and addOnFailureListener instead
+        Task<Void> downloadTask = translator.downloadModelIfNeeded();
+        downloadTask
                 .addOnSuccessListener(aVoid -> {
                     Log.d(TAG, "Language model downloaded successfully: " + mlkitLanguageCode);
                     
