@@ -157,60 +157,106 @@ public class OfflineModelManager {
     }
     
     /**
-     * Download an offline model.
+     * Download an offline model using ML Kit.
+     * This method performs manual model download instead of on-demand download.
      */
     public void downloadModel(OfflineModelInfo model, DownloadListener listener) {
         if (model.isDownloaded()) {
-            listener.onError("Model already downloaded");
+            if (listener != null) {
+                listener.onError("Model already downloaded");
+            }
+            return;
+        }
+        
+        String languageCode = model.getLanguageCode();
+        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        
+        if (mlkitLanguageCode == null) {
+            Log.e(TAG, "Unsupported language for ML Kit: " + languageCode);
+            if (listener != null) {
+                listener.onError("Unsupported language: " + languageCode);
+            }
             return;
         }
         
         model.setDownloading(true);
+        Log.d(TAG, "Starting ML Kit download for model: " + languageCode + " (MLKit: " + mlkitLanguageCode + ")");
         
-        // Simulate download process in a background thread
+        // Perform actual ML Kit download in background thread
         new Thread(() -> {
             try {
-                Log.d(TAG, "Starting download for model: " + model.getLanguageCode());
+                // Create translator for manual download - use English as source for consistency
+                TranslatorOptions options = new TranslatorOptions.Builder()
+                        .setSourceLanguage(TranslateLanguage.ENGLISH)
+                        .setTargetLanguage(mlkitLanguageCode)
+                        .build();
                 
-                // Simulate download progress
-                for (int progress = 0; progress <= 100; progress += 10) {
-                    Thread.sleep(500); // Simulate download time
+                Translator translator = Translation.getClient(options);
+                
+                // Update progress - starting download
+                model.setDownloadProgress(10);
+                if (listener != null) {
+                    listener.onProgress(10);
+                }
+                
+                // Perform manual download using downloadModelIfNeeded with timeout
+                Task<Void> downloadTask = translator.downloadModelIfNeeded();
+                
+                try {
+                    // Wait for download to complete with timeout
+                    Tasks.await(downloadTask, 60, TimeUnit.SECONDS);
                     
-                    final int currentProgress = progress;
-                    model.setDownloadProgress(currentProgress);
+                    Log.d(TAG, "ML Kit model download completed for: " + mlkitLanguageCode);
                     
+                    // Update progress - download complete
+                    model.setDownloadProgress(90);
                     if (listener != null) {
-                        listener.onProgress(currentProgress);
+                        listener.onProgress(90);
                     }
+                    
+                    // Verify download success by testing translator availability
+                    boolean isAvailable = isModelAvailableInMLKit(languageCode);
+                    
+                    if (isAvailable) {
+                        // Mark as downloaded and save
+                        model.setDownloading(false);
+                        model.setDownloaded(true);
+                        model.setDownloadProgress(100);
+                        
+                        saveDownloadedModelPrivate(languageCode);
+                        createModelFile(model);
+                        
+                        Log.d(TAG, "ML Kit model verified and saved: " + languageCode);
+                        
+                        if (listener != null) {
+                            listener.onProgress(100);
+                            listener.onSuccess();
+                        }
+                    } else {
+                        throw new Exception("Model download completed but verification failed");
+                    }
+                    
+                } catch (ExecutionException e) {
+                    throw new Exception("Download execution failed: " + e.getCause().getMessage(), e);
+                } catch (TimeoutException e) {
+                    throw new Exception("Download timed out after 60 seconds", e);
+                } finally {
+                    // Clean up translator
+                    translator.close();
                 }
                 
-                // Mark as downloaded
-                model.setDownloading(false);
-                model.setDownloaded(true);
-                
-                // Save to preferences
-                saveDownloadedModelPrivate(model.getLanguageCode());
-                
-                // Create placeholder file
-                createModelFile(model);
-                
-                Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
-                
-                if (listener != null) {
-                    listener.onSuccess();
-                }
-                
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Download interrupted", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download interrupted");
-                }
             } catch (Exception e) {
-                Log.e(TAG, "Download failed", e);
+                Log.e(TAG, "ML Kit model download failed for: " + languageCode, e);
                 model.setDownloading(false);
+                model.setDownloadProgress(0);
+                
+                String errorMessage = "Download failed: " + e.getMessage();
+                if (e.getCause() != null && e.getCause().getMessage() != null) {
+                    errorMessage = "Download failed: " + e.getCause().getMessage();
+                }
+                
                 if (listener != null) {
-                    listener.onError("Download failed: " + e.getMessage());
+                    listener.onError(errorMessage);
                 }
             }
         }).start();
