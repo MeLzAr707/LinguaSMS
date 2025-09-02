@@ -161,59 +161,136 @@ public class OfflineModelManager {
      */
     public void downloadModel(OfflineModelInfo model, DownloadListener listener) {
         if (model.isDownloaded()) {
-            listener.onError("Model already downloaded");
+            if (listener != null) {
+                listener.onError("Model already downloaded");
+            }
+            return;
+        }
+        
+        String languageCode = model.getLanguageCode();
+        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        
+        if (mlkitLanguageCode == null) {
+            Log.e(TAG, "Unsupported language for download: " + languageCode);
+            if (listener != null) {
+                listener.onError("Unsupported language: " + languageCode);
+            }
             return;
         }
         
         model.setDownloading(true);
+        Log.d(TAG, "Starting actual MLKit model download for: " + languageCode + " (MLKit: " + mlkitLanguageCode + ")");
         
-        // Simulate download process in a background thread
-        new Thread(() -> {
-            try {
-                Log.d(TAG, "Starting download for model: " + model.getLanguageCode());
-                
-                // Simulate download progress
-                for (int progress = 0; progress <= 100; progress += 10) {
-                    Thread.sleep(500); // Simulate download time
-                    
-                    final int currentProgress = progress;
-                    model.setDownloadProgress(currentProgress);
-                    
-                    if (listener != null) {
-                        listener.onProgress(currentProgress);
-                    }
-                }
-                
-                // Mark as downloaded
-                model.setDownloading(false);
-                model.setDownloaded(true);
-                
-                // Save to preferences
-                saveDownloadedModelPrivate(model.getLanguageCode());
-                
-                // Create placeholder file
-                createModelFile(model);
-                
-                Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
-                
-                if (listener != null) {
-                    listener.onSuccess();
-                }
-                
-            } catch (InterruptedException e) {
-                Log.e(TAG, "Download interrupted", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download interrupted");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Download failed", e);
-                model.setDownloading(false);
-                if (listener != null) {
-                    listener.onError("Download failed: " + e.getMessage());
-                }
+        // Create translator for model download
+        // We use the target language as both source and target to ensure the specific model is downloaded
+        TranslatorOptions options = new TranslatorOptions.Builder()
+                .setSourceLanguage(mlkitLanguageCode)
+                .setTargetLanguage(mlkitLanguageCode)
+                .build();
+        
+        Translator translator = Translation.getClient(options);
+        
+        // Perform actual MLKit model download
+        Task<Void> downloadTask = translator.downloadModelIfNeeded();
+        
+        downloadTask.addOnProgressListener(progress -> {
+            // MLKit doesn't provide fine-grained progress, so we'll simulate it
+            // based on the download task completion state
+            if (listener != null) {
+                listener.onProgress(50); // Indicate download is in progress
             }
-        }).start();
+        }).addOnSuccessListener(result -> {
+            Log.d(TAG, "MLKit model download successful for: " + languageCode);
+            
+            // Verify the model is actually working
+            verifyAndFinalizeModelDownload(translator, model, languageCode, mlkitLanguageCode, listener);
+            
+        }).addOnFailureListener(exception -> {
+            Log.e(TAG, "MLKit model download failed for: " + languageCode, exception);
+            model.setDownloading(false);
+            
+            String errorMessage = "Model download failed";
+            if (exception.getMessage() != null) {
+                errorMessage += ": " + exception.getMessage();
+            }
+            
+            if (listener != null) {
+                listener.onError(errorMessage);
+            }
+            
+            // Clean up translator
+            try {
+                translator.close();
+            } catch (Exception e) {
+                Log.w(TAG, "Error closing translator after failed download", e);
+            }
+        });
+    }
+    
+    /**
+     * Verifies the downloaded model and finalizes the download process.
+     * This ensures the model actually works before marking it as downloaded.
+     */
+    private void verifyAndFinalizeModelDownload(Translator translator, OfflineModelInfo model, 
+                                              String languageCode, String mlkitLanguageCode, 
+                                              DownloadListener listener) {
+        Log.d(TAG, "Verifying downloaded model: " + languageCode);
+        
+        // Test translation to verify model works
+        Task<String> verifyTask = translator.translate("test");
+        
+        verifyTask.addOnSuccessListener(result -> {
+            Log.d(TAG, "Model verification successful for: " + languageCode);
+            
+            // Mark as downloaded and save to preferences
+            model.setDownloading(false);
+            model.setDownloaded(true);
+            saveDownloadedModelPrivate(languageCode);
+            
+            // Create a marker file for additional verification
+            try {
+                createModelFile(model);
+            } catch (Exception e) {
+                Log.w(TAG, "Could not create model marker file for " + languageCode, e);
+                // This is not critical since MLKit handles the actual model files
+            }
+            
+            Log.d(TAG, "Model download and verification completed for: " + languageCode);
+            
+            if (listener != null) {
+                listener.onProgress(100);
+                listener.onSuccess();
+            }
+            
+            // Clean up translator
+            try {
+                translator.close();
+            } catch (Exception e) {
+                Log.w(TAG, "Error closing translator after successful download", e);
+            }
+            
+        }).addOnFailureListener(exception -> {
+            Log.e(TAG, "Model verification failed for: " + languageCode, exception);
+            model.setDownloading(false);
+            
+            String errorMessage = "Model downloaded but verification failed";
+            if (exception.getMessage() != null && exception.getMessage().toLowerCase().contains("dictionary")) {
+                errorMessage = "Model downloaded but dictionary files failed to load. Please try again or check available storage space.";
+            } else if (exception.getMessage() != null) {
+                errorMessage += ": " + exception.getMessage();
+            }
+            
+            if (listener != null) {
+                listener.onError(errorMessage);
+            }
+            
+            // Clean up translator
+            try {
+                translator.close();
+            } catch (Exception e) {
+                Log.w(TAG, "Error closing translator after failed verification", e);
+            }
+        });
     }
     
     /**
@@ -250,22 +327,38 @@ public class OfflineModelManager {
     
     /**
      * Check if a model is downloaded and verified.
-     * This extends the basic download check with ML Kit verification for accuracy.
+     * This extends the basic download check with additional verification.
      */
     public boolean isModelDownloadedAndVerified(String languageCode) {
-        boolean basicDownload = isModelDownloaded(languageCode);
-        Log.d(TAG, "Basic download check for " + languageCode + ": " + basicDownload);
-        
-        if (!basicDownload) {
+        if (!isModelDownloaded(languageCode)) {
             return false;
         }
         
-        // For ML Kit models, verify with actual ML Kit rather than file existence
-        // since ML Kit manages its own model storage
-        boolean mlkitAvailable = isModelAvailableInMLKit(languageCode);
-        Log.d(TAG, "ML Kit availability check for " + languageCode + ": " + mlkitAvailable);
+        // Primary verification - check with MLKit
+        boolean mlkitVerified = isModelAvailableInMLKit(languageCode);
+        if (mlkitVerified) {
+            return true;
+        }
         
-        return mlkitAvailable;
+        // Secondary verification - check if our marker file exists
+        try {
+            File modelDir = getModelDirectory();
+            File modelFile = new File(modelDir, languageCode + ".model");
+            boolean fileExists = modelFile.exists() && modelFile.canRead();
+            
+            if (fileExists && !mlkitVerified) {
+                // File exists but MLKit says model is not available
+                // This suggests a synchronization issue - clean up tracking
+                Log.w(TAG, "Model file exists but MLKit verification failed for " + languageCode + ". Cleaning up tracking.");
+                removeDownloadedModel(languageCode);
+                return false;
+            }
+            
+            return fileExists;
+        } catch (Exception e) {
+            Log.e(TAG, "Error verifying model file for " + languageCode, e);
+            return false;
+        }
     }
     
     /**
@@ -385,33 +478,10 @@ public class OfflineModelManager {
                 return false;
             }
             
-            // First try: Test with English as the other language for realistic translation
-            String verifyTargetLanguage = mlkitCode.equals(TranslateLanguage.ENGLISH) 
-                    ? TranslateLanguage.SPANISH : TranslateLanguage.ENGLISH;
-            
-            if (testModelAvailability(mlkitCode, verifyTargetLanguage, languageCode)) {
-                return true;
-            }
-            
-            // Fallback: Test with same language if cross-language test failed
-            // This might indicate the target language model is not available, but our source model might be
-            Log.d(TAG, "Cross-language test failed for " + languageCode + ", trying fallback verification");
-            return testModelAvailability(mlkitCode, mlkitCode, languageCode);
-            
-        } catch (Exception e) {
-            Log.w(TAG, "Error checking ML Kit model availability for " + languageCode, e);
-            return false;
-        }
-    }
-    
-    /**
-     * Tests model availability with specific source and target languages
-     */
-    private boolean testModelAvailability(String sourceLanguage, String targetLanguage, String originalLanguageCode) {
-        try {
+            // Create translator with the language as both source and target
             TranslatorOptions options = new TranslatorOptions.Builder()
-                    .setSourceLanguage(sourceLanguage)
-                    .setTargetLanguage(targetLanguage)
+                    .setSourceLanguage(mlkitCode)
+                    .setTargetLanguage(mlkitCode)
                     .build();
 
             Translator translator = Translation.getClient(options);
@@ -424,23 +494,19 @@ public class OfflineModelManager {
                 Tasks.await(translateTask, 1, TimeUnit.SECONDS);
                 
                 // If we got here without exception, model is available
-                Log.d(TAG, "ML Kit model verified as available: " + originalLanguageCode + " (" + sourceLanguage + " -> " + targetLanguage + ")");
                 return true;
                 
             } catch (TimeoutException e) {
                 // Timeout means model needs to be downloaded
-                Log.d(TAG, "ML Kit model timeout (needs download): " + originalLanguageCode);
                 return false;
             } catch (ExecutionException e) {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
                     if (errorMsg.contains("model") && errorMsg.contains("download")) {
-                        Log.d(TAG, "ML Kit indicates model not downloaded: " + originalLanguageCode);
                         return false;
                     }
                 }
-                Log.d(TAG, "ML Kit model verification failed: " + originalLanguageCode + " - " + e.getMessage());
                 return false;
             } finally {
                 // Clean up translator
@@ -451,7 +517,7 @@ public class OfflineModelManager {
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, "Error in model availability test for " + originalLanguageCode, e);
+            Log.w(TAG, "Error checking ML Kit model availability for " + languageCode, e);
             return false;
         }
     }
