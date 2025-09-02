@@ -385,13 +385,33 @@ public class OfflineModelManager {
                 return false;
             }
             
-            // Create translator with English as the other language to test actual translation capability
+            // First try: Test with English as the other language for realistic translation
             String verifyTargetLanguage = mlkitCode.equals(TranslateLanguage.ENGLISH) 
                     ? TranslateLanguage.SPANISH : TranslateLanguage.ENGLISH;
             
+            if (testModelAvailability(mlkitCode, verifyTargetLanguage, languageCode)) {
+                return true;
+            }
+            
+            // Fallback: Test with same language if cross-language test failed
+            // This might indicate the target language model is not available, but our source model might be
+            Log.d(TAG, "Cross-language test failed for " + languageCode + ", trying fallback verification");
+            return testModelAvailability(mlkitCode, mlkitCode, languageCode);
+            
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking ML Kit model availability for " + languageCode, e);
+            return false;
+        }
+    }
+    
+    /**
+     * Tests model availability with specific source and target languages
+     */
+    private boolean testModelAvailability(String sourceLanguage, String targetLanguage, String originalLanguageCode) {
+        try {
             TranslatorOptions options = new TranslatorOptions.Builder()
-                    .setSourceLanguage(mlkitCode)
-                    .setTargetLanguage(verifyTargetLanguage)
+                    .setSourceLanguage(sourceLanguage)
+                    .setTargetLanguage(targetLanguage)
                     .build();
 
             Translator translator = Translation.getClient(options);
@@ -404,23 +424,23 @@ public class OfflineModelManager {
                 Tasks.await(translateTask, 1, TimeUnit.SECONDS);
                 
                 // If we got here without exception, model is available
-                Log.d(TAG, "ML Kit model verified as available: " + languageCode + " (" + mlkitCode + ")");
+                Log.d(TAG, "ML Kit model verified as available: " + originalLanguageCode + " (" + sourceLanguage + " -> " + targetLanguage + ")");
                 return true;
                 
             } catch (TimeoutException e) {
                 // Timeout means model needs to be downloaded
-                Log.d(TAG, "ML Kit model timeout (needs download): " + languageCode);
+                Log.d(TAG, "ML Kit model timeout (needs download): " + originalLanguageCode);
                 return false;
             } catch (ExecutionException e) {
                 // Check if the error indicates missing models
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     String errorMsg = e.getCause().getMessage().toLowerCase();
                     if (errorMsg.contains("model") && errorMsg.contains("download")) {
-                        Log.d(TAG, "ML Kit indicates model not downloaded: " + languageCode);
+                        Log.d(TAG, "ML Kit indicates model not downloaded: " + originalLanguageCode);
                         return false;
                     }
                 }
-                Log.d(TAG, "ML Kit model verification failed: " + languageCode + " - " + e.getMessage());
+                Log.d(TAG, "ML Kit model verification failed: " + originalLanguageCode + " - " + e.getMessage());
                 return false;
             } finally {
                 // Clean up translator
@@ -431,7 +451,7 @@ public class OfflineModelManager {
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, "Error checking ML Kit model availability for " + languageCode, e);
+            Log.w(TAG, "Error in model availability test for " + originalLanguageCode, e);
             return false;
         }
     }
