@@ -77,6 +77,7 @@ public class OfflineTranslationService {
      */
     public boolean isOfflineTranslationAvailable(String sourceLanguage, String targetLanguage) {
         if (sourceLanguage == null || targetLanguage == null) {
+            Log.d(TAG, "Null language codes provided: " + sourceLanguage + " -> " + targetLanguage);
             return false;
         }
 
@@ -89,6 +90,8 @@ public class OfflineTranslationService {
             return false;
         }
 
+        Log.d(TAG, "Checking availability for: " + sourceLanguage + " (" + sourceMLKit + ") -> " + targetLanguage + " (" + targetMLKit + ")");
+
         // PRIMARY CHECK: Use OfflineModelManager as the authoritative source
         // Convert back to standard language codes for OfflineModelManager verification
         String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
@@ -97,6 +100,9 @@ public class OfflineTranslationService {
         // If OfflineModelManager says models are downloaded and verified, trust that
         boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
         boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+        
+        Log.d(TAG, "OfflineModelManager verification - Source (" + sourceStandard + "): " + sourceVerified + 
+                  ", Target (" + targetStandard + "): " + targetVerified);
         
         if (sourceVerified && targetVerified) {
             Log.d(TAG, "Models verified by OfflineModelManager: " + sourceLanguage + " -> " + targetLanguage);
@@ -110,7 +116,11 @@ public class OfflineTranslationService {
         // check our internal tracking and verify with MLKit directly
         boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
         
+        Log.d(TAG, "Internal tracking - Source (" + sourceMLKit + "): " + downloadedModels.contains(sourceMLKit) + 
+                  ", Target (" + targetMLKit + "): " + downloadedModels.contains(targetMLKit));
+        
         if (internalTracking) {
+            Log.d(TAG, "Verifying models with MLKit direct test...");
             // Test with MLKit to see if models actually work
             boolean mlkitWorks = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
             if (mlkitWorks) {
@@ -158,6 +168,12 @@ public class OfflineTranslationService {
                 
                 // If we got a result, models are available
                 Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
+                
+                // Important: Update our internal tracking to match reality
+                downloadedModels.add(sourceMLKit);
+                downloadedModels.add(targetMLKit);
+                saveDownloadedModels();
+                
                 return true;
                 
             } catch (TimeoutException e) {
@@ -179,6 +195,13 @@ public class OfflineTranslationService {
                 }
                 Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
                 return false;
+            } finally {
+                // Clean up translator
+                try {
+                    translator.close();
+                } catch (Exception e) {
+                    // Ignore cleanup errors
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error verifying model availability with MLKit", e);
@@ -639,44 +662,34 @@ public class OfflineTranslationService {
         Log.d(TAG, "Verifying model download success for: " + mlkitLanguageCode);
         
         try {
-            // Create translator for verification
+            // First try: Test with a commonly available language (English)
+            // If we're testing English, use Spanish as the target
+            String verifyTargetLanguage = mlkitLanguageCode.equals(TranslateLanguage.ENGLISH) 
+                    ? TranslateLanguage.SPANISH : TranslateLanguage.ENGLISH;
+            
             TranslatorOptions options = new TranslatorOptions.Builder()
                     .setSourceLanguage(mlkitLanguageCode)
-                    .setTargetLanguage(mlkitLanguageCode)
+                    .setTargetLanguage(verifyTargetLanguage)
                     .build();
             
             Translator verifyTranslator = Translation.getClient(options);
             
-            // Test with a simple translation to verify dictionaries load properly
+            // Test with a simple translation to verify model works
             verifyTranslator.translate("test")
                     .addOnSuccessListener(result -> {
-                        Log.d(TAG, "Model verification successful, dictionaries loaded properly: " + mlkitLanguageCode);
-                        
-                        // Only mark as downloaded if verification succeeds
-                        downloadedModels.add(mlkitLanguageCode);
-                        saveDownloadedModels();
-                        
-                        // Refresh the model list to ensure synchronization
-                        loadDownloadedModels();
-                        
-                        if (callback != null) {
-                            callback.onDownloadComplete(true, originalLanguageCode, null);
-                        }
+                        Log.d(TAG, "Model verification successful: " + mlkitLanguageCode);
+                        handleSuccessfulVerification(mlkitLanguageCode, originalLanguageCode, callback);
                     })
                     .addOnFailureListener(verifyException -> {
-                        Log.e(TAG, "Model verification failed, dictionaries may not have loaded properly: " + mlkitLanguageCode, verifyException);
+                        Log.w(TAG, "First verification attempt failed for " + mlkitLanguageCode + ": " + verifyException.getMessage());
                         
-                        String errorMessage = verifyException.getMessage();
-                        if (errorMessage != null && (errorMessage.toLowerCase().contains("dictionary") || 
-                                                   errorMessage.toLowerCase().contains("dict"))) {
-                            Log.w(TAG, "Dictionary loading failure detected during model verification");
-                            errorMessage = "Model downloaded but dictionary files failed to load. Please try downloading again or check available storage space.";
+                        // Check if failure is due to missing target language model
+                        if (isModelNotAvailableError(verifyException)) {
+                            // Try verification with a different approach - identity translation
+                            attemptAlternativeVerification(mlkitLanguageCode, originalLanguageCode, callback);
                         } else {
-                            errorMessage = enhanceErrorMessage(errorMessage);
-                        }
-                        
-                        if (callback != null) {
-                            callback.onDownloadComplete(false, originalLanguageCode, errorMessage);
+                            // Handle other types of failures (dictionary loading, etc.)
+                            handleVerificationFailure(verifyException, originalLanguageCode, callback);
                         }
                     });
                     
@@ -687,6 +700,89 @@ public class OfflineTranslationService {
                     "Model download verification failed: " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * Attempts an alternative verification method when the primary verification fails
+     * due to missing target language models.
+     */
+    private void attemptAlternativeVerification(String mlkitLanguageCode, String originalLanguageCode,
+                                              ModelDownloadCallback callback) {
+        Log.d(TAG, "Attempting alternative verification for: " + mlkitLanguageCode);
+        
+        try {
+            // Use the same language for both source and target as a fallback verification
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(mlkitLanguageCode)
+                    .setTargetLanguage(mlkitLanguageCode)
+                    .build();
+            
+            Translator verifyTranslator = Translation.getClient(options);
+            
+            verifyTranslator.translate("test")
+                    .addOnSuccessListener(result -> {
+                        Log.d(TAG, "Alternative verification successful: " + mlkitLanguageCode);
+                        handleSuccessfulVerification(mlkitLanguageCode, originalLanguageCode, callback);
+                    })
+                    .addOnFailureListener(verifyException -> {
+                        Log.e(TAG, "Alternative verification also failed for " + mlkitLanguageCode, verifyException);
+                        handleVerificationFailure(verifyException, originalLanguageCode, callback);
+                    });
+        } catch (Exception e) {
+            Log.e(TAG, "Error during alternative verification", e);
+            handleVerificationFailure(e, originalLanguageCode, callback);
+        }
+    }
+
+    /**
+     * Handles successful model verification
+     */
+    private void handleSuccessfulVerification(String mlkitLanguageCode, String originalLanguageCode,
+                                            ModelDownloadCallback callback) {
+        // Only mark as downloaded if verification succeeds
+        downloadedModels.add(mlkitLanguageCode);
+        saveDownloadedModels();
+        
+        // Also update OfflineModelManager to ensure synchronization
+        if (modelManager != null) {
+            modelManager.saveDownloadedModel(originalLanguageCode);
+            Log.d(TAG, "Updated OfflineModelManager with verified model: " + originalLanguageCode);
+        }
+        
+        // Refresh the model list to ensure synchronization
+        loadDownloadedModels();
+        
+        if (callback != null) {
+            callback.onDownloadComplete(true, originalLanguageCode, null);
+        }
+    }
+
+    /**
+     * Handles verification failure
+     */
+    private void handleVerificationFailure(Exception exception, String originalLanguageCode,
+                                         ModelDownloadCallback callback) {
+        String errorMessage = exception.getMessage();
+        if (errorMessage != null && (errorMessage.toLowerCase().contains("dictionary") || 
+                                   errorMessage.toLowerCase().contains("dict"))) {
+            Log.w(TAG, "Dictionary loading failure detected during model verification");
+            errorMessage = "Model downloaded but dictionary files failed to load. Please try downloading again or check available storage space.";
+        } else {
+            errorMessage = enhanceErrorMessage(errorMessage);
+        }
+        
+        if (callback != null) {
+            callback.onDownloadComplete(false, originalLanguageCode, errorMessage);
+        }
+    }
+
+    /**
+     * Checks if an exception indicates that a model is not available
+     */
+    private boolean isModelNotAvailableError(Exception exception) {
+        if (exception.getMessage() == null) return false;
+        String errorMsg = exception.getMessage().toLowerCase();
+        return errorMsg.contains("model") && (errorMsg.contains("not") || errorMsg.contains("download"));
     }
 
     /**
