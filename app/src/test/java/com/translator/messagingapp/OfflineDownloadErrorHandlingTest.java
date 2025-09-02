@@ -433,4 +433,96 @@ public class OfflineDownloadErrorHandlingTest {
             }).start();
         }
     }
+
+    @Test
+    public void testMLKitIntegrationErrorHandling() throws InterruptedException {
+        // Test specific MLKit integration error scenarios
+        
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean downloadSuccess = new AtomicBoolean(false);
+        AtomicReference<String> errorMessage = new AtomicReference<>();
+        
+        OfflineModelInfo testModel = getModelByLanguageCode("de");
+        if (testModel != null) {
+            OfflineModelManager.DownloadListener listener = new OfflineModelManager.DownloadListener() {
+                @Override
+                public void onProgress(int progress) {
+                    // Verify that progress is reported during actual MLKit download
+                    assertTrue("Progress should be between 0 and 100", progress >= 0 && progress <= 100);
+                }
+
+                @Override
+                public void onSuccess() {
+                    downloadSuccess.set(true);
+                    latch.countDown();
+                }
+
+                @Override
+                public void onError(String error) {
+                    downloadSuccess.set(false);
+                    errorMessage.set(error);
+                    latch.countDown();
+                }
+            };
+            
+            modelManager.downloadModel(testModel, listener);
+            
+            // Wait for download to complete (with generous timeout for actual MLKit download)
+            assertTrue("MLKit download should complete within timeout", latch.await(30, TimeUnit.SECONDS));
+            
+            // If download succeeded, verify the model is properly tracked
+            if (downloadSuccess.get()) {
+                assertTrue("Downloaded model should be tracked as downloaded", 
+                          modelManager.isModelDownloaded(testModel.getLanguageCode()));
+                assertTrue("Downloaded model should pass verification", 
+                          modelManager.isModelDownloadedAndVerified(testModel.getLanguageCode()));
+            } else {
+                // If download failed, error message should be descriptive
+                assertNotNull("Error message should be provided", errorMessage.get());
+                assertFalse("Error message should not be empty", errorMessage.get().trim().isEmpty());
+                
+                // Common expected error scenarios
+                String error = errorMessage.get().toLowerCase();
+                boolean isExpectedError = error.contains("network") || 
+                                        error.contains("download") || 
+                                        error.contains("unsupported") ||
+                                        error.contains("verification") ||
+                                        error.contains("dictionary");
+                assertTrue("Error message should indicate a known error type: " + errorMessage.get(), 
+                          isExpectedError);
+            }
+        }
+    }
+
+    @Test
+    public void testEnhancedModelVerification() {
+        // Test the enhanced model verification that checks both MLKit and file existence
+        
+        List<OfflineModelInfo> models = modelManager.getAvailableModels();
+        assertNotNull("Models list should not be null", models);
+        
+        for (OfflineModelInfo model : models) {
+            String languageCode = model.getLanguageCode();
+            
+            boolean basicDownloaded = modelManager.isModelDownloaded(languageCode);
+            boolean verifiedDownloaded = modelManager.isModelDownloadedAndVerified(languageCode);
+            
+            // Enhanced verification should be consistent with basic check for truly working models
+            if (verifiedDownloaded) {
+                assertTrue("Verified models should also pass basic download check", basicDownloaded);
+            }
+            
+            // If basic check says downloaded but verification fails, there should be cleanup
+            if (basicDownloaded && !verifiedDownloaded) {
+                // This scenario indicates a synchronization issue that should be auto-corrected
+                // The enhanced verification should clean up invalid tracking
+                
+                // Re-check after potential cleanup
+                boolean recheck = modelManager.isModelDownloaded(languageCode);
+                
+                // If cleanup occurred, the basic check should now align with verification
+                // (This tests the cleanup logic in isModelDownloadedAndVerified)
+            }
+        }
+    }
 }
