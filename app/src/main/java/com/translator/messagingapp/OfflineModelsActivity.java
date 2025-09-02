@@ -108,6 +108,10 @@ public class OfflineModelsActivity extends BaseActivity {
         
         try {
             List<OfflineModelInfo> models = modelManager.getAvailableModels();
+            
+            // Synchronize model states with the real OfflineTranslationService
+            synchronizeModelStates(models);
+            
             if (models.isEmpty()) {
                 showNoModelsMessage();
             } else {
@@ -116,6 +120,52 @@ public class OfflineModelsActivity extends BaseActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error loading offline models", e);
             showNoModelsMessage();
+        }
+    }
+    
+    /**
+     * Synchronizes model download states between OfflineModelManager and OfflineTranslationService.
+     * This ensures the UI shows accurate download status based on real ML Kit model availability.
+     */
+    private void synchronizeModelStates(List<OfflineModelInfo> models) {
+        OfflineTranslationService offlineService = getOfflineTranslationService();
+        if (offlineService == null) {
+            Log.w(TAG, "Cannot synchronize model states - OfflineTranslationService not available");
+            return;
+        }
+        
+        Log.d(TAG, "Synchronizing model states with OfflineTranslationService");
+        
+        for (OfflineModelInfo model : models) {
+            String languageCode = model.getLanguageCode();
+            
+            // Check if model is actually available in OfflineTranslationService
+            boolean actuallyDownloaded = offlineService.isLanguageModelDownloaded(languageCode);
+            boolean managerThinks = modelManager.isModelDownloaded(languageCode);
+            
+            if (managerThinks != actuallyDownloaded) {
+                Log.d(TAG, "Model state mismatch for " + languageCode + 
+                     " - Manager: " + managerThinks + ", Service: " + actuallyDownloaded);
+                
+                // Update the model state to match reality
+                model.setDownloaded(actuallyDownloaded);
+                
+                // Update the OfflineModelManager's tracking to match
+                if (actuallyDownloaded && !managerThinks) {
+                    // Service has model but manager doesn't know - update manager
+                    modelManager.saveDownloadedModel(languageCode);
+                    Log.d(TAG, "Updated OfflineModelManager to show " + languageCode + " as downloaded");
+                } else if (!actuallyDownloaded && managerThinks) {
+                    // Manager thinks model is downloaded but service doesn't have it - clean up manager
+                    // Note: we don't automatically delete from manager as it might have been a temporary service issue
+                    Log.w(TAG, "OfflineModelManager shows " + languageCode + " as downloaded but service doesn't have it");
+                }
+            }
+        }
+        
+        // Refresh the translation service to ensure it's synchronized
+        if (translationManager != null) {
+            translationManager.refreshOfflineModels();
         }
     }
     
@@ -139,9 +189,13 @@ public class OfflineModelsActivity extends BaseActivity {
         try {
             Toast.makeText(this, "Starting download for " + model.getLanguageName(), Toast.LENGTH_SHORT).show();
             
-            // Use OfflineTranslationService for actual MLKit model download
-            if (translationManager != null && translationManager.getOfflineTranslationService() != null) {
-                translationManager.getOfflineTranslationService().downloadLanguageModel(
+            // Ensure we have a valid OfflineTranslationService for real ML Kit downloads
+            OfflineTranslationService offlineService = getOfflineTranslationService();
+            
+            if (offlineService != null) {
+                // Use real ML Kit download - this is the correct path
+                Log.d(TAG, "Using real ML Kit download for: " + model.getLanguageCode());
+                offlineService.downloadLanguageModel(
                     model.getLanguageCode(), 
                     new OfflineTranslationService.ModelDownloadCallback() {
                         @Override
@@ -158,7 +212,9 @@ public class OfflineModelsActivity extends BaseActivity {
                                     modelAdapter.notifyDataSetChanged();
                                     
                                     // Refresh the translation service to pick up the new model
-                                    translationManager.refreshOfflineModels();
+                                    if (translationManager != null) {
+                                        translationManager.refreshOfflineModels();
+                                    }
                                 } else {
                                     Toast.makeText(OfflineModelsActivity.this, 
                                         getString(R.string.model_download_error, errorMessage), Toast.LENGTH_LONG).show();
@@ -175,43 +231,45 @@ public class OfflineModelsActivity extends BaseActivity {
                         }
                     });
             } else {
-                // Fallback to OfflineModelManager simulation
-                modelManager.downloadModel(model, new OfflineModelManager.DownloadListener() {
-                    @Override
-                    public void onProgress(int progress) {
-                        runOnUiThread(() -> {
-                            modelAdapter.updateProgress(model, progress);
-                        });
-                    }
-                    
-                    @Override
-                    public void onSuccess() {
-                        runOnUiThread(() -> {
-                            Toast.makeText(OfflineModelsActivity.this, 
-                                getString(R.string.model_download_success), Toast.LENGTH_SHORT).show();
-                            model.setDownloaded(true);
-                            modelAdapter.notifyDataSetChanged();
-                            
-                            // Refresh the translation service to pick up the new model
-                            if (translationManager != null) {
-                                translationManager.refreshOfflineModels();
-                            }
-                        });
-                    }
-                    
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            Toast.makeText(OfflineModelsActivity.this, 
-                                getString(R.string.model_download_error, error), Toast.LENGTH_LONG).show();
-                            modelAdapter.updateProgress(model, -1); // Hide progress
-                        });
-                    }
-                });
+                // No valid OfflineTranslationService available - show error instead of falling back to simulation
+                Log.e(TAG, "OfflineTranslationService not available - cannot download real models");
+                Toast.makeText(this, "Real model download service not available. Please restart the app and try again.", 
+                              Toast.LENGTH_LONG).show();
+                
+                // Don't fall back to simulation as it causes the "instant download" issue
+                // Instead, guide user to restart the app to properly initialize services
             }
         } catch (Exception e) {
             Log.e(TAG, "Error downloading model", e);
             Toast.makeText(this, "Error downloading model: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+    
+    /**
+     * Gets a valid OfflineTranslationService instance, ensuring robust download functionality.
+     * This method tries multiple approaches to get a working service.
+     */
+    private OfflineTranslationService getOfflineTranslationService() {
+        // First try: get from TranslationManager if available
+        if (translationManager != null && translationManager.getOfflineTranslationService() != null) {
+            Log.d(TAG, "Using OfflineTranslationService from TranslationManager");
+            return translationManager.getOfflineTranslationService();
+        }
+        
+        // Second try: create a new instance if we have userPreferences
+        if (userPreferences != null) {
+            Log.d(TAG, "Creating new OfflineTranslationService instance");
+            return new OfflineTranslationService(this, userPreferences);
+        }
+        
+        // Third try: create with minimal setup
+        try {
+            Log.d(TAG, "Creating OfflineTranslationService with minimal setup");
+            UserPreferences fallbackPrefs = new UserPreferences(this);
+            return new OfflineTranslationService(this, fallbackPrefs);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create OfflineTranslationService", e);
+            return null;
         }
     }
     
@@ -222,7 +280,18 @@ public class OfflineModelsActivity extends BaseActivity {
         }
         
         try {
+            // Delete from both OfflineModelManager and OfflineTranslationService for consistency
             boolean success = modelManager.deleteModel(model);
+            
+            // Also delete from the real OfflineTranslationService
+            OfflineTranslationService offlineService = getOfflineTranslationService();
+            if (offlineService != null) {
+                offlineService.deleteLanguageModel(model.getLanguageCode());
+                Log.d(TAG, "Deleted model from OfflineTranslationService: " + model.getLanguageCode());
+            } else {
+                Log.w(TAG, "Could not delete from OfflineTranslationService - service not available");
+            }
+            
             if (success) {
                 model.setDownloaded(false);
                 modelAdapter.notifyDataSetChanged();
