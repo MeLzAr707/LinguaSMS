@@ -34,6 +34,8 @@ public class OfflineTranslationService {
 
     private final Context context;
     private final UserPreferences userPreferences;
+    // Internal model tracking - maintained for backward compatibility with existing API
+    // TODO: Consider deprecating in favor of OfflineModelManager as single source of truth
     private final Set<String> downloadedModels;
     private OfflineModelManager modelManager;
 
@@ -70,6 +72,7 @@ public class OfflineTranslationService {
 
     /**
      * Checks if offline translation is available for the given language pair.
+     * Uses OfflineModelManager as the authoritative source for model availability.
      *
      * @param sourceLanguage The source language code
      * @param targetLanguage The target language code
@@ -80,7 +83,7 @@ public class OfflineTranslationService {
             return false;
         }
 
-        // Convert language codes to MLKit format if needed
+        // Convert language codes to MLKit format to validate they're supported
         String sourceMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(sourceLanguage);
         String targetMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(targetLanguage);
 
@@ -89,141 +92,17 @@ public class OfflineTranslationService {
             return false;
         }
 
-        // PRIMARY CHECK: Use OfflineModelManager as the authoritative source
-        // Convert back to standard language codes for OfflineModelManager verification
-        String sourceStandard = LanguageCodeUtils.convertFromMLKitLanguageCode(sourceMLKit);
-        String targetStandard = LanguageCodeUtils.convertFromMLKitLanguageCode(targetMLKit);
-
-        // If OfflineModelManager says models are downloaded and verified, trust that
-        boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
-        boolean targetVerified = modelManager.isModelDownloadedAndVerified(targetStandard);
+        // Use OfflineModelManager as the authoritative source for model availability
+        boolean sourceAvailable = modelManager.isModelDownloadedAndVerified(sourceLanguage);
+        boolean targetAvailable = modelManager.isModelDownloadedAndVerified(targetLanguage);
         
-        if (sourceVerified && targetVerified) {
+        if (sourceAvailable && targetAvailable) {
             Log.d(TAG, "Models verified by OfflineModelManager: " + sourceLanguage + " -> " + targetLanguage);
-            // Ensure our internal tracking is synchronized
-            downloadedModels.add(sourceMLKit);
-            downloadedModels.add(targetMLKit);
             return true;
         }
 
-        // SECONDARY CHECK: If OfflineModelManager says models are not verified,
-        // check our internal tracking and verify with MLKit directly
-        boolean internalTracking = downloadedModels.contains(sourceMLKit) && downloadedModels.contains(targetMLKit);
-        
-        if (internalTracking) {
-            // Test with MLKit to see if models actually work
-            boolean mlkitWorks = verifyModelAvailabilityWithMLKit(sourceMLKit, targetMLKit);
-            if (mlkitWorks) {
-                Log.d(TAG, "Models verified by MLKit test: " + sourceLanguage + " -> " + targetLanguage);
-                return true;
-            } else {
-                Log.w(TAG, "Models in internal tracking but MLKit verification failed: " + sourceLanguage + " -> " + targetLanguage);
-                // Remove from internal tracking since they don't actually work
-                downloadedModels.remove(sourceMLKit);
-                downloadedModels.remove(targetMLKit);
-                saveDownloadedModels();
-                return false;
-            }
-        }
-        
         Log.d(TAG, "Models not available for translation: " + sourceLanguage + " -> " + targetLanguage);
         return false;
-    }
-
-    /**
-     * Verifies model availability directly with MLKit.
-     * This is more reliable than our internal tracking.
-     *
-     * @param sourceMLKit The source language code in MLKit format
-     * @param targetMLKit The target language code in MLKit format
-     * @return true if both models are available in MLKit, false otherwise
-     */
-    private boolean verifyModelAvailabilityWithMLKit(String sourceMLKit, String targetMLKit) {
-        try {
-            // Create translator to check model availability
-            TranslatorOptions options = new TranslatorOptions.Builder()
-                    .setSourceLanguage(sourceMLKit)
-                    .setTargetLanguage(targetMLKit)
-                    .build();
-
-            Translator translator = Translation.getClient(options);
-            
-            // Try a simple translation to test if models are available
-            // We'll use a very short timeout to avoid waiting for downloads
-            try {
-                Task<String> translateTask = translator.translate("test");
-                
-                // Wait briefly to see if translation can complete immediately
-                String result = Tasks.await(translateTask, 2, TimeUnit.SECONDS);
-                
-                // If we got a result, models are available
-                Log.d(TAG, "MLKit models verified available: " + sourceMLKit + " -> " + targetMLKit);
-                return true;
-                
-            } catch (TimeoutException e) {
-                // Timeout likely means models need to be downloaded
-                Log.d(TAG, "MLKit model verification timeout (models likely not downloaded): " + sourceMLKit + " -> " + targetMLKit);
-                return false;
-            } catch (ExecutionException e) {
-                // Check if the error indicates missing models or dictionary loading issues
-                if (e.getCause() != null && e.getCause().getMessage() != null) {
-                    String errorMsg = e.getCause().getMessage().toLowerCase();
-                    if (errorMsg.contains("model") && errorMsg.contains("download")) {
-                        Log.d(TAG, "MLKit indicates models not downloaded: " + e.getCause().getMessage());
-                        return false;
-                    } else if (errorMsg.contains("dictionary") || errorMsg.contains("dict")) {
-                        Log.w(TAG, "MLKit dictionary loading failure detected: " + e.getCause().getMessage());
-                        // Try to recover from dictionary loading failure with retry
-                        return retryTranslationWithDictionaryFix(translator, sourceMLKit, targetMLKit);
-                    }
-                }
-                Log.d(TAG, "MLKit model verification failed: " + e.getMessage());
-                return false;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error verifying model availability with MLKit", e);
-            return false;
-        }
-    }
-
-    /**
-     * Attempts to recover from dictionary loading failures by retrying translation.
-     * This method handles cases where models are present but dictionaries fail to load.
-     *
-     * @param translator The translator instance to retry with
-     * @param sourceMLKit The source language code in MLKit format
-     * @param targetMLKit The target language code in MLKit format
-     * @return true if recovery was successful, false otherwise
-     */
-    private boolean retryTranslationWithDictionaryFix(Translator translator, String sourceMLKit, String targetMLKit) {
-        Log.d(TAG, "Attempting dictionary loading recovery for: " + sourceMLKit + " -> " + targetMLKit);
-        
-        try {
-            // Close and recreate translator to force reinitialization
-            translator.close();
-            
-            // Wait a moment for cleanup
-            Thread.sleep(1000);
-            
-            // Recreate translator options and client
-            TranslatorOptions options = new TranslatorOptions.Builder()
-                    .setSourceLanguage(sourceMLKit)
-                    .setTargetLanguage(targetMLKit)
-                    .build();
-            
-            Translator newTranslator = Translation.getClient(options);
-            
-            // Try translation again with a longer timeout for dictionary loading
-            Task<String> retryTask = newTranslator.translate("test");
-            String result = Tasks.await(retryTask, 5, TimeUnit.SECONDS);
-            
-            Log.d(TAG, "Dictionary loading recovery successful: " + sourceMLKit + " -> " + targetMLKit);
-            return true;
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Dictionary loading recovery failed: " + sourceMLKit + " -> " + targetMLKit, e);
-            return false;
-        }
     }
 
     /**
@@ -301,6 +180,8 @@ public class OfflineTranslationService {
 
     /**
      * Downloads a language model for offline translation.
+     * Note: This method implements MLKit download logic directly.
+     * Consider using OfflineModelManager.downloadModel() for new code.
      *
      * @param languageCode The language code
      * @param callback The callback to receive download progress and result
@@ -344,6 +225,9 @@ public class OfflineTranslationService {
 
     /**
      * Deletes a downloaded language model.
+     * Note: This method only closes translator and updates internal tracking.
+     * It does not actually delete model files from disk.
+     * Consider using OfflineModelManager.deleteModel() for full model removal.
      *
      * @param languageCode The language code
      */
