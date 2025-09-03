@@ -196,8 +196,8 @@ public class OfflineTranslationDiagnostics {
             String code = testCodes[i];
             
             // Test conversion to MLKit format
-            String mlkitCode = convertToMLKitLanguageCode(code);
-            String backConverted = convertFromMLKitLanguageCode(mlkitCode);
+            String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(code);
+            String backConverted = LanguageCodeUtils.convertFromMLKitLanguageCode(mlkitCode);
             
             boolean conversionWorks = mlkitCode != null && backConverted != null;
             boolean roundTripWorks = conversionWorks && (code.equals(backConverted) || code.startsWith(backConverted));
@@ -294,52 +294,5 @@ public class OfflineTranslationDiagnostics {
     public void logDiagnosticResults() {
         String report = generateDiagnosticReport();
         Log.i(TAG, report);
-    }
-    
-    // Helper methods copied from OfflineTranslationService for testing conversion
-    private String convertToMLKitLanguageCode(String languageCode) {
-        if (languageCode == null) {
-            return null;
-        }
-
-        String baseCode = languageCode.split("-")[0].toLowerCase();
-
-        switch (baseCode) {
-            case "en": return TranslateLanguage.ENGLISH;
-            case "es": return TranslateLanguage.SPANISH;
-            case "fr": return TranslateLanguage.FRENCH;
-            case "de": return TranslateLanguage.GERMAN;
-            case "it": return TranslateLanguage.ITALIAN;
-            case "pt": return TranslateLanguage.PORTUGUESE;
-            case "ru": return TranslateLanguage.RUSSIAN;
-            case "zh": return TranslateLanguage.CHINESE;
-            case "ja": return TranslateLanguage.JAPANESE;
-            case "ko": return TranslateLanguage.KOREAN;
-            case "ar": return TranslateLanguage.ARABIC;
-            case "hi": return TranslateLanguage.HINDI;
-            default: return null;
-        }
-    }
-    
-    private String convertFromMLKitLanguageCode(String mlkitLanguageCode) {
-        if (mlkitLanguageCode == null) {
-            return null;
-        }
-
-        switch (mlkitLanguageCode) {
-            case TranslateLanguage.ENGLISH: return "en";
-            case TranslateLanguage.SPANISH: return "es";
-            case TranslateLanguage.FRENCH: return "fr";
-            case TranslateLanguage.GERMAN: return "de";
-            case TranslateLanguage.ITALIAN: return "it";
-            case TranslateLanguage.PORTUGUESE: return "pt";
-            case TranslateLanguage.RUSSIAN: return "ru";
-            case TranslateLanguage.CHINESE: return "zh";
-            case TranslateLanguage.JAPANESE: return "ja";
-            case TranslateLanguage.KOREAN: return "ko";
-            case TranslateLanguage.ARABIC: return "ar";
-            case TranslateLanguage.HINDI: return "hi";
-            default: return null;
-        }
     }
 }

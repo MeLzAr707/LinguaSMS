@@ -109,6 +109,7 @@ public class OfflineModelManagerBuildFixTest {
         
         // Create both components
         OfflineModelManager modelManager = new OfflineModelManager(context);
+        UserPreferences userPreferences = new UserPreferences(context);
         OfflineTranslationService translationService = new OfflineTranslationService(context, userPreferences);
         
         // Test the detailed model status method that uses getModelStatusMap
