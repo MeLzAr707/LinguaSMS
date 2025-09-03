@@ -27,7 +27,8 @@ import java.util.concurrent.TimeoutException;
  */
 public class OfflineModelManager {
     private static final String TAG = "OfflineModelManager";
-    private static final String PREFS_NAME = "offline_models";
+    // Use same preferences as OfflineTranslationService for synchronization
+    private static final String PREFS_NAME = "offline_models"; 
     private static final String KEY_DOWNLOADED_MODELS = "downloaded_models";
     
     private Context context;
@@ -380,7 +381,7 @@ public class OfflineModelManager {
      */
     private boolean isModelAvailableInMLKit(String languageCode) {
         try {
-            String mlkitCode = convertToMLKitLanguageCode(languageCode);
+            String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(languageCode);
             if (mlkitCode == null) {
                 return false;
             }
@@ -426,44 +427,6 @@ public class OfflineModelManager {
         } catch (Exception e) {
             Log.w(TAG, "Error checking ML Kit model availability for " + languageCode, e);
             return false;
-        }
-    }
-    
-    /**
-     * Converts a standard language code to ML Kit format.
-     * Based on the mapping used in OfflineTranslationService.
-     */
-    private String convertToMLKitLanguageCode(String languageCode) {
-        if (languageCode == null) return null;
-        
-        // Handle common mappings
-        switch (languageCode.toLowerCase()) {
-            case "zh-cn": case "zh": return TranslateLanguage.CHINESE;
-            case "zh-tw": return TranslateLanguage.CHINESE;  // Note: ML Kit uses same code for both
-            case "en": return TranslateLanguage.ENGLISH;
-            case "es": return TranslateLanguage.SPANISH;
-            case "fr": return TranslateLanguage.FRENCH;
-            case "de": return TranslateLanguage.GERMAN;
-            case "it": return TranslateLanguage.ITALIAN;
-            case "pt": return TranslateLanguage.PORTUGUESE;
-            case "ru": return TranslateLanguage.RUSSIAN;
-            case "ja": return TranslateLanguage.JAPANESE;
-            case "ko": return TranslateLanguage.KOREAN;
-            case "ar": return TranslateLanguage.ARABIC;
-            case "hi": return TranslateLanguage.HINDI;
-            case "nl": return TranslateLanguage.DUTCH;
-            case "sv": return TranslateLanguage.SWEDISH;
-            case "fi": return TranslateLanguage.FINNISH;
-            case "da": return TranslateLanguage.DANISH;
-            case "no": return TranslateLanguage.NORWEGIAN;
-            case "pl": return TranslateLanguage.POLISH;
-            case "tr": return TranslateLanguage.TURKISH;
-            case "el": return TranslateLanguage.GREEK;
-            case "th": return TranslateLanguage.THAI;
-            case "vi": return TranslateLanguage.VIETNAMESE;
-            case "id": return TranslateLanguage.INDONESIAN;
-            case "he": return TranslateLanguage.HEBREW;
-            default: return null;
         }
     }
 }

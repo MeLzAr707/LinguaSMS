@@ -81,8 +81,8 @@ public class OfflineTranslationService {
         }
 
         // Convert language codes to MLKit format if needed
-        String sourceMLKit = convertToMLKitLanguageCode(sourceLanguage);
-        String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
+        String sourceMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(sourceLanguage);
+        String targetMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(targetLanguage);
 
         if (sourceMLKit == null || targetMLKit == null) {
             Log.d(TAG, "Unsupported language pair: " + sourceLanguage + " -> " + targetLanguage);
@@ -91,8 +91,8 @@ public class OfflineTranslationService {
 
         // PRIMARY CHECK: Use OfflineModelManager as the authoritative source
         // Convert back to standard language codes for OfflineModelManager verification
-        String sourceStandard = convertFromMLKitLanguageCode(sourceMLKit);
-        String targetStandard = convertFromMLKitLanguageCode(targetMLKit);
+        String sourceStandard = LanguageCodeUtils.convertFromMLKitLanguageCode(sourceMLKit);
+        String targetStandard = LanguageCodeUtils.convertFromMLKitLanguageCode(targetMLKit);
 
         // If OfflineModelManager says models are downloaded and verified, trust that
         boolean sourceVerified = modelManager.isModelDownloadedAndVerified(sourceStandard);
@@ -244,8 +244,8 @@ public class OfflineTranslationService {
         }
 
         // Convert language codes to MLKit format
-        String sourceMLKit = convertToMLKitLanguageCode(sourceLanguage);
-        String targetMLKit = convertToMLKitLanguageCode(targetLanguage);
+        String sourceMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(sourceLanguage);
+        String targetMLKit = LanguageCodeUtils.convertToMLKitLanguageCode(targetLanguage);
 
         if (sourceMLKit == null || targetMLKit == null) {
             if (callback != null) {
@@ -306,7 +306,7 @@ public class OfflineTranslationService {
      * @param callback The callback to receive download progress and result
      */
     public void downloadLanguageModel(String languageCode, ModelDownloadCallback callback) {
-        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        String mlkitLanguageCode = LanguageCodeUtils.convertToMLKitLanguageCode(languageCode);
         if (mlkitLanguageCode == null) {
             if (callback != null) {
                 callback.onDownloadComplete(false, languageCode, "Unsupported language");
@@ -348,7 +348,7 @@ public class OfflineTranslationService {
      * @param languageCode The language code
      */
     public void deleteLanguageModel(String languageCode) {
-        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        String mlkitLanguageCode = LanguageCodeUtils.convertToMLKitLanguageCode(languageCode);
         if (mlkitLanguageCode == null) {
             return;
         }
@@ -393,7 +393,7 @@ public class OfflineTranslationService {
      * @return true if the model is downloaded, false otherwise
      */
     public boolean isLanguageModelDownloaded(String languageCode) {
-        String mlkitLanguageCode = convertToMLKitLanguageCode(languageCode);
+        String mlkitLanguageCode = LanguageCodeUtils.convertToMLKitLanguageCode(languageCode);
         return mlkitLanguageCode != null && downloadedModels.contains(mlkitLanguageCode);
     }
 
@@ -444,132 +444,9 @@ public class OfflineTranslationService {
     }
 
     /**
-     * Converts standard language codes to MLKit language codes.
-     *
-     * @param languageCode The standard language code
-     * @return The MLKit language code, or null if not supported
+     * Loads the list of downloaded models from preferences.
+     * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
      */
-    private String convertToMLKitLanguageCode(String languageCode) {
-        if (languageCode == null) {
-            return null;
-        }
-
-        // Remove region code if present (e.g., "en-US" -> "en")
-        String baseCode = languageCode.split("-")[0].toLowerCase();
-
-        // Map common language codes to MLKit codes
-        switch (baseCode) {
-            case "en": return TranslateLanguage.ENGLISH;
-            case "es": return TranslateLanguage.SPANISH;
-            case "fr": return TranslateLanguage.FRENCH;
-            case "de": return TranslateLanguage.GERMAN;
-            case "it": return TranslateLanguage.ITALIAN;
-            case "pt": return TranslateLanguage.PORTUGUESE;
-            case "ru": return TranslateLanguage.RUSSIAN;
-            case "zh": return TranslateLanguage.CHINESE;
-            case "ja": return TranslateLanguage.JAPANESE;
-            case "ko": return TranslateLanguage.KOREAN;
-            case "ar": return TranslateLanguage.ARABIC;
-            case "hi": return TranslateLanguage.HINDI;
-            case "nl": return TranslateLanguage.DUTCH;
-            case "sv": return TranslateLanguage.SWEDISH;
-            case "da": return TranslateLanguage.DANISH;
-            case "no": return TranslateLanguage.NORWEGIAN;
-            case "fi": return TranslateLanguage.FINNISH;
-            case "pl": return TranslateLanguage.POLISH;
-            case "cs": return TranslateLanguage.CZECH;
-            case "sk": return TranslateLanguage.SLOVAK;
-            case "hu": return TranslateLanguage.HUNGARIAN;
-            case "ro": return TranslateLanguage.ROMANIAN;
-            case "bg": return TranslateLanguage.BULGARIAN;
-            case "hr": return TranslateLanguage.CROATIAN;
-            case "sl": return TranslateLanguage.SLOVENIAN;
-            case "et": return TranslateLanguage.ESTONIAN;
-            case "lv": return TranslateLanguage.LATVIAN;
-            case "lt": return TranslateLanguage.LITHUANIAN;
-            case "th": return TranslateLanguage.THAI;
-            case "vi": return TranslateLanguage.VIETNAMESE;
-            case "id": return TranslateLanguage.INDONESIAN;
-            case "ms": return TranslateLanguage.MALAY;
-            case "tl": return TranslateLanguage.TAGALOG;
-            case "sw": return TranslateLanguage.SWAHILI;
-            case "tr": return TranslateLanguage.TURKISH;
-            case "he": return TranslateLanguage.HEBREW;
-            case "fa": return TranslateLanguage.PERSIAN;
-            case "ur": return TranslateLanguage.URDU;
-            case "bn": return TranslateLanguage.BENGALI;
-            case "gu": return TranslateLanguage.GUJARATI;
-            case "kn": return TranslateLanguage.KANNADA;
-            case "mr": return TranslateLanguage.MARATHI;
-            case "ta": return TranslateLanguage.TAMIL;
-            case "te": return TranslateLanguage.TELUGU;
-            default: return null; // Unsupported language
-        }
-    }
-
-    /**
-     * Converts MLKit language codes back to standard language codes.
-     *
-     * @param mlkitLanguageCode The MLKit language code
-     * @return The standard language code, or null if not recognized
-     */
-    private String convertFromMLKitLanguageCode(String mlkitLanguageCode) {
-        if (mlkitLanguageCode == null) {
-            return null;
-        }
-
-        // Map MLKit codes back to standard language codes
-        switch (mlkitLanguageCode) {
-            case TranslateLanguage.ENGLISH: return "en";
-            case TranslateLanguage.SPANISH: return "es";
-            case TranslateLanguage.FRENCH: return "fr";
-            case TranslateLanguage.GERMAN: return "de";
-            case TranslateLanguage.ITALIAN: return "it";
-            case TranslateLanguage.PORTUGUESE: return "pt";
-            case TranslateLanguage.RUSSIAN: return "ru";
-            case TranslateLanguage.CHINESE: return "zh";
-            case TranslateLanguage.JAPANESE: return "ja";
-            case TranslateLanguage.KOREAN: return "ko";
-            case TranslateLanguage.ARABIC: return "ar";
-            case TranslateLanguage.HINDI: return "hi";
-            case TranslateLanguage.DUTCH: return "nl";
-            case TranslateLanguage.SWEDISH: return "sv";
-            case TranslateLanguage.DANISH: return "da";
-            case TranslateLanguage.NORWEGIAN: return "no";
-            case TranslateLanguage.FINNISH: return "fi";
-            case TranslateLanguage.POLISH: return "pl";
-            case TranslateLanguage.CZECH: return "cs";
-            case TranslateLanguage.SLOVAK: return "sk";
-            case TranslateLanguage.HUNGARIAN: return "hu";
-            case TranslateLanguage.ROMANIAN: return "ro";
-            case TranslateLanguage.BULGARIAN: return "bg";
-            case TranslateLanguage.CROATIAN: return "hr";
-            case TranslateLanguage.SLOVENIAN: return "sl";
-            case TranslateLanguage.ESTONIAN: return "et";
-            case TranslateLanguage.LATVIAN: return "lv";
-            case TranslateLanguage.LITHUANIAN: return "lt";
-            case TranslateLanguage.THAI: return "th";
-            case TranslateLanguage.VIETNAMESE: return "vi";
-            case TranslateLanguage.INDONESIAN: return "id";
-            case TranslateLanguage.MALAY: return "ms";
-            case TranslateLanguage.TAGALOG: return "tl";
-            case TranslateLanguage.SWAHILI: return "sw";
-            case TranslateLanguage.TURKISH: return "tr";
-            case TranslateLanguage.HEBREW: return "he";
-            case TranslateLanguage.PERSIAN: return "fa";
-            case TranslateLanguage.URDU: return "ur";
-            case TranslateLanguage.BENGALI: return "bn";
-            case TranslateLanguage.GUJARATI: return "gu";
-            case TranslateLanguage.KANNADA: return "kn";
-            case TranslateLanguage.MARATHI: return "mr";
-            case TranslateLanguage.TAMIL: return "ta";
-            case TranslateLanguage.TELUGU: return "te";
-            default: return null; // Unknown MLKit language code
-        }
-    }
-   //  * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
-
-    private void loadDownloadedModels() {
         try {
             // Use same SharedPreferences as OfflineModelManager
             SharedPreferences modelPrefs = context.getSharedPreferences(OFFLINE_MODELS_PREFS, Context.MODE_PRIVATE);
@@ -578,7 +455,7 @@ public class OfflineTranslationService {
             // Convert raw language codes to MLKit format for internal use
             downloadedModels.clear();
             for (String rawCode : rawDownloadedModels) {
-                String mlkitCode = convertToMLKitLanguageCode(rawCode);
+                String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(rawCode);
                 if (mlkitCode != null) {
                     downloadedModels.add(mlkitCode);
                     Log.d(TAG, "Loaded model: " + rawCode + " -> " + mlkitCode);
@@ -600,7 +477,7 @@ public class OfflineTranslationService {
             // Convert MLKit codes back to raw language codes for storage
             Set<String> rawCodes = new HashSet<>();
             for (String mlkitCode : downloadedModels) {
-                String rawCode = convertFromMLKitLanguageCode(mlkitCode);
+                String rawCode = LanguageCodeUtils.convertFromMLKitLanguageCode(mlkitCode);
                 if (rawCode != null) {
                     rawCodes.add(rawCode);
                 }
