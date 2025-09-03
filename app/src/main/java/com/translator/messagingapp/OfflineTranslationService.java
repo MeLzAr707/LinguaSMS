@@ -252,6 +252,8 @@ public class OfflineTranslationService {
 
     /**
      * Gets the list of supported languages for offline translation.
+     * Note: This hardcoded list includes more languages than OfflineModelManager currently supports.
+     * Consider using OfflineModelManager.getAvailableModels() for consistent model information.
      *
      * @return Array of supported language codes
      */
@@ -263,31 +265,47 @@ public class OfflineTranslationService {
 
     /**
      * Gets the list of downloaded language models.
+     * Delegates to OfflineModelManager for authoritative model status.
      *
-     * @return Set of downloaded language codes (MLKit format)
+     * @return Set of downloaded language codes (standard format)
      */
     public Set<String> getDownloadedModels() {
-        return new HashSet<>(downloadedModels);
+        Set<String> downloadedModels = new HashSet<>();
+        List<OfflineModelInfo> availableModels = modelManager.getAvailableModels();
+        
+        for (OfflineModelInfo model : availableModels) {
+            if (model.isDownloaded()) {
+                // Convert to MLKit format for backward compatibility
+                String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(model.getLanguageCode());
+                if (mlkitCode != null) {
+                    downloadedModels.add(mlkitCode);
+                }
+            }
+        }
+        
+        return downloadedModels;
     }
 
     /**
      * Checks if a specific language model is downloaded.
+     * Delegates to OfflineModelManager for authoritative model status.
      *
      * @param languageCode The language code
      * @return true if the model is downloaded, false otherwise
      */
     public boolean isLanguageModelDownloaded(String languageCode) {
-        String mlkitLanguageCode = LanguageCodeUtils.convertToMLKitLanguageCode(languageCode);
-        return mlkitLanguageCode != null && downloadedModels.contains(mlkitLanguageCode);
+        return modelManager.isModelDownloaded(languageCode);
     }
 
     /**
      * Checks if any offline models are downloaded.
+     * Delegates to OfflineModelManager for authoritative model status.
      *
      * @return true if at least one language model is downloaded, false otherwise
      */
     public boolean hasAnyDownloadedModels() {
-        return !downloadedModels.isEmpty();
+        List<OfflineModelInfo> availableModels = modelManager.getAvailableModels();
+        return availableModels.stream().anyMatch(OfflineModelInfo::isDownloaded);
     }
 
     /**
