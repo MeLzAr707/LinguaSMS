@@ -349,6 +349,7 @@ public class OfflineTranslationService {
      * Loads the list of downloaded models from preferences.
      * Now uses the same SharedPreferences as OfflineModelManager for synchronization.
      */
+    private void loadDownloadedModels() {
         try {
             // Use same SharedPreferences as OfflineModelManager
             SharedPreferences modelPrefs = context.getSharedPreferences(OFFLINE_MODELS_PREFS, Context.MODE_PRIVATE);
