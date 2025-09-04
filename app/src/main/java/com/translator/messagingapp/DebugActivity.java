@@ -53,7 +53,9 @@ public class DebugActivity extends BaseActivity {
         resultText = findViewById(R.id.debug_result_text);
 
         // Initialize MessageService
-        messageService = new MessageService(this);
+        TranslatorApp app = (TranslatorApp) getApplication();
+        TranslationManager translationManager = app.getTranslationManager();
+        messageService = new MessageService(this, translationManager);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
@@ -662,6 +664,60 @@ public class DebugActivity extends BaseActivity {
             resultText.setText("Error attempting offline fix: " + e.getMessage());
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Compares two phone numbers to see if they match.
+     * Uses Android's PhoneNumberUtils for normalization and comparison.
+     *
+     * @param number1 The first phone number
+     * @param number2 The second phone number
+     * @return true if the numbers match, false otherwise
+     */
+    private boolean phoneNumbersMatch(String number1, String number2) {
+        if (number1 == null || number2 == null) {
+            return false;
+        }
+
+        // Direct string comparison first
+        if (number1.equals(number2)) {
+            return true;
+        }
+
+        // Normalize and compare
+        String normalized1 = PhoneNumberUtils.normalizeNumber(number1);
+        String normalized2 = PhoneNumberUtils.normalizeNumber(number2);
+        
+        if (normalized1 != null && normalized2 != null && normalized1.equals(normalized2)) {
+            return true;
+        }
+
+        // Strip separators and compare
+        String stripped1 = PhoneNumberUtils.stripSeparators(number1);
+        String stripped2 = PhoneNumberUtils.stripSeparators(number2);
+        
+        if (stripped1.equals(stripped2)) {
+            return true;
+        }
+
+        // Try comparing with/without country code
+        String digits1 = number1.replaceAll("[^\\d]", "");
+        String digits2 = number2.replaceAll("[^\\d]", "");
+        
+        if (digits1.equals(digits2)) {
+            return true;
+        }
+
+        // Handle US numbers with/without country code
+        if (digits1.length() == 11 && digits1.startsWith("1") && digits2.length() == 10) {
+            return digits1.substring(1).equals(digits2);
+        }
+        
+        if (digits2.length() == 11 && digits2.startsWith("1") && digits1.length() == 10) {
+            return digits2.substring(1).equals(digits1);
+        }
+
+        return false;
     }
 }
 
