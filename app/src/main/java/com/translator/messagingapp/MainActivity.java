@@ -901,7 +901,7 @@ public class MainActivity extends BaseActivity
         new AlertDialog.Builder(this)
                 .setTitle(R.string.delete_conversation_title)
                 .setMessage(R.string.delete_conversation_message)
-                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     deleteConversation(conversation, position);
                 })
                 .setNegativeButton(R.string.cancel, null)
