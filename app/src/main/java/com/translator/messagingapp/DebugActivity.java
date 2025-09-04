@@ -27,6 +27,7 @@ public class DebugActivity extends BaseActivity {
     private Button offlineDiagnosticsButton;
     private Button offlineFixButton;
     private TextView resultText;
+    private MessageService messageService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +65,17 @@ public class DebugActivity extends BaseActivity {
         if (launchedAddress != null && !launchedAddress.isEmpty()) {
             addressInput.setText(launchedAddress);
             checkAddress(); // Automatically check the address
+        }
+
+        // Initialize MessageService for debugging purposes
+        try {
+            TranslatorApp app = (TranslatorApp) getApplication();
+            TranslationManager translationManager = app.getTranslationManager();
+            if (translationManager != null) {
+                messageService = new MessageService(this, translationManager);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing MessageService", e);
         }
     }
 
@@ -758,6 +770,42 @@ public class DebugActivity extends BaseActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error attempting offline fix", e);
             resultText.setText("Error attempting offline fix: " + e.getMessage());
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Test MessageService functionality including adding test messages.
+     */
+    private void testMessageService() {
+        try {
+            if (messageService == null) {
+                Toast.makeText(this, "MessageService not initialized", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            StringBuilder result = new StringBuilder();
+            result.append("Testing MessageService functionality...\n\n");
+            
+            // Test adding a test message
+            boolean testMessageAdded = messageService.addTestMessage();
+            result.append("Add test message: ");
+            result.append(testMessageAdded ? "SUCCESS" : "FAILED").append("\n");
+            
+            if (testMessageAdded) {
+                result.append("Test message added to SMS database\n");
+                result.append("Address: 123456789\n");
+                result.append("Body: This is a test message\n\n");
+            }
+            
+            result.append("MessageService test completed.\n");
+            resultText.setText(result.toString());
+            
+            Toast.makeText(this, "MessageService test completed", Toast.LENGTH_SHORT).show();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error testing MessageService", e);
+            resultText.setText("Error testing MessageService: " + e.getMessage());
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
