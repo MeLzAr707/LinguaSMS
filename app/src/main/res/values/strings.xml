@@ -91,6 +91,7 @@
     <string name="translation_error">Translation failed</string>
     <string name="incoming_language">Incoming Message Language</string>
     <string name="outgoing_language">Outgoing Message Language</string>
+    <string name="translate">Translate</string>
 
     <string name="error_loading_messages">Error loading messages</string>
 
