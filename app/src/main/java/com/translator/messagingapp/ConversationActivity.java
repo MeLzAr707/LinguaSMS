@@ -810,7 +810,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         new AlertDialog.Builder(this)
                 .setTitle(R.string.delete_message_title)
                 .setMessage(R.string.delete_message_confirmation)
-                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> {
                     deleteMessage(message, position);
                 })
                 .setNegativeButton(R.string.cancel, null)
