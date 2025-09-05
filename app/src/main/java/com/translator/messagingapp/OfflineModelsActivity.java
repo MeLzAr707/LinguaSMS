@@ -18,7 +18,12 @@ import java.util.List;
 
 /**
  * Activity for managing offline translation models.
+ * 
+ * @deprecated This activity has been replaced by GeminiNanoModelsActivity for better offline GenAI features.
+ * Use GeminiNanoModelsActivity instead for new implementations.
+ * This class is maintained for backward compatibility and existing tests only.
  */
+@Deprecated
 public class OfflineModelsActivity extends BaseActivity {
     private static final String TAG = "OfflineModelsActivity";
 

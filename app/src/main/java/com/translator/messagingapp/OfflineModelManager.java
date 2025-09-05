@@ -24,7 +24,12 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * Manages offline translation models including downloading and deletion.
+ * 
+ * @deprecated This manager has been replaced by GeminiNanoModelManager for better offline GenAI features.
+ * Use GeminiNanoModelManager instead for new implementations.
+ * This class is maintained for backward compatibility and existing tests only.
  */
+@Deprecated
 public class OfflineModelManager {
     private static final String TAG = "OfflineModelManager";
     // Use same preferences as OfflineTranslationService for synchronization

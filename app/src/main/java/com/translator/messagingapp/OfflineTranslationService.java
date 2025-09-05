@@ -23,7 +23,12 @@ import java.util.concurrent.TimeoutException;
 /**
  * Service for offline translation using Google MLKit.
  * Provides offline translation capabilities with downloadable language models.
+ * 
+ * @deprecated This service has been replaced by GeminiNanoTranslationService for better offline GenAI features.
+ * Use GeminiNanoTranslationService instead for new implementations.
+ * This class is maintained for backward compatibility and existing tests only.
  */
+@Deprecated
 public class OfflineTranslationService {
     private static final String TAG = "OfflineTranslationService";
     private static final int OPERATION_TIMEOUT_SECONDS = 30;
