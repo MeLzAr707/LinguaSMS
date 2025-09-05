@@ -186,7 +186,7 @@
         <string name="model_downloading">Downloading model…</string>
 
         <!-- Missing strings for translation preferences -->
-    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="pref_manage_offline_models">Manage Gemini Nano Models</string>
     <string name="pref_category_offline_models">Offline Translation</string>
 
     <!-- Missing strings for offline models -->

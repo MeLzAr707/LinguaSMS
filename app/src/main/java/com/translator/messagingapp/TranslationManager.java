@@ -10,8 +10,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Manager class for handling translation functionality.
+ * Manager class for handling translation functionality using Gemini Nano.
  * Consolidates functionality from MessageTranslator and parts of SmsReceiver.
+ * Updated to use Gemini Nano for offline GenAI features instead of ML Kit.
  */
 public class TranslationManager {
     private static final String TAG = "TranslationManager";
@@ -33,11 +34,11 @@ public class TranslationManager {
 
     private final Context context;
     private final GoogleTranslationService translationService;
-    private final OfflineTranslationService offlineTranslationService;
+    private final GeminiNanoTranslationService geminiNanoTranslationService; // Replaced OfflineTranslationService
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
-    private final LanguageDetectionService languageDetectionService;
+    private final GeminiNanoLanguageDetectionService geminiNanoLanguageDetectionService; // Replaced LanguageDetectionService
 
     /**
      * Creates a new TranslationManager.
@@ -49,11 +50,13 @@ public class TranslationManager {
     public TranslationManager(Context context, GoogleTranslationService translationService, UserPreferences userPreferences) {
         this.context = context;
         this.translationService = translationService;
-        this.offlineTranslationService = new OfflineTranslationService(context, userPreferences);
+        this.geminiNanoTranslationService = new GeminiNanoTranslationService(context, userPreferences); // Use Gemini Nano
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
-        this.languageDetectionService = new LanguageDetectionService(context, translationService);
+        this.geminiNanoLanguageDetectionService = new GeminiNanoLanguageDetectionService(context, translationService); // Use Gemini Nano
+        
+        Log.d(TAG, "TranslationManager initialized with Gemini Nano GenAI services");
     }
 
     /**
@@ -173,7 +176,7 @@ public class TranslationManager {
                 // If source language is not provided, try to detect it
                 if (finalSourceLanguage == null) {
                     // Use ML Kit language detection service with fallback to online detection
-                    finalSourceLanguage = languageDetectionService.detectLanguageSync(text);
+                    finalSourceLanguage = geminiNanoLanguageDetectionService.detectLanguage(text);
                     
                     if (finalSourceLanguage == null) {
                         if (callback != null) {
@@ -204,7 +207,7 @@ public class TranslationManager {
                     translateOnline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else {
                     // No API key available, check if we can use offline translation as fallback
-                    if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
+                    if (userPreferences.isOfflineTranslationEnabled() && geminiNanoTranslationService != null) {
                         // Try offline translation as fallback
                         translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                     } else {
@@ -295,8 +298,8 @@ public class TranslationManager {
             try {
                 String detectedLanguage = null;
                 
-                // Use ML Kit language detection service with fallback to online detection
-                detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
+                // Use Gemini Nano language detection service with fallback to online detection
+                detectedLanguage = geminiNanoLanguageDetectionService.detectLanguage(message.getOriginalText());
                 
                 if (detectedLanguage == null) {
                     if (callback != null) {
@@ -330,8 +333,8 @@ public class TranslationManager {
                 // Choose translation method based on availability
                 if (shouldUseOfflineTranslation(detectedLanguage, targetLanguage)) {
                     // Use offline translation
-                    offlineTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
-                        new OfflineTranslationService.OfflineTranslationCallback() {
+                    geminiNanoTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
+                        new GeminiNanoTranslationService.GeminiNanoTranslationCallback() {
                             @Override
                             public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
                                 if (success) {
@@ -577,17 +580,17 @@ public class TranslationManager {
      */
     private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
         // Use offline translation if it's enabled and available
-        if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
-            return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
+        if (userPreferences.isOfflineTranslationEnabled() && geminiNanoTranslationService != null) {
+            return geminiNanoTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
         }
         return false;
     }
 
     /**
-     * Performs offline translation using MLKit.
+     * Performs offline translation using Gemini Nano.
      */
     private void translateOffline(String text, String sourceLanguage, String targetLanguage, String cacheKey, TranslationCallback callback) {
-        offlineTranslationService.translateOffline(text, sourceLanguage, targetLanguage, new OfflineTranslationService.OfflineTranslationCallback() {
+        geminiNanoTranslationService.translateOffline(text, sourceLanguage, targetLanguage, new GeminiNanoTranslationService.GeminiNanoTranslationCallback() {
             @Override
             public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
                 if (success) {
@@ -687,12 +690,12 @@ public class TranslationManager {
     }
 
     /**
-     * Gets the offline translation service.
+     * Gets the Gemini Nano translation service.
      *
-     * @return The OfflineTranslationService instance
+     * @return The GeminiNanoTranslationService instance
      */
-    public OfflineTranslationService getOfflineTranslationService() {
-        return offlineTranslationService;
+    public GeminiNanoTranslationService getGeminiNanoTranslationService() {
+        return geminiNanoTranslationService;
     }
     /**
      * Translates a Message object and saves its state to the cache.
@@ -730,13 +733,12 @@ public class TranslationManager {
     }
 
     /**
-     * Refreshes the offline translation service to pick up any newly downloaded models.
-     * This should be called after models are downloaded/deleted via OfflineModelManager.
+     * Refreshes the Gemini Nano translation service to pick up any newly downloaded models.
+     * This should be called after models are downloaded/deleted via GeminiNanoModelManager.
      */
     public void refreshOfflineModels() {
-        if (offlineTranslationService != null) {
-            offlineTranslationService.refreshDownloadedModels();
-        }
+        // Gemini Nano models are managed automatically, no manual refresh needed
+        Log.d(TAG, "Gemini Nano models are managed automatically");
     }
 
     /**
@@ -816,11 +818,11 @@ public class TranslationManager {
         if (translationCache != null) {
             translationCache.close();
         }
-        if (offlineTranslationService != null) {
-            offlineTranslationService.cleanup();
+        if (geminiNanoTranslationService != null) {
+            geminiNanoTranslationService.cleanup();
         }
-        if (languageDetectionService != null) {
-            languageDetectionService.cleanup();
+        if (geminiNanoLanguageDetectionService != null) {
+            geminiNanoLanguageDetectionService.cleanup();
         }
     }
 
