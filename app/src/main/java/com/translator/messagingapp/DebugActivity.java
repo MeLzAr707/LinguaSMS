@@ -19,7 +19,6 @@ import androidx.appcompat.widget.Toolbar;
 public class DebugActivity extends BaseActivity {
     private static final String TAG = "DebugActivity";
 
-    private MessageService messageService;
     private EditText addressInput;
     private Button checkButton;
     private Button openButton;
@@ -51,9 +50,6 @@ public class DebugActivity extends BaseActivity {
         offlineDiagnosticsButton = findViewById(R.id.debug_offline_diagnostics_button);
         offlineFixButton = findViewById(R.id.debug_offline_fix_button);
         resultText = findViewById(R.id.debug_result_text);
-
-        // Initialize MessageService
-        messageService = new MessageService(this);
 
         // Set up click listeners
         checkButton.setOnClickListener(v -> checkAddress());
@@ -92,7 +88,7 @@ public class DebugActivity extends BaseActivity {
         result.append("Stripped: ").append(PhoneNumberUtils.stripSeparators(address)).append("\n\n");
 
         // Check thread ID
-        String threadId = messageService.getThreadIdForAddress(address);
+        String threadId = getThreadIdForAddress(address);
         result.append("Thread ID: ").append(threadId != null ? threadId : "Not found").append("\n\n");
 
         // Check messages
@@ -136,7 +132,7 @@ public class DebugActivity extends BaseActivity {
             return;
         }
 
-        String threadId = messageService.getThreadIdForAddress(address);
+        String threadId = getThreadIdForAddress(address);
 
         try {
             Intent intent = new Intent(this, ConversationActivity.class);
@@ -152,6 +148,108 @@ public class DebugActivity extends BaseActivity {
         } catch (Exception e) {
             Toast.makeText(this, getString(R.string.error_debug, e.getMessage()), Toast.LENGTH_SHORT).show();
             Log.e(TAG, "Error opening conversation directly", e);
+        }
+    }
+
+    private String getThreadIdForAddress(String address) {
+        if (address == null) return null;
+
+        // Try different formats
+        String[] addressFormats = {
+                address,
+                PhoneNumberUtils.normalizeNumber(address),
+                PhoneNumberUtils.stripSeparators(address)
+        };
+
+        for (String addr : addressFormats) {
+            try (Cursor cursor = getContentResolver().query(
+                    Uri.parse("content://sms/conversations"),
+                    new String[]{"thread_id"},
+                    null, null, null)) {
+
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        int threadIdIndex = cursor.getColumnIndex("thread_id");
+                        if (threadIdIndex >= 0) {
+                            String threadId = cursor.getString(threadIdIndex);
+                            if (threadContainsAddress(threadId, addr)) {
+                                return threadId;
+                            }
+                        }
+                    } while (cursor.moveToNext());
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting thread ID", e);
+            }
+        }
+
+        return null;
+    }
+
+    private boolean threadContainsAddress(String threadId, String address) {
+        if (threadId == null || address == null) return false;
+
+        try (Cursor cursor = getContentResolver().query(
+                Telephony.Sms.CONTENT_URI,
+                new String[]{Telephony.Sms.ADDRESS},
+                Telephony.Sms.THREAD_ID + "=?",
+                new String[]{threadId},
+                null)) {
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    int addressIndex = cursor.getColumnIndex(Telephony.Sms.ADDRESS);
+                    if (addressIndex >= 0) {
+                        String msgAddress = cursor.getString(addressIndex);
+                        if (phoneNumbersMatch(msgAddress, address)) {
+                            return true;
+                        }
+                    }
+                } while (cursor.moveToNext());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking thread", e);
+        }
+
+        return false;
+    }
+
+    private boolean phoneNumbersMatch(String number1, String number2) {
+        if (number1 == null || number2 == null) return false;
+
+        // Try exact match
+        if (number1.equals(number2)) return true;
+
+        // Try normalized match
+        String norm1 = PhoneNumberUtils.normalizeNumber(number1);
+        String norm2 = PhoneNumberUtils.normalizeNumber(number2);
+        if (norm1.equals(norm2)) return true;
+
+        // Try stripped match
+        String strip1 = PhoneNumberUtils.stripSeparators(number1);
+        String strip2 = PhoneNumberUtils.stripSeparators(number2);
+        if (strip1.equals(strip2)) return true;
+
+        // Try PhoneNumberUtils.compare
+        if (PhoneNumberUtils.compare(number1, number2)) return true;
+
+        // Try last digits match
+        String digits1 = getLastDigits(number1, 8);
+        String digits2 = getLastDigits(number2, 8);
+        return !digits1.isEmpty() && !digits2.isEmpty() && digits1.equals(digits2);
+    }
+
+    private String getLastDigits(String phoneNumber, int count) {
+        if (phoneNumber == null) return "";
+
+        // Remove all non-digit characters
+        String digitsOnly = phoneNumber.replaceAll("\\D", "");
+
+        // Return the last 'count' digits, or the whole string if shorter
+        if (digitsOnly.length() <= count) {
+            return digitsOnly;
+        } else {
+            return digitsOnly.substring(digitsOnly.length() - count);
         }
     }
 
@@ -460,7 +558,7 @@ public class DebugActivity extends BaseActivity {
             if (!address.isEmpty()) {
                 report.append("\n4. Address-specific Check (").append(address).append("):\n");
                 try {
-                    String threadId = messageService.getThreadIdForAddress(address);
+                    String threadId = getThreadIdForAddress(address);
                     report.append("   Thread ID: ").append(threadId != null ? threadId : "NOT FOUND").append("\n");
                     
                     if (threadId != null) {
