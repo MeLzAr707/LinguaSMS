@@ -69,6 +69,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ImageButton emojiButton;
     private ImageButton attachmentButton;
     private ImageButton translateButton;
+    private ImageButton smartReplyButton;
 
     // Data
     private String threadId;
@@ -89,6 +90,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
     private TextSizeManager textSizeManager;
+    private OfflineAIService offlineAIService;
     
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
@@ -107,6 +109,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
         textSizeManager = new TextSizeManager(this);
+        offlineAIService = new OfflineAIService(this);
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -203,6 +206,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
+        smartReplyButton = findViewById(R.id.smart_reply_button);
 
         // Check for critical views to prevent null pointer exceptions
         if (messagesRecyclerView == null) {
@@ -242,6 +246,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up translate input button
         if (translateInputButton != null) {
             translateInputButton.setOnClickListener(v -> translateInput());
+        }
+
+        // Set up smart reply button
+        if (smartReplyButton != null) {
+            smartReplyButton.setOnClickListener(v -> generateSmartReplies());
         }
 
         // Update UI based on theme
@@ -887,6 +896,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (id == android.R.id.home) {
             finish();
             return true;
+        } else if (id == R.id.menu_summarize_conversation) {
+            summarizeConversation();
+            return true;
+        } else if (id == R.id.menu_proofread_message) {
+            proofreadCurrentMessage();
+            return true;
+        } else if (id == R.id.menu_smart_reply) {
+            generateSmartReplies();
+            return true;
+        } else if (id == R.id.menu_rewrite_message) {
+            showRewriteMessageDialog();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -1270,6 +1291,291 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             if (translateButton != null) {
                 translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
+            
+            // Apply to smart reply button
+            if (smartReplyButton != null) {
+                smartReplyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
+            }
         }
     }
+
+    // AI Feature Methods
+
+    /**
+     * Summarizes the current conversation using AI.
+     */
+    private void summarizeConversation() {
+        if (messages == null || messages.isEmpty()) {
+            Toast.makeText(this, R.string.no_messages, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show progress
+        progressBar.setVisibility(View.VISIBLE);
+        
+        // Extract message texts for summarization
+        List<String> messageTexts = new ArrayList<>();
+        for (Message message : messages) {
+            if (message != null && !TextUtils.isEmpty(message.getBody())) {
+                messageTexts.add(message.getBody());
+            }
+        }
+        
+        if (messageTexts.isEmpty()) {
+            progressBar.setVisibility(View.GONE);
+            Toast.makeText(this, R.string.no_messages, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        offlineAIService.summarizeConversation(messageTexts, new OfflineAIService.SummarizationCallback() {
+            @Override
+            public void onSummarizationComplete(boolean success, String summary, String errorMessage) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    
+                    if (success && summary != null) {
+                        showSummaryDialog(summary);
+                    } else {
+                        Toast.makeText(ConversationActivity.this, 
+                            errorMessage != null ? errorMessage : getString(R.string.ai_feature_unavailable), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Proofreads the current message in the input field.
+     */
+    private void proofreadCurrentMessage() {
+        String currentText = messageInput.getText().toString().trim();
+        
+        if (TextUtils.isEmpty(currentText)) {
+            Toast.makeText(this, R.string.text_too_short, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        offlineAIService.proofreadText(currentText, new OfflineAIService.ProofreadingCallback() {
+            @Override
+            public void onProofreadingComplete(boolean success, List<OfflineAIService.ProofreadingSuggestion> suggestions, String errorMessage) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    
+                    if (success && suggestions != null && !suggestions.isEmpty()) {
+                        showProofreadingSuggestionsDialog(suggestions, currentText);
+                    } else if (success) {
+                        Toast.makeText(ConversationActivity.this, R.string.no_suggestions_found, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ConversationActivity.this, 
+                            errorMessage != null ? errorMessage : getString(R.string.ai_feature_unavailable), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Generates smart replies for the last received message.
+     */
+    private void generateSmartReplies() {
+        if (messages == null || messages.isEmpty()) {
+            Toast.makeText(this, R.string.no_messages, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Find the last received message (not sent by us)
+        String lastReceivedMessage = null;
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Message message = messages.get(i);
+            if (message != null && message.getType() == Message.TYPE_RECEIVED && !TextUtils.isEmpty(message.getBody())) {
+                lastReceivedMessage = message.getBody();
+                break;
+            }
+        }
+
+        if (lastReceivedMessage == null) {
+            Toast.makeText(this, R.string.select_message_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        // Build conversation context from recent messages
+        StringBuilder contextBuilder = new StringBuilder();
+        int contextMessages = Math.min(5, messages.size());
+        for (int i = Math.max(0, messages.size() - contextMessages); i < messages.size(); i++) {
+            Message msg = messages.get(i);
+            if (msg != null && !TextUtils.isEmpty(msg.getBody())) {
+                contextBuilder.append(msg.getBody()).append(". ");
+            }
+        }
+
+        offlineAIService.generateSmartReplies(lastReceivedMessage, contextBuilder.toString(), 
+            new OfflineAIService.SmartReplyCallback() {
+                @Override
+                public void onSmartRepliesGenerated(boolean success, List<String> replies, String errorMessage) {
+                    runOnUiThread(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        
+                        if (success && replies != null && !replies.isEmpty()) {
+                            showSmartRepliesDialog(replies);
+                        } else {
+                            Toast.makeText(ConversationActivity.this, 
+                                errorMessage != null ? errorMessage : getString(R.string.ai_feature_unavailable), 
+                                Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            });
+    }
+
+    /**
+     * Shows dialog for selecting rewrite mode.
+     */
+    private void showRewriteMessageDialog() {
+        String currentText = messageInput.getText().toString().trim();
+        
+        if (TextUtils.isEmpty(currentText)) {
+            Toast.makeText(this, R.string.text_too_short, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] modes = {
+            getString(R.string.rewrite_mode_formal),
+            getString(R.string.rewrite_mode_casual),
+            getString(R.string.rewrite_mode_concise),
+            getString(R.string.rewrite_mode_elaborate),
+            getString(R.string.rewrite_mode_polite)
+        };
+
+        OfflineAIService.RewriteMode[] rewriteModes = {
+            OfflineAIService.RewriteMode.FORMAL,
+            OfflineAIService.RewriteMode.CASUAL,
+            OfflineAIService.RewriteMode.CONCISE,
+            OfflineAIService.RewriteMode.ELABORATE,
+            OfflineAIService.RewriteMode.POLITE
+        };
+
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.select_rewrite_mode)
+            .setItems(modes, (dialog, which) -> rewriteMessage(currentText, rewriteModes[which]))
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    /**
+     * Rewrites the message using the specified mode.
+     */
+    private void rewriteMessage(String text, OfflineAIService.RewriteMode mode) {
+        progressBar.setVisibility(View.VISIBLE);
+
+        offlineAIService.rewriteText(text, mode, new OfflineAIService.RewritingCallback() {
+            @Override
+            public void onRewritingComplete(boolean success, String rewrittenText, String errorMessage) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    
+                    if (success && rewrittenText != null) {
+                        showRewrittenTextDialog(text, rewrittenText);
+                    } else {
+                        Toast.makeText(ConversationActivity.this, 
+                            errorMessage != null ? errorMessage : getString(R.string.ai_feature_unavailable), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Shows the conversation summary in a dialog.
+     */
+    private void showSummaryDialog(String summary) {
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.conversation_summary_title)
+            .setMessage(summary)
+            .setPositiveButton(android.R.string.ok, null)
+            .setNeutralButton(R.string.copied_to_clipboard, (dialog, which) -> copyToClipboard(summary))
+            .show();
+    }
+
+    /**
+     * Shows proofreading suggestions in a dialog.
+     */
+    private void showProofreadingSuggestionsDialog(List<OfflineAIService.ProofreadingSuggestion> suggestions, String originalText) {
+        StringBuilder suggestionText = new StringBuilder();
+        
+        for (int i = 0; i < suggestions.size(); i++) {
+            OfflineAIService.ProofreadingSuggestion suggestion = suggestions.get(i);
+            suggestionText.append(String.format("%d. %s\n", i + 1, suggestion.explanation));
+            suggestionText.append(String.format("   \"%s\" → \"%s\"\n", suggestion.originalText, suggestion.suggestedText));
+            if (i < suggestions.size() - 1) {
+                suggestionText.append("\n");
+            }
+        }
+
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.proofreading_suggestions_title)
+            .setMessage(suggestionText.toString())
+            .setPositiveButton(R.string.apply_suggestion, (dialog, which) -> {
+                // Apply the first suggestion (simplified approach)
+                if (!suggestions.isEmpty()) {
+                    OfflineAIService.ProofreadingSuggestion firstSuggestion = suggestions.get(0);
+                    String updatedText = originalText.replace(firstSuggestion.originalText, firstSuggestion.suggestedText);
+                    messageInput.setText(updatedText);
+                }
+            })
+            .setNegativeButton(R.string.ignore_suggestion, null)
+            .show();
+    }
+
+    /**
+     * Shows smart replies in a dialog.
+     */
+    private void showSmartRepliesDialog(List<String> replies) {
+        String[] replyArray = replies.toArray(new String[0]);
+        
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.smart_replies_title)
+            .setItems(replyArray, (dialog, which) -> {
+                String selectedReply = replies.get(which);
+                messageInput.setText(selectedReply);
+                messageInput.setSelection(selectedReply.length()); // Set cursor to end
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    /**
+     * Shows the rewritten text comparison dialog.
+     */
+    private void showRewrittenTextDialog(String originalText, String rewrittenText) {
+        String comparison = String.format("Original:\n%s\n\nRewritten:\n%s", originalText, rewrittenText);
+        
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.text_rewriting_title)
+            .setMessage(comparison)
+            .setPositiveButton(R.string.apply_suggestion, (dialog, which) -> {
+                messageInput.setText(rewrittenText);
+                messageInput.setSelection(rewrittenText.length()); // Set cursor to end
+            })
+            .setNegativeButton(R.string.ignore_suggestion, null)
+            .setNeutralButton(R.string.copied_to_clipboard, (dialog, which) -> copyToClipboard(rewrittenText))
+            .show();
+    }
+
+    /**
+     * Copies text to clipboard.
+     */
+    private void copyToClipboard(String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("AI Result", text);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show();
+    }
+}
 }

@@ -107,6 +107,34 @@
     <string name="sms_options">SMS Options</string>
     <string name="test_translation">Test Translation</string>
     <string name="translate_all_messages">Translate All Messages</string>
+    
+    <!-- AI Features -->
+    <string name="ai_features">AI Features</string>
+    <string name="summarize_conversation">Summarize Conversation</string>
+    <string name="proofread_message">Proofread Message</string>
+    <string name="smart_reply">Smart Reply</string>
+    <string name="rewrite_message">Rewrite Message</string>
+    <string name="ai_processing">Processing with AI...</string>
+    <string name="ai_feature_unavailable">AI feature is currently unavailable</string>
+    <string name="conversation_summary_title">Conversation Summary</string>
+    <string name="proofreading_suggestions_title">Proofreading Suggestions</string>
+    <string name="smart_replies_title">Smart Replies</string>
+    <string name="text_rewriting_title">Text Rewriting</string>
+    <string name="apply_suggestion">Apply</string>
+    <string name="ignore_suggestion">Ignore</string>
+    <string name="rewrite_mode_formal">Formal</string>
+    <string name="rewrite_mode_casual">Casual</string>
+    <string name="rewrite_mode_concise">Concise</string>
+    <string name="rewrite_mode_elaborate">Elaborate</string>
+    <string name="rewrite_mode_polite">Polite</string>
+    <string name="select_rewrite_mode">Select Rewriting Mode</string>
+    <string name="suggestion_type_spelling">Spelling</string>
+    <string name="suggestion_type_grammar">Grammar</string>
+    <string name="suggestion_type_style">Style</string>
+    <string name="suggestion_type_clarity">Clarity</string>
+    <string name="no_suggestions_found">No suggestions found</string>
+    <string name="text_too_short">Text is too short for this feature</string>
+    <string name="select_message_first">Please select a message first</string>
 
     <!-- MainActivity Strings -->
     <string name="conversation_options">Conversation Options</string>
