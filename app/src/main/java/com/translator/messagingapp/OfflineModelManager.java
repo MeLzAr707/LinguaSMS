@@ -168,47 +168,106 @@ public class OfflineModelManager {
         
         model.setDownloading(true);
         
-        // Simulate download process in a background thread
+        // Use ML Kit's actual download API in a background thread
         new Thread(() -> {
             try {
-                Log.d(TAG, "Starting download for model: " + model.getLanguageCode());
+                Log.d(TAG, "Starting ML Kit download for model: " + model.getLanguageCode());
                 
-                // Simulate download progress
-                for (int progress = 0; progress <= 100; progress += 10) {
-                    Thread.sleep(500); // Simulate download time
+                // Convert language code to ML Kit format
+                String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(model.getLanguageCode());
+                if (mlkitCode == null) {
+                    model.setDownloading(false);
+                    if (listener != null) {
+                        listener.onError("Language not supported by ML Kit: " + model.getLanguageCode());
+                    }
+                    return;
+                }
+                
+                // Create translator for this language pair (download requires both source and target)
+                // We'll use English as the source for download purposes
+                String sourceLanguage = TranslateLanguage.ENGLISH;
+                String targetLanguage = mlkitCode;
+                
+                TranslatorOptions options = new TranslatorOptions.Builder()
+                        .setSourceLanguage(sourceLanguage)
+                        .setTargetLanguage(targetLanguage)
+                        .build();
+                
+                Translator translator = Translation.getClient(options);
+                
+                try {
+                    // Report initial progress
+                    if (listener != null) {
+                        listener.onProgress(10);
+                    }
                     
-                    final int currentProgress = progress;
-                    model.setDownloadProgress(currentProgress);
+                    // Use ML Kit's downloadModelIfNeeded API
+                    Task<Void> downloadTask = translator.downloadModelIfNeeded();
+                    
+                    // Report progress during download
+                    if (listener != null) {
+                        listener.onProgress(50);
+                    }
+                    
+                    // Wait for download to complete with timeout
+                    Tasks.await(downloadTask, 60, TimeUnit.SECONDS);
+                    
+                    // Report completion progress
+                    if (listener != null) {
+                        listener.onProgress(90);
+                    }
+                    
+                    // Mark as downloaded
+                    model.setDownloading(false);
+                    model.setDownloaded(true);
+                    
+                    // Save to preferences
+                    saveDownloadedModelPrivate(model.getLanguageCode());
+                    
+                    // Create placeholder file for compatibility
+                    createModelFile(model);
+                    
+                    Log.d(TAG, "ML Kit download completed for model: " + model.getLanguageCode());
                     
                     if (listener != null) {
-                        listener.onProgress(currentProgress);
+                        listener.onProgress(100);
+                        listener.onSuccess();
+                    }
+                    
+                } finally {
+                    // Always close the translator
+                    try {
+                        translator.close();
+                    } catch (Exception e) {
+                        Log.w(TAG, "Error closing translator during cleanup", e);
                     }
                 }
                 
-                // Mark as downloaded
+            } catch (TimeoutException e) {
+                Log.e(TAG, "Download timeout", e);
                 model.setDownloading(false);
-                model.setDownloaded(true);
-                
-                // Save to preferences
-                saveDownloadedModelPrivate(model.getLanguageCode());
-                
-                // Create placeholder file
-                createModelFile(model);
-                
-                Log.d(TAG, "Download completed for model: " + model.getLanguageCode());
-                
                 if (listener != null) {
-                    listener.onSuccess();
+                    listener.onError("Download timeout. Please check your internet connection.");
                 }
-                
+            } catch (ExecutionException e) {
+                Log.e(TAG, "Download execution failed", e);
+                model.setDownloading(false);
+                String errorMsg = "Download failed";
+                if (e.getCause() != null && e.getCause().getMessage() != null) {
+                    errorMsg = "Download failed: " + e.getCause().getMessage();
+                }
+                if (listener != null) {
+                    listener.onError(errorMsg);
+                }
             } catch (InterruptedException e) {
                 Log.e(TAG, "Download interrupted", e);
                 model.setDownloading(false);
                 if (listener != null) {
                     listener.onError("Download interrupted");
                 }
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
-                Log.e(TAG, "Download failed", e);
+                Log.e(TAG, "Download failed with unexpected error", e);
                 model.setDownloading(false);
                 if (listener != null) {
                     listener.onError("Download failed: " + e.getMessage());
@@ -226,13 +285,58 @@ public class OfflineModelManager {
                 return false;
             }
             
-            // Remove from preferences
-            removeDownloadedModel(model.getLanguageCode());
+            Log.d(TAG, "Starting ML Kit model deletion for: " + model.getLanguageCode());
             
-            // Delete model file
+            // Convert language code to ML Kit format
+            String mlkitCode = LanguageCodeUtils.convertToMLKitLanguageCode(model.getLanguageCode());
+            if (mlkitCode == null) {
+                Log.w(TAG, "Language not supported by ML Kit: " + model.getLanguageCode());
+                // Still remove from our tracking
+                removeDownloadedModel(model.getLanguageCode());
+                deleteModelFile(model);
+                return true;
+            }
+            
+            // Create translator for this language to delete its model
+            String sourceLanguage = TranslateLanguage.ENGLISH;
+            String targetLanguage = mlkitCode;
+            
+            TranslatorOptions options = new TranslatorOptions.Builder()
+                    .setSourceLanguage(sourceLanguage)
+                    .setTargetLanguage(targetLanguage)
+                    .build();
+            
+            Translator translator = Translation.getClient(options);
+            
+            try {
+                // Use ML Kit's deleteDownloadedModel API
+                Task<Void> deleteTask = translator.deleteDownloadedModel();
+                
+                // Wait for deletion to complete with timeout
+                Tasks.await(deleteTask, 30, TimeUnit.SECONDS);
+                
+                Log.d(TAG, "ML Kit model deletion completed for: " + model.getLanguageCode());
+                
+            } catch (TimeoutException e) {
+                Log.w(TAG, "Model deletion timeout for " + model.getLanguageCode() + ", continuing with local cleanup", e);
+            } catch (ExecutionException e) {
+                Log.w(TAG, "Model deletion failed for " + model.getLanguageCode() + ", continuing with local cleanup", e);
+            } catch (Exception e) {
+                Log.w(TAG, "Unexpected error during model deletion for " + model.getLanguageCode() + ", continuing with local cleanup", e);
+            } finally {
+                // Always close the translator
+                try {
+                    translator.close();
+                } catch (Exception e) {
+                    Log.w(TAG, "Error closing translator during cleanup", e);
+                }
+            }
+            
+            // Remove from our preferences and files regardless of ML Kit result
+            removeDownloadedModel(model.getLanguageCode());
             deleteModelFile(model);
             
-            Log.d(TAG, "Model deleted: " + model.getLanguageCode());
+            Log.d(TAG, "Model deleted from local tracking: " + model.getLanguageCode());
             return true;
             
         } catch (Exception e) {
