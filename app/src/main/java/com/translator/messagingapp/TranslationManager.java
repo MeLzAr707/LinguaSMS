@@ -195,22 +195,17 @@ public class TranslationManager {
                     return;
                 }
 
-                // Try translation based on availability
+                // Prioritize offline translation, use online only as fallback
                 if (shouldUseOfflineTranslation(finalSourceLanguage, targetLanguage)) {
-                    // Try offline translation first
+                    // Use offline translation (preferred method)
                     translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else if (translationService != null && translationService.hasApiKey()) {
-                    // Use online translation
+                    // Use online translation only as fallback
                     translateOnline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else {
-                    // No API key available, check if we can use offline translation as fallback
-                    if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
-                        // Try offline translation as fallback
-                        translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
-                    } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "No translation service available");
-                        }
+                    // No translation capability available
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, "No translation service available. Please download offline models or configure API key.");
                     }
                 }
 
@@ -245,15 +240,15 @@ public class TranslationManager {
             return;
         }
 
-        // Check if translation service is available
-        // When offline is enabled, we don't require an API key
-        if (translationService == null || !translationService.hasApiKey()) {
-            if (!userPreferences.isOfflineTranslationEnabled()) {
-                if (callback != null) {
-                    callback.onTranslationComplete(false, null);
-                }
-                return;
+        // Check if translation capability is available (prioritize offline)
+        boolean hasOfflineCapability = userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null;
+        boolean hasOnlineCapability = translationService != null && translationService.hasApiKey();
+        
+        if (!hasOfflineCapability && !hasOnlineCapability) {
+            if (callback != null) {
+                callback.onTranslationComplete(false, null);
             }
+            return;
         }
 
         // Create a message ID for deduplication
@@ -327,9 +322,9 @@ public class TranslationManager {
                     return;
                 }
 
-                // Choose translation method based on availability
+                // Prioritize offline translation
                 if (shouldUseOfflineTranslation(detectedLanguage, targetLanguage)) {
-                    // Use offline translation
+                    // Use offline translation (preferred method)
                     offlineTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
                         new OfflineTranslationService.OfflineTranslationCallback() {
                             @Override
@@ -357,7 +352,7 @@ public class TranslationManager {
                             }
                         });
                 } else if (translationService != null && translationService.hasApiKey()) {
-                    // Use online translation
+                    // Use online translation only as fallback
                     String translatedText = translationService.translate(
                             message.getOriginalText(), detectedLanguage, targetLanguage);
 
@@ -376,7 +371,7 @@ public class TranslationManager {
                         callback.onTranslationComplete(true, message);
                     }
                 } else {
-                    // No translation service available
+                    // No translation capability available
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
@@ -569,14 +564,15 @@ public class TranslationManager {
     }
 
     /**
-     * Determines whether to use offline translation based on user preferences and availability.
+     * Determines whether to use offline translation based on availability.
+     * This method prioritizes offline translation when enabled and available.
      *
      * @param sourceLanguage The source language
      * @param targetLanguage The target language
-     * @return true if offline translation should be used
+     * @return true if offline translation should be used (when available), false otherwise
      */
     private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
-        // Use offline translation if it's enabled and available
+        // Always prefer offline translation when it's enabled and available
         if (userPreferences.isOfflineTranslationEnabled() && offlineTranslationService != null) {
             return offlineTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
         }
