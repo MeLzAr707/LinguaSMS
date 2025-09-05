@@ -89,6 +89,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
     private TextSizeManager textSizeManager;
+    private GenAIMessagingService genAIMessagingService;
     
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
@@ -107,6 +108,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
         textSizeManager = new TextSizeManager(this);
+        genAIMessagingService = ((TranslatorApp) getApplication()).getGenAIMessagingService();
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -887,6 +889,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (id == android.R.id.home) {
             finish();
             return true;
+        } else if (id == R.id.action_genai_features) {
+            showGenAIFeatures();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -1271,5 +1276,165 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
         }
+    }
+
+    /**
+     * Shows GenAI features dialog for conversation actions.
+     */
+    private void showGenAIFeatures() {
+        if (genAIMessagingService == null || !genAIMessagingService.isAvailable()) {
+            Toast.makeText(this, "AI features are not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        GenAIFeatureDialog.showConversationFeatures(this, new GenAIFeatureDialog.GenAIFeatureCallback() {
+            @Override
+            public void onFeatureSelected(String feature) {
+                handleGenAIFeatureSelection(feature);
+            }
+
+            @Override
+            public void onDismissed() {
+                // Do nothing
+            }
+        });
+    }
+
+    /**
+     * Handles GenAI feature selection.
+     */
+    private void handleGenAIFeatureSelection(String feature) {
+        switch (feature) {
+            case "Summarize Conversation":
+                summarizeConversation();
+                break;
+            case "Generate Smart Replies":
+                generateSmartReplies();
+                break;
+            default:
+                Toast.makeText(this, "Feature not implemented: " + feature, Toast.LENGTH_SHORT).show();
+                break;
+        }
+    }
+
+    /**
+     * Summarizes the current conversation.
+     */
+    private void summarizeConversation() {
+        if (messages == null || messages.isEmpty()) {
+            Toast.makeText(this, "No messages to summarize", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog loadingDialog = GenAIFeatureDialog.showLoadingDialog(this, "Generating summary...");
+
+        genAIMessagingService.summarizeMessages(messages, new GenAIMessagingService.GenAICallback() {
+            @Override
+            public void onSuccess(String result) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    GenAIFeatureDialog.showResultDialog(ConversationActivity.this, "Conversation Summary", result,
+                            new GenAIFeatureDialog.ResultDialogCallback() {
+                                @Override
+                                public void onUse(String content) {
+                                    // For summary, "use" means copy to clipboard
+                                    copyToClipboard("Summary", content);
+                                }
+
+                                @Override
+                                public void onCopy(String content) {
+                                    copyToClipboard("Summary", content);
+                                }
+
+                                @Override
+                                public void onCancel() {
+                                    // Do nothing
+                                }
+                            });
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(ConversationActivity.this, "Error generating summary: " + error, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    /**
+     * Generates smart replies for the conversation.
+     */
+    private void generateSmartReplies() {
+        if (messages == null || messages.isEmpty()) {
+            Toast.makeText(this, "No messages for context", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog loadingDialog = GenAIFeatureDialog.showLoadingDialog(this, "Generating smart replies...");
+
+        genAIMessagingService.generateSmartReplies(messages, new GenAIMessagingService.GenAICallback() {
+            @Override
+            public void onSuccess(String result) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    // Parse the numbered list of replies
+                    String[] replies = parseSmartReplies(result);
+                    GenAIFeatureDialog.showSmartReplyDialog(ConversationActivity.this, replies,
+                            new GenAIFeatureDialog.SmartReplyCallback() {
+                                @Override
+                                public void onReplySelected(String reply) {
+                                    // Insert the selected reply into the message input
+                                    if (messageInput != null) {
+                                        messageInput.setText(reply);
+                                        messageInput.setSelection(reply.length());
+                                    }
+                                }
+
+                                @Override
+                                public void onCancel() {
+                                    // Do nothing
+                                }
+                            });
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    loadingDialog.dismiss();
+                    Toast.makeText(ConversationActivity.this, "Error generating smart replies: " + error, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    /**
+     * Parses smart replies from AI response.
+     */
+    private String[] parseSmartReplies(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            return new String[0];
+        }
+
+        // Split by lines and filter numbered items
+        String[] lines = response.split("\n");
+        java.util.List<String> replies = new java.util.ArrayList<>();
+
+        for (String line : lines) {
+            line = line.trim();
+            // Look for numbered items (1. 2. 3. etc.)
+            if (line.matches("^\\d+\\.\\s*.*")) {
+                // Remove the number and period
+                String reply = line.replaceFirst("^\\d+\\.\\s*", "").trim();
+                if (!reply.isEmpty()) {
+                    replies.add(reply);
+                }
+            }
+        }
+
+        return replies.toArray(new String[0]);
     }
 }

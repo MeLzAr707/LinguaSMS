@@ -2,6 +2,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_genai_features"
+        android:icon="@android:drawable/ic_menu_help"
+        app:showAsAction="ifRoom"
+        android:title="AI Features" />
+
+    <item
         android:icon="@android:drawable/ic_menu_call"
         app:showAsAction="ifRoom"
         android:title="@string/action_call" />

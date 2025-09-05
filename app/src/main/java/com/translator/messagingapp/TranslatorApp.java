@@ -25,6 +25,7 @@ public class TranslatorApp extends Application {
     private UserPreferences userPreferences;
     private MessageWorkManager messageWorkManager;
     private MessageContentObserver messageContentObserver;
+    private GenAIMessagingService genAIMessagingService;
 
     @Override
     public void onCreate() {
@@ -106,6 +107,13 @@ public class TranslatorApp extends Application {
             messageContentObserver.register();
         } catch (Exception e) {
             android.util.Log.e(TAG, "Error initializing MessageContentObserver", e);
+        }
+
+        try {
+            // Initialize GenAI messaging service
+            genAIMessagingService = new GenAIMessagingService(this);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Error initializing GenAI messaging service", e);
         }
     }
 
@@ -207,6 +215,17 @@ public class TranslatorApp extends Application {
         return messageContentObserver;
     }
     
+    public GenAIMessagingService getGenAIMessagingService() {
+        if (genAIMessagingService == null) {
+            try {
+                genAIMessagingService = new GenAIMessagingService(this);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Error creating fallback GenAIMessagingService", e);
+            }
+        }
+        return genAIMessagingService;
+    }
+    
 
 
     /**
@@ -271,6 +290,9 @@ public class TranslatorApp extends Application {
         }
         if (messageWorkManager != null) {
             messageWorkManager.cancelPeriodicWork();
+        }
+        if (genAIMessagingService != null) {
+            genAIMessagingService.cleanup();
         }
 
     }
