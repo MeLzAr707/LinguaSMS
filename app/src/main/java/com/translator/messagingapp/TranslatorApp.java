@@ -245,16 +245,21 @@ public class TranslatorApp extends Application {
     }
 
     /**
-     * Checks if the app has a valid API key or offline translation capability.
+     * Checks if the app has translation capability (offline preferred, online as fallback).
+     * This method prioritizes offline ML Kit usage and treats API keys as optional.
      *
-     * @return true if a valid API key is available or offline translation is possible, false otherwise
+     * @return true if offline translation is available or if an API key is available as fallback, false otherwise
      */
     public boolean hasValidApiKey() {
-        // Allow translation if we have either online API key OR offline capability
-        boolean hasOnlineCapability = translationService != null && translationService.hasApiKey();
+        // Prioritize offline capability - if we have offline models, we don't need API keys
         boolean hasOfflineCapability = hasOfflineTranslationCapability();
+        if (hasOfflineCapability) {
+            return true;
+        }
         
-        return hasOnlineCapability || hasOfflineCapability;
+        // Fallback to online capability only if offline is not available
+        boolean hasOnlineCapability = translationService != null && translationService.hasApiKey();
+        return hasOnlineCapability;
     }
 
     private void schedulePeriodicCacheMaintenance() {

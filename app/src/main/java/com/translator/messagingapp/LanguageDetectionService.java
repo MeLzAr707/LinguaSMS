@@ -71,7 +71,8 @@ public class LanguageDetectionService {
     }
     
     /**
-     * Detects the language of the given text using ML Kit with online fallback.
+     * Detects the language of the given text using ML Kit with optional online fallback.
+     * Prioritizes offline ML Kit detection and only uses online fallback when available.
      * 
      * @param text The text to detect language for
      * @param callback The callback to receive the result
@@ -117,7 +118,7 @@ public class LanguageDetectionService {
             return mlkitResult;
         }
         
-        // Fallback to online detection
+        // Fallback to online detection only if available
         if (onlineService != null && onlineService.hasApiKey()) {
             Log.d(TAG, "ML Kit detection failed/undetermined, falling back to online detection");
             String onlineResult = onlineService.detectLanguage(text);
@@ -125,6 +126,8 @@ public class LanguageDetectionService {
                 Log.d(TAG, "Online detection successful: " + onlineResult);
                 return onlineResult;
             }
+        } else {
+            Log.d(TAG, "ML Kit detection failed/undetermined, no online fallback available (offline-only mode)");
         }
         
         Log.w(TAG, "Both ML Kit and online detection failed for text: " + 
@@ -139,9 +142,16 @@ public class LanguageDetectionService {
         languageIdentifier.identifyLanguage(text)
             .addOnSuccessListener(languageCode -> {
                 if (languageCode.equals("und")) {
-                    // ML Kit returned "undetermined", fallback to online
-                    Log.d(TAG, "ML Kit returned 'undetermined', falling back to online detection");
-                    detectLanguageWithOnlineFallback(text, callback);
+                    // ML Kit returned "undetermined", try online fallback if available
+                    if (onlineService != null && onlineService.hasApiKey()) {
+                        Log.d(TAG, "ML Kit returned 'undetermined', falling back to online detection");
+                        detectLanguageWithOnlineFallback(text, callback);
+                    } else {
+                        Log.d(TAG, "ML Kit returned 'undetermined', no online fallback available (offline-only mode)");
+                        if (callback != null) {
+                            callback.onDetectionComplete(false, null, "Language detection undetermined (offline-only mode)", DetectionMethod.ML_KIT_ON_DEVICE);
+                        }
+                    }
                 } else {
                     // ML Kit successfully detected language
                     Log.d(TAG, "ML Kit detected language: " + languageCode);
@@ -151,9 +161,16 @@ public class LanguageDetectionService {
                 }
             })
             .addOnFailureListener(e -> {
-                // ML Kit failed, fallback to online
-                Log.w(TAG, "ML Kit language detection failed, falling back to online detection", e);
-                detectLanguageWithOnlineFallback(text, callback);
+                // ML Kit failed, try online fallback if available
+                Log.w(TAG, "ML Kit language detection failed, trying online fallback if available", e);
+                if (onlineService != null && onlineService.hasApiKey()) {
+                    detectLanguageWithOnlineFallback(text, callback);
+                } else {
+                    Log.w(TAG, "ML Kit language detection failed, no online fallback available (offline-only mode)");
+                    if (callback != null) {
+                        callback.onDetectionComplete(false, null, "ML Kit detection failed (offline-only mode): " + e.getMessage(), DetectionMethod.FAILED);
+                    }
+                }
             });
     }
     

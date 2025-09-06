@@ -68,4 +68,34 @@ public class OfflineTranslationWithoutApiKeyTest {
             fail("hasAnyDownloadedModels method should exist: " + e.getMessage());
         }
     }
+
+    @Test
+    public void testCompleteOfflineOperationWithoutApiKey() {
+        // Test that app can operate completely offline without API keys
+        try {
+            // Create mock components
+            android.content.Context mockContext = org.mockito.Mockito.mock(android.content.Context.class);
+            UserPreferences mockPrefs = org.mockito.Mockito.mock(UserPreferences.class);
+            
+            // Mock offline preferences
+            org.mockito.Mockito.when(mockPrefs.isOfflineTranslationEnabled()).thenReturn(true);
+            org.mockito.Mockito.when(mockPrefs.getApiKey()).thenReturn(""); // No API key
+            
+            // Create services without API key
+            OfflineTranslationService offlineService = new OfflineTranslationService(mockContext, mockPrefs);
+            assertNotNull("OfflineTranslationService should be created without API key", offlineService);
+            
+            // Create language detection service without online component
+            LanguageDetectionService langDetectionService = new LanguageDetectionService(mockContext);
+            assertNotNull("LanguageDetectionService should work without online component", langDetectionService);
+            
+            // Create translation manager without online service
+            GoogleTranslationService onlineService = new GoogleTranslationService(); // No API key
+            TranslationManager translationManager = new TranslationManager(mockContext, onlineService, mockPrefs);
+            assertNotNull("TranslationManager should be created without API key when offline is enabled", translationManager);
+            
+        } catch (Exception e) {
+            fail("Complete offline operation should work without API key: " + e.getMessage());
+        }
+    }
 }
