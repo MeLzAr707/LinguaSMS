@@ -87,11 +87,9 @@
     <string name="accessibility_send_button">Send message</string>
 
     <!-- Add these to your existing strings.xml file -->
-    <string name="translate_outgoing_message">Translate outgoing message</string>
     <string name="translation_error">Translation failed</string>
     <string name="incoming_language">Incoming Message Language</string>
     <string name="outgoing_language">Outgoing Message Language</string>
-    <string name="translate">Translate</string>
 
     <string name="error_loading_messages">Error loading messages</string>
 
@@ -133,7 +131,6 @@
     <string name="suggestion_type_style">Style</string>
     <string name="suggestion_type_clarity">Clarity</string>
     <string name="no_suggestions_found">No suggestions found</string>
-    <string name="select_message_first">Please select a message first</string>
 
     <!-- MainActivity Strings -->
     <string name="conversation_options">Conversation Options</string>

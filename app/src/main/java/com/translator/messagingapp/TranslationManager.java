@@ -233,16 +233,6 @@ public class TranslationManager {
             }
         });
     }
-                }
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error translating text", e);
-                if (callback != null) {
-                    callback.onTranslationComplete(false, null, e.getMessage());
-                }
-            }
-        });
-    }
 
     /**
      * Translates an SMS message.
