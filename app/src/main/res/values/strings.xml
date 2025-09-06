@@ -147,7 +147,6 @@
     <string name="test_message_added">Test message added</string>
     <string name="test_message_failed">Failed to add test message</string>
     <string name="api_key_required">Please set your Google Translate API key in Settings first</string>
-    <string name="offline_mode_available">Using offline translation mode. For online features, please set your API key in Settings.</string>
     <string name="english_to_spanish">English to Spanish</string>
     <string name="spanish_to_english">Spanish to English</string>
     <string name="auto_detect">Auto-detect</string>
@@ -197,35 +196,9 @@
     <string name="debug_check_button">Check</string>
     <string name="debug_open_button">Open</string>
     <string name="debug_direct_open_button">Direct Open</string>
-    <string name="debug_offline_diagnostics_button">Run Offline Diagnostics</string>
-    <string name="debug_offline_fix_button">Attempt Offline Fix</string>
-
     <!-- Message Layout Strings -->
 
 
-    <!-- Missing strings for offline models functionality -->
-        <string name="offline_models_description">Download language models to enable offline translation when internet is unavailable</string>
-        <string name="enable_offline_translation">Enable Offline Translation</string>
-        <string name="offline_models_title">Available Offline Models</string>
-        <string name="no_offline_models_available">No offline models available for download</string>
-        <string name="model_not_downloaded">Model not downloaded</string>
-        <string name="download_model">Download Model</string>
-        <string name="model_downloading">Downloading model…</string>
-
-        <!-- Missing strings for translation preferences -->
-    <string name="pref_manage_offline_models">Manage Gemini Nano Models</string>
-    <string name="pref_category_offline_models">Offline Translation</string>
-
-    <!-- Missing strings for offline models -->
-        <string name="model_size">Model size: %1$s</string>
-        <string name="download_progress">Download progress: %1$d%%</string>
-        <string name="model_downloaded">Model downloaded</string>
-        <string name="delete_model">Delete model</string>
-        <string name="model_download_success">Model downloaded successfully</string>
-        <string name="model_download_error">Error downloading model: %1$s</string>
-        <string name="model_delete_success">Model deleted successfully</string>
-        <string name="model_delete_error">Error deleting model: %1$s</string>
-        
         <!-- Missing strings for UI messages -->
         <string name="message_clicked">Message clicked</string>
         <string name="error_initializing_conversation">Error initializing conversation</string>

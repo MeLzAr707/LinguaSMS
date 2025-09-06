@@ -15,7 +15,6 @@ public class UserPreferences {
     private static final String KEY_FIRST_RUN = "first_run";
     private static final String KEY_LAST_TRANSLATION_DATE = "last_translation_date";
     private static final String KEY_TRANSLATIONS_TODAY = "translations_today";
-    private static final String KEY_OFFLINE_TRANSLATION_ENABLED = "offline_translation_enabled";
     private static final String KEY_MESSAGE_TEXT_SIZE = "message_text_size";
 
     // Theme constants
@@ -24,9 +23,6 @@ public class UserPreferences {
     public static final int THEME_BLACK_GLASS = 2;
     public static final int THEME_SYSTEM = 3;
     public static final int THEME_CUSTOM = 4;
-
-    // Additional preference keys for missing functionality
-    private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
     
     // Custom theme color keys
     private static final String KEY_CUSTOM_PRIMARY_COLOR = "custom_primary_color";
@@ -246,42 +242,6 @@ public class UserPreferences {
     public boolean isDarkThemeEnabled() {
         int themeId = getThemeId();
         return themeId == THEME_DARK || themeId == THEME_BLACK_GLASS;
-    }
-
-    /**
-     * Checks if offline translation is preferred.
-     *
-     * @return true if offline translation is preferred, false otherwise
-     */
-    public boolean getPreferOfflineTranslation() {
-        return preferences.getBoolean(KEY_PREFER_OFFLINE_TRANSLATION, false);
-    }
-
-    /**
-     * Sets the preference for offline translation.
-     *
-     * @param prefer true to prefer offline translation, false otherwise
-     */
-    public void setPreferOfflineTranslation(boolean prefer) {
-        preferences.edit().putBoolean(KEY_PREFER_OFFLINE_TRANSLATION, prefer).apply();
-    }
-
-    /**
-     * Checks if offline translation is enabled.
-     *
-     * @return true if offline translation is enabled, false otherwise
-     */
-    public boolean isOfflineTranslationEnabled() {
-        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, true);
-    }
-
-    /**
-     * Sets whether offline translation is enabled.
-     *
-     * @param enabled true to enable offline translation, false otherwise
-     */
-    public void setOfflineTranslationEnabled(boolean enabled) {
-        preferences.edit().putBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, enabled).apply();
     }
 
     /**

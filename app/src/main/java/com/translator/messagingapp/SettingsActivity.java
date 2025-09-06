@@ -28,7 +28,6 @@ public class SettingsActivity extends BaseActivity {
     private Button selectIncomingLanguageButton;
     private Button selectOutgoingLanguageButton;
     private Button testApiKeyButton;
-    private Button manageOfflineModelsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
@@ -75,7 +74,6 @@ public class SettingsActivity extends BaseActivity {
         selectIncomingLanguageButton = findViewById(R.id.select_incoming_language_button);
         selectOutgoingLanguageButton = findViewById(R.id.select_outgoing_language_button);
         testApiKeyButton = findViewById(R.id.test_api_key_button);
-        manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
@@ -130,14 +128,6 @@ public class SettingsActivity extends BaseActivity {
             public void onClick(View v) {
                 Toast.makeText(SettingsActivity.this, "Testing API key...", Toast.LENGTH_SHORT).show();
                 testApiKey();
-            }
-        });
-
-        // Set up manage Gemini Nano models button
-        manageOfflineModelsButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openGeminiNanoModelsActivity();
             }
         });
         
@@ -374,14 +364,6 @@ public class SettingsActivity extends BaseActivity {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         recreate();
     }
-
-    /**
-     * Opens the Gemini Nano models management activity.
-     */
-    private void openGeminiNanoModelsActivity() {
-        Intent intent = new Intent(this, GeminiNanoModelsActivity.class);
-        startActivity(intent);
-    }
     
     /**
      * Opens the color wheel activity for custom theme color selection.
@@ -410,11 +392,6 @@ public class SettingsActivity extends BaseActivity {
             // Apply custom color to test API key button
             if (testApiKeyButton != null) {
                 testApiKeyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
-            
-            // Apply custom color to manage offline models button
-            if (manageOfflineModelsButton != null) {
-                manageOfflineModelsButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
             
             // Apply custom color to language selection buttons
