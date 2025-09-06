@@ -1187,25 +1187,33 @@ public class MainActivity extends BaseActivity
         Toast.makeText(this, getString(R.string.translating_text, text), Toast.LENGTH_SHORT).show();
 
         // Use TranslationManager to translate
-        translationManager.translateText(text, targetLanguage, (success, translatedText, errorMessage) -> {
-            if (success && translatedText != null) {
-                runOnUiThread(() -> {
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(R.string.translation_result)
-                            .setMessage(getString(R.string.original_text_format,
-                                    translationManager.getLanguageName(sourceLanguage), text) + "\n\n" +
-                                    getString(R.string.translated_text_format,
-                                            translationManager.getLanguageName(targetLanguage), translatedText))
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
-                });
-            } else {
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this,
-                            getString(R.string.translation_error) + ": " +
-                                    (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
-                            Toast.LENGTH_LONG).show();
-                });
+        translationManager.translateText(text, targetLanguage, new TranslationManager.EnhancedTranslationCallback() {
+            @Override
+            public android.app.Activity getActivity() {
+                return MainActivity.this;
+            }
+            
+            @Override
+            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                if (success && translatedText != null) {
+                    runOnUiThread(() -> {
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle(R.string.translation_result)
+                                .setMessage(getString(R.string.original_text_format,
+                                        translationManager.getLanguageName(sourceLanguage), text) + "\n\n" +
+                                        getString(R.string.translated_text_format,
+                                                translationManager.getLanguageName(targetLanguage), translatedText))
+                                .setPositiveButton(android.R.string.ok, null)
+                                .show();
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this,
+                                getString(R.string.translation_error) + ": " +
+                                        (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
             }
         });
     }
@@ -1222,24 +1230,32 @@ public class MainActivity extends BaseActivity
         String targetLanguage = userPreferences != null ? userPreferences.getPreferredLanguage() : "en";
 
         // Use TranslationManager to translate
-        translationManager.translateText(text, targetLanguage, (success, translatedText, errorMessage) -> {
-            if (success && translatedText != null) {
-                runOnUiThread(() -> {
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle(R.string.auto_detect_result)
-                            .setMessage(getString(R.string.original_text) + ": " + text + "\n\n" +
-                                    getString(R.string.translated_to_format,
-                                            translationManager.getLanguageName(targetLanguage), translatedText))
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
-                });
-            } else {
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this,
-                            getString(R.string.translation_error) + ": " +
-                                    (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
-                            Toast.LENGTH_LONG).show();
-                });
+        translationManager.translateText(text, targetLanguage, new TranslationManager.EnhancedTranslationCallback() {
+            @Override
+            public android.app.Activity getActivity() {
+                return MainActivity.this;
+            }
+            
+            @Override
+            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                if (success && translatedText != null) {
+                    runOnUiThread(() -> {
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setTitle(R.string.auto_detect_result)
+                                .setMessage(getString(R.string.original_text) + ": " + text + "\n\n" +
+                                        getString(R.string.translated_to_format,
+                                                translationManager.getLanguageName(targetLanguage), translatedText))
+                                .setPositiveButton(android.R.string.ok, null)
+                                .show();
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this,
+                                getString(R.string.translation_error) + ": " +
+                                        (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
             }
         });
     }

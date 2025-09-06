@@ -689,21 +689,29 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Translate in background
         String finalTargetLanguage = targetLanguage;
         executorService.execute(() -> {
-            translationManager.translateText(inputText, finalTargetLanguage, (success, translatedText, errorMessage) -> {
-                runOnUiThread(() -> {
-                    hideProgressDialog();
+            translationManager.translateText(inputText, finalTargetLanguage, new TranslationManager.EnhancedTranslationCallback() {
+                @Override
+                public android.app.Activity getActivity() {
+                    return ConversationActivity.this;
+                }
+                
+                @Override
+                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                    runOnUiThread(() -> {
+                        hideProgressDialog();
 
-                    if (success && translatedText != null) {
-                        // Replace input text with translated text
-                        messageInput.setText(translatedText);
-                        messageInput.setSelection(translatedText.length());
-                    } else {
-                        Toast.makeText(ConversationActivity.this,
-                                getString(R.string.translation_error) + ": " +
-                                        (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
+                        if (success && translatedText != null) {
+                            // Replace input text with translated text
+                            messageInput.setText(translatedText);
+                            messageInput.setSelection(translatedText.length());
+                        } else {
+                            Toast.makeText(ConversationActivity.this,
+                                    getString(R.string.translation_error) + ": " +
+                                            (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
             }, true); // Force translation for outgoing messages
         });
     }
@@ -728,15 +736,22 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Translate in background
         executorService.execute(() -> {
-            translationManager.translateText(message.getBody(), targetLanguage, (success, translatedText, errorMessage) -> {
-                runOnUiThread(() -> {
-                    hideLoadingIndicator();
+            translationManager.translateText(message.getBody(), targetLanguage, new TranslationManager.EnhancedTranslationCallback() {
+                @Override
+                public android.app.Activity getActivity() {
+                    return ConversationActivity.this;
+                }
+                
+                @Override
+                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                    runOnUiThread(() -> {
+                        hideLoadingIndicator();
 
-                    if (success && translatedText != null) {
-                        // Update message with translated text
-                        message.setTranslatedText(translatedText);
-                        message.setTranslated(true);
-                        message.setShowTranslation(true);
+                        if (success && translatedText != null) {
+                            // Update message with translated text
+                            message.setTranslatedText(translatedText);
+                            message.setTranslated(true);
+                            message.setShowTranslation(true);
                         
                         // Set translation language info if available
                         message.setTranslatedLanguage(targetLanguage);
