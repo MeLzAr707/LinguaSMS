@@ -31,6 +31,14 @@ public class LanguageDetectionService {
     }
     
     public interface LanguageDetectionCallback {
+        void onLanguageDetected(String languageCode);
+        void onDetectionFailed(String errorMessage);
+    }
+    
+    /**
+     * Advanced callback interface with more detailed information.
+     */
+    public interface DetailedLanguageDetectionCallback {
         void onDetectionComplete(boolean success, String languageCode, String errorMessage, DetectionMethod method);
     }
     
@@ -40,7 +48,7 @@ public class LanguageDetectionService {
     private float minConfidenceThreshold;
     
     /**
-     * Creates a new LanguageDetectionService.
+     * Creates a new LanguageDetectionService with Google service fallback.
      *
      * @param context The application context
      * @param googleService The Google translation service for fallback
@@ -52,6 +60,20 @@ public class LanguageDetectionService {
         this.minConfidenceThreshold = MIN_CONFIDENCE_THRESHOLD;
         
         Log.d(TAG, "LanguageDetectionService initialized with ML Kit and online fallback");
+    }
+    
+    /**
+     * Creates a new LanguageDetectionService with ML Kit only (no online fallback).
+     *
+     * @param context The application context
+     */
+    public LanguageDetectionService(Context context) {
+        this.context = context;
+        this.googleService = null;
+        this.mlkitIdentifier = LanguageIdentification.getClient();
+        this.minConfidenceThreshold = MIN_CONFIDENCE_THRESHOLD;
+        
+        Log.d(TAG, "LanguageDetectionService initialized with ML Kit only");
     }
     
     /**
@@ -73,6 +95,16 @@ public class LanguageDetectionService {
     }
     
     /**
+     * Checks if language detection is available.
+     * ML Kit language detection is always available offline.
+     *
+     * @return True since ML Kit is always available
+     */
+    public boolean isLanguageDetectionAvailable() {
+        return true;
+    }
+    
+    /**
      * Checks if online detection is available.
      *
      * @return True if online detection is available
@@ -84,14 +116,15 @@ public class LanguageDetectionService {
     /**
      * Detects the language of the given text synchronously.
      * Uses ML Kit first, falls back to online detection if needed.
+     * Returns device language for null/empty text.
      *
      * @param text The text to detect language for
-     * @return The detected language code, or null if detection failed
+     * @return The detected language code, or device language if detection failed
      */
     public String detectLanguageSync(String text) {
         if (TextUtils.isEmpty(text)) {
-            Log.w(TAG, "Empty text provided for language detection");
-            return null;
+            Log.w(TAG, "Empty text provided for language detection, returning device language");
+            return java.util.Locale.getDefault().getLanguage();
         }
         
         // Try ML Kit detection first
@@ -116,8 +149,8 @@ public class LanguageDetectionService {
             }
         }
         
-        Log.w(TAG, "All language detection methods failed");
-        return null;
+        Log.w(TAG, "All language detection methods failed, returning device language");
+        return java.util.Locale.getDefault().getLanguage();
     }
     
     /**
@@ -128,7 +161,8 @@ public class LanguageDetectionService {
      */
     public void detectLanguage(String text, LanguageDetectionCallback callback) {
         if (TextUtils.isEmpty(text)) {
-            callback.onDetectionComplete(false, null, "Empty text provided", DetectionMethod.FALLBACK);
+            String deviceLanguage = java.util.Locale.getDefault().getLanguage();
+            callback.onLanguageDetected(deviceLanguage);
             return;
         }
         
@@ -141,7 +175,7 @@ public class LanguageDetectionService {
                 if (!LanguageIdentification.UNDETERMINED_LANGUAGE_TAG.equals(languageCode)) {
                     // ML Kit succeeded
                     Log.d(TAG, "ML Kit detected language: " + languageCode);
-                    callback.onDetectionComplete(true, languageCode, null, DetectionMethod.ML_KIT);
+                    callback.onLanguageDetected(languageCode);
                 } else {
                     // ML Kit returned undetermined, try online fallback
                     tryOnlineFallback(text, callback);
@@ -158,6 +192,27 @@ public class LanguageDetectionService {
     }
     
     /**
+     * Detects the language of the given text asynchronously using detailed callback interface.
+     *
+     * @param text The text to detect language for
+     * @param callback The detailed callback to receive the result
+     */
+    public void detectLanguage(String text, DetailedLanguageDetectionCallback callback) {
+        detectLanguage(text, new LanguageDetectionCallback() {
+            @Override
+            public void onLanguageDetected(String languageCode) {
+                callback.onDetectionComplete(true, languageCode, null, DetectionMethod.ML_KIT);
+            }
+            
+            @Override
+            public void onDetectionFailed(String errorMessage) {
+                String deviceLanguage = java.util.Locale.getDefault().getLanguage();
+                callback.onDetectionComplete(true, deviceLanguage, errorMessage, DetectionMethod.FALLBACK);
+            }
+        });
+    }
+    
+    /**
      * Attempts online detection as fallback.
      */
     private void tryOnlineFallback(String text, LanguageDetectionCallback callback) {
@@ -167,16 +222,21 @@ public class LanguageDetectionService {
                 String result = googleService.detectLanguage(text);
                 if (result != null) {
                     Log.d(TAG, "Online fallback detected language: " + result);
-                    callback.onDetectionComplete(true, result, null, DetectionMethod.ONLINE_API);
+                    callback.onLanguageDetected(result);
                 } else {
-                    callback.onDetectionComplete(false, null, "Online detection returned null", DetectionMethod.FALLBACK);
+                    String deviceLanguage = java.util.Locale.getDefault().getLanguage();
+                    Log.d(TAG, "Online detection returned null, using device language: " + deviceLanguage);
+                    callback.onLanguageDetected(deviceLanguage);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Online fallback failed: " + e.getMessage());
-                callback.onDetectionComplete(false, null, "All detection methods failed: " + e.getMessage(), DetectionMethod.FALLBACK);
+                String deviceLanguage = java.util.Locale.getDefault().getLanguage();
+                callback.onLanguageDetected(deviceLanguage);
             }
         } else {
-            callback.onDetectionComplete(false, null, "No online detection available and ML Kit failed", DetectionMethod.FALLBACK);
+            String deviceLanguage = java.util.Locale.getDefault().getLanguage();
+            Log.d(TAG, "No online detection available, using device language: " + deviceLanguage);
+            callback.onLanguageDetected(deviceLanguage);
         }
     }
     
