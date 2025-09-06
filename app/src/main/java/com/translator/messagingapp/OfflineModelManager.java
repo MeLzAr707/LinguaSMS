@@ -75,6 +75,7 @@ public class OfflineModelManager {
     private final RemoteModelManager modelManager;
     private final ExecutorService executorService;
     private final Map<String, OfflineLanguageModel> modelCache;
+    private final List<String> modelOrder; // Maintains frequency-based ordering
     
     /**
      * Creates a new OfflineModelManager.
@@ -86,6 +87,7 @@ public class OfflineModelManager {
         this.modelManager = RemoteModelManager.getInstance();
         this.executorService = Executors.newCachedThreadPool();
         this.modelCache = new HashMap<>();
+        this.modelOrder = new ArrayList<>();
         
         initializeModels();
         Log.d(TAG, "OfflineModelManager initialized");
@@ -93,47 +95,56 @@ public class OfflineModelManager {
     
     /**
      * Initialize the available language models.
+     * Languages are ordered by global usage frequency (most common first).
      */
     private void initializeModels() {
-        // Common languages supported by ML Kit
-        addModel("en", "English");
-        addModel("es", "Spanish");
-        addModel("fr", "French");
-        addModel("de", "German");
-        addModel("it", "Italian");
-        addModel("pt", "Portuguese");
-        addModel("ru", "Russian");
-        addModel("ja", "Japanese");
-        addModel("ko", "Korean");
-        addModel("zh", "Chinese");
-        addModel("ar", "Arabic");
-        addModel("hi", "Hindi");
-        addModel("nl", "Dutch");
-        addModel("sv", "Swedish");
-        addModel("da", "Danish");
-        addModel("no", "Norwegian");
-        addModel("fi", "Finnish");
-        addModel("pl", "Polish");
-        addModel("tr", "Turkish");
-        addModel("th", "Thai");
-        addModel("vi", "Vietnamese");
-        addModel("uk", "Ukrainian");
-        addModel("cs", "Czech");
-        addModel("hu", "Hungarian");
-        addModel("ro", "Romanian");
-        addModel("he", "Hebrew");
-        addModel("id", "Indonesian");
-        addModel("ms", "Malay");
-        addModel("tl", "Filipino");
-        addModel("bn", "Bengali");
-        addModel("ta", "Tamil");
-        addModel("te", "Telugu");
-        addModel("ml", "Malayalam");
-        addModel("kn", "Kannada");
-        addModel("gu", "Gujarati");
-        addModel("pa", "Punjabi");
-        addModel("ur", "Urdu");
-        addModel("fa", "Persian");
+        // Tier 1: Major Global Languages (>500M speakers)
+        addModel("en", "English");        // 1.5B+ speakers, lingua franca
+        addModel("zh", "Chinese");        // 1.1B+ native speakers
+        addModel("hi", "Hindi");          // 600M+ speakers
+        addModel("es", "Spanish");        // 500M+ speakers
+        addModel("ar", "Arabic");         // 400M+ speakers
+        
+        // Tier 2: Major Regional Languages (100-500M speakers)
+        addModel("pt", "Portuguese");     // 280M speakers
+        addModel("fr", "French");         // 280M speakers
+        addModel("ru", "Russian");        // 260M speakers
+        addModel("ja", "Japanese");       // 125M speakers
+        addModel("de", "German");         // 100M speakers
+        
+        // Tier 3: Significant Regional Languages (50-100M speakers)
+        addModel("ko", "Korean");         // 82M speakers
+        addModel("it", "Italian");        // 65M speakers
+        addModel("tr", "Turkish");        // 84M speakers
+        addModel("vi", "Vietnamese");     // 85M speakers
+        addModel("pl", "Polish");         // 50M speakers
+        addModel("uk", "Ukrainian");      // 40M speakers
+        
+        // Tier 4: Other Important Languages (10-50M speakers)
+        addModel("nl", "Dutch");          // 25M speakers
+        addModel("th", "Thai");           // 20M speakers
+        addModel("cs", "Czech");          // 10M speakers
+        addModel("hu", "Hungarian");      // 13M speakers
+        addModel("ro", "Romanian");       // 24M speakers
+        addModel("he", "Hebrew");         // 9M speakers
+        addModel("sv", "Swedish");        // 10M speakers
+        addModel("da", "Danish");         // 6M speakers
+        addModel("no", "Norwegian");      // 5M speakers
+        addModel("fi", "Finnish");        // 5M speakers
+        addModel("bn", "Bengali");        // 230M speakers
+        addModel("ur", "Urdu");           // 170M speakers
+        addModel("id", "Indonesian");     // 200M speakers
+        addModel("ms", "Malay");          // 20M speakers
+        addModel("tl", "Filipino");       // 45M speakers
+        addModel("fa", "Persian");        // 110M speakers
+        addModel("ta", "Tamil");          // 78M speakers
+        addModel("te", "Telugu");         // 75M speakers
+        addModel("ml", "Malayalam");      // 35M speakers
+        addModel("kn", "Kannada");        // 44M speakers
+        addModel("gu", "Gujarati");       // 56M speakers
+        addModel("pa", "Punjabi");        // 113M speakers
+        
+        // Tier 5: Smaller Languages (alphabetical order for consistency)
         addModel("af", "Afrikaans");
         addModel("sq", "Albanian");
         addModel("am", "Amharic");
@@ -147,8 +158,8 @@ public class OfflineModelManager {
         addModel("et", "Estonian");
         addModel("ka", "Georgian");
         addModel("el", "Greek");
-        addModel("is", "Icelandic");
         addModel("ga", "Irish");
+        addModel("is", "Icelandic");
         addModel("lv", "Latvian");
         addModel("lt", "Lithuanian");
         addModel("mk", "Macedonian");
@@ -169,6 +180,7 @@ public class OfflineModelManager {
         String mlkitCode = convertToMLKitLanguageCode(languageCode);
         if (mlkitCode != null) {
             modelCache.put(languageCode, new OfflineLanguageModel(languageCode, displayName));
+            modelOrder.add(languageCode); // Maintain frequency-based ordering
         }
     }
     
@@ -322,12 +334,20 @@ public class OfflineModelManager {
     
     /**
      * Gets the list of available language models with their status.
+     * Models are returned in usage frequency order (most common first).
      */
     public void getAvailableModels(ModelStatusListener listener) {
         executorService.execute(() -> {
             try {
                 updateModelStatuses();
-                List<OfflineLanguageModel> models = new ArrayList<>(modelCache.values());
+                // Return models in frequency-based order
+                List<OfflineLanguageModel> models = new ArrayList<>();
+                for (String languageCode : modelOrder) {
+                    OfflineLanguageModel model = modelCache.get(languageCode);
+                    if (model != null) {
+                        models.add(model);
+                    }
+                }
                 listener.onStatusUpdated(models);
             } catch (Exception e) {
                 Log.e(TAG, "Error getting available models", e);
