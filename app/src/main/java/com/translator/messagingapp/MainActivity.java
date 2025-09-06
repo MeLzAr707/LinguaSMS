@@ -1148,17 +1148,10 @@ public class MainActivity extends BaseActivity
         
         // Check if we have translation capability (either online or offline)
         if (!app.hasValidApiKey()) {
-            // Check if we have offline capability
-            if (app.hasOfflineTranslationCapability()) {
-                // Show info about offline mode
-                Toast.makeText(this, R.string.offline_mode_available, 
-                        Toast.LENGTH_LONG).show();
-            } else {
-                // No translation capability at all
-                Toast.makeText(this, R.string.api_key_required, 
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
+            // No translation capability available
+            Toast.makeText(this, R.string.api_key_required, 
+                    Toast.LENGTH_LONG).show();
+            return;
         }
 
         // Show a dialog with translation test options

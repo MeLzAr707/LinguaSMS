@@ -24,8 +24,6 @@ public class DebugActivity extends BaseActivity {
     private Button openButton;
     private Button directOpenButton;
     private Button testNotificationButton;
-    private Button offlineDiagnosticsButton;
-    private Button offlineFixButton;
     private TextView resultText;
 
     @Override
@@ -47,8 +45,6 @@ public class DebugActivity extends BaseActivity {
         openButton = findViewById(R.id.debug_open_button);
         directOpenButton = findViewById(R.id.debug_direct_open_button);
         testNotificationButton = findViewById(R.id.debug_test_notification_button);
-        offlineDiagnosticsButton = findViewById(R.id.debug_offline_diagnostics_button);
-        offlineFixButton = findViewById(R.id.debug_offline_fix_button);
         resultText = findViewById(R.id.debug_result_text);
 
         // Set up click listeners
@@ -56,8 +52,6 @@ public class DebugActivity extends BaseActivity {
         openButton.setOnClickListener(v -> openConversation());
         directOpenButton.setOnClickListener(v -> openConversationDirect());
         testNotificationButton.setOnClickListener(v -> testNotification());
-        offlineDiagnosticsButton.setOnClickListener(v -> runOfflineDiagnostics());
-        offlineFixButton.setOnClickListener(v -> attemptOfflineFix());
 
         // Check if we were launched with an address
         String launchedAddress = getIntent().getStringExtra("address");
@@ -685,81 +679,4 @@ public class DebugActivity extends BaseActivity {
         }
     }
     
-    /**
-     * Runs comprehensive offline translation diagnostics.
-     */
-    private void runOfflineDiagnostics() {
-        try {
-            resultText.setText("Running offline translation diagnostics...\n");
-            
-            TranslatorApp app = (TranslatorApp) getApplication();
-            TranslationManager translationManager = app.getTranslationManager();
-            
-            if (translationManager != null) {
-                String diagnosticReport = translationManager.runOfflineTranslationDiagnostics();
-                resultText.setText(diagnosticReport);
-                Toast.makeText(this, "Offline diagnostics completed. Check results below.", Toast.LENGTH_SHORT).show();
-            } else {
-                resultText.setText("Error: TranslationManager not available");
-                Toast.makeText(this, "Error: Translation service not available", Toast.LENGTH_SHORT).show();
-            }
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error running offline diagnostics", e);
-            resultText.setText("Error running offline diagnostics: " + e.getMessage());
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    /**
-     * Attempts to automatically fix offline translation issues.
-     */
-    private void attemptOfflineFix() {
-        try {
-            resultText.setText("Attempting to fix offline translation issues...\n");
-            
-            TranslatorApp app = (TranslatorApp) getApplication();
-            TranslationManager translationManager = app.getTranslationManager();
-            
-            if (translationManager != null) {
-                boolean fixesApplied = translationManager.attemptOfflineTranslationAutoFix();
-                
-                StringBuilder result = new StringBuilder();
-                result.append("Offline translation auto-fix completed.\n\n");
-                
-                if (fixesApplied) {
-                    result.append("✅ Fixes were applied:\n");
-                    result.append("- Refreshed offline model synchronization\n");
-                    result.append("- Fixed component state inconsistencies\n\n");
-                    result.append("Please try offline translation again.\n");
-                    Toast.makeText(this, "Auto-fixes applied successfully!", Toast.LENGTH_SHORT).show();
-                } else {
-                    result.append("ℹ️ No fixes were needed or available.\n");
-                    result.append("- All components appear to be synchronized\n");
-                    result.append("- No critical errors detected\n\n");
-                    result.append("If offline translation still doesn't work:\n");
-                    result.append("1. Check that models are downloaded\n");
-                    result.append("2. Verify offline translation is enabled in settings\n");
-                    result.append("3. Try re-downloading language models\n");
-                    Toast.makeText(this, "No fixes needed - system appears healthy", Toast.LENGTH_SHORT).show();
-                }
-                
-                // Run diagnostics after fix attempt to show current state
-                result.append("\n--- Updated Diagnostic Report ---\n");
-                result.append(translationManager.runOfflineTranslationDiagnostics());
-                
-                resultText.setText(result.toString());
-                
-            } else {
-                resultText.setText("Error: TranslationManager not available");
-                Toast.makeText(this, "Error: Translation service not available", Toast.LENGTH_SHORT).show();
-            }
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error attempting offline fix", e);
-            resultText.setText("Error attempting offline fix: " + e.getMessage());
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
 }
-
