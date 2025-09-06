@@ -10,9 +10,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Manager class for handling translation functionality using Gemini Nano.
+ * Manager class for handling translation functionality.
  * Consolidates functionality from MessageTranslator and parts of SmsReceiver.
- * Updated to use Gemini Nano for offline GenAI features instead of ML Kit.
+ * Provides online translation capabilities using Google Translate API.
  */
 public class TranslationManager {
     private static final String TAG = "TranslationManager";
@@ -34,11 +34,9 @@ public class TranslationManager {
 
     private final Context context;
     private final GoogleTranslationService translationService;
-    private final GeminiNanoTranslationService geminiNanoTranslationService; // Replaced OfflineTranslationService
     private final UserPreferences userPreferences;
     private final ExecutorService executorService;
     private final TranslationCache translationCache;
-    private final GeminiNanoLanguageDetectionService geminiNanoLanguageDetectionService; // Replaced LanguageDetectionService
 
     /**
      * Creates a new TranslationManager.
@@ -50,13 +48,11 @@ public class TranslationManager {
     public TranslationManager(Context context, GoogleTranslationService translationService, UserPreferences userPreferences) {
         this.context = context;
         this.translationService = translationService;
-        this.geminiNanoTranslationService = new GeminiNanoTranslationService(context, userPreferences); // Use Gemini Nano
         this.userPreferences = userPreferences;
         this.executorService = Executors.newCachedThreadPool();
         this.translationCache = new TranslationCache(context);
-        this.geminiNanoLanguageDetectionService = new GeminiNanoLanguageDetectionService(context, translationService); // Use Gemini Nano
         
-        Log.d(TAG, "TranslationManager initialized with Gemini Nano GenAI services");
+        Log.d(TAG, "TranslationManager initialized with online translation service");
     }
 
     /**
@@ -158,25 +154,22 @@ public class TranslationManager {
             return;
         }
 
-        // Check rate limiting - determine if this will be an offline translation
-        boolean willUseOffline = shouldUseOfflineTranslation(sourceLanguage, targetLanguage);
-        if (!checkRateLimiting(willUseOffline)) {
+        // Check rate limiting for online translation
+        if (!checkRateLimiting()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
             return;
         }
 
-        // Determine which translation service to use based on user preferences
-        // Translate in background
+        // Translate in background using online service only
         executorService.execute(() -> {
             try {
                 String finalSourceLanguage = sourceLanguage;
                 
-                // If source language is not provided, try to detect it
+                // If source language is not provided, try to detect it using the online service
                 if (finalSourceLanguage == null) {
-                    // Use ML Kit language detection service with fallback to online detection
-                    finalSourceLanguage = geminiNanoLanguageDetectionService.detectLanguage(text);
+                    finalSourceLanguage = translationService.detectLanguage(text);
                     
                     if (finalSourceLanguage == null) {
                         if (callback != null) {
@@ -198,22 +191,12 @@ public class TranslationManager {
                     return;
                 }
 
-                // Try translation based on availability
-                if (shouldUseOfflineTranslation(finalSourceLanguage, targetLanguage)) {
-                    // Try offline translation first
-                    translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
-                } else if (translationService != null && translationService.hasApiKey()) {
-                    // Use online translation
+                // Use online translation
+                if (translationService != null && translationService.hasApiKey()) {
                     translateOnline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
                 } else {
-                    // No API key available, check if we can use offline translation as fallback
-                    if (userPreferences.isOfflineTranslationEnabled() && geminiNanoTranslationService != null) {
-                        // Try offline translation as fallback
-                        translateOffline(text, finalSourceLanguage, targetLanguage, cacheKey, callback);
-                    } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "No translation service available");
-                        }
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, "No translation service available - API key required");
                     }
                 }
 
@@ -249,14 +232,11 @@ public class TranslationManager {
         }
 
         // Check if translation service is available
-        // When offline is enabled, we don't require an API key
         if (translationService == null || !translationService.hasApiKey()) {
-            if (!userPreferences.isOfflineTranslationEnabled()) {
-                if (callback != null) {
-                    callback.onTranslationComplete(false, null);
-                }
-                return;
+            if (callback != null) {
+                callback.onTranslationComplete(false, null);
             }
+            return;
         }
 
         // Create a message ID for deduplication
@@ -298,8 +278,8 @@ public class TranslationManager {
             try {
                 String detectedLanguage = null;
                 
-                // Use Gemini Nano language detection service with fallback to online detection
-                detectedLanguage = geminiNanoLanguageDetectionService.detectLanguage(message.getOriginalText());
+                // Use online language detection service
+                detectedLanguage = translationService.detectLanguage(message.getOriginalText());
                 
                 if (detectedLanguage == null) {
                     if (callback != null) {
@@ -321,46 +301,16 @@ public class TranslationManager {
                     return;
                 }
 
-                // Check rate limiting now that we know if this will be offline
-                boolean willUseOffline = shouldUseOfflineTranslation(detectedLanguage, targetLanguage);
-                if (!checkRateLimiting(willUseOffline)) {
+                // Check rate limiting for online translation
+                if (!checkRateLimiting()) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
                     return;
                 }
 
-                // Choose translation method based on availability
-                if (shouldUseOfflineTranslation(detectedLanguage, targetLanguage)) {
-                    // Use offline translation
-                    geminiNanoTranslationService.translateOffline(message.getOriginalText(), detectedLanguage, targetLanguage,
-                        new GeminiNanoTranslationService.GeminiNanoTranslationCallback() {
-                            @Override
-                            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                                if (success) {
-                                    // Update message with translation
-                                    message.setTranslatedText(translatedText);
-                                    message.setTranslatedLanguage(targetLanguage);
-
-                                    // Cache the translation
-                                    translationCache.put(cacheKey, translatedText);
-
-                                    // Update translation counters
-                                    updateTranslationCounters();
-
-                                    // Return result
-                                    if (callback != null) {
-                                        callback.onTranslationComplete(true, message);
-                                    }
-                                } else {
-                                    if (callback != null) {
-                                        callback.onTranslationComplete(false, null);
-                                    }
-                                }
-                            }
-                        });
-                } else if (translationService != null && translationService.hasApiKey()) {
-                    // Use online translation
+                // Use online translation
+                if (translationService != null && translationService.hasApiKey()) {
                     String translatedText = translationService.translate(
                             message.getOriginalText(), detectedLanguage, targetLanguage);
 
@@ -435,7 +385,7 @@ public class TranslationManager {
         }
 
         // Check rate limiting - this method currently only uses online translation
-        if (!checkRateLimiting(false)) {
+        if (!checkRateLimiting()) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null, "Translation rate limit exceeded");
             }
@@ -504,15 +454,9 @@ public class TranslationManager {
     /**
      * Checks if translation rate limiting allows a new translation.
      *
-     * @param isOfflineTranslation true if this is an offline translation, false for online
      * @return true if a new translation is allowed, false otherwise
      */
-    private boolean checkRateLimiting(boolean isOfflineTranslation) {
-        // Skip rate limiting for offline translations since they don't use server resources
-        if (isOfflineTranslation) {
-            return true;
-        }
-        
+    private boolean checkRateLimiting() {
         long currentTime = System.currentTimeMillis();
         synchronized (SYNC_OBJECT) {
             // Reset daily counter if a new day has started
@@ -569,52 +513,6 @@ public class TranslationManager {
         if (oldestKey != null) {
             recentlyTranslatedMessages.remove(oldestKey);
         }
-    }
-
-    /**
-     * Determines whether to use offline translation based on user preferences and availability.
-     *
-     * @param sourceLanguage The source language
-     * @param targetLanguage The target language
-     * @return true if offline translation should be used
-     */
-    private boolean shouldUseOfflineTranslation(String sourceLanguage, String targetLanguage) {
-        // Use offline translation if it's enabled and available
-        if (userPreferences.isOfflineTranslationEnabled() && geminiNanoTranslationService != null) {
-            return geminiNanoTranslationService.isOfflineTranslationAvailable(sourceLanguage, targetLanguage);
-        }
-        return false;
-    }
-
-    /**
-     * Performs offline translation using Gemini Nano.
-     */
-    private void translateOffline(String text, String sourceLanguage, String targetLanguage, String cacheKey, TranslationCallback callback) {
-        geminiNanoTranslationService.translateOffline(text, sourceLanguage, targetLanguage, new GeminiNanoTranslationService.GeminiNanoTranslationCallback() {
-            @Override
-            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                if (success) {
-                    // Cache the translation
-                    translationCache.put(cacheKey, translatedText);
-                    // Update translation counters
-                    updateTranslationCounters();
-                    
-                    if (callback != null) {
-                        callback.onTranslationComplete(true, translatedText, null);
-                    }
-                } else {
-                    // If offline fails, try online as fallback when online service is available
-                    if (translationService != null && translationService.hasApiKey()) {
-                        Log.d(TAG, "Offline translation failed, falling back to online: " + errorMessage);
-                        translateOnline(text, sourceLanguage, targetLanguage, cacheKey, callback);
-                    } else {
-                        if (callback != null) {
-                            callback.onTranslationComplete(false, null, "Offline translation failed: " + errorMessage);
-                        }
-                    }
-                }
-            }
-        });
     }
 
     /**
@@ -690,14 +588,6 @@ public class TranslationManager {
     }
 
     /**
-     * Gets the Gemini Nano translation service.
-     *
-     * @return The GeminiNanoTranslationService instance
-     */
-    public GeminiNanoTranslationService getGeminiNanoTranslationService() {
-        return geminiNanoTranslationService;
-    }
-    /**
      * Translates a Message object and saves its state to the cache.
      *
      * @param message The Message to translate
@@ -733,82 +623,6 @@ public class TranslationManager {
     }
 
     /**
-     * Refreshes the Gemini Nano translation service to pick up any newly downloaded models.
-     * This should be called after models are downloaded/deleted via GeminiNanoModelManager.
-     */
-    public void refreshOfflineModels() {
-        // Gemini Nano models are managed automatically, no manual refresh needed
-        Log.d(TAG, "Gemini Nano models are managed automatically");
-    }
-
-    /**
-     * Runs diagnostic checks on offline translation functionality.
-     * This can be used to identify and troubleshoot issues with offline translation.
-     *
-     * @return A diagnostic report as a string
-     */
-    public String runOfflineTranslationDiagnostics() {
-        try {
-            OfflineTranslationDiagnostics diagnostics = new OfflineTranslationDiagnostics(context);
-            String report = diagnostics.generateDiagnosticReport();
-            
-            // Also log to Android log for debugging
-            diagnostics.logDiagnosticResults();
-            
-            return report;
-        } catch (Exception e) {
-            Log.e(TAG, "Error running offline translation diagnostics", e);
-            return "Error generating diagnostic report: " + e.getMessage();
-        }
-    }
-
-    /**
-     * Attempts to fix common offline translation synchronization issues.
-     * This method should be called when offline translation is not working as expected.
-     *
-     * @return true if automatic fixes were applied, false otherwise
-     */
-    public boolean attemptOfflineTranslationAutoFix() {
-        try {
-            Log.d(TAG, "Attempting automatic offline translation fixes");
-            
-            // Refresh offline models to ensure synchronization
-            refreshOfflineModels();
-            
-            // Run diagnostics to identify specific issues
-            OfflineTranslationDiagnostics diagnostics = new OfflineTranslationDiagnostics(context);
-            var results = diagnostics.performComprehensiveDiagnostics();
-            
-            boolean fixesApplied = false;
-            
-            // Check for synchronization issues
-            var syncResults = results.get("synchronization");
-            if (syncResults != null) {
-                for (var result : syncResults) {
-                    if ("ERROR".equals(result.severity) && result.issue.contains("Service/Manager Sync")) {
-                        Log.w(TAG, "Detected synchronization issue, applying fix");
-                        // Force refresh of offline models
-                        refreshOfflineModels();
-                        fixesApplied = true;
-                    }
-                }
-            }
-            
-            if (fixesApplied) {
-                Log.i(TAG, "Applied automatic fixes for offline translation issues");
-            } else {
-                Log.d(TAG, "No automatic fixes needed or available");
-            }
-            
-            return fixesApplied;
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error during automatic offline translation fix attempt", e);
-            return false;
-        }
-    }
-
-    /**
      * Cleans up resources.
      */
     public void cleanup() {
@@ -817,12 +631,6 @@ public class TranslationManager {
         }
         if (translationCache != null) {
             translationCache.close();
-        }
-        if (geminiNanoTranslationService != null) {
-            geminiNanoTranslationService.cleanup();
-        }
-        if (geminiNanoLanguageDetectionService != null) {
-            geminiNanoLanguageDetectionService.cleanup();
         }
     }
 
