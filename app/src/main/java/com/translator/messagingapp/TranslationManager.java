@@ -111,13 +111,7 @@ public class TranslationManager {
     public interface EnhancedTranslationCallback extends TranslationCallback {
         android.app.Activity getActivity();
     }
-    
-    /**
-     * Enhanced interface for translation callbacks with activity context for showing dialogs.
-     */
-    public interface EnhancedTranslationCallback extends TranslationCallback {
-        android.app.Activity getActivity();
-    }
+
 
     /**
      * Interface for SMS message translation callbacks.
