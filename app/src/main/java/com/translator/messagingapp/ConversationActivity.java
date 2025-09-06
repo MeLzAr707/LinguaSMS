@@ -736,41 +736,49 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Translate in background
         executorService.execute(() -> {
-            translationManager.translateText(message.getBody(), targetLanguage, new TranslationManager.EnhancedTranslationCallback() {
-                @Override
-                public android.app.Activity getActivity() {
-                    return ConversationActivity.this;
-                }
-                
-                @Override
-                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                    runOnUiThread(() -> {
-                        hideLoadingIndicator();
-
-                        if (success && translatedText != null) {
-                            // Update message with translated text
-                            message.setTranslatedText(translatedText);
-                            message.setTranslated(true);
-                            message.setShowTranslation(true);
-                        
-                        // Set translation language info if available
-                        message.setTranslatedLanguage(targetLanguage);
-
-                        // Save translation state to cache
-                        if (translationCache != null) {
-                            message.saveTranslationState(translationCache);
+            translationManager.translateText(
+                    message.getBody(),
+                    targetLanguage,
+                    new TranslationManager.EnhancedTranslationCallback() {
+                        @Override
+                        public android.app.Activity getActivity() {
+                            return ConversationActivity.this;
                         }
 
-                        // Update UI
-                        adapter.notifyItemChanged(position);
-                    } else {
-                        Toast.makeText(ConversationActivity.this,
-                                getString(R.string.translation_error) + ": " +
-                                        (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
-            }, true); // Force translation for messages
+                        @Override
+                        public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                            runOnUiThread(() -> {
+                                hideLoadingIndicator();
+
+                                if (success && translatedText != null) {
+                                    // Update message with translated text
+                                    message.setTranslatedText(translatedText);
+                                    message.setTranslated(true);
+                                    message.setShowTranslation(true);
+
+                                    // Set translation language info if available
+                                    message.setTranslatedLanguage(targetLanguage);
+
+                                    // Save translation state to cache
+                                    if (translationCache != null) {
+                                        message.saveTranslationState(translationCache);
+                                    }
+
+                                    // Update UI
+                                    adapter.notifyItemChanged(position);
+                                } else {
+                                    Toast.makeText(
+                                            ConversationActivity.this,
+                                            getString(R.string.translation_error) + ": " +
+                                                    (errorMessage != null ? errorMessage : getString(R.string.unknown_error)),
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                }
+                            });
+                        }
+                    },
+                    true // Force translation for messages
+            );
         });
     }
 

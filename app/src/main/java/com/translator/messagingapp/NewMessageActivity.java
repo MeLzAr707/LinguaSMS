@@ -73,7 +73,7 @@ public class NewMessageActivity extends BaseActivity {
             // Initialize UI components with correct types
             recipientInput = findViewById(R.id.recipient_input);
             messageInput = findViewById(R.id.message_input);
-            sendButton = findViewById(R.id.send_button);  // This is an ImageButton in XML
+            sendButton = findViewById(R.id.send_button);  // This is a Button in XML
             contactButton = findViewById(R.id.contact_button);  // This is an ImageButton in XML
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
@@ -340,7 +340,7 @@ public class NewMessageActivity extends BaseActivity {
                     public android.app.Activity getActivity() {
                         return NewMessageActivity.this;
                     }
-                    
+
                     @Override
                     public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
                         isTranslating.set(false);
@@ -351,32 +351,33 @@ public class NewMessageActivity extends BaseActivity {
                                     Toast.LENGTH_SHORT).show());
                             return;
                         } else {// Use the translatedText parameter directly instead of retrieving from cache
-                        if (translatedText == null) {
-                            runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
-                                    "Translation error: Could not retrieve translated text",
-                                    Toast.LENGTH_SHORT).show());
-                            return;
+                            if (translatedText == null) {
+                                runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
+                                        "Translation error: Could not retrieve translated text",
+                                        Toast.LENGTH_SHORT).show());
+                                return;
+                            }
+
+                            // Update UI on main thread
+                            runOnUiThread(() -> {
+                                // Update input field with translated text
+                                messageInput.setText(translatedText);
+                                messageInput.setSelection(translatedText.length());
+
+                                // Mark as translated
+                                isComposedTextTranslated = true;
+
+                                // Update UI state
+                                updateInputTranslationState();
+
+                                // Show toast with language info
+                                Toast.makeText(NewMessageActivity.this,
+                                        "Translated to " + translationManager.getLanguageName(finalTargetLanguage),
+                                        Toast.LENGTH_SHORT).show();
+                            });
                         }
-
-                        // Update UI on main thread
-                        runOnUiThread(() -> {
-                            // Update input field with translated text
-                            messageInput.setText(translatedText);
-                            messageInput.setSelection(translatedText.length());
-
-                            // Mark as translated
-                            isComposedTextTranslated = true;
-
-                            // Update UI state
-                            updateInputTranslationState();
-
-                            // Show toast with language info
-                            Toast.makeText(NewMessageActivity.this,
-                                    "Translated to " + translationManager.getLanguageName(finalTargetLanguage),
-                                    Toast.LENGTH_SHORT).show();
-                        });
                     }
-                }, true); // Force translation for outgoing messages
+                }        ,true); // Force translation for outgoing messages
     }
 
     private void updateInputTranslationState() {
