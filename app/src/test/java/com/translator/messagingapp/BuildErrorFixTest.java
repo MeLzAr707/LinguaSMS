@@ -1,5 +1,6 @@
 package com.translator.messagingapp;
 
+import com.google.mlkit.nl.languageid.LanguageIdentification;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -77,5 +78,24 @@ public class BuildErrorFixTest {
         assertEquals("THEME_BLACK_GLASS should be 2", 2, UserPreferences.THEME_BLACK_GLASS);
         assertEquals("THEME_SYSTEM should be 3", 3, UserPreferences.THEME_SYSTEM);
         assertEquals("THEME_CUSTOM should be 4", 4, UserPreferences.THEME_CUSTOM);
+    }
+
+    @Test
+    public void testLanguageIdentificationUndeterminedConstantExists() {
+        // Test that the correct ML Kit constant exists and is accessible
+        try {
+            // Verify that UNDETERMINED_LANGUAGE constant exists in LanguageIdentification
+            LanguageIdentification.class.getField("UNDETERMINED_LANGUAGE");
+            assertTrue("UNDETERMINED_LANGUAGE constant should exist in LanguageIdentification", true);
+        } catch (NoSuchFieldException e) {
+            fail("UNDETERMINED_LANGUAGE constant should exist in LanguageIdentification: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testLanguageIdentificationUndeterminedConstantValue() {
+        // Test that the UNDETERMINED_LANGUAGE constant has the expected value
+        assertEquals("UNDETERMINED_LANGUAGE should have value 'und'", 
+                     "und", LanguageIdentification.UNDETERMINED_LANGUAGE);
     }
 }
