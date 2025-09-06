@@ -1,11 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item
-        android:id="@+id/action_genai_features"
-        android:icon="@android:drawable/ic_menu_help"
-        app:showAsAction="ifRoom"
-        android:title="AI Features" />
+
 
     <item
         android:icon="@android:drawable/ic_menu_call"
@@ -17,60 +13,14 @@
         app:showAsAction="ifRoom"
         android:title="@string/action_translate" />
 
-    <!-- AI Features submenu -->
-    <item
-        android:id="@+id/menu_ai_features"
-        android:title="@string/ai_features"
-        android:icon="@android:drawable/ic_menu_manage"
-        app:showAsAction="never">
-        
-        <menu>
-            <item
-                android:id="@+id/menu_summarize_conversation"
-                android:title="@string/summarize_conversation"
-                android:icon="@android:drawable/ic_menu_agenda" />
-                
-            <item
-                android:id="@+id/menu_proofread_message"
-                android:title="@string/proofread_message"
-                android:icon="@android:drawable/ic_menu_edit" />
-                
-            <item
-                android:id="@+id/menu_smart_reply"
-                android:title="@string/smart_reply"
-                android:icon="@android:drawable/ic_menu_send" />
-                
-            <item
-                android:id="@+id/menu_rewrite_message"
-                android:title="@string/rewrite_message"
-                android:icon="@android:drawable/ic_menu_revert" />
-        </menu>
-    </item>
+
 
     <item
         android:title="@string/translate_all_messages"
         android:icon="@android:drawable/ic_menu_sort_alphabetically"
         app:showAsAction="never" />
 
-    <item
-        android:title="@string/ml_features"
-        android:icon="@android:drawable/ic_menu_manage"
-        app:showAsAction="never">
-        <menu>
-            <item
-                android:id="@+id/action_summarize"
-                android:title="@string/action_summarize"
-                android:icon="@drawable/ic_summarize" />
-            <item
-                android:id="@+id/action_rewrite"
-                android:title="@string/action_rewrite"
-                android:icon="@drawable/ic_rewrite" />
-            <item
-                android:id="@+id/action_smart_reply"
-                android:title="@string/action_smart_reply"
-                android:icon="@drawable/ic_smart_reply" />
-        </menu>
-    </item>
+
 
     <item
         android:title="@string/delete_conversation"
