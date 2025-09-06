@@ -73,7 +73,7 @@ public class NewMessageActivity extends BaseActivity {
             // Initialize UI components with correct types
             recipientInput = findViewById(R.id.recipient_input);
             messageInput = findViewById(R.id.message_input);
-            sendButton = findViewById(R.id.send_button);  // This is a Button in XML
+            sendButton = findViewById(R.id.send_button);  // This is an ImageButton in XML
             contactButton = findViewById(R.id.contact_button);  // This is an ImageButton in XML
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
