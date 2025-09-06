@@ -697,6 +697,20 @@ public class TranslationManager {
     public GeminiNanoTranslationService getGeminiNanoTranslationService() {
         return geminiNanoTranslationService;
     }
+
+    /**
+     * Gets the offline translation service for backward compatibility.
+     * Returns null since this has been replaced by Gemini Nano.
+     *
+     * @return null (legacy OfflineTranslationService has been deprecated)
+     * @deprecated Use getGeminiNanoTranslationService() instead
+     */
+    @Deprecated
+    public OfflineTranslationService getOfflineTranslationService() {
+        // Return null since we've migrated to Gemini Nano
+        // Calling code should handle null and use alternative methods
+        return null;
+    }
     /**
      * Translates a Message object and saves its state to the cache.
      *

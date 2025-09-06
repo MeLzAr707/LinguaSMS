@@ -18,9 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Manages offline translation models including downloading and deletion.
@@ -314,20 +312,15 @@ public class OfflineModelManager {
             Translator translator = Translation.getClient(options);
             
             try {
-                // Use ML Kit's deleteDownloadedModel API
-                Task<Void> deleteTask = translator.deleteDownloadedModel();
+                // Close the translator to release resources
+                // Note: ML Kit doesn't provide deleteDownloadedModel() method
+                // The close() method releases resources but doesn't delete files
+                translator.close();
                 
-                // Wait for deletion to complete with timeout
-                Tasks.await(deleteTask, 30, TimeUnit.SECONDS);
+                Log.d(TAG, "ML Kit translator closed for: " + model.getLanguageCode());
                 
-                Log.d(TAG, "ML Kit model deletion completed for: " + model.getLanguageCode());
-                
-            } catch (TimeoutException e) {
-                Log.w(TAG, "Model deletion timeout for " + model.getLanguageCode() + ", continuing with local cleanup", e);
-            } catch (ExecutionException e) {
-                Log.w(TAG, "Model deletion failed for " + model.getLanguageCode() + ", continuing with local cleanup", e);
             } catch (Exception e) {
-                Log.w(TAG, "Unexpected error during model deletion for " + model.getLanguageCode() + ", continuing with local cleanup", e);
+                Log.w(TAG, "Error closing translator for " + model.getLanguageCode() + ", continuing with local cleanup", e);
             } finally {
                 // Always close the translator
                 try {

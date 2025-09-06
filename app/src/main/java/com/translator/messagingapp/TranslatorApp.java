@@ -235,6 +235,14 @@ public class TranslatorApp extends Application {
      */
     public boolean hasOfflineTranslationCapability() {
         if (translationManager != null) {
+            // Check Gemini Nano service first (new approach)
+            GeminiNanoTranslationService geminiNanoService = translationManager.getGeminiNanoTranslationService();
+            if (geminiNanoService != null) {
+                // Check if any Gemini Nano models are available
+                return geminiNanoService.hasAnyDownloadedModels();
+            }
+            
+            // Fallback to legacy OfflineTranslationService (deprecated)
             OfflineTranslationService offlineService = translationManager.getOfflineTranslationService();
             if (offlineService != null) {
                 // Check if any offline models are downloaded

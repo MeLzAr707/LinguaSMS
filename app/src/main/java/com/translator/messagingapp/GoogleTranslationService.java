@@ -256,6 +256,35 @@ public class GoogleTranslationService {
     }
 
     /**
+     * Detects language asynchronously with callback.
+     * 
+     * NOTE: This method is now primarily used as a fallback when ML Kit
+     * language detection fails. The primary language detection is handled
+     * by OfflineLanguageDetectionService using ML Kit.
+     *
+     * @param text The text to detect language for
+     * @param callback The callback to receive the result
+     */
+    public void detectLanguage(String text, LanguageDetectionCallback callback) {
+        if (callback == null) {
+            return;
+        }
+
+        executorService.execute(() -> {
+            try {
+                String languageCode = detectLanguage(text);
+                if (languageCode != null) {
+                    callback.onDetectionComplete(languageCode, 0.8f); // Default confidence
+                } else {
+                    callback.onDetectionError("Language detection failed");
+                }
+            } catch (Exception e) {
+                callback.onDetectionError("Language detection error: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
      * Gets the display name of a language in the current locale.
      *
      * @param languageCode The language code (e.g., "en", "es")
@@ -321,6 +350,26 @@ public class GoogleTranslationService {
          * @param isValid true if the API key is valid, false otherwise
          */
         void onTestComplete(boolean isValid);
+    }
+
+    /**
+     * Interface for language detection callbacks.
+     */
+    public interface LanguageDetectionCallback {
+        /**
+         * Called when language detection is complete.
+         *
+         * @param languageCode The detected language code
+         * @param confidence The confidence level (0.0 to 1.0)
+         */
+        void onDetectionComplete(String languageCode, float confidence);
+
+        /**
+         * Called when language detection fails.
+         *
+         * @param error The error message
+         */
+        void onDetectionError(String error);
     }
 
     /**
