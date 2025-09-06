@@ -123,16 +123,15 @@
                 android:src="@android:drawable/ic_menu_sort_alphabetically"
                 app:tint="?attr/colorPrimary" />
 
-            <Button
+            <ImageButton
                 android:id="@+id/send_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="@dimen/compact_button_size"
+                android:layout_height="@dimen/compact_button_size"
                 android:layout_marginStart="16dp"
-                android:minHeight="@dimen/send_button_min_height"
-                android:text="@string/send"
-                android:textColor="@android:color/white"
-                app:icon="@android:drawable/ic_menu_send"
-                style="@style/Widget.MaterialComponents.Button" />
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/accessibility_send_button"
+                android:src="@android:drawable/ic_menu_send"
+                app:tint="?attr/colorPrimary" />
 
         </LinearLayout>
 

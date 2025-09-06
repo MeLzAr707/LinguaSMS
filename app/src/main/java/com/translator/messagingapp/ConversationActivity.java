@@ -62,7 +62,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private RecyclerView messagesRecyclerView;
     private MessageRecyclerAdapter adapter;
     private EditText messageInput;
-    private Button sendButton;
+    private ImageButton sendButton;
     private ProgressBar progressBar;
     private TextView emptyStateTextView;
     private ImageButton translateInputButton;

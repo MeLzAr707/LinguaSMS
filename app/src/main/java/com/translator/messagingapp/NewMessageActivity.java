@@ -29,7 +29,7 @@ public class NewMessageActivity extends BaseActivity {
 
     private EditText recipientInput;
     private EditText messageInput;
-    private Button sendButton;  // Changed from ImageButton to Button
+    private ImageButton sendButton;  // Changed from Button to ImageButton
     private ImageButton contactButton;
     private ImageButton translateButton;
     private ImageButton genAIButton;
