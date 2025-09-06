@@ -28,6 +28,7 @@ public class SettingsActivity extends BaseActivity {
     private Button selectIncomingLanguageButton;
     private Button selectOutgoingLanguageButton;
     private Button testApiKeyButton;
+    private Button manageOfflineModelsButton;
     private Switch autoTranslateSwitch;
     private RadioGroup themeRadioGroup;
     private TextView incomingLanguageText;
@@ -74,6 +75,7 @@ public class SettingsActivity extends BaseActivity {
         selectIncomingLanguageButton = findViewById(R.id.select_incoming_language_button);
         selectOutgoingLanguageButton = findViewById(R.id.select_outgoing_language_button);
         testApiKeyButton = findViewById(R.id.test_api_key_button);
+        manageOfflineModelsButton = findViewById(R.id.manage_offline_models_button);
         autoTranslateSwitch = findViewById(R.id.auto_translate_switch);
         themeRadioGroup = findViewById(R.id.theme_radio_group);
         incomingLanguageText = findViewById(R.id.incoming_language_text);
@@ -128,6 +130,15 @@ public class SettingsActivity extends BaseActivity {
             public void onClick(View v) {
                 Toast.makeText(SettingsActivity.this, "Testing API key...", Toast.LENGTH_SHORT).show();
                 testApiKey();
+            }
+        });
+
+        // Set up manage offline models button
+        manageOfflineModelsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(SettingsActivity.this, OfflineModelsActivity.class);
+                startActivity(intent);
             }
         });
         

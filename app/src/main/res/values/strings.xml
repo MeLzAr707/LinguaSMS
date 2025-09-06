@@ -255,6 +255,16 @@
     <!-- Conversation -->
 
     <!-- Translation -->
+    <string name="translate">Translate</string>
+    <string name="translate_outgoing_message">Translate outgoing message</string>
+
+    <!-- Offline Translation -->
+    <string name="offline_models_description">Download language models to enable offline translation when internet is unavailable</string>
+    <string name="pref_category_offline_models">Offline Translation</string>
+    <string name="pref_manage_offline_models">Manage Offline Models</string>
+    <string name="model_download_success">Model downloaded successfully</string>
+    <string name="model_download_error">Error downloading model: %1$s</string>
+    <string name="model_delete_success">Model deleted successfully</string>
 
     <!-- Debug -->
 

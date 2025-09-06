@@ -122,6 +122,30 @@
 
             </LinearLayout>
 
+            <!-- Offline Translation Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/pref_category_offline_models"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/offline_models_description" />
+
+            <Button
+                android:id="@+id/manage_offline_models_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/pref_manage_offline_models"
+                android:backgroundTint="@color/colorPrimary"
+                android:textColor="@android:color/white" />
+
             <!-- Theme Section -->
             <TextView
                 android:layout_width="match_parent"

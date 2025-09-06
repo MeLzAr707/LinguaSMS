@@ -104,6 +104,16 @@
             android:exported="false"
             android:theme="@style/AppTheme.NoActionBar" />
 
+        <activity
+            android:name=".OfflineModelsActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:parentActivityName=".SettingsActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SettingsActivity" />
+        </activity>
+
         <!-- Receivers -->
         <receiver
             android:name=".SmsReceiver"

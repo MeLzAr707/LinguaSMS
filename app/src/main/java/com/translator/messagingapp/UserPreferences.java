@@ -11,6 +11,9 @@ public class UserPreferences {
     private static final String KEY_PREFERRED_INCOMING_LANGUAGE = "preferred_incoming_language";
     private static final String KEY_PREFERRED_OUTGOING_LANGUAGE = "preferred_outgoing_language";
     private static final String KEY_AUTO_TRANSLATE = "auto_translate";
+    private static final String KEY_OFFLINE_TRANSLATION_ENABLED = "offline_translation_enabled";
+    private static final String KEY_PREFER_OFFLINE_TRANSLATION = "prefer_offline_translation";
+    private static final String KEY_TRANSLATION_MODE = "translation_mode";
     private static final String KEY_THEME_ID = "theme_id";
     private static final String KEY_FIRST_RUN = "first_run";
     private static final String KEY_LAST_TRANSLATION_DATE = "last_translation_date";
@@ -23,6 +26,11 @@ public class UserPreferences {
     public static final int THEME_BLACK_GLASS = 2;
     public static final int THEME_SYSTEM = 3;
     public static final int THEME_CUSTOM = 4;
+    
+    // Translation mode constants
+    public static final int TRANSLATION_MODE_ONLINE = 0;
+    public static final int TRANSLATION_MODE_OFFLINE = 1;
+    public static final int TRANSLATION_MODE_AUTO = 2; // Prefer offline, fallback to online
     
     // Custom theme color keys
     private static final String KEY_CUSTOM_PRIMARY_COLOR = "custom_primary_color";
@@ -443,6 +451,62 @@ public class UserPreferences {
      */
     public void setCustomTextColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_TEXT_COLOR, color).apply();
+    }
+
+    // Offline Translation Settings
+
+    /**
+     * Checks if offline translation is enabled.
+     *
+     * @return true if offline translation is enabled
+     */
+    public boolean isOfflineTranslationEnabled() {
+        return preferences.getBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, true); // Default to enabled
+    }
+
+    /**
+     * Sets offline translation enabled state.
+     *
+     * @param enabled true to enable offline translation
+     */
+    public void setOfflineTranslationEnabled(boolean enabled) {
+        preferences.edit().putBoolean(KEY_OFFLINE_TRANSLATION_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Checks if offline translation is preferred over online.
+     *
+     * @return true if offline translation should be preferred
+     */
+    public boolean getPreferOfflineTranslation() {
+        return preferences.getBoolean(KEY_PREFER_OFFLINE_TRANSLATION, true); // Default to prefer offline
+    }
+
+    /**
+     * Sets offline translation preference.
+     *
+     * @param prefer true to prefer offline translation
+     */
+    public void setPreferOfflineTranslation(boolean prefer) {
+        preferences.edit().putBoolean(KEY_PREFER_OFFLINE_TRANSLATION, prefer).apply();
+    }
+
+    /**
+     * Gets the translation mode.
+     *
+     * @return The translation mode (TRANSLATION_MODE_AUTO by default)
+     */
+    public int getTranslationMode() {
+        return preferences.getInt(KEY_TRANSLATION_MODE, TRANSLATION_MODE_AUTO);
+    }
+
+    /**
+     * Sets the translation mode.
+     *
+     * @param mode The translation mode to set
+     */
+    public void setTranslationMode(int mode) {
+        preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
     }
 }
 
