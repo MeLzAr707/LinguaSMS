@@ -133,7 +133,6 @@
     <string name="suggestion_type_style">Style</string>
     <string name="suggestion_type_clarity">Clarity</string>
     <string name="no_suggestions_found">No suggestions found</string>
-    <string name="text_too_short">Text is too short for this feature</string>
     <string name="select_message_first">Please select a message first</string>
 
     <!-- MainActivity Strings -->
