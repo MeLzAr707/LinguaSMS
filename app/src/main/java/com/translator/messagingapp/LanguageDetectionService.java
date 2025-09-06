@@ -17,7 +17,12 @@ import java.util.concurrent.TimeoutException;
 /**
  * Service for language detection using ML Kit with online fallback.
  * Provides robust language detection with confidence-based fallback mechanism.
+ * 
+ * @deprecated This service has been replaced by GeminiNanoLanguageDetectionService for better offline GenAI features.
+ * Use GeminiNanoLanguageDetectionService instead for new implementations.
+ * This class is maintained for backward compatibility and existing tests only.
  */
+@Deprecated
 public class LanguageDetectionService {
     private static final String TAG = "LanguageDetectionService";
     private static final float MIN_CONFIDENCE_THRESHOLD = 0.5f;

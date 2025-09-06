@@ -21,10 +21,9 @@ playServicesMaps = "18.1.0"
 playServicesLocation = "21.0.1"
 circleimageview = "3.1.0"
 work = "2.8.1"
-translate = "17.0.3"  # Add this line for WorkManager version
-languageId = "17.0.6"
-languageIdCommon = "16.1.0"  # ML Kit Language Identification
-genai = "0.9.0"  # ML Kit GenAI
+# Gemini Nano dependencies for offline GenAI features
+geminiNano = "1.0.0-alpha"
+aiEdgeSdk = "1.0.0"
 
 [libraries]
 appcompat-v141 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
@@ -51,10 +50,9 @@ google-playServices-location = { group = "com.google.android.gms", name = "play-
 circleimageview = { group = "de.hdodenhof", name = "circleimageview", version.ref = "circleimageview" }
 glide-compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide"}
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime", version.ref = "work" }
-translate = { group = "com.google.mlkit", name = "translate", version.ref = "translate" }  # Add this line
-language-id = { group = "com.google.mlkit", name = "language-id", version.ref = "languageId" }
-language-id-common = { group = "com.google.mlkit", name = "language-id-common", version.ref = "languageIdCommon" }  # ML Kit Language Identification
-genai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "genai" }  # ML Kit GenAI
+# Gemini Nano libraries for offline GenAI features (replacing ML Kit)
+gemini-nano = { group = "com.google.ai.edge", name = "generative-ai", version.ref = "geminiNano" }
+ai-edge-sdk = { group = "com.google.ai.edge", name = "litert", version.ref = "aiEdgeSdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

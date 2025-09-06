@@ -90,7 +90,7 @@
             android:theme="@style/AppTheme" />
 
         <activity
-            android:name=".OfflineModelsActivity"
+            android:name=".GeminiNanoModelsActivity"
             android:exported="false"
             android:theme="@style/AppTheme"
             android:parentActivityName=".SettingsActivity">

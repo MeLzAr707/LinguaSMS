@@ -133,11 +133,11 @@ public class SettingsActivity extends BaseActivity {
             }
         });
 
-        // Set up manage offline models button
+        // Set up manage Gemini Nano models button
         manageOfflineModelsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openOfflineModelsActivity();
+                openGeminiNanoModelsActivity();
             }
         });
         
@@ -376,10 +376,10 @@ public class SettingsActivity extends BaseActivity {
     }
 
     /**
-     * Opens the offline models management activity.
+     * Opens the Gemini Nano models management activity.
      */
-    private void openOfflineModelsActivity() {
-        Intent intent = new Intent(this, OfflineModelsActivity.class);
+    private void openGeminiNanoModelsActivity() {
+        Intent intent = new Intent(this, GeminiNanoModelsActivity.class);
         startActivity(intent);
     }
     
