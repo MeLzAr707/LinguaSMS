@@ -54,8 +54,8 @@ public class LanguageDetectionAsyncTest {
         final Boolean[] resultSuccess = new Boolean[1];
 
         // Create callback to capture results
-        LanguageDetectionService.LanguageDetectionCallback callback = 
-            new LanguageDetectionService.LanguageDetectionCallback() {
+        LanguageDetectionService.DetailedLanguageDetectionCallback callback = 
+            new LanguageDetectionService.DetailedLanguageDetectionCallback() {
                 @Override
                 public void onDetectionComplete(boolean success, String languageCode, 
                                               String errorMessage, LanguageDetectionService.DetectionMethod method) {
@@ -93,8 +93,8 @@ public class LanguageDetectionAsyncTest {
         final String[] resultError = new String[1];
 
         // Create callback to capture results
-        LanguageDetectionService.LanguageDetectionCallback callback = 
-            new LanguageDetectionService.LanguageDetectionCallback() {
+        LanguageDetectionService.DetailedLanguageDetectionCallback callback = 
+            new LanguageDetectionService.DetailedLanguageDetectionCallback() {
                 @Override
                 public void onDetectionComplete(boolean success, String languageCode, 
                                               String errorMessage, LanguageDetectionService.DetectionMethod method) {
@@ -125,8 +125,8 @@ public class LanguageDetectionAsyncTest {
         final Boolean[] resultSuccess = new Boolean[1];
 
         // Create callback to capture results
-        LanguageDetectionService.LanguageDetectionCallback callback = 
-            new LanguageDetectionService.LanguageDetectionCallback() {
+        LanguageDetectionService.DetailedLanguageDetectionCallback callback = 
+            new LanguageDetectionService.DetailedLanguageDetectionCallback() {
                 @Override
                 public void onDetectionComplete(boolean success, String languageCode, 
                                               String errorMessage, LanguageDetectionService.DetectionMethod method) {
