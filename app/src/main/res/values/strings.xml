@@ -206,6 +206,13 @@
     <string name="pref_manage_offline_models">Manage Offline Models</string>
     <string name="model_download_success">Model downloaded successfully</string>
     <string name="model_download_error">Error downloading model: %1$s</string>
+    
+    <!-- Missing Model Download Prompt -->
+    <string name="missing_language_model_title">Download Language Model</string>
+    <string name="missing_language_model_message">To translate this text, you need to download the %1$s language model(s). This may use mobile data. Would you like to download them now?</string>
+    <string name="download_models">Download</string>
+    <string name="downloading_language_models">Downloading Language Models</string>
+    <string name="downloading_models_message">Please wait while the language models are downloaded…</string>
     <string name="model_delete_success">Model deleted successfully</string>
 
     <!-- Debug -->

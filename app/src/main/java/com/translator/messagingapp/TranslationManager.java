@@ -104,6 +104,20 @@ public class TranslationManager {
     public interface TranslationCallback {
         void onTranslationComplete(boolean success, String translatedText, String errorMessage);
     }
+    
+    /**
+     * Enhanced interface for translation callbacks with activity context for showing dialogs.
+     */
+    public interface EnhancedTranslationCallback extends TranslationCallback {
+        android.app.Activity getActivity();
+    }
+    
+    /**
+     * Enhanced interface for translation callbacks with activity context for showing dialogs.
+     */
+    public interface EnhancedTranslationCallback extends TranslationCallback {
+        android.app.Activity getActivity();
+    }
 
     /**
      * Interface for SMS message translation callbacks.
@@ -600,6 +614,20 @@ public class TranslationManager {
                     } else {
                         Log.w(TAG, "Offline translation failed: " + errorMessage);
                         
+                        // Check if the error is due to missing models and if we can prompt for download
+                        if (errorMessage != null && errorMessage.contains("Language models not downloaded") && 
+                            callback instanceof EnhancedTranslationCallback) {
+                            
+                            EnhancedTranslationCallback enhancedCallback = (EnhancedTranslationCallback) callback;
+                            android.app.Activity activity = enhancedCallback.getActivity();
+                            
+                            if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
+                                // Prompt user to download missing models
+                                promptForMissingModels(activity, text, sourceLanguage, targetLanguage, cacheKey, callback);
+                                return;
+                            }
+                        }
+                        
                         // Try online fallback if available and allowed
                         if (userPreferences.getTranslationMode() == UserPreferences.TRANSLATION_MODE_AUTO &&
                             translationService != null && translationService.hasApiKey()) {
@@ -621,6 +649,40 @@ public class TranslationManager {
                 }
             });
     }
+    
+    /**
+     * Prompts the user to download missing language models and retries translation.
+     */
+    private void promptForMissingModels(android.app.Activity activity, String text, String sourceLanguage, 
+                                       String targetLanguage, String cacheKey, TranslationCallback callback) {
+        ModelDownloadPrompt.promptForMissingModel(activity, sourceLanguage, targetLanguage, this, 
+                offlineTranslationService, new ModelDownloadPrompt.ModelDownloadCallback() {
+            @Override
+            public void onDownloadCompleted(boolean success, String errorMessage) {
+                if (success) {
+                    // Retry the translation now that models are downloaded
+                    Log.d(TAG, "Models downloaded successfully, retrying translation");
+                    translateOffline(text, sourceLanguage, targetLanguage, cacheKey, callback);
+                } else {
+                    // Download failed, report error
+                    if (callback != null) {
+                        callback.onTranslationComplete(false, null, 
+                            "Model download failed: " + (errorMessage != null ? errorMessage : "Unknown error"));
+                    }
+                }
+            }
+            
+            @Override
+            public void onUserDeclined() {
+                // User declined to download models
+                if (callback != null) {
+                    callback.onTranslationComplete(false, null, 
+                        "Translation cancelled: Required language models not available");
+                }
+            }
+        });
+    }
+    
     private void translateOnline(String text, String sourceLanguage, String targetLanguage, String cacheKey, TranslationCallback callback) {
         if (translationService == null || !translationService.hasApiKey()) {
             if (callback != null) {

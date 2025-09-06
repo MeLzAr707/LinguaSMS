@@ -335,15 +335,22 @@ public class NewMessageActivity extends BaseActivity {
         // Use TranslationManager to translate the text with force translation for outgoing messages
         translationManager.translateText(inputText,
                 targetLanguage,
-                (success, translatedText, errorMessage) -> {
-                    isTranslating.set(false);
+                new TranslationManager.EnhancedTranslationCallback() {
+                    @Override
+                    public android.app.Activity getActivity() {
+                        return NewMessageActivity.this;
+                    }
+                    
+                    @Override
+                    public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                        isTranslating.set(false);
 
-                    if (!success) {
-                        runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
-                                "Translation error: " + (errorMessage != null ? errorMessage : "Unknown error"),
-                                Toast.LENGTH_SHORT).show());
-                        return;
-                    } else {// Use the translatedText parameter directly instead of retrieving from cache
+                        if (!success) {
+                            runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
+                                    "Translation error: " + (errorMessage != null ? errorMessage : "Unknown error"),
+                                    Toast.LENGTH_SHORT).show());
+                            return;
+                        } else {// Use the translatedText parameter directly instead of retrieving from cache
                         if (translatedText == null) {
                             runOnUiThread(() -> Toast.makeText(NewMessageActivity.this,
                                     "Translation error: Could not retrieve translated text",
