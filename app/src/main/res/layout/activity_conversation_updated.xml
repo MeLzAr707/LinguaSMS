@@ -137,19 +137,18 @@
 
 
         <!-- Send Button -->
-        <Button
+        <ImageButton
             android:id="@+id/send_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="@dimen/compact_button_size"
+            android:layout_height="@dimen/compact_button_size"
             android:layout_marginEnd="8dp"
-            android:background="@drawable/rounded_button_bg"
-            android:text="@string/send"
-            android:textColor="@android:color/white"
-            android:minWidth="52dp"
-            android:minHeight="@dimen/send_button_min_height"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/accessibility_send_button"
+            android:src="@android:drawable/ic_menu_send"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorPrimary" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
