@@ -88,9 +88,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
-    private TextSizeManager textSizeManager;
-    private OnDeviceMLService onDeviceMLService;
-    
+
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
     
@@ -107,8 +105,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
-        textSizeManager = new TextSizeManager(this);
-        onDeviceMLService = new OnDeviceMLService(this);
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -258,8 +254,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 float scaleFactor = detector.getScaleFactor();
                 
                 // Update text size based on scale gesture
-                textSizeManager.updateTextSize(scaleFactor);
-                
+
                 // Update all visible text views
                 if (adapter != null) {
                     adapter.updateTextSizes();
@@ -889,15 +884,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (id == android.R.id.home) {
             finish();
             return true;
-        } else if (id == R.id.action_summarize) {
-            showSummarizationDialog();
-            return true;
-        } else if (id == R.id.action_rewrite) {
-            showRewritingDialog();
-            return true;
-        } else if (id == R.id.action_smart_reply) {
-            showSmartReplyDialog();
-            return true;
+
         }
 
         return super.onOptionsItemSelected(item);
@@ -1174,11 +1161,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             executorService.shutdownNow();
         }
         
-        // Clean up ML service
-        if (onDeviceMLService != null) {
-            onDeviceMLService.cleanup();
-        }
-        
         // Note: BroadcastReceiver cleanup is handled in onPause()
         Log.d(TAG, "ConversationActivity destroyed");
     }
@@ -1289,74 +1271,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
     }
 
-    /**
-     * Shows the summarization dialog.
-     */
-    private void showSummarizationDialog() {
-        MLTextOperationDialog dialog = new MLTextOperationDialog(this, onDeviceMLService);
-        dialog.show(MLTextOperationDialog.OperationType.SUMMARIZE, null, 
-            new MLTextOperationDialog.MLTextOperationCallback() {
-                @Override
-                public void onOperationComplete(String result) {
-                    // User can copy the summary or use it as a message
-                    if (messageInput != null) {
-                        messageInput.setText(result);
-                    }
-                }
 
-                @Override
-                public void onOperationCancelled() {
-                    // Do nothing
-                }
-            });
-    }
 
-    /**
-     * Shows the rewriting dialog.
-     */
-    private void showRewritingDialog() {
-        String currentText = messageInput != null ? messageInput.getText().toString() : "";
-        MLTextOperationDialog dialog = new MLTextOperationDialog(this, onDeviceMLService);
-        dialog.show(MLTextOperationDialog.OperationType.REWRITE, currentText, 
-            new MLTextOperationDialog.MLTextOperationCallback() {
-                @Override
-                public void onOperationComplete(String result) {
-                    // Replace the current message input with rewritten text
-                    if (messageInput != null) {
-                        messageInput.setText(result);
-                    }
-                }
-
-                @Override
-                public void onOperationCancelled() {
-                    // Do nothing
-                }
-            });
-    }
-
-    /**
-     * Shows the smart reply dialog.
-     */
-    private void showSmartReplyDialog() {
-        if (messages == null || messages.isEmpty()) {
-            Toast.makeText(this, "No conversation history for smart replies", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        SmartReplyDialog dialog = new SmartReplyDialog(this, onDeviceMLService);
-        dialog.show(messages, new SmartReplyDialog.SmartReplyCallback() {
-            @Override
-            public void onReplySelected(String reply) {
-                // Set the selected reply as the message input
-                if (messageInput != null) {
-                    messageInput.setText(reply);
-                }
-            }
-
-            @Override
-            public void onDialogCancelled() {
-                // Do nothing
-            }
-        });
-    }
 }

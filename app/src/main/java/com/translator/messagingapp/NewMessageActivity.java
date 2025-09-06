@@ -45,7 +45,6 @@ public class NewMessageActivity extends BaseActivity {
     private TranslationManager translationManager;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
-    private GenAIMessagingService genAIMessagingService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +58,6 @@ public class NewMessageActivity extends BaseActivity {
             translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
             defaultSmsAppManager = ((TranslatorApp) getApplication()).getDefaultSmsAppManager();
             userPreferences = ((TranslatorApp) getApplication()).getUserPreferences();
-            genAIMessagingService = ((TranslatorApp) getApplication()).getGenAIMessagingService();
 
             // Set up toolbar
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -118,7 +116,6 @@ public class NewMessageActivity extends BaseActivity {
             if (genAIButton != null) {
                 genAIButton.setImageResource(android.R.drawable.ic_menu_help);
                 genAIButton.setContentDescription("AI Features");
-                genAIButton.setOnClickListener(v -> showGenAICompositionFeatures());
             }
 
             // Set up text watchers for input validation
@@ -536,153 +533,7 @@ public class NewMessageActivity extends BaseActivity {
     /**
      * Shows GenAI features dialog for message composition.
      */
-    private void showGenAICompositionFeatures() {
-        if (genAIMessagingService == null || !genAIMessagingService.isAvailable()) {
-            Toast.makeText(this, "AI features are not available", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
-        String messageText = messageInput != null ? messageInput.getText().toString().trim() : "";
-        if (messageText.isEmpty()) {
-            Toast.makeText(this, "Enter a message to improve with AI", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        GenAIFeatureDialog.showCompositionFeatures(this, new GenAIFeatureDialog.GenAIFeatureCallback() {
-            @Override
-            public void onFeatureSelected(String feature) {
-                handleGenAICompositionFeature(feature, messageText);
-            }
-
-            @Override
-            public void onDismissed() {
-                // Do nothing
-            }
-        });
-    }
-
-    /**
-     * Handles GenAI composition feature selection.
-     */
-    private void handleGenAICompositionFeature(String feature, String messageText) {
-        switch (feature) {
-            case "Proofread Message":
-                proofreadMessage(messageText);
-                break;
-            case "Rewrite - Elaborate":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.ELABORATE);
-                break;
-            case "Rewrite - Emojify":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.EMOJIFY);
-                break;
-            case "Rewrite - Shorten":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.SHORTEN);
-                break;
-            case "Rewrite - Friendly":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.FRIENDLY);
-                break;
-            case "Rewrite - Professional":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.PROFESSIONAL);
-                break;
-            case "Rewrite - Rephrase":
-                rewriteMessage(messageText, GenAIMessagingService.RewriteTone.REPHRASE);
-                break;
-            default:
-                Toast.makeText(this, "Feature not implemented: " + feature, Toast.LENGTH_SHORT).show();
-                break;
-        }
-    }
-
-    /**
-     * Proofreads the current message.
-     */
-    private void proofreadMessage(String messageText) {
-        AlertDialog loadingDialog = GenAIFeatureDialog.showLoadingDialog(this, "Proofreading message...");
-
-        genAIMessagingService.proofreadMessage(messageText, new GenAIMessagingService.GenAICallback() {
-            @Override
-            public void onSuccess(String result) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    GenAIFeatureDialog.showResultDialog(NewMessageActivity.this, "Proofread Result", result,
-                            new GenAIFeatureDialog.ResultDialogCallback() {
-                                @Override
-                                public void onUse(String content) {
-                                    // Replace the message text with proofread version
-                                    if (messageInput != null) {
-                                        messageInput.setText(content);
-                                        messageInput.setSelection(content.length());
-                                    }
-                                }
-
-                                @Override
-                                public void onCopy(String content) {
-                                    copyToClipboard("Proofread Message", content);
-                                }
-
-                                @Override
-                                public void onCancel() {
-                                    // Do nothing
-                                }
-                            });
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(NewMessageActivity.this, "Error proofreading: " + error, Toast.LENGTH_LONG).show();
-                });
-            }
-        });
-    }
-
-    /**
-     * Rewrites the current message with the specified tone.
-     */
-    private void rewriteMessage(String messageText, GenAIMessagingService.RewriteTone tone) {
-        AlertDialog loadingDialog = GenAIFeatureDialog.showLoadingDialog(this, "Rewriting message...");
-
-        genAIMessagingService.rewriteMessage(messageText, tone, new GenAIMessagingService.GenAICallback() {
-            @Override
-            public void onSuccess(String result) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    String title = "Rewrite Result (" + tone.getDisplayName() + ")";
-                    GenAIFeatureDialog.showResultDialog(NewMessageActivity.this, title, result,
-                            new GenAIFeatureDialog.ResultDialogCallback() {
-                                @Override
-                                public void onUse(String content) {
-                                    // Replace the message text with rewritten version
-                                    if (messageInput != null) {
-                                        messageInput.setText(content);
-                                        messageInput.setSelection(content.length());
-                                    }
-                                }
-
-                                @Override
-                                public void onCopy(String content) {
-                                    copyToClipboard("Rewritten Message", content);
-                                }
-
-                                @Override
-                                public void onCancel() {
-                                    // Do nothing
-                                }
-                            });
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    loadingDialog.dismiss();
-                    Toast.makeText(NewMessageActivity.this, "Error rewriting: " + error, Toast.LENGTH_LONG).show();
-                });
-            }
-        });
-    }
 
     /**
      * Copies text to clipboard.
