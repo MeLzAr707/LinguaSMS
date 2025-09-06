@@ -172,7 +172,7 @@ public class LanguageDetectionService {
         identifyTask.addOnSuccessListener(new OnSuccessListener<String>() {
             @Override
             public void onSuccess(String languageCode) {
-                if (!LanguageIdentification.UNDETERMINED_LANGUAGE.equals(languageCode)) {
+                if (!LanguageIdentification.UNDETERMINED_LANGUAGE_TAG.equals(languageCode)) {
                     // ML Kit succeeded
                     Log.d(TAG, "ML Kit detected language: " + languageCode);
                     callback.onLanguageDetected(languageCode);

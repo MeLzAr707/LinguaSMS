@@ -84,18 +84,18 @@ public class BuildErrorFixTest {
     public void testLanguageIdentificationUndeterminedConstantExists() {
         // Test that the correct ML Kit constant exists and is accessible
         try {
-            // Verify that UNDETERMINED_LANGUAGE constant exists in LanguageIdentification
-            LanguageIdentification.class.getField("UNDETERMINED_LANGUAGE");
-            assertTrue("UNDETERMINED_LANGUAGE constant should exist in LanguageIdentification", true);
+            // Verify that UNDETERMINED_LANGUAGE_TAG constant exists in LanguageIdentification
+            LanguageIdentification.class.getField("UNDETERMINED_LANGUAGE_TAG");
+            assertTrue("UNDETERMINED_LANGUAGE_TAG constant should exist in LanguageIdentification", true);
         } catch (NoSuchFieldException e) {
-            fail("UNDETERMINED_LANGUAGE constant should exist in LanguageIdentification: " + e.getMessage());
+            fail("UNDETERMINED_LANGUAGE_TAG constant should exist in LanguageIdentification: " + e.getMessage());
         }
     }
 
     @Test
     public void testLanguageIdentificationUndeterminedConstantValue() {
-        // Test that the UNDETERMINED_LANGUAGE constant has the expected value
-        assertEquals("UNDETERMINED_LANGUAGE should have value 'und'", 
-                     "und", LanguageIdentification.UNDETERMINED_LANGUAGE);
+        // Test that the UNDETERMINED_LANGUAGE_TAG constant has the expected value
+        assertEquals("UNDETERMINED_LANGUAGE_TAG should have value 'und'", 
+                     "und", LanguageIdentification.UNDETERMINED_LANGUAGE_TAG);
     }
 }
