@@ -568,11 +568,19 @@ public class TranslationManager {
             return false;
         }
         
-        // Check if models are available
-        boolean modelsAvailable = offlineTranslationService.areModelsAvailable(sourceLanguage, targetLanguage);
-        Log.d(TAG, "Models available for " + sourceLanguage + " -> " + targetLanguage + ": " + modelsAvailable);
+        // For offline or auto modes, attempt offline translation even if models are not available
+        // This allows the missing model prompt to be triggered
+        if (translationMode == UserPreferences.TRANSLATION_MODE_OFFLINE || 
+            translationMode == UserPreferences.TRANSLATION_MODE_AUTO) {
+            
+            boolean modelsAvailable = offlineTranslationService.areModelsAvailable(sourceLanguage, targetLanguage);
+            Log.d(TAG, "Models available for " + sourceLanguage + " -> " + targetLanguage + ": " + modelsAvailable);
+            
+            // Return true to attempt offline translation, which will prompt for missing models if needed
+            return true;
+        }
         
-        return modelsAvailable;
+        return false;
     }
     
     /**

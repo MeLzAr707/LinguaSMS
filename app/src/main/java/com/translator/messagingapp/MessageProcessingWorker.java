@@ -231,7 +231,28 @@ public class MessageProcessingWorker extends Worker {
                     
                     return Result.success(outputData);
                 } else {
-                    Log.e(TAG, "Translation failed: " + (errorMessageHolder[0] != null ? errorMessageHolder[0] : "empty result"));
+                    String error = errorMessageHolder[0] != null ? errorMessageHolder[0] : "empty result";
+                    Log.e(TAG, "Translation failed: " + error);
+                    
+                    // Check if this is a missing model error that should not be retried
+                    if (error.contains("Language models not downloaded") || 
+                        error.contains("models not downloaded") ||
+                        error.contains("model not available")) {
+                        
+                        Log.w(TAG, "Translation failed due to missing language models - background workers cannot prompt for downloads");
+                        
+                        // Create failure data with specific error info for potential UI notification
+                        Data outputData = new Data.Builder()
+                            .putString("error_type", "missing_models")
+                            .putString("error_message", error)
+                            .putString("message_id", messageId)
+                            .putString("source_language", sourceLanguage)
+                            .putString("target_language", targetLanguage)
+                            .build();
+                        
+                        return Result.failure(outputData);
+                    }
+                    
                     return Result.retry();
                 }
             } catch (Exception translationError) {
