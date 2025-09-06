@@ -247,6 +247,39 @@
     <!-- Input validation -->
         <string name="please_enter_address">Please enter a phone number</string>
 
+    <!-- On-Device ML Features -->
+    <string name="action_summarize">Summarize</string>
+    <string name="action_rewrite">Rewrite</string>
+    <string name="action_smart_reply">Smart Reply</string>
+    <string name="ml_features">ML Features</string>
+    
+    <!-- Summarization -->
+    <string name="summarize_text">Summarize Text</string>
+    <string name="summarizing">Summarizing…</string>
+    <string name="summary_generated">Summary generated</string>
+    <string name="summarization_error">Failed to generate summary: %1$s</string>
+    <string name="text_too_short">Text is too short to summarize</string>
+    
+    <!-- Rewriting -->
+    <string name="rewrite_text">Rewrite Text</string>
+    <string name="rewriting">Rewriting…</string>
+    <string name="rewrite_style">Select rewriting style</string>
+    <string name="rewrite_elaborate">Elaborate</string>
+    <string name="rewrite_emojify">Emojify</string>
+    <string name="rewrite_shorten">Shorten</string>
+    <string name="rewrite_friendly">Friendly</string>
+    <string name="rewrite_professional">Professional</string>
+    <string name="rewrite_rephrase">Rephrase</string>
+    <string name="rewrite_completed">Text rewritten</string>
+    <string name="rewrite_error">Failed to rewrite text: %1$s</string>
+    
+    <!-- Smart Reply -->
+    <string name="smart_reply_suggestions">Smart Reply Suggestions</string>
+    <string name="generating_replies">Generating replies…</string>
+    <string name="no_reply_suggestions">No reply suggestions available</string>
+    <string name="smart_reply_error">Failed to generate replies: %1$s</string>
+    <string name="select_reply">Select a reply</string>
+
     <!-- Conversation -->
 
     <!-- Translation -->
