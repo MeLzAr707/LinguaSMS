@@ -79,6 +79,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     
     // Pagination variables
     private static final int PAGE_SIZE = 50;
+    private static final int ATTACHMENT_PICK_REQUEST = 1001;
     private int currentPage = 0;
     private boolean isLoading = false;
     private boolean hasMoreMessages = true;
@@ -201,6 +202,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         progressBar = findViewById(R.id.progress_bar);
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
+        attachmentButton = findViewById(R.id.attachment_button);
 
         // Check for critical views to prevent null pointer exceptions
         if (messagesRecyclerView == null) {
@@ -240,6 +242,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up translate input button
         if (translateInputButton != null) {
             translateInputButton.setOnClickListener(v -> translateInput());
+        }
+
+        // Set up attachment button
+        if (attachmentButton != null) {
+            attachmentButton.setOnClickListener(v -> openAttachmentPicker());
         }
 
         // Update UI based on theme
@@ -716,6 +723,161 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         });
     }
 
+    private void openAttachmentPicker() {
+        // Create an intent to pick attachments
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Select attachment"), ATTACHMENT_PICK_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "Please install a file manager to select attachments", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void makePhoneCall() {
+        if (address == null || address.isEmpty()) {
+            Toast.makeText(this, "No phone number available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create intent to make phone call
+        Intent callIntent = new Intent(Intent.ACTION_CALL);
+        callIntent.setData(Uri.parse("tel:" + address));
+        
+        try {
+            startActivity(callIntent);
+        } catch (SecurityException e) {
+            // Permission not granted, ask user to use dialer
+            Intent dialIntent = new Intent(Intent.ACTION_DIAL);
+            dialIntent.setData(Uri.parse("tel:" + address));
+            startActivity(dialIntent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error making phone call", e);
+        }
+    }
+
+    private void translateAllMessages() {
+        if (messages == null || messages.isEmpty()) {
+            Toast.makeText(this, "No messages to translate", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Get user's preferred language
+        String targetLanguage = userPreferences.getPreferredLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            Toast.makeText(this, "Please set a preferred language in settings", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show progress dialog
+        showProgressDialog("Translating all messages...");
+
+        // Count messages that need translation
+        int messagesToTranslate = 0;
+        for (Message message : messages) {
+            if (!message.isTranslated() && message.getBody() != null && !message.getBody().trim().isEmpty()) {
+                messagesToTranslate++;
+            }
+        }
+
+        if (messagesToTranslate == 0) {
+            hideProgressDialog();
+            Toast.makeText(this, "All messages are already translated", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Translate messages in background
+        final int totalToTranslate = messagesToTranslate;
+        final java.util.concurrent.atomic.AtomicInteger completedTranslations = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        executorService.execute(() -> {
+            for (int i = 0; i < messages.size(); i++) {
+                Message message = messages.get(i);
+                if (!message.isTranslated() && message.getBody() != null && !message.getBody().trim().isEmpty()) {
+                    final int position = i;
+                    translationManager.translateText(
+                        message.getBody(),
+                        targetLanguage,
+                        new TranslationManager.EnhancedTranslationCallback() {
+                            @Override
+                            public android.app.Activity getActivity() {
+                                return ConversationActivity.this;
+                            }
+
+                            @Override
+                            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                                runOnUiThread(() -> {
+                                    if (success && translatedText != null) {
+                                        message.setTranslatedText(translatedText);
+                                        message.setTranslated(true);
+                                        message.setShowTranslation(true);
+                                        adapter.notifyItemChanged(position);
+                                    }
+
+                                    int completed = completedTranslations.incrementAndGet();
+                                    if (completed >= totalToTranslate) {
+                                        hideProgressDialog();
+                                        Toast.makeText(ConversationActivity.this, 
+                                            "Translation complete", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        }, true);
+                }
+            }
+        });
+    }
+
+    private void showDeleteConversationDialog() {
+        new AlertDialog.Builder(this)
+            .setTitle("Delete Conversation")
+            .setMessage("Are you sure you want to delete this entire conversation? This action cannot be undone.")
+            .setPositiveButton("Delete", (dialog, which) -> deleteConversation())
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void deleteConversation() {
+        if (threadId == null || threadId.isEmpty()) {
+            Toast.makeText(this, "Unable to delete conversation", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show progress
+        showProgressDialog("Deleting conversation...");
+
+        // Delete in background
+        executorService.execute(() -> {
+            try {
+                boolean success = messageService.deleteConversation(threadId);
+                
+                runOnUiThread(() -> {
+                    hideProgressDialog();
+                    
+                    if (success) {
+                        Toast.makeText(ConversationActivity.this, 
+                            "Conversation deleted", Toast.LENGTH_SHORT).show();
+                        finish(); // Close the activity
+                    } else {
+                        Toast.makeText(ConversationActivity.this, 
+                            "Failed to delete conversation", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    hideProgressDialog();
+                    Toast.makeText(ConversationActivity.this, 
+                        "Error deleting conversation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+                Log.e(TAG, "Error deleting conversation", e);
+            }
+        });
+    }
+
     private void translateMessage(Message message, int position) {
         if (message == null || message.getBody() == null) {
             return;
@@ -907,7 +1069,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (id == android.R.id.home) {
             finish();
             return true;
-
+        } else if (id == R.id.action_call) {
+            makePhoneCall();
+            return true;
+        } else if (id == R.id.action_translate) {
+            translateInput();
+            return true;
+        } else if (id == R.id.action_translate_all) {
+            translateAllMessages();
+            return true;
+        } else if (id == R.id.action_delete_conversation) {
+            showDeleteConversationDialog();
+            return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -1186,6 +1359,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         
         // Note: BroadcastReceiver cleanup is handled in onPause()
         Log.d(TAG, "ConversationActivity destroyed");
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri selectedUri = data.getData();
+            if (selectedUri != null) {
+                // For now, just show a toast that attachment was selected
+                // In a full implementation, this would handle sending MMS
+                Toast.makeText(this, "Attachment selected: " + selectedUri.getLastPathSegment(), Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Attachment selected: " + selectedUri.toString());
+            }
+        }
     }
 
     /**

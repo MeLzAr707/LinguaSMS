@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat;
 public class NewMessageActivity extends BaseActivity {
     private static final String TAG = "NewMessageActivity";
     private static final int CONTACT_PICKER_RESULT = 1001;
+    private static final int ATTACHMENT_PICK_REQUEST = 1002;
 
     private EditText recipientInput;
     private EditText messageInput;
@@ -33,6 +34,7 @@ public class NewMessageActivity extends BaseActivity {
     private ImageButton contactButton;
     private ImageButton translateButton;
     private ImageButton genAIButton;
+    private ImageButton attachmentButton;
     private final AtomicBoolean isTranslating = new AtomicBoolean(false);
     private String originalComposedText = "";
     private boolean isComposedTextTranslated = false;
@@ -77,6 +79,7 @@ public class NewMessageActivity extends BaseActivity {
             contactButton = findViewById(R.id.contact_button);  // This is an ImageButton in XML
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
+            attachmentButton = findViewById(R.id.attachment_button);  // This is an ImageButton in XML
 
             // Restore state if available
             if (savedInstanceState != null) {
@@ -102,6 +105,11 @@ public class NewMessageActivity extends BaseActivity {
             // Set up contact button
             if (contactButton != null) {
                 contactButton.setOnClickListener(v -> pickContact());
+            }
+
+            // Set up attachment button
+            if (attachmentButton != null) {
+                attachmentButton.setOnClickListener(v -> openAttachmentPicker());
             }
 
             // Set up translate button
@@ -207,6 +215,20 @@ public class NewMessageActivity extends BaseActivity {
         }
     }
 
+    private void openAttachmentPicker() {
+        // Create an intent to pick attachments
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        try {
+            startActivityForResult(Intent.createChooser(intent, "Select attachment"), ATTACHMENT_PICK_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "Please install a file manager to select attachments", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -244,6 +266,14 @@ public class NewMessageActivity extends BaseActivity {
             } catch (Exception e) {
                 Log.e(TAG, "Error processing contact selection", e);
                 Toast.makeText(this, "Error selecting contact: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
+            Uri selectedUri = data.getData();
+            if (selectedUri != null) {
+                // For now, just show a toast that attachment was selected
+                // In a full implementation, this would handle sending MMS
+                Toast.makeText(this, "Attachment selected: " + selectedUri.getLastPathSegment(), Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Attachment selected: " + selectedUri.toString());
             }
         }
     }
@@ -458,6 +488,11 @@ public class NewMessageActivity extends BaseActivity {
             if (translateButton != null) {
                 translateButton.setOnClickListener(null);
                 translateButton = null;
+            }
+
+            if (attachmentButton != null) {
+                attachmentButton.setOnClickListener(null);
+                attachmentButton = null;
             }
 
             // Clear references
