@@ -11,7 +11,7 @@
     </style>
 
     <!-- No Action Bar theme -->
-    <style name="AppTheme_NoActionBar">
+    <style name="AppTheme_NoActionBar" parent="AppTheme">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -47,7 +47,7 @@
     </style>
 
     <!-- Black Glass No Action Bar theme - Adding this back -->
-    <style name="AppTheme_BlackGlass_NoActionBar">
+    <style name="AppTheme_BlackGlass_NoActionBar" parent="AppTheme_BlackGlass">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -180,7 +180,7 @@
     </style>
 
     <!-- Dark theme NoActionBar variant -->
-    <style name="AppTheme_Dark_NoActionBar">
+    <style name="AppTheme_Dark_NoActionBar" parent="AppTheme_Dark">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -196,7 +196,7 @@
     </style>
 
     <!-- System theme NoActionBar variant -->
-    <style name="AppTheme_System_NoActionBar">
+    <style name="AppTheme_System_NoActionBar" parent="AppTheme_System">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>

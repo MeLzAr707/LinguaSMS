@@ -46,7 +46,7 @@
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/AppTheme_NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -56,7 +56,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/AppTheme_NoActionBar">
             <!-- Added SMS/MMS intent filters -->
             <intent-filter>
                 <action android:name="android.intent.action.SENDTO" />
@@ -78,12 +78,12 @@
         <activity
             android:name=".ConversationActivity"
             android:exported="true"
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
             android:name=".NewMessageActivity"
             android:exported="true"
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
             android:name=".SettingsActivity"
@@ -103,7 +103,7 @@
         <activity
             android:name=".SearchActivity"
             android:exported="false"
-            android:theme="@style/AppTheme.NoActionBar" />
+            android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
             android:name=".OfflineModelsActivity"

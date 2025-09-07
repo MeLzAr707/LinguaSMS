@@ -15,7 +15,7 @@
     </style>
 
     <!-- System theme NoActionBar variant for night mode -->
-    <style name="AppTheme_System_NoActionBar">
+    <style name="AppTheme_System_NoActionBar" parent="AppTheme_System">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
