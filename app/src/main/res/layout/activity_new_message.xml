@@ -124,6 +124,16 @@
                 app:tint="?attr/colorPrimary" />
 
             <ImageButton
+                android:id="@+id/attachment_button"
+                android:layout_width="@dimen/compact_button_size"
+                android:layout_height="@dimen/compact_button_size"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/add_attachment"
+                android:src="@drawable/ic_attachment"
+                app:tint="?attr/colorPrimary" />
+
+            <ImageButton
                 android:id="@+id/send_button"
                 android:layout_width="@dimen/compact_button_size"
                 android:layout_height="@dimen/compact_button_size"
