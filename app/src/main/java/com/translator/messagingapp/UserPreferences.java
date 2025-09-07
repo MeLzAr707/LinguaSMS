@@ -134,6 +134,8 @@ public class UserPreferences {
             return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
         }
 
+        // For THEME_LIGHT and any other theme (including THEME_CUSTOM), 
+        // always return false to ensure light theme override
         return false;
     }
 

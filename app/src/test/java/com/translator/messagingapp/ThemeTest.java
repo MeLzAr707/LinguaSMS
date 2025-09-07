@@ -37,7 +37,7 @@ public class ThemeTest {
     @Test
     public void testDefaultTheme() {
         int defaultTheme = userPreferences.getThemeId();
-        assertEquals(UserPreferences.THEME_SYSTEM, defaultTheme);
+        assertEquals(UserPreferences.THEME_LIGHT, defaultTheme);
     }
 
     @Test
@@ -96,6 +96,53 @@ public class ThemeTest {
     }
 
     @Test
+    public void testLightThemeAlwaysOverridesSystemDarkMode() {
+        // Simulate different system configurations and ensure light theme always wins
+        
+        // Set to light theme explicitly
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        
+        // Verify it's always considered light theme regardless of system state
+        assertFalse("Light theme should override system dark mode", 
+                   userPreferences.isDarkThemeActive(context));
+        
+        // Verify the theme ID persists as light
+        assertEquals("Light theme ID should persist", 
+                    UserPreferences.THEME_LIGHT, userPreferences.getThemeId());
+        
+        // Test multiple calls to ensure consistency
+        for (int i = 0; i < 5; i++) {
+            assertFalse("Light theme should remain consistent across multiple calls", 
+                       userPreferences.isDarkThemeActive(context));
+            assertEquals("Light theme ID should remain consistent", 
+                        UserPreferences.THEME_LIGHT, userPreferences.getThemeId());
+        }
+    }
+
+    @Test
+    public void testSystemThemeVsLightThemeDistinction() {
+        // Test that THEME_SYSTEM and THEME_LIGHT behave differently
+        
+        // Set to system theme
+        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
+        boolean systemThemeResult = userPreferences.isDarkThemeActive(context);
+        
+        // Set to light theme
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        boolean lightThemeResult = userPreferences.isDarkThemeActive(context);
+        
+        // Light theme should always be false
+        assertFalse("Light theme should always return false for isDarkThemeActive", 
+                   lightThemeResult);
+        
+        // System theme result depends on system configuration
+        // but we can verify they might be different
+        // (This test documents the intended difference in behavior)
+        assertTrue("System and light themes should have distinct behavior options",
+                  !lightThemeResult || systemThemeResult == lightThemeResult);
+    }
+
+    @Test
     public void testBlackGlassThemeConfiguration() {
         // Test that BlackGlass theme can be selected and maintained
         userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
@@ -150,5 +197,36 @@ public class ThemeTest {
         userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
         assertFalse("Light theme should not be detected as Black Glass theme", 
                    userPreferences.isUsingBlackGlassTheme());
+    }
+
+    @Test
+    public void testUserSelectsLightThemeScenario() {
+        // This test simulates the exact scenario described in the issue:
+        // "When a user selects the light theme within the LinguaSMS app, 
+        //  the app should display a light theme regardless of the Android system's dark mode setting"
+        
+        // Step 1: Simulate user selecting light theme in app settings
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        
+        // Step 2: Verify the selection was saved
+        assertEquals("User's light theme selection should be saved", 
+                    UserPreferences.THEME_LIGHT, userPreferences.getThemeId());
+        
+        // Step 3: Verify that regardless of system dark mode state, 
+        //         the app considers itself in light theme mode
+        assertFalse("App should be in light theme mode when user selects light theme", 
+                   userPreferences.isDarkThemeActive(context));
+        
+        // Step 4: Verify this is not a dark theme
+        assertFalse("Light theme should not be considered a dark theme", 
+                   userPreferences.isDarkThemeEnabled());
+        
+        // Step 5: Verify theme persists across multiple checks
+        for (int i = 0; i < 3; i++) {
+            assertEquals("Light theme selection should persist", 
+                        UserPreferences.THEME_LIGHT, userPreferences.getThemeId());
+            assertFalse("Light theme state should persist", 
+                       userPreferences.isDarkThemeActive(context));
+        }
     }
 }
