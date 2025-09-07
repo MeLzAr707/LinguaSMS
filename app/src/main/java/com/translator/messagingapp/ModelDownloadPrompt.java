@@ -60,19 +60,21 @@ public class ModelDownloadPrompt {
             missingLanguages = translationManager.getLanguageName(targetLanguage);
         }
         
-        // Show confirmation dialog
-        new AlertDialog.Builder(activity)
-                .setTitle(R.string.missing_language_model_title)
-                .setMessage(activity.getString(R.string.missing_language_model_message, missingLanguages))
-                .setPositiveButton(R.string.download_models, (dialog, which) -> {
-                    downloadMissingModels(activity, sourceLanguage, targetLanguage, 
-                                        sourceAvailable, targetAvailable, offlineService, callback);
-                })
-                .setNegativeButton(R.string.cancel, (dialog, which) -> {
-                    callback.onUserDeclined();
-                })
-                .setCancelable(false)
-                .show();
+        // Show confirmation dialog on UI thread
+        activity.runOnUiThread(() -> {
+            new AlertDialog.Builder(activity)
+                    .setTitle(R.string.missing_language_model_title)
+                    .setMessage(activity.getString(R.string.missing_language_model_message, missingLanguages))
+                    .setPositiveButton(R.string.download_models, (dialog, which) -> {
+                        downloadMissingModels(activity, sourceLanguage, targetLanguage, 
+                                            sourceAvailable, targetAvailable, offlineService, callback);
+                    })
+                    .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                        callback.onUserDeclined();
+                    })
+                    .setCancelable(false)
+                    .show();
+        });
     }
     
     /**
@@ -92,86 +94,86 @@ public class ModelDownloadPrompt {
             return;
         }
         
-        // Show progress dialog
-        ProgressDialog progressDialog = new ProgressDialog(activity);
-        progressDialog.setTitle(R.string.downloading_language_models);
-        progressDialog.setMessage(activity.getString(R.string.downloading_models_message));
-        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        progressDialog.setMax(100);
-        progressDialog.setCancelable(false);
-        progressDialog.show();
-        
-        // Track download state
-        final boolean[] downloadComplete = {false, false}; // [source, target]
-        final String[] downloadError = {null};
-        
-        // Download source model if needed
-        if (!sourceAvailable) {
-            offlineService.downloadLanguageModel(sourceLanguage, new OfflineTranslationService.ModelDownloadCallback() {
-                @Override
-                public void onDownloadProgress(int progress) {
-                    activity.runOnUiThread(() -> {
-                        if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
-                            // Update progress for source model (0-50%)
-                            int adjustedProgress = progress / 2;
-                            progressDialog.setProgress(adjustedProgress);
-                        }
-                    });
-                }
-                
-                @Override
-                public void onDownloadComplete(boolean success, String errorMessage) {
-                    downloadComplete[0] = true;
-                    if (!success) {
-                        downloadError[0] = errorMessage;
+        // Show progress dialog on UI thread
+        activity.runOnUiThread(() -> {
+            ProgressDialog progressDialog = new ProgressDialog(activity);
+            progressDialog.setTitle(R.string.downloading_language_models);
+            progressDialog.setMessage(activity.getString(R.string.downloading_models_message));
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.setMax(100);
+            progressDialog.setCancelable(false);
+            progressDialog.show();
+            
+            // Track download state
+            final boolean[] downloadComplete = {false, false}; // [source, target]
+            final String[] downloadError = {null};
+            
+            // Download source model if needed
+            if (!sourceAvailable) {
+                offlineService.downloadLanguageModel(sourceLanguage, new OfflineTranslationService.ModelDownloadCallback() {
+                    @Override
+                    public void onDownloadProgress(int progress) {
+                        activity.runOnUiThread(() -> {
+                            if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
+                                // Update progress for source model (0-50%)
+                                int adjustedProgress = progress / 2;
+                                progressDialog.setProgress(adjustedProgress);
+                            }
+                        });
                     }
                     
-                    activity.runOnUiThread(() -> checkDownloadCompletion(activity, progressDialog, 
-                            targetAvailable, downloadComplete, downloadError, callback));
-                }
-            });
-        } else {
-            downloadComplete[0] = true;
-        }
-        
-        // Download target model if needed
-        if (!targetAvailable) {
-            offlineService.downloadLanguageModel(targetLanguage, new OfflineTranslationService.ModelDownloadCallback() {
-                @Override
-                public void onDownloadProgress(int progress) {
-                    activity.runOnUiThread(() -> {
-                        if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
-                            // Update progress for target model (50-100%)
-                            int adjustedProgress = 50 + (progress / 2);
-                            progressDialog.setProgress(adjustedProgress);
+                    @Override
+                    public void onDownloadComplete(boolean success, String errorMessage) {
+                        downloadComplete[0] = true;
+                        if (!success) {
+                            downloadError[0] = errorMessage;
                         }
-                    });
-                }
-                
-                @Override
-                public void onDownloadComplete(boolean success, String errorMessage) {
-                    downloadComplete[1] = true;
-                    if (!success) {
-                        downloadError[0] = errorMessage;
+                        
+                        activity.runOnUiThread(() -> checkDownloadCompletion(activity, progressDialog, 
+                                targetAvailable, downloadComplete, downloadError, callback));
+                    }
+                });
+            } else {
+                downloadComplete[0] = true;
+            }
+            
+            // Download target model if needed
+            if (!targetAvailable) {
+                offlineService.downloadLanguageModel(targetLanguage, new OfflineTranslationService.ModelDownloadCallback() {
+                    @Override
+                    public void onDownloadProgress(int progress) {
+                        activity.runOnUiThread(() -> {
+                            if (!activity.isFinishing() && !activity.isDestroyed() && progressDialog.isShowing()) {
+                                // Update progress for target model (50-100%)
+                                int adjustedProgress = 50 + (progress / 2);
+                                progressDialog.setProgress(adjustedProgress);
+                            }
+                        });
                     }
                     
-                    activity.runOnUiThread(() -> checkDownloadCompletion(activity, progressDialog, 
-                            sourceAvailable, downloadComplete, downloadError, callback));
-                }
-            });
-        } else {
-            downloadComplete[1] = true;
-        }
-        
-        // If both models are already available (shouldn't happen, but safety check)
-        if (sourceAvailable && targetAvailable) {
-            activity.runOnUiThread(() -> {
+                    @Override
+                    public void onDownloadComplete(boolean success, String errorMessage) {
+                        downloadComplete[1] = true;
+                        if (!success) {
+                            downloadError[0] = errorMessage;
+                        }
+                        
+                        activity.runOnUiThread(() -> checkDownloadCompletion(activity, progressDialog, 
+                                sourceAvailable, downloadComplete, downloadError, callback));
+                    }
+                });
+            } else {
+                downloadComplete[1] = true;
+            }
+            
+            // If both models are already available (shouldn't happen, but safety check)
+            if (sourceAvailable && targetAvailable) {
                 if (progressDialog.isShowing()) {
                     progressDialog.dismiss();
                 }
                 callback.onDownloadCompleted(true, null);
-            });
-        }
+            }
+        });
     }
     
     /**
