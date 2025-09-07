@@ -1,18 +1,26 @@
 <resources>
-    <!-- Base application theme for night mode -->
-    <!-- Use dark theme automatically when system is in dark mode -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
+    <!-- System theme for night mode - this only applies when user selects THEME_SYSTEM -->
+    <!-- This overrides AppTheme_System to use dark theme when system is in dark mode -->
+    <style name="AppTheme_System" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:windowBackground">@color/background_dark</item>
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="android:textColor">@color/textColorPrimary_dark</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary_dark</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
         <item name="alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
         <item name="cardViewStyle">@style/DarkCardView</item>
     </style>
+
+    <!-- System theme NoActionBar variant for night mode -->
+    <style name="AppTheme_System_NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- Note: The base AppTheme is no longer overridden here, so explicit light theme selection will always use light theme -->
 
     <!-- AppBar styles for dark theme -->
     <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
@@ -25,12 +33,6 @@
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.MaterialComponents.Dark">
         <item name="android:background">@color/darkSurfaceTranslucent</item>
         <item name="android:textColor">@color/darkTextPrimary</item>
-    </style>
-
-    <!-- No Action Bar Theme for night mode -->
-    <style name="AppTheme.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
     </style>
 
     <!-- Additional night-specific overrides -->

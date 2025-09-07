@@ -11,13 +11,13 @@
     </style>
 
     <!-- No Action Bar theme -->
-    <style name="AppTheme.NoActionBar">
+    <style name="AppTheme_NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
 
     <!-- Dark theme -->
-    <style name="AppTheme.Dark" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="AppTheme_Dark" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
@@ -31,7 +31,7 @@
     </style>
 
     <!-- Black Glass theme with Deep Dark Blue accents -->
-    <style name="AppTheme.BlackGlass" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="AppTheme_BlackGlass" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/deep_dark_blue</item>
         <item name="colorPrimaryDark">@color/deep_dark_blue</item>
         <item name="colorAccent">@color/deep_dark_blue</item>
@@ -47,7 +47,7 @@
     </style>
 
     <!-- Black Glass No Action Bar theme - Adding this back -->
-    <style name="AppTheme.BlackGlass.NoActionBar">
+    <style name="AppTheme_BlackGlass_NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
@@ -147,7 +147,7 @@
     </style>
 
     <!-- Custom theme base - ensures all attributes are properly defined -->
-    <style name="AppTheme.Custom" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="AppTheme_Custom" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
@@ -180,7 +180,23 @@
     </style>
 
     <!-- Dark theme NoActionBar variant -->
-    <style name="AppTheme.Dark.NoActionBar">
+    <style name="AppTheme_Dark_NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- System theme - follows Android system dark/light mode -->
+    <style name="AppTheme_System" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+        <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+    </style>
+
+    <!-- System theme NoActionBar variant -->
+    <style name="AppTheme_System_NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
