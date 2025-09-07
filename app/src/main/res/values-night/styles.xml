@@ -1,13 +1,17 @@
 <resources>
     <!-- Base application theme for night mode -->
-    <!-- Only use dark theme when explicitly set, not automatically -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <!-- Use dark theme automatically when system is in dark mode -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowBackground">@color/background_dark</item>
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+        <item name="alertDialogTheme">@style/DarkAlertDialog</item>
+        <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
+        <item name="cardViewStyle">@style/DarkCardView</item>
     </style>
 
     <!-- AppBar styles for dark theme -->
