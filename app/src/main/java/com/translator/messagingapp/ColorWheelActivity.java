@@ -5,64 +5,120 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Activity for selecting custom theme colors using a color wheel/picker interface.
- * This activity allows users to customize various UI element colors for the custom theme.
+ * Activity for granular theme customization with dropdown color selection.
+ * This activity allows users to customize individual UI element colors with color preview.
  */
 public class ColorWheelActivity extends BaseActivity {
     private static final String TAG = "ColorWheelActivity";
     
-    // UI components
+    // UI components - Spinners
+    private Spinner conversationBgSpinner;
+    private Spinner messageViewBgSpinner;
+    private Spinner mainTextSpinner;
+    private Spinner buttonColorSpinner;
+    private Spinner incomingTextSpinner;
+    private Spinner outgoingTextSpinner;
+    private Spinner incomingBubbleSpinner;
+    private Spinner outgoingBubbleSpinner;
+    private Spinner navHeaderSpinner;
+    
+    // UI components - Color previews
+    private View conversationBgPreview;
+    private View messageViewBgPreview;
+    private View mainTextPreview;
+    private View buttonColorPreview;
+    private View incomingTextPreview;
+    private View outgoingTextPreview;
+    private View incomingBubblePreview;
+    private View outgoingBubblePreview;
+    private View navHeaderPreview;
+    
+    // UI components - Preview section
+    private LinearLayout navPreview;
+    private LinearLayout conversationPreview;
+    private LinearLayout messageViewPreview;
+    private LinearLayout incomingBubblePreviewContainer;
+    private LinearLayout outgoingBubblePreviewContainer;
+    private TextView incomingTextPreviewText;
+    private TextView outgoingTextPreviewText;
+    private TextView mainTextPreviewText;
+    private Button buttonPreview;
+    
+    // UI components - Buttons
     private Button applyButton;
     private Button resetButton;
-    private GridLayout colorPaletteGrid;
-    private GridLayout textColorPaletteGrid;
-    private View backgroundColorPreview;
-    private View textColorPreview;
-    private LinearLayout combinedPreview;
-    private TextView previewText;
     
     // Data
     private UserPreferences userPreferences;
-    private int selectedBackgroundColor = 0xFF3F51B5; // Default blue color
-    private int selectedTextColor = 0xFF000000; // Default black color
     
-    // Color palettes
-    private static final int[] BACKGROUND_COLORS = {
-            0xFF2196F3, // Blue
-            0xFF4CAF50, // Green
-            0xFFFF9800, // Orange  
-            0xFFE91E63, // Pink
-            0xFF9C27B0, // Purple
-            0xFF607D8B, // Blue Gray
-            0xFF795548, // Brown
-            0xFFFF5722, // Deep Orange
-            // Darker shades
-            0xFF1976D2, // Dark Blue
-            0xFF388E3C, // Dark Green
-            0xFFF57C00, // Dark Orange
-            0xFFC2185B, // Dark Pink
-            0xFF7B1FA2, // Dark Purple
-            0xFF455A64, // Dark Blue Gray
-            0xFF5D4037, // Dark Brown
-            0xFFD84315  // Dark Deep Orange
+    // Selected colors
+    private int selectedConversationBgColor = 0xFF3F51B5;
+    private int selectedMessageViewBgColor = 0xFFFFFFFF;
+    private int selectedMainTextColor = 0xFF000000;
+    private int selectedButtonColor = 0xFF2196F3;
+    private int selectedIncomingTextColor = 0xFF000000;
+    private int selectedOutgoingTextColor = 0xFFFFFFFF;
+    private int selectedIncomingBubbleColor = 0xFFE1F5FE;
+    private int selectedOutgoingBubbleColor = 0xFFDCEDC8;
+    private int selectedNavHeaderColor = 0xFF3F51B5;
+    
+    // Color options for dropdowns
+    private static final ColorOption[] COLOR_OPTIONS = {
+            new ColorOption("Blue", 0xFF2196F3),
+            new ColorOption("Green", 0xFF4CAF50),
+            new ColorOption("Orange", 0xFFFF9800),
+            new ColorOption("Pink", 0xFFE91E63),
+            new ColorOption("Purple", 0xFF9C27B0),
+            new ColorOption("Blue Gray", 0xFF607D8B),
+            new ColorOption("Brown", 0xFF795548),
+            new ColorOption("Deep Orange", 0xFFFF5722),
+            new ColorOption("Dark Blue", 0xFF1976D2),
+            new ColorOption("Dark Green", 0xFF388E3C),
+            new ColorOption("Dark Orange", 0xFFF57C00),
+            new ColorOption("Dark Pink", 0xFFC2185B),
+            new ColorOption("Dark Purple", 0xFF7B1FA2),
+            new ColorOption("Red", 0xFFF44336),
+            new ColorOption("Indigo", 0xFF3F51B5),
+            new ColorOption("Teal", 0xFF009688),
+            new ColorOption("Cyan", 0xFF00BCD4),
+            new ColorOption("Lime", 0xFFCDDC39),
+            new ColorOption("Yellow", 0xFFFFEB3B),
+            new ColorOption("Amber", 0xFFFFC107),
+            new ColorOption("Deep Purple", 0xFF673AB7),
+            new ColorOption("Light Blue", 0xFF03A9F4),
+            new ColorOption("Light Green", 0xFF8BC34A),
+            new ColorOption("Light Gray", 0xFFE0E0E0),
+            new ColorOption("Gray", 0xFF9E9E9E),
+            new ColorOption("Dark Gray", 0xFF424242),
+            new ColorOption("Black", 0xFF000000),
+            new ColorOption("White", 0xFFFFFFFF)
     };
     
-    private static final int[] TEXT_COLORS = {
-            0xFF000000, // Black
-            0xFF424242, // Dark Gray
-            0xFF757575, // Gray
-            0xFFFFFFFF, // White
-            0xFF1976D2, // Dark Blue
-            0xFF388E3C, // Dark Green
-            0xFF7B1FA2, // Dark Purple
-            0xFFD84315  // Dark Orange
-    };
+    private static class ColorOption {
+        final String name;
+        final int color;
+        
+        ColorOption(String name, int color) {
+            this.name = name;
+            this.color = color;
+        }
+        
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,11 +146,10 @@ public class ColorWheelActivity extends BaseActivity {
         
         setupToolbar();
         findViews();
-        setupColorPalettes();
+        setupSpinners();
         setupClickListeners();
         loadCurrentColors();
         updatePreviews();
-        updateColorSelection();
     }
     
     private void setupToolbar() {
@@ -102,304 +157,294 @@ public class ColorWheelActivity extends BaseActivity {
         if (toolbar != null) {
             setSupportActionBar(toolbar);
             if (getSupportActionBar() != null) {
-                getSupportActionBar().setTitle("Custom Colors");
+                getSupportActionBar().setTitle("Granular Theme Customization");
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
     }
     
     private void findViews() {
+        // Spinners
+        conversationBgSpinner = findViewById(R.id.conversation_bg_spinner);
+        messageViewBgSpinner = findViewById(R.id.message_view_bg_spinner);
+        mainTextSpinner = findViewById(R.id.main_text_spinner);
+        buttonColorSpinner = findViewById(R.id.button_color_spinner);
+        incomingTextSpinner = findViewById(R.id.incoming_text_spinner);
+        outgoingTextSpinner = findViewById(R.id.outgoing_text_spinner);
+        incomingBubbleSpinner = findViewById(R.id.incoming_bubble_spinner);
+        outgoingBubbleSpinner = findViewById(R.id.outgoing_bubble_spinner);
+        navHeaderSpinner = findViewById(R.id.nav_header_spinner);
+        
+        // Color previews
+        conversationBgPreview = findViewById(R.id.conversation_bg_preview);
+        messageViewBgPreview = findViewById(R.id.message_view_bg_preview);
+        mainTextPreview = findViewById(R.id.main_text_preview);
+        buttonColorPreview = findViewById(R.id.button_color_preview);
+        incomingTextPreview = findViewById(R.id.incoming_text_preview);
+        outgoingTextPreview = findViewById(R.id.outgoing_text_preview);
+        incomingBubblePreview = findViewById(R.id.incoming_bubble_preview);
+        outgoingBubblePreview = findViewById(R.id.outgoing_bubble_preview);
+        navHeaderPreview = findViewById(R.id.nav_header_preview);
+        
+        // Preview section
+        navPreview = findViewById(R.id.nav_preview);
+        conversationPreview = findViewById(R.id.conversation_preview);
+        messageViewPreview = findViewById(R.id.message_view_preview);
+        incomingBubblePreviewContainer = findViewById(R.id.incoming_bubble_preview_container);
+        outgoingBubblePreviewContainer = findViewById(R.id.outgoing_bubble_preview_container);
+        incomingTextPreviewText = findViewById(R.id.incoming_text_preview_text);
+        outgoingTextPreviewText = findViewById(R.id.outgoing_text_preview_text);
+        mainTextPreviewText = findViewById(R.id.main_text_preview_text);
+        buttonPreview = findViewById(R.id.button_preview);
+        
+        // Buttons
         applyButton = findViewById(R.id.apply_button);
         resetButton = findViewById(R.id.reset_button);
-        colorPaletteGrid = findViewById(R.id.color_palette_grid);
-        textColorPaletteGrid = findViewById(R.id.text_color_palette_grid);
-        backgroundColorPreview = findViewById(R.id.background_color_preview);
-        textColorPreview = findViewById(R.id.text_color_preview);
-        combinedPreview = findViewById(R.id.combined_preview);
-        previewText = findViewById(R.id.preview_text);
+    }
+    
+    private void setupSpinners() {
+        ArrayAdapter<ColorOption> adapter = new ArrayAdapter<>(this, 
+            android.R.layout.simple_spinner_item, COLOR_OPTIONS);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        
+        // Set adapters for all spinners
+        conversationBgSpinner.setAdapter(adapter);
+        messageViewBgSpinner.setAdapter(adapter);
+        mainTextSpinner.setAdapter(adapter);
+        buttonColorSpinner.setAdapter(adapter);
+        incomingTextSpinner.setAdapter(adapter);
+        outgoingTextSpinner.setAdapter(adapter);
+        incomingBubbleSpinner.setAdapter(adapter);
+        outgoingBubbleSpinner.setAdapter(adapter);
+        navHeaderSpinner.setAdapter(adapter);
+        
+        // Set up listeners
+        setupSpinnerListener(conversationBgSpinner, (color) -> {
+            selectedConversationBgColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(messageViewBgSpinner, (color) -> {
+            selectedMessageViewBgColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(mainTextSpinner, (color) -> {
+            selectedMainTextColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(buttonColorSpinner, (color) -> {
+            selectedButtonColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(incomingTextSpinner, (color) -> {
+            selectedIncomingTextColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(outgoingTextSpinner, (color) -> {
+            selectedOutgoingTextColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(incomingBubbleSpinner, (color) -> {
+            selectedIncomingBubbleColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(outgoingBubbleSpinner, (color) -> {
+            selectedOutgoingBubbleColor = color;
+            updatePreviews();
+        });
+        
+        setupSpinnerListener(navHeaderSpinner, (color) -> {
+            selectedNavHeaderColor = color;
+            updatePreviews();
+        });
+    }
+    
+    private void setupSpinnerListener(Spinner spinner, ColorChangeListener listener) {
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                ColorOption selectedOption = COLOR_OPTIONS[position];
+                listener.onColorChanged(selectedOption.color);
+            }
+            
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
+    }
+    
+    private interface ColorChangeListener {
+        void onColorChanged(int color);
     }
     
     private void setupClickListeners() {
-        if (applyButton != null) {
-            applyButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    applySelectedColors();
-                }
-            });
-        }
-        
-        if (resetButton != null) {
-            resetButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    resetToDefaults();
-                }
-            });
-        }
+        applyButton.setOnClickListener(v -> applySelectedColors());
+        resetButton.setOnClickListener(v -> resetToDefaults());
     }
     
-    private void setupColorPalettes() {
-        setupBackgroundColorPalette();
-        setupTextColorPalette();
+    private void loadCurrentColors() {
+        if (userPreferences == null) return;
+        
+        // Load current colors from preferences
+        selectedConversationBgColor = userPreferences.getCustomBackgroundColor(0xFF3F51B5);
+        selectedMessageViewBgColor = userPreferences.getCustomMessageViewBackgroundColor(0xFFFFFFFF);
+        selectedMainTextColor = userPreferences.getCustomTextColor(0xFF000000);
+        selectedButtonColor = userPreferences.getCustomButtonColor(0xFF2196F3);
+        selectedIncomingTextColor = userPreferences.getCustomIncomingBubbleTextColor(0xFF000000);
+        selectedOutgoingTextColor = userPreferences.getCustomOutgoingBubbleTextColor(0xFFFFFFFF);
+        selectedIncomingBubbleColor = userPreferences.getCustomIncomingBubbleColor(0xFFE1F5FE);
+        selectedOutgoingBubbleColor = userPreferences.getCustomOutgoingBubbleColor(0xFFDCEDC8);
+        selectedNavHeaderColor = userPreferences.getCustomNavBarColor(0xFF3F51B5);
+        
+        // Set spinner selections
+        setSpinnerSelection(conversationBgSpinner, selectedConversationBgColor);
+        setSpinnerSelection(messageViewBgSpinner, selectedMessageViewBgColor);
+        setSpinnerSelection(mainTextSpinner, selectedMainTextColor);
+        setSpinnerSelection(buttonColorSpinner, selectedButtonColor);
+        setSpinnerSelection(incomingTextSpinner, selectedIncomingTextColor);
+        setSpinnerSelection(outgoingTextSpinner, selectedOutgoingTextColor);
+        setSpinnerSelection(incomingBubbleSpinner, selectedIncomingBubbleColor);
+        setSpinnerSelection(outgoingBubbleSpinner, selectedOutgoingBubbleColor);
+        setSpinnerSelection(navHeaderSpinner, selectedNavHeaderColor);
     }
     
-    private void setupBackgroundColorPalette() {
-        if (colorPaletteGrid == null) return;
-        
-        for (int color : BACKGROUND_COLORS) {
-            View colorView = createColorView(color, true);
-            colorPaletteGrid.addView(colorView);
-        }
-    }
-    
-    private void setupTextColorPalette() {
-        if (textColorPaletteGrid == null) return;
-        
-        for (int color : TEXT_COLORS) {
-            View colorView = createColorView(color, false);
-            textColorPaletteGrid.addView(colorView);
-        }
-    }
-    
-    private View createColorView(final int color, final boolean isBackgroundColor) {
-        View colorView = new View(this);
-        
-        // Set size (convert dp to pixels) - making them slightly larger for better touch targets
-        int sizeInDp = 72;
-        int sizeInPx = (int) (sizeInDp * getResources().getDisplayMetrics().density);
-        int marginInDp = 12;
-        int marginInPx = (int) (marginInDp * getResources().getDisplayMetrics().density);
-        
-        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-        params.width = sizeInPx;
-        params.height = sizeInPx;
-        params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
-        colorView.setLayoutParams(params);
-        
-        // Create initial drawable with subtle border
-        android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-        drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-        drawable.setColor(color);
-        drawable.setStroke(2, android.graphics.Color.LTGRAY);
-        drawable.setCornerRadius(8f);
-        colorView.setBackground(drawable);
-        
-        // Add elevation for better visual depth
-        colorView.setElevation(4f);
-        
-        // Set click listener
-        colorView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (isBackgroundColor) {
-                    selectedBackgroundColor = color;
-                } else {
-                    selectedTextColor = color;
-                }
-                updatePreviews();
-                updateColorSelection();
-            }
-        });
-        
-        return colorView;
-    }
-    
-    private void updateColorSelection() {
-        // Update background color grid selection
-        for (int i = 0; i < colorPaletteGrid.getChildCount() && i < BACKGROUND_COLORS.length; i++) {
-            View child = colorPaletteGrid.getChildAt(i);
-            if (BACKGROUND_COLORS[i] == selectedBackgroundColor) {
-                // Create a shape drawable with color and white border for selection
-                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                drawable.setColor(selectedBackgroundColor);
-                drawable.setStroke(6, android.graphics.Color.WHITE);
-                drawable.setCornerRadius(8f);
-                child.setBackground(drawable);
-                child.setElevation(8f);
-            } else {
-                // Create a shape drawable with color and subtle border for unselected
-                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                drawable.setColor(BACKGROUND_COLORS[i]);
-                drawable.setStroke(2, android.graphics.Color.LTGRAY);
-                drawable.setCornerRadius(8f);
-                child.setBackground(drawable);
-                child.setElevation(4f);
-            }
-        }
-        
-        // Update text color grid selection
-        for (int i = 0; i < textColorPaletteGrid.getChildCount() && i < TEXT_COLORS.length; i++) {
-            View child = textColorPaletteGrid.getChildAt(i);
-            if (TEXT_COLORS[i] == selectedTextColor) {
-                // Create a shape drawable with color and white border for selection
-                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                drawable.setColor(selectedTextColor);
-                drawable.setStroke(6, android.graphics.Color.WHITE);
-                drawable.setCornerRadius(8f);
-                child.setBackground(drawable);
-                child.setElevation(8f);
-            } else {
-                // Create a shape drawable with color and subtle border for unselected
-                android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-                drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                drawable.setColor(TEXT_COLORS[i]);
-                drawable.setStroke(2, android.graphics.Color.LTGRAY);
-                drawable.setCornerRadius(8f);
-                child.setBackground(drawable);
-                child.setElevation(4f);
+    private void setSpinnerSelection(Spinner spinner, int color) {
+        for (int i = 0; i < COLOR_OPTIONS.length; i++) {
+            if (COLOR_OPTIONS[i].color == color) {
+                spinner.setSelection(i);
+                break;
             }
         }
     }
     
     private void updatePreviews() {
-        if (backgroundColorPreview != null) {
-            backgroundColorPreview.setBackgroundColor(selectedBackgroundColor);
+        // Update color preview squares
+        if (conversationBgPreview != null) {
+            conversationBgPreview.setBackgroundColor(selectedConversationBgColor);
+        }
+        if (messageViewBgPreview != null) {
+            messageViewBgPreview.setBackgroundColor(selectedMessageViewBgColor);
+        }
+        if (mainTextPreview != null) {
+            mainTextPreview.setBackgroundColor(selectedMainTextColor);
+        }
+        if (buttonColorPreview != null) {
+            buttonColorPreview.setBackgroundColor(selectedButtonColor);
+        }
+        if (incomingTextPreview != null) {
+            incomingTextPreview.setBackgroundColor(selectedIncomingTextColor);
+        }
+        if (outgoingTextPreview != null) {
+            outgoingTextPreview.setBackgroundColor(selectedOutgoingTextColor);
+        }
+        if (incomingBubblePreview != null) {
+            incomingBubblePreview.setBackgroundColor(selectedIncomingBubbleColor);
+        }
+        if (outgoingBubblePreview != null) {
+            outgoingBubblePreview.setBackgroundColor(selectedOutgoingBubbleColor);
+        }
+        if (navHeaderPreview != null) {
+            navHeaderPreview.setBackgroundColor(selectedNavHeaderColor);
         }
         
-        if (textColorPreview != null) {
-            textColorPreview.setBackgroundColor(selectedTextColor);
+        // Update main preview section
+        if (navPreview != null) {
+            navPreview.setBackgroundColor(selectedNavHeaderColor);
         }
-        
-        if (combinedPreview != null && previewText != null) {
-            combinedPreview.setBackgroundColor(selectedBackgroundColor);
-            previewText.setTextColor(selectedTextColor);
+        if (conversationPreview != null) {
+            conversationPreview.setBackgroundColor(selectedConversationBgColor);
         }
-    }
-    
-    private void loadCurrentColors() {
-        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
-            int defaultBackgroundColor;
-            int defaultTextColor;
-            
-            try {
-                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
-                defaultTextColor = getResources().getColor(android.R.color.black);
-            } catch (Exception e) {
-                // Fallback to hardcoded colors if system resources are not available
-                Log.w(TAG, "Failed to resolve system colors, using fallbacks", e);
-                defaultBackgroundColor = 0xFF33B5E5; // Holo blue dark equivalent
-                defaultTextColor = 0xFF000000; // Black
-            }
-            
-            selectedBackgroundColor = userPreferences.getCustomPrimaryColor(defaultBackgroundColor);
-            selectedTextColor = userPreferences.getCustomTextColor(defaultTextColor);
+        if (messageViewPreview != null) {
+            messageViewPreview.setBackgroundColor(selectedMessageViewBgColor);
+        }
+        if (incomingBubblePreviewContainer != null) {
+            incomingBubblePreviewContainer.setBackgroundColor(selectedIncomingBubbleColor);
+        }
+        if (outgoingBubblePreviewContainer != null) {
+            outgoingBubblePreviewContainer.setBackgroundColor(selectedOutgoingBubbleColor);
+        }
+        if (incomingTextPreviewText != null) {
+            incomingTextPreviewText.setTextColor(selectedIncomingTextColor);
+        }
+        if (outgoingTextPreviewText != null) {
+            outgoingTextPreviewText.setTextColor(selectedOutgoingTextColor);
+        }
+        if (mainTextPreviewText != null) {
+            mainTextPreviewText.setTextColor(selectedMainTextColor);
+        }
+        if (buttonPreview != null) {
+            buttonPreview.setBackgroundTintList(android.content.res.ColorStateList.valueOf(selectedButtonColor));
         }
     }
     
     private void applySelectedColors() {
-        // Apply the selected colors to various UI components
-        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
-            // Apply background color to navigation bar
-            userPreferences.setCustomNavBarColor(selectedBackgroundColor);
-            
-            // Apply background color to top bar  
-            userPreferences.setCustomTopBarColor(selectedBackgroundColor);
-            
-            // Apply background color to buttons
-            userPreferences.setCustomButtonColor(selectedBackgroundColor);
-            
-            // Apply background color to menu
-            userPreferences.setCustomMenuColor(selectedBackgroundColor);
-            
-            // Apply background color to message bubbles
-            userPreferences.setCustomIncomingBubbleColor(selectedBackgroundColor);
-            userPreferences.setCustomOutgoingBubbleColor(selectedBackgroundColor);
-        }
+        if (userPreferences == null) return;
         
-        // Set as primary color
-        userPreferences.setCustomPrimaryColor(selectedBackgroundColor);
+        // Apply the selected colors to user preferences
+        userPreferences.setCustomBackgroundColor(selectedConversationBgColor);
+        userPreferences.setCustomMessageViewBackgroundColor(selectedMessageViewBgColor);
+        userPreferences.setCustomTextColor(selectedMainTextColor);
+        userPreferences.setCustomButtonColor(selectedButtonColor);
+        userPreferences.setCustomIncomingBubbleTextColor(selectedIncomingTextColor);
+        userPreferences.setCustomOutgoingBubbleTextColor(selectedOutgoingTextColor);
+        userPreferences.setCustomIncomingBubbleColor(selectedIncomingBubbleColor);
+        userPreferences.setCustomOutgoingBubbleColor(selectedOutgoingBubbleColor);
+        userPreferences.setCustomNavBarColor(selectedNavHeaderColor);
         
-        // Set text color
-        userPreferences.setCustomTextColor(selectedTextColor);
+        // Also set as primary color for compatibility
+        userPreferences.setCustomPrimaryColor(selectedNavHeaderColor);
         
-        // Switch to custom theme if not already using it
-        if (userPreferences.getThemeId() != UserPreferences.THEME_CUSTOM) {
-            userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
-        }
+        // Set theme to custom
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
         
-        finish();
+        android.widget.Toast.makeText(this, "Colors applied successfully!", 
+            android.widget.Toast.LENGTH_SHORT).show();
+        
+        // Restart activity to show theme changes
+        recreate();
     }
     
     private void resetToDefaults() {
-        // Use safer color resolution methods with theme context
-        int defaultBackgroundColor;
-        int defaultTextColor;
+        // Reset to default colors
+        selectedConversationBgColor = 0xFF3F51B5;
+        selectedMessageViewBgColor = 0xFFFFFFFF;
+        selectedMainTextColor = 0xFF000000;
+        selectedButtonColor = 0xFF2196F3;
+        selectedIncomingTextColor = 0xFF000000;
+        selectedOutgoingTextColor = 0xFFFFFFFF;
+        selectedIncomingBubbleColor = 0xFFE1F5FE;
+        selectedOutgoingBubbleColor = 0xFFDCEDC8;
+        selectedNavHeaderColor = 0xFF3F51B5;
         
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark, getTheme());
-                defaultTextColor = getResources().getColor(android.R.color.black, getTheme());
-            } else {
-                defaultBackgroundColor = getResources().getColor(android.R.color.holo_blue_dark);
-                defaultTextColor = getResources().getColor(android.R.color.black);
-            }
-        } catch (Exception e) {
-            // Fallback to hardcoded values if color resolution fails
-            Log.w(TAG, "Failed to resolve default colors, using fallback values", e);
-            defaultBackgroundColor = 0xFF33B5E5; // Holo blue dark equivalent
-            defaultTextColor = 0xFF000000; // Black
-        }
+        // Update spinner selections
+        setSpinnerSelection(conversationBgSpinner, selectedConversationBgColor);
+        setSpinnerSelection(messageViewBgSpinner, selectedMessageViewBgColor);
+        setSpinnerSelection(mainTextSpinner, selectedMainTextColor);
+        setSpinnerSelection(buttonColorSpinner, selectedButtonColor);
+        setSpinnerSelection(incomingTextSpinner, selectedIncomingTextColor);
+        setSpinnerSelection(outgoingTextSpinner, selectedOutgoingTextColor);
+        setSpinnerSelection(incomingBubbleSpinner, selectedIncomingBubbleColor);
+        setSpinnerSelection(outgoingBubbleSpinner, selectedOutgoingBubbleColor);
+        setSpinnerSelection(navHeaderSpinner, selectedNavHeaderColor);
         
-        userPreferences.setCustomPrimaryColor(defaultBackgroundColor);
-        userPreferences.setCustomNavBarColor(defaultBackgroundColor);
-        userPreferences.setCustomTopBarColor(defaultBackgroundColor);
-        userPreferences.setCustomButtonColor(defaultBackgroundColor);
-        userPreferences.setCustomMenuColor(defaultBackgroundColor);
-        
-        // Handle background_light color with safer resolution
-        int backgroundLightColor;
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                backgroundLightColor = getResources().getColor(R.color.background_light, getTheme());
-            } else {
-                backgroundLightColor = getResources().getColor(R.color.background_light);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to resolve background_light color, using fallback", e);
-            backgroundLightColor = 0xFFFFFFFF; // White fallback
-        }
-        
-        userPreferences.setCustomIncomingBubbleColor(backgroundLightColor);
-        userPreferences.setCustomOutgoingBubbleColor(defaultBackgroundColor);
-        userPreferences.setCustomTextColor(defaultTextColor);
-        
-        selectedBackgroundColor = defaultBackgroundColor;
-        selectedTextColor = defaultTextColor;
-        
-        // Update UI to reflect reset
         updatePreviews();
-        updateColorSelection();
-        updateButtonColors();
-    }
-    
-    private void updateButtonColors() {
-        if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
-            int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
-            int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
-            
-            if (applyButton != null) {
-                applyButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
-            
-            if (resetButton != null) {
-                resetButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
-            }
-        }
     }
     
     @Override
     protected void onThemeChanged() {
         super.onThemeChanged();
-        updateButtonColors();
+        updatePreviews();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle back button properly
         if (item.getItemId() == android.R.id.home) {
             onBackPressed();
             return true;
@@ -409,7 +454,6 @@ public class ColorWheelActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        // Simply finish the activity to return to the previous screen
-        finish();
+        super.onBackPressed();
     }
 }

@@ -35,149 +35,392 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Custom Theme Colors"
+                android:text="Granular Theme Customization"
                 android:textSize="26sp"
                 android:textStyle="bold"
                 android:gravity="center"
                 android:layout_marginBottom="32dp"
                 android:textColor="?attr/colorOnSurface" />
 
-            <!-- Background Colors Section -->
+            <!-- Conversation View Background Color -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="?attr/colorSurface"
                 android:padding="16dp"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="16dp"
                 android:elevation="2dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Background Color"
-                    android:textSize="20sp"
+                    android:text="Conversation View Background"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"
                     android:textColor="?attr/colorOnSurface" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Choose a color for backgrounds, buttons, and UI elements"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="20dp"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
-                <!-- Color Palette Grid -->
-                <GridLayout
-                    android:id="@+id/color_palette_grid"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="4"
-                    android:layout_marginBottom="20dp"
-                    android:layout_gravity="center">
-
-                    <!-- Colors will be added programmatically -->
-
-                </GridLayout>
-
-                <!-- Selected Background Color Preview -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Selected Background Color:"
-                        android:textSize="16sp"
-
-                        android:textColor="?attr/colorOnSurface" />
-
                     <View
-                        android:id="@+id/background_color_preview"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:background="@android:color/holo_blue_dark"
-                        android:layout_marginStart="12dp"
+                        android:id="@+id/conversation_bg_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FF3F51B5"
                         android:elevation="1dp" />
 
-                </LinearLayout>
+                    <Spinner
+                        android:id="@+id/conversation_bg_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
 
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Text Colors Section -->
+            <!-- Message View Background Color -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:background="?attr/colorSurface"
                 android:padding="16dp"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="16dp"
                 android:elevation="2dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Text Color"
-                    android:textSize="20sp"
+                    android:text="Message View Background"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp"
                     android:textColor="?attr/colorOnSurface" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Choose a color for text elements and content"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="20dp"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-
-                <!-- Text Color Palette Grid -->
-                <GridLayout
-                    android:id="@+id/text_color_palette_grid"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="4"
-                    android:layout_marginBottom="20dp"
-                    android:layout_gravity="center">
-
-                    <!-- Text colors will be added programmatically -->
-
-                </GridLayout>
-
-                <!-- Selected Text Color Preview -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Selected Text Color:"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
-
                     <View
-                        android:id="@+id/text_color_preview"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:background="@android:color/black"
-                        android:layout_marginStart="12dp"
+                        android:id="@+id/message_view_bg_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FFFFFFFF"
                         android:elevation="1dp" />
 
-                </LinearLayout>
+                    <Spinner
+                        android:id="@+id/message_view_bg_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
 
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Combined Preview -->
+            <!-- Main UI Text Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Main UI Text Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/main_text_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FF000000"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/main_text_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Button Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Button Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/button_color_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FF2196F3"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/button_color_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Incoming Message Bubble Text Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Incoming Message Bubble Text Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/incoming_text_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FF000000"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/incoming_text_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Outgoing Message Bubble Text Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Outgoing Message Bubble Text Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/outgoing_text_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FFFFFFFF"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/outgoing_text_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Incoming Chat Bubble Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Incoming Chat Bubble Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/incoming_bubble_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FFE1F5FE"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/incoming_bubble_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Outgoing Chat Bubble Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Outgoing Chat Bubble Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/outgoing_bubble_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FFDCEDC8"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/outgoing_bubble_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Navigation Header Background Color -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="?attr/colorSurface"
+                android:padding="16dp"
+                android:layout_marginBottom="32dp"
+                android:elevation="2dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Navigation Header Background Color"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/nav_header_preview"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="#FF3F51B5"
+                        android:elevation="1dp" />
+
+                    <Spinner
+                        android:id="@+id/nav_header_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Preview Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -196,34 +439,105 @@
                     android:layout_marginBottom="16dp"
                     android:textColor="?attr/colorOnSurface" />
 
+                <!-- Navigation header preview -->
                 <LinearLayout
-                    android:id="@+id/combined_preview"
+                    android:id="@+id/nav_preview"
                     android:layout_width="match_parent"
-                    android:layout_height="120dp"
-                    android:background="@android:color/holo_blue_dark"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:padding="20dp"
+                    android:layout_height="48dp"
+                    android:background="#FF3F51B5"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:layout_marginBottom="8dp"
                     android:elevation="1dp">
 
                     <TextView
-                        android:id="@+id/preview_text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Sample Text Preview"
-                        android:textSize="20sp"
-                        android:textColor="@android:color/white" />
+                        android:text="Navigation Header"
+                        android:textColor="@android:color/white"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <!-- Conversation view preview -->
+                <LinearLayout
+                    android:id="@+id/conversation_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:background="#FF3F51B5"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_marginBottom="8dp"
+                    android:elevation="1dp">
+
+                    <!-- Incoming message bubble -->
+                    <LinearLayout
+                        android:id="@+id/incoming_bubble_preview_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="#FFE1F5FE"
+                        android:padding="12dp"
+                        android:layout_marginBottom="8dp"
+                        android:layout_gravity="start">
+
+                        <TextView
+                            android:id="@+id/incoming_text_preview_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Incoming message"
+                            android:textColor="#FF000000"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- Outgoing message bubble -->
+                    <LinearLayout
+                        android:id="@+id/outgoing_bubble_preview_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="#FFDCEDC8"
+                        android:padding="12dp"
+                        android:layout_gravity="end">
+
+                        <TextView
+                            android:id="@+id/outgoing_text_preview_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Outgoing message"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Message view preview -->
+                <LinearLayout
+                    android:id="@+id/message_view_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:background="#FFFFFFFF"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:elevation="1dp">
 
                     <TextView
+                        android:id="@+id/main_text_preview_text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="This shows how your theme will look"
-                        android:textSize="14sp"
-                        android:layout_marginTop="8dp"
-                        android:textColor="@android:color/white"
-                        android:alpha="0.8" />
-
+                        android:text="Message View with Main UI Text"
+                        android:textColor="#FF000000"
+                        android:textSize="16sp" />
                 </LinearLayout>
+
+                <!-- Button preview -->
+                <Button
+                    android:id="@+id/button_preview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="Sample Button"
+                    android:backgroundTint="#FF2196F3"
+                    style="@style/Widget.MaterialComponents.Button" />
 
             </LinearLayout>
 

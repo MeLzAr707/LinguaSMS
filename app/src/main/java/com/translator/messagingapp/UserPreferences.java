@@ -42,6 +42,9 @@ public class UserPreferences {
     private static final String KEY_CUSTOM_OUTGOING_BUBBLE_COLOR = "custom_outgoing_bubble_color";
     private static final String KEY_CUSTOM_BACKGROUND_COLOR = "custom_background_color";
     private static final String KEY_CUSTOM_TEXT_COLOR = "custom_text_color";
+    private static final String KEY_CUSTOM_MESSAGE_VIEW_BACKGROUND_COLOR = "custom_message_view_background_color";
+    private static final String KEY_CUSTOM_INCOMING_BUBBLE_TEXT_COLOR = "custom_incoming_bubble_text_color";
+    private static final String KEY_CUSTOM_OUTGOING_BUBBLE_TEXT_COLOR = "custom_outgoing_bubble_text_color";
 
     private final SharedPreferences preferences;
 
@@ -509,6 +512,63 @@ public class UserPreferences {
      */
     public void setTranslationMode(int mode) {
         preferences.edit().putInt(KEY_TRANSLATION_MODE, mode).apply();
+    }
+
+    /**
+     * Gets the custom message view background color.
+     *
+     * @param defaultColor The default color to return if not set
+     * @return The custom message view background color
+     */
+    public int getCustomMessageViewBackgroundColor(int defaultColor) {
+        return preferences.getInt(KEY_CUSTOM_MESSAGE_VIEW_BACKGROUND_COLOR, defaultColor);
+    }
+
+    /**
+     * Sets the custom message view background color.
+     *
+     * @param color The color to set
+     */
+    public void setCustomMessageViewBackgroundColor(int color) {
+        preferences.edit().putInt(KEY_CUSTOM_MESSAGE_VIEW_BACKGROUND_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the custom incoming bubble text color.
+     *
+     * @param defaultColor The default color to return if not set
+     * @return The custom incoming bubble text color
+     */
+    public int getCustomIncomingBubbleTextColor(int defaultColor) {
+        return preferences.getInt(KEY_CUSTOM_INCOMING_BUBBLE_TEXT_COLOR, defaultColor);
+    }
+
+    /**
+     * Sets the custom incoming bubble text color.
+     *
+     * @param color The color to set
+     */
+    public void setCustomIncomingBubbleTextColor(int color) {
+        preferences.edit().putInt(KEY_CUSTOM_INCOMING_BUBBLE_TEXT_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the custom outgoing bubble text color.
+     *
+     * @param defaultColor The default color to return if not set
+     * @return The custom outgoing bubble text color
+     */
+    public int getCustomOutgoingBubbleTextColor(int defaultColor) {
+        return preferences.getInt(KEY_CUSTOM_OUTGOING_BUBBLE_TEXT_COLOR, defaultColor);
+    }
+
+    /**
+     * Sets the custom outgoing bubble text color.
+     *
+     * @param color The color to set
+     */
+    public void setCustomOutgoingBubbleTextColor(int color) {
+        preferences.edit().putInt(KEY_CUSTOM_OUTGOING_BUBBLE_TEXT_COLOR, color).apply();
     }
 }
 
