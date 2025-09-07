@@ -301,7 +301,13 @@ public class MessageService {
                 Conversation conversation = new Conversation();
                 conversation.setThreadId(threadId);
                 conversation.setAddress(address);
-                String mmsSnippet = snippet != null ? snippet : "[MMS]";
+                // Use actual text content if available, otherwise show MMS placeholder
+                String mmsSnippet;
+                if (snippet != null && !snippet.trim().isEmpty()) {
+                    mmsSnippet = snippet;
+                } else {
+                    mmsSnippet = "[MMS]";
+                }
                 conversation.setSnippet(mmsSnippet);
                 conversation.setLastMessage(mmsSnippet); // Also set lastMessage for consistency
                 conversation.setDate(date);
