@@ -294,6 +294,13 @@ public class TranslationManager {
 
         // Generate cache key
         String targetLanguage = userPreferences.getPreferredIncomingLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            Log.w(TAG, "No target language set for auto-translation, skipping for message from: " + message.getAddress());
+            if (callback != null) {
+                callback.onTranslationComplete(false, null);
+            }
+            return;
+        }
         String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first

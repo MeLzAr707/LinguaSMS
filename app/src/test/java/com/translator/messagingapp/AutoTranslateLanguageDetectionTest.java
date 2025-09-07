@@ -218,4 +218,40 @@ public class AutoTranslateLanguageDetectionTest {
         verify(mockTranslationService, never()).detectLanguage(anyString());
         verify(mockTranslationService, never()).translate(anyString(), anyString(), anyString());
     }
+
+    @Test
+    public void testAutoTranslateHandlesNullTargetLanguage() {
+        // Given: Target language is null (should not happen in practice due to fallbacks)
+        when(mockUserPreferences.getPreferredIncomingLanguage()).thenReturn(null);
+        
+        SmsMessage message = new SmsMessage("1234567890", "Hello world", new Date());
+        message.setIncoming(true);
+        
+        final boolean[] callbackCalled = {false};
+        final boolean[] translationSuccessful = {true}; // Start as true to verify it becomes false
+        
+        // When: Auto-translate attempts to translate the message
+        translationManager.translateSmsMessage(message, new TranslationManager.SmsTranslationCallback() {
+            @Override
+            public void onTranslationComplete(boolean success, SmsMessage translatedMessage) {
+                callbackCalled[0] = true;
+                translationSuccessful[0] = success;
+            }
+        });
+        
+        // Wait for async operation (though it should complete synchronously)
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        // Then: Translation should be skipped safely
+        assertTrue("Callback should be called", callbackCalled[0]);
+        assertFalse("Translation should be skipped when target language is null", translationSuccessful[0]);
+        
+        // Verify no language detection or translation API calls were made
+        verify(mockTranslationService, never()).detectLanguage(anyString());
+        verify(mockTranslationService, never()).translate(anyString(), anyString(), anyString());
+    }
 }
