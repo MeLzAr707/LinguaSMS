@@ -258,6 +258,7 @@ public class TranslationManager {
 
         // Check if auto-translate is enabled
         if (!userPreferences.isAutoTranslateEnabled()) {
+            Log.d(TAG, "Auto-translate is disabled, skipping translation for message from: " + message.getAddress());
             if (callback != null) {
                 callback.onTranslationComplete(false, null);
             }
@@ -315,12 +316,14 @@ public class TranslationManager {
                 detectedLanguage = translationService.detectLanguage(message.getOriginalText());
                 
                 if (detectedLanguage == null) {
+                    Log.w(TAG, "Could not detect language for auto-translate, skipping translation for message from: " + message.getAddress());
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
                     return;
                 }
                 
+                Log.d(TAG, "Detected language '" + detectedLanguage + "' for auto-translate, target language is '" + targetLanguage + "' for message from: " + message.getAddress());
                 message.setOriginalLanguage(detectedLanguage);
 
                 // Skip translation if already in user's language (comparing base language codes)
@@ -328,6 +331,7 @@ public class TranslationManager {
                 String baseTarget = targetLanguage.split("-")[0];
 
                 if (baseDetected.equals(baseTarget)) {
+                    Log.d(TAG, "Message is already in preferred language (" + baseDetected + "), skipping auto-translation for message from: " + message.getAddress());
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
@@ -344,6 +348,7 @@ public class TranslationManager {
 
                 // Use online translation
                 if (translationService != null && translationService.hasApiKey()) {
+                    Log.d(TAG, "Performing auto-translation from '" + detectedLanguage + "' to '" + targetLanguage + "' for message from: " + message.getAddress());
                     String translatedText = translationService.translate(
                             message.getOriginalText(), detectedLanguage, targetLanguage);
 

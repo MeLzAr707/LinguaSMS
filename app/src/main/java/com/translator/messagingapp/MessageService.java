@@ -1625,6 +1625,7 @@ public class MessageService {
                             smsMessage.setIncoming(true);
                             
                             // Attempt auto-translation
+                            Log.d(TAG, "Attempting auto-translation for incoming message from " + senderAddress);
                             String finalSenderAddress = senderAddress;
                             translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
                                 @Override
