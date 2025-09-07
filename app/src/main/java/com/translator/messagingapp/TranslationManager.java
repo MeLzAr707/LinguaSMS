@@ -292,7 +292,7 @@ public class TranslationManager {
         }
 
         // Generate cache key
-        String targetLanguage = userPreferences.getPreferredLanguage();
+        String targetLanguage = userPreferences.getPreferredIncomingLanguage();
         String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first
