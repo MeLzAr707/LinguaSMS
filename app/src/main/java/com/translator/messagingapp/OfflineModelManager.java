@@ -30,8 +30,9 @@ import java.util.concurrent.TimeUnit;
 public class OfflineModelManager {
     private static final String TAG = "OfflineModelManager";
     
-    // Download timeout
+    // Download timeouts - longer for first attempts due to ML Kit initialization
     private static final int DOWNLOAD_TIMEOUT_SECONDS = 60;
+    private static final int FIRST_DOWNLOAD_TIMEOUT_SECONDS = 120;
     
     public interface DownloadListener {
         void onProgress(int progress);
@@ -76,6 +77,7 @@ public class OfflineModelManager {
     private final ExecutorService executorService;
     private final Map<String, OfflineLanguageModel> modelCache;
     private final List<String> modelOrder; // Maintains frequency-based ordering
+    private final Map<String, Boolean> firstDownloadAttempts; // Track first-time downloads
     
     /**
      * Creates a new OfflineModelManager.
@@ -88,6 +90,7 @@ public class OfflineModelManager {
         this.executorService = Executors.newCachedThreadPool();
         this.modelCache = new HashMap<>();
         this.modelOrder = new ArrayList<>();
+        this.firstDownloadAttempts = new HashMap<>();
         
         initializeModels();
         Log.d(TAG, "OfflineModelManager initialized");
@@ -232,6 +235,13 @@ public class OfflineModelManager {
                     return;
                 }
                 
+                // Check if this is a first-time download attempt
+                boolean isFirstAttempt = !firstDownloadAttempts.getOrDefault(languageCode, false);
+                if (isFirstAttempt) {
+                    firstDownloadAttempts.put(languageCode, true);
+                    Log.d(TAG, "First-time download attempt for: " + languageCode);
+                }
+                
                 // Mark as downloading
                 model.setDownloading(true);
                 model.setDownloadProgress(10);
@@ -246,15 +256,20 @@ public class OfflineModelManager {
                 Translator translator = Translation.getClient(options);
                 
                 try {
-                    // Perform manual download with timeout
+                    // Use less restrictive download conditions for better success rate
+                    // Allow downloads on any network connection, not just WiFi
                     DownloadConditions conditions = new DownloadConditions.Builder()
-                            .requireWifi()
-                            .build();
+                            .build(); // No restrictions - allow mobile data
                     
                     Task<Void> downloadTask = translator.downloadModelIfNeeded(conditions);
                     
+                    // Use longer timeout for first attempts due to ML Kit initialization overhead
+                    int timeoutSeconds = isFirstAttempt ? FIRST_DOWNLOAD_TIMEOUT_SECONDS : DOWNLOAD_TIMEOUT_SECONDS;
+                    Log.d(TAG, "Using " + timeoutSeconds + "s timeout for " + 
+                          (isFirstAttempt ? "first-time" : "retry") + " download of " + languageCode);
+                    
                     // Wait for download completion
-                    Tasks.await(downloadTask, DOWNLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    Tasks.await(downloadTask, timeoutSeconds, TimeUnit.SECONDS);
                     
                     // Update progress
                     model.setDownloadProgress(90);
@@ -267,7 +282,8 @@ public class OfflineModelManager {
                         model.setDownloadProgress(100);
                         listener.onProgress(100);
                         listener.onSuccess();
-                        Log.d(TAG, "Model downloaded successfully: " + languageCode);
+                        Log.d(TAG, "Model downloaded successfully: " + languageCode + 
+                              (isFirstAttempt ? " (first attempt)" : " (retry)"));
                     } else {
                         throw new Exception("Model download completed but verification failed");
                     }
@@ -289,6 +305,13 @@ public class OfflineModelManager {
                 if (e.getCause() != null && e.getCause().getMessage() != null) {
                     errorMessage += " (" + e.getCause().getMessage() + ")";
                 }
+                
+                // For first-time failures, provide more helpful error message
+                boolean wasFirstAttempt = firstDownloadAttempts.getOrDefault(languageCode, false);
+                if (wasFirstAttempt && e.getMessage() != null && e.getMessage().contains("timeout")) {
+                    errorMessage += ". First downloads may take longer - please try again.";
+                }
+                
                 listener.onError(errorMessage);
             }
         });
