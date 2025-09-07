@@ -502,7 +502,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         }
         
         /**
-         * Load media (image/video) using Glide with proper error handling
+         * Load media (image/video) using Glide with proper error handling and responsive sizing
          */
         private void loadMediaWithGlide(Uri mediaUri, MmsMessage.Attachment attachment) {
             if (mediaUri == null || mediaImage == null) {
@@ -514,7 +514,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     .placeholder(R.drawable.ic_attachment)
                     .error(R.drawable.ic_attachment)
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .centerCrop();
+                    .fitCenter(); // Changed from centerCrop to fitCenter for better aspect ratio handling
                 
                 Glide.with(context)
                     .load(mediaUri)
@@ -525,7 +525,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                                                   com.bumptech.glide.request.transition.Transition<? super android.graphics.drawable.Drawable> transition) {
                             if (mediaImage != null) {
                                 mediaImage.setImageDrawable(resource);
-                                mediaImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                // Use fitCenter to maintain aspect ratio while filling available width
+                                mediaImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
                                 mediaImage.setVisibility(View.VISIBLE);
                             }
                         }
@@ -534,6 +535,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                         public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
                             if (mediaImage != null && placeholder != null) {
                                 mediaImage.setImageDrawable(placeholder);
+                                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
                             }
                         }
                         

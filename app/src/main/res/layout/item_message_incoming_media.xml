@@ -13,30 +13,37 @@
 
     <androidx.cardview.widget.CardView
         android:id="@+id/message_card"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="60dp"
+        android:layout_marginRight="60dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="1dp"
         app:cardBackgroundColor="@color/background_light"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="8dp">
 
             <FrameLayout
-                android:layout_width="200dp"
-                android:layout_height="200dp">
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxWidth="300dp"
+                android:minWidth="150dp">
                 
                 <ImageView
                     android:id="@+id/media_image"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
+                    android:layout_height="wrap_content"
+                    android:scaleType="fitCenter"
                     android:adjustViewBounds="true"
+                    android:maxHeight="250dp"
+                    android:minHeight="100dp"
                     android:contentDescription="@string/attachment_image"
                     tools:src="@drawable/ic_attachment" />
                 
