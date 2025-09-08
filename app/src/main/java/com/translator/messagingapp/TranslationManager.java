@@ -187,19 +187,19 @@ public class TranslationManager {
         // Translate in background using offline-first approach
         executorService.execute(() -> {
             try {
-                String finalSourceLanguage = sourceLanguage;
-                
-                // If source language is not provided, try to detect it
-                if (finalSourceLanguage == null) {
-                    finalSourceLanguage = detectLanguage(text);
+                // Determine source language (detect if not provided)
+                String detectedSourceLanguage = sourceLanguage;
+                if (detectedSourceLanguage == null) {
+                    detectedSourceLanguage = detectLanguage(text);
                     
-                    if (finalSourceLanguage == null) {
+                    if (detectedSourceLanguage == null) {
                         if (callback != null) {
                             callback.onTranslationComplete(false, null, "Could not detect language");
                         }
                         return;
                     }
                 }
+                final String finalSourceLanguage = detectedSourceLanguage;
 
                 // Skip if already in target language (comparing base language codes)
                 // unless forceTranslation is true (for UI-triggered translations)
@@ -309,10 +309,8 @@ public class TranslationManager {
         // Translate in background
         executorService.execute(() -> {
             try {
-                String detectedLanguage = null;
-                
                 // Use online language detection service
-                detectedLanguage = translationService.detectLanguage(message.getOriginalText());
+                final String detectedLanguage = translationService.detectLanguage(message.getOriginalText());
                 
                 if (detectedLanguage == null) {
                     if (callback != null) {
@@ -403,13 +401,13 @@ public class TranslationManager {
         final String finalTargetLanguage = targetLanguage;
 
         // Generate cache key
-        String cacheKey = message.getBody() + "_" + targetLanguage;
+        String cacheKey = message.getBody() + "_" + finalTargetLanguage;
 
         // Check cache first
         String cachedTranslation = translationCache.get(cacheKey);
         if (cachedTranslation != null && !cachedTranslation.trim().isEmpty()) {
             message.setTranslatedText(cachedTranslation);
-            message.setTranslatedLanguage(targetLanguage);
+            message.setTranslatedLanguage(finalTargetLanguage);
             message.setShowTranslation(true);
             if (callback != null) {
                 callback.onTranslationComplete(true, cachedTranslation, null);
@@ -429,7 +427,7 @@ public class TranslationManager {
         executorService.execute(() -> {
             try {
                 // Detect language
-                String detectedLanguage = translationService.detectLanguage(message.getBody());
+                final String detectedLanguage = translationService.detectLanguage(message.getBody());
                 if (detectedLanguage == null) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null, "Could not detect language");
