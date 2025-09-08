@@ -101,11 +101,11 @@ public class ConversationDisplayTest {
         assertEquals("Should display contact name when available", 
                     "Jane Smith", displayName2);
 
-        // Test case 3: Thread with no address should show "Unknown Contact"
+        // Test case 3: Thread with no address should show "Unknown"
         Conversation noAddressConversation = createTestConversation("3", null, null);
         String displayName3 = getExpectedDisplayName(noAddressConversation, mockContext);
-        assertEquals("Should display 'Unknown Contact' when no address is available", 
-                    "Unknown Contact", displayName3);
+        assertEquals("Should display 'Unknown' when no address is available", 
+                    "Unknown", displayName3);
         
         // Test case 4: Thread with string "null" contact name should fall back to phone number
         Conversation nullStringConversation = createTestConversation("4", "+15551234567", "null");
@@ -145,7 +145,7 @@ public class ConversationDisplayTest {
      */
     private String getExpectedDisplayName(Conversation conversation, Context context) {
         if (conversation == null) {
-            return "Unknown Contact";
+            return "Unknown"; // Updated to match the fix
         }
         
         String contactName = conversation.getContactName();
@@ -183,7 +183,7 @@ public class ConversationDisplayTest {
         if (!TextUtils.isEmpty(address)) {
             // Additional safety check: make sure address is not threadId
             if (address.equals(threadId)) {
-                return "Unknown Contact";
+                return "Unknown"; // Updated to match the fix
             }
             
             // Check if this looks like a group message
@@ -195,7 +195,7 @@ public class ConversationDisplayTest {
         }
         
         // Last resort: Unknown contact
-        return "Unknown Contact";
+        return "Unknown"; // Updated to match the fix
     }
 
     /**

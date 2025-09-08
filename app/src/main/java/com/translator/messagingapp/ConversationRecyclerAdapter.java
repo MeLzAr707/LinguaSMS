@@ -148,10 +148,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
 
     /**
      * Gets the appropriate display name for a conversation with improved logic.
+     * Fixed to prevent 'unk-nown' display issue in group messages.
      */
     private String getDisplayNameForConversation(Conversation conversation) {
         if (conversation == null) {
-            return "Unknown Contact";
+            return "Unknown"; // Shorter to avoid truncation issues
         }
         
         String contactName = conversation.getContactName();
@@ -165,7 +166,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // If we have a valid contact name, use it
         if (contactName != null) {
             // Check if it's a group message indicator
-            if (contactName.contains(",") || contactName.contains("+") && contactName.contains("others")) {
+            if (contactName.contains(",") || (contactName.contains("+") && contactName.contains("others"))) {
                 return contactName; // Already formatted group name
             }
             
@@ -192,29 +193,33 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // Fall back to formatted phone number
         if (!TextUtils.isEmpty(address)) {
             // Check if this looks like a group message
-            if (address.contains(",") || address.contains("+") && address.contains("others")) {
+            if (address.contains(",") || (address.contains("+") && address.contains("others"))) {
                 return address; // Already formatted group address
             }
             
             return formatPhoneNumber(address);
         }
         
-        // Last resort
-        return "Unknown Contact";
+        // Last resort - use shorter text to avoid truncation issues
+        return "Unknown";
     }
     
     /**
      * Get display name for group conversations with multiple addresses.
+     * Improved to prevent 'unk-nown' display issues and provide better fallbacks.
      */
     private String getGroupDisplayName(String addresses) {
         if (TextUtils.isEmpty(addresses)) {
-            return "Unknown Contact";
+            return "Unknown"; // Shorter to avoid truncation
         }
         
         String[] addressArray = addresses.split(",");
         if (addressArray.length <= 1) {
             // Not actually a group, treat as single address
             String singleAddress = addresses.trim();
+            if (TextUtils.isEmpty(singleAddress)) {
+                return "Unknown"; // Avoid "Unknown Contact" which could be truncated
+            }
             String contactName = ContactUtils.getContactName(context, singleAddress);
             return !TextUtils.isEmpty(contactName) ? contactName : formatPhoneNumber(singleAddress);
         }
@@ -222,16 +227,22 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // For group conversations, try to get contact names for each participant
         StringBuilder groupName = new StringBuilder();
         int nameCount = 0;
-        int maxNamesToShow = 3; // Show max 3 names, then "and X others"
+        int maxNamesToShow = 2; // Reduced to 2 to avoid overly long names that could be truncated
         
         for (int i = 0; i < addressArray.length && nameCount < maxNamesToShow; i++) {
             String address = addressArray[i].trim();
             if (TextUtils.isEmpty(address)) {
-                continue;
+                continue; // Skip empty addresses
             }
             
             String contactName = ContactUtils.getContactName(context, address);
-            String displayName = !TextUtils.isEmpty(contactName) ? contactName : formatPhoneNumber(address);
+            String displayName;
+            if (!TextUtils.isEmpty(contactName)) {
+                displayName = contactName;
+            } else {
+                // For group display, use a more compact phone number format
+                displayName = formatCompactPhoneNumber(address);
+            }
             
             if (nameCount > 0) {
                 groupName.append(", ");
@@ -243,13 +254,21 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // If there are more participants than we showed
         if (addressArray.length > maxNamesToShow) {
             int remaining = addressArray.length - maxNamesToShow;
-            groupName.append(" + ").append(remaining).append(" other");
-            if (remaining > 1) {
-                groupName.append("s");
-            }
+            groupName.append(" +").append(remaining); // Compact format to avoid truncation
         }
         
-        return groupName.length() > 0 ? groupName.toString() : "Group Chat";
+        // Ensure we always return something meaningful and not too long
+        String result = groupName.toString();
+        if (result.length() == 0) {
+            return "Group"; // Short fallback
+        }
+        
+        // If the result is too long, truncate it intelligently to avoid "unk-nown" issue
+        if (result.length() > 20) {
+            return result.substring(0, 17) + "...";
+        }
+        
+        return result;
     }
 
     /**
@@ -295,6 +314,33 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
 
         // If we can't format it nicely, return as-is
         return phoneNumber;
+    }
+
+    /**
+     * Format a phone number for compact display in group messages.
+     * Returns a shorter format to prevent UI truncation issues.
+     */
+    private String formatCompactPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return "???"; // Very short unknown indicator
+        }
+
+        // Remove any non-digit characters
+        String cleanNumber = phoneNumber.replaceAll("[^\\d]", "");
+        
+        // For very compact display in groups, show last 4 digits with prefix
+        if (cleanNumber.length() >= 4) {
+            return "..." + cleanNumber.substring(cleanNumber.length() - 4);
+        } else if (cleanNumber.length() > 0) {
+            return "..." + cleanNumber;
+        }
+        
+        // If no digits found, try to show something meaningful but short
+        if (phoneNumber.length() <= 10) {
+            return phoneNumber;
+        } else {
+            return phoneNumber.substring(0, 7) + "...";
+        }
     }
 
     /**

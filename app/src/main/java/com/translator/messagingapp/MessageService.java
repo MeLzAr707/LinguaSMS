@@ -390,6 +390,7 @@ public class MessageService {
     
     /**
      * Formats multiple addresses for group message display.
+     * Improved to prevent 'unk-nown' display issues.
      */
     private String formatGroupAddresses(List<String> addresses) {
         if (addresses.size() <= 1) {
@@ -400,40 +401,55 @@ public class MessageService {
         
         // Try to get contact names for each address
         for (String address : addresses) {
+            if (TextUtils.isEmpty(address)) {
+                continue; // Skip empty addresses
+            }
+            
             String contactName = ContactUtils.getContactName(context, address);
             if (!TextUtils.isEmpty(contactName)) {
                 contactNames.add(contactName);
             } else {
                 // Fall back to formatted phone number
-                contactNames.add(formatPhoneNumberForGroup(address));
+                String formattedNumber = formatPhoneNumberForGroup(address);
+                if (!TextUtils.isEmpty(formattedNumber)) {
+                    contactNames.add(formattedNumber);
+                }
             }
         }
         
-        if (contactNames.size() <= 2) {
+        if (contactNames.isEmpty()) {
+            return "Group"; // Short fallback to avoid truncation
+        } else if (contactNames.size() == 1) {
+            return contactNames.get(0);
+        } else if (contactNames.size() <= 2) {
             return TextUtils.join(", ", contactNames);
         } else {
-            // For more than 2 contacts, show first contact and count
-            return contactNames.get(0) + " + " + (contactNames.size() - 1) + " others";
+            // For more than 2 contacts, show first contact and count (compact format)
+            return contactNames.get(0) + " +" + (contactNames.size() - 1);
         }
     }
     
     /**
      * Formats a phone number for group display (shorter format).
+     * Improved to prevent 'unk-nown' display issues.
      */
     private String formatPhoneNumberForGroup(String phoneNumber) {
         if (TextUtils.isEmpty(phoneNumber)) {
-            return "Unknown";
+            return "???"; // Very short fallback to avoid "Unknown" truncation
         }
         
         // Remove any non-digit characters
         String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
         
-        // For group display, show last 4 digits
+        // For group display, show last 4 digits with minimal prefix
         if (digitsOnly.length() >= 4) {
             return "..." + digitsOnly.substring(digitsOnly.length() - 4);
+        } else if (digitsOnly.length() > 0) {
+            return "..." + digitsOnly;
         }
         
-        return phoneNumber;
+        // If no digits, return a safe short string
+        return phoneNumber.length() > 8 ? phoneNumber.substring(0, 5) + "..." : phoneNumber;
     }
 
     /**
