@@ -60,6 +60,30 @@ public class TranslationManager {
     }
 
     /**
+     * Creates a new TranslationManager with injected dependencies (for testing).
+     *
+     * @param context The application context
+     * @param translationService The translation service
+     * @param userPreferences The user preferences
+     * @param translationCache The translation cache
+     * @param offlineTranslationService The offline translation service
+     * @param languageDetectionService The language detection service
+     */
+    public TranslationManager(Context context, GoogleTranslationService translationService, UserPreferences userPreferences,
+                            TranslationCache translationCache, OfflineTranslationService offlineTranslationService,
+                            LanguageDetectionService languageDetectionService) {
+        this.context = context;
+        this.translationService = translationService;
+        this.userPreferences = userPreferences;
+        this.executorService = Executors.newCachedThreadPool();
+        this.translationCache = translationCache;
+        this.offlineTranslationService = offlineTranslationService;
+        this.languageDetectionService = languageDetectionService;
+        
+        Log.d(TAG, "TranslationManager initialized with injected dependencies");
+    }
+
+    /**
      * Gets the translation cache instance.
      *
      * @return The TranslationCache instance
@@ -258,14 +282,18 @@ public class TranslationManager {
 
         // Check if auto-translate is enabled
         if (!userPreferences.isAutoTranslateEnabled()) {
+            Log.d(TAG, "Auto-translate is disabled, skipping translation for message from: " + message.getAddress());
             if (callback != null) {
                 callback.onTranslationComplete(false, null);
             }
             return;
         }
 
-        // Check if translation service is available
-        if (translationService == null || !translationService.hasApiKey()) {
+        // Check if any translation service is available
+        boolean hasOfflineCapability = offlineTranslationService != null;
+        boolean hasOnlineCapability = translationService != null && translationService.hasApiKey();
+        
+        if (!hasOfflineCapability && !hasOnlineCapability) {
             if (callback != null) {
                 callback.onTranslationComplete(false, null);
             }
@@ -293,6 +321,13 @@ public class TranslationManager {
 
         // Generate cache key
         String targetLanguage = userPreferences.getPreferredIncomingLanguage();
+        if (targetLanguage == null || targetLanguage.isEmpty()) {
+            Log.w(TAG, "No target language set for auto-translation, skipping for message from: " + message.getAddress());
+            if (callback != null) {
+                callback.onTranslationComplete(false, null);
+            }
+            return;
+        }
         String cacheKey = message.getOriginalText() + "_" + targetLanguage;
 
         // Check cache first
@@ -311,16 +346,25 @@ public class TranslationManager {
             try {
                 String detectedLanguage = null;
                 
-                // Use online language detection service
-                detectedLanguage = translationService.detectLanguage(message.getOriginalText());
+                // Use offline language detection service first
+                if (languageDetectionService != null) {
+                    detectedLanguage = languageDetectionService.detectLanguageSync(message.getOriginalText());
+                    Log.d(TAG, "Offline language detection result: " + detectedLanguage);
+                } else if (translationService != null) {
+                    // Fallback to online detection if offline service is not available
+                    detectedLanguage = translationService.detectLanguage(message.getOriginalText());
+                    Log.d(TAG, "Online language detection result: " + detectedLanguage);
+                }
                 
                 if (detectedLanguage == null) {
+                    Log.w(TAG, "Could not detect language for auto-translate, skipping translation for message from: " + message.getAddress());
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
                     return;
                 }
                 
+                Log.d(TAG, "Detected language '" + detectedLanguage + "' for auto-translate, target language is '" + targetLanguage + "' for message from: " + message.getAddress());
                 message.setOriginalLanguage(detectedLanguage);
 
                 // Skip translation if already in user's language (comparing base language codes)
@@ -328,44 +372,66 @@ public class TranslationManager {
                 String baseTarget = targetLanguage.split("-")[0];
 
                 if (baseDetected.equals(baseTarget)) {
+                    Log.d(TAG, "Message is already in preferred language (" + baseDetected + "), skipping auto-translation for message from: " + message.getAddress());
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
                     return;
                 }
 
-                // Check rate limiting for online translation
-                if (!checkRateLimiting()) {
+                // Check rate limiting for online translation only if we're going to use it
+                boolean shouldUseOffline = shouldUseOfflineTranslation(detectedLanguage, targetLanguage);
+                
+                if (!shouldUseOffline && !checkRateLimiting()) {
                     if (callback != null) {
                         callback.onTranslationComplete(false, null);
                     }
                     return;
                 }
 
-                // Use online translation
-                if (translationService != null && translationService.hasApiKey()) {
-                    String translatedText = translationService.translate(
-                            message.getOriginalText(), detectedLanguage, targetLanguage);
+                // Use offline-first approach for auto-translation
+                if (shouldUseOffline) {
+                    Log.d(TAG, "Performing offline auto-translation from '" + detectedLanguage + "' to '" + targetLanguage + "' for message from: " + message.getAddress());
+                    
+                    offlineTranslationService.translateText(
+                            message.getOriginalText(), detectedLanguage, targetLanguage,
+                            new OfflineTranslationService.TranslationCallback() {
+                                @Override
+                                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                                    if (success && translatedText != null) {
+                                        // Update message with translation
+                                        message.setTranslatedText(translatedText);
+                                        message.setTranslatedLanguage(targetLanguage);
+                                        message.setOriginalLanguage(detectedLanguage);
 
-                    // Update message with translation
-                    message.setTranslatedText(translatedText);
-                    message.setTranslatedLanguage(targetLanguage);
+                                        // Cache the translation
+                                        translationCache.put(cacheKey, translatedText);
 
-                    // Cache the translation
-                    translationCache.put(cacheKey, translatedText);
-
-                    // Update translation counters
-                    updateTranslationCounters();
-
-                    // Return result
-                    if (callback != null) {
-                        callback.onTranslationComplete(true, message);
-                    }
+                                        // Return result
+                                        if (callback != null) {
+                                            callback.onTranslationComplete(true, message);
+                                        }
+                                    } else {
+                                        Log.w(TAG, "Offline auto-translation failed: " + errorMessage);
+                                        
+                                        // Fallback to online if available and auto mode is enabled
+                                        if (userPreferences.getTranslationMode() == UserPreferences.TRANSLATION_MODE_AUTO &&
+                                            translationService != null && translationService.hasApiKey()) {
+                                            
+                                            Log.d(TAG, "Falling back to online auto-translation");
+                                            performOnlineAutoTranslation(message, detectedLanguage, targetLanguage, cacheKey, callback);
+                                        } else {
+                                            if (callback != null) {
+                                                callback.onTranslationComplete(false, null);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
                 } else {
-                    // No translation service available
-                    if (callback != null) {
-                        callback.onTranslationComplete(false, null);
-                    }
+                    // Use online translation
+                    Log.d(TAG, "Performing online auto-translation from '" + detectedLanguage + "' to '" + targetLanguage + "' for message from: " + message.getAddress());
+                    performOnlineAutoTranslation(message, detectedLanguage, targetLanguage, cacheKey, callback);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error translating SMS message", e);
@@ -524,6 +590,44 @@ public class TranslationManager {
             lastTranslationTime = currentTime;
             translationsToday++;
             Log.d(TAG, "Translation completed. Total today: " + translationsToday);
+        }
+    }
+
+    /**
+     * Performs online auto-translation for SMS messages.
+     */
+    private void performOnlineAutoTranslation(SmsMessage message, String detectedLanguage, String targetLanguage, String cacheKey, SmsTranslationCallback callback) {
+        if (translationService != null && translationService.hasApiKey()) {
+            try {
+                String translatedText = translationService.translate(
+                        message.getOriginalText(), detectedLanguage, targetLanguage);
+
+                // Update message with translation
+                message.setTranslatedText(translatedText);
+                message.setTranslatedLanguage(targetLanguage);
+                message.setOriginalLanguage(detectedLanguage);
+
+                // Cache the translation
+                translationCache.put(cacheKey, translatedText);
+
+                // Update translation counters
+                updateTranslationCounters();
+
+                // Return result
+                if (callback != null) {
+                    callback.onTranslationComplete(true, message);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Online auto-translation failed", e);
+                if (callback != null) {
+                    callback.onTranslationComplete(false, null);
+                }
+            }
+        } else {
+            // No online translation service available
+            if (callback != null) {
+                callback.onTranslationComplete(false, null);
+            }
         }
     }
 
