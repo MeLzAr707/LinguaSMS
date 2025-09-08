@@ -1828,25 +1828,40 @@ public class MessageService {
         try {
             Log.d(TAG, "Processing incoming MMS");
             
-            // Only show notification if this app is the default SMS app
+            // Only process if this app is the default SMS app
             if (!PhoneUtils.isDefaultSmsApp(context)) {
-                Log.d(TAG, "Skipping MMS notification - app is not the default SMS app");
+                Log.d(TAG, "Skipping MMS processing - app is not the default SMS app");
                 // Still broadcast message received to refresh UI for storage purposes
                 broadcastMessageReceived();
                 return;
             }
             
-            // For now, show a simple MMS notification
-            // This could be enhanced to parse MMS content in the future
+            // Extract and store MMS data from the WAP push intent
+            boolean mmsStored = extractAndStoreMmsFromIntent(intent);
+            
+            // Show notification regardless of storage success to maintain existing behavior
             NotificationHelper notificationHelper = new NotificationHelper(context);
-            notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+            if (mmsStored) {
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+                Log.d(TAG, "MMS stored successfully and notification shown");
+            } else {
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+                Log.w(TAG, "MMS storage failed but notification shown");
+            }
             
             // Broadcast message received to refresh UI
             broadcastMessageReceived();
             
-            Log.d(TAG, "Showed MMS notification");
         } catch (Exception e) {
             Log.e(TAG, "Error handling incoming MMS", e);
+            // Still show notification and broadcast to maintain existing behavior
+            try {
+                NotificationHelper notificationHelper = new NotificationHelper(context);
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+                broadcastMessageReceived();
+            } catch (Exception notificationError) {
+                Log.e(TAG, "Error showing fallback notification", notificationError);
+            }
         }
     }
 
@@ -1869,6 +1884,102 @@ public class MessageService {
             } catch (Exception fallbackError) {
                 Log.e(TAG, "Error in fallback broadcast", fallbackError);
             }
+        }
+    }
+    /**
+     * Extracts MMS data from a WAP push intent and stores it in the system's MMS content provider.
+     * This method handles the core functionality that was missing - actually saving received MMS.
+     *
+     * @param intent The WAP push intent containing MMS data
+     * @return True if MMS was successfully stored, false otherwise
+     */
+    private boolean extractAndStoreMmsFromIntent(Intent intent) {
+        try {
+            Log.d(TAG, "Extracting MMS data from WAP push intent");
+            
+            // Extract basic MMS information from the intent
+            // WAP push intents contain the raw MMS data as a byte array
+            byte[] data = intent.getByteArrayExtra("data");
+            String contentType = intent.getType();
+            
+            // For now, create a basic MMS entry with available information
+            // This is a simplified implementation that focuses on getting MMS messages
+            // to appear in conversation threads
+            
+            // Extract sender information if available in intent extras
+            String fromAddress = intent.getStringExtra("address");
+            if (fromAddress == null) {
+                // Try common WAP push extras
+                fromAddress = intent.getStringExtra("from");
+                if (fromAddress == null) {
+                    fromAddress = intent.getStringExtra("sender");
+                    if (fromAddress == null) {
+                        // Default fallback - we need an address for the conversation thread
+                        fromAddress = "Unknown";
+                        Log.w(TAG, "No sender address found in MMS intent, using fallback");
+                    }
+                }
+            }
+            
+            Log.d(TAG, "MMS sender address: " + fromAddress);
+            
+            // Create the main MMS message entry
+            ContentValues mmsValues = new ContentValues();
+            mmsValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_INBOX);
+            mmsValues.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000); // MMS uses seconds
+            mmsValues.put(Telephony.Mms.READ, 0); // Mark as unread
+            mmsValues.put(Telephony.Mms.SEEN, 0); // Mark as unseen
+            mmsValues.put(Telephony.Mms.CONTENT_TYPE, "application/vnd.wap.multipart.related");
+            mmsValues.put(Telephony.Mms.MESSAGE_TYPE, 132); // MESSAGE_TYPE_RETRIEVE_CONF
+            
+            // Insert the MMS message
+            Uri mmsUri = context.getContentResolver().insert(Uri.parse("content://mms"), mmsValues);
+            if (mmsUri == null) {
+                Log.e(TAG, "Failed to insert MMS message into content provider");
+                return false;
+            }
+            
+            String messageId = mmsUri.getLastPathSegment();
+            Log.d(TAG, "Created MMS message with ID: " + messageId);
+            
+            // Add the sender address
+            ContentValues addrValues = new ContentValues();
+            addrValues.put(Telephony.Mms.Addr.ADDRESS, fromAddress);
+            addrValues.put(Telephony.Mms.Addr.TYPE, 137); // PduHeaders.FROM
+            addrValues.put(Telephony.Mms.Addr.CHARSET, 106); // UTF-8
+            
+            Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
+            Uri insertedAddrUri = context.getContentResolver().insert(addrUri, addrValues);
+            if (insertedAddrUri != null) {
+                Log.d(TAG, "Added sender address for MMS: " + fromAddress);
+            } else {
+                Log.w(TAG, "Failed to add sender address for MMS");
+            }
+            
+            // Create a basic text part indicating MMS content
+            // This ensures the message appears in conversation threads even if
+            // we can't fully parse the MMS content
+            ContentValues textPartValues = new ContentValues();
+            textPartValues.put(Telephony.Mms.Part.MSG_ID, messageId);
+            textPartValues.put(Telephony.Mms.Part.CONTENT_TYPE, "text/plain");
+            textPartValues.put(Telephony.Mms.Part.CHARSET, 106); // UTF-8
+            textPartValues.put(Telephony.Mms.Part.CONTENT_DISPOSITION, "inline");
+            textPartValues.put(Telephony.Mms.Part.TEXT, "[MMS Message]");
+            
+            Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
+            Uri insertedPartUri = context.getContentResolver().insert(partUri, textPartValues);
+            if (insertedPartUri != null) {
+                Log.d(TAG, "Added text part for MMS message");
+            } else {
+                Log.w(TAG, "Failed to add text part for MMS message");
+            }
+            
+            Log.d(TAG, "Successfully stored MMS message in content provider");
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting and storing MMS from intent", e);
+            return false;
         }
     }
 
