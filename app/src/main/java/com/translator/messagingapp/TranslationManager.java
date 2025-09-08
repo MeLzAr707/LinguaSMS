@@ -393,6 +393,11 @@ public class TranslationManager {
                 if (shouldUseOffline) {
                     Log.d(TAG, "Performing offline auto-translation from '" + detectedLanguage + "' to '" + targetLanguage + "' for message from: " + message.getAddress());
                     
+                    // Create final copies for use in anonymous inner class
+                    final String finalDetectedLanguage = detectedLanguage;
+                    final String finalTargetLanguage = targetLanguage;
+                    final String finalCacheKey = cacheKey;
+                    
                     offlineTranslationService.translateText(
                             message.getOriginalText(), detectedLanguage, targetLanguage,
                             new OfflineTranslationService.TranslationCallback() {
@@ -401,11 +406,11 @@ public class TranslationManager {
                                     if (success && translatedText != null) {
                                         // Update message with translation
                                         message.setTranslatedText(translatedText);
-                                        message.setTranslatedLanguage(targetLanguage);
-                                        message.setOriginalLanguage(detectedLanguage);
+                                        message.setTranslatedLanguage(finalTargetLanguage);
+                                        message.setOriginalLanguage(finalDetectedLanguage);
 
                                         // Cache the translation
-                                        translationCache.put(cacheKey, translatedText);
+                                        translationCache.put(finalCacheKey, translatedText);
 
                                         // Return result
                                         if (callback != null) {
@@ -419,7 +424,7 @@ public class TranslationManager {
                                             translationService != null && translationService.hasApiKey()) {
                                             
                                             Log.d(TAG, "Falling back to online auto-translation");
-                                            performOnlineAutoTranslation(message, detectedLanguage, targetLanguage, cacheKey, callback);
+                                            performOnlineAutoTranslation(message, finalDetectedLanguage, finalTargetLanguage, finalCacheKey, callback);
                                         } else {
                                             if (callback != null) {
                                                 callback.onTranslationComplete(false, null);
