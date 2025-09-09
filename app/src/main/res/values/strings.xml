@@ -15,6 +15,7 @@
     <string name="action_delete">Delete</string>
     <string name="action_call">Call</string>
     <string name="action_mark_read">Mark as read</string>
+    <string name="action_contact_settings">Contact Settings</string>
 
     <!-- Main Screen -->
     <string name="no_messages">No messages</string>
@@ -191,6 +192,15 @@
 
     <!-- Input validation -->
         <string name="please_enter_address">Please enter a phone number</string>
+
+    <!-- Contact Settings -->
+    <string name="contact_settings_title">Contact Settings</string>
+    <string name="notification_tone">Notification Tone</string>
+    <string name="select_notification_tone">Select Notification Tone</string>
+    <string name="default_tone">Default Tone</string>
+    <string name="custom_tone_set">Custom notification tone set</string>
+    <string name="tone_reset_to_default">Notification tone reset to default</string>
+    <string name="error_setting_tone">Error setting notification tone</string>
 
 
 

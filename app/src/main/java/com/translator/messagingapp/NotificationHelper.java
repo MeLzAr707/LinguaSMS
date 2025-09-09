@@ -38,6 +38,7 @@ public class NotificationHelper {
     
     private final Context context;
     private final NotificationManager notificationManager;
+    private final UserPreferences userPreferences;
     
     /**
      * Creates a new notification helper.
@@ -47,6 +48,7 @@ public class NotificationHelper {
     public NotificationHelper(Context context) {
         this.context = context;
         this.notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        this.userPreferences = new UserPreferences(context);
         createNotificationChannels();
     }
     
@@ -89,6 +91,28 @@ public class NotificationHelper {
     }
     
     /**
+     * Gets the notification sound URI for a contact.
+     * Returns custom tone if set, otherwise returns default tone.
+     *
+     * @param contactAddress The contact's phone number or address
+     * @return The notification sound URI
+     */
+    private Uri getNotificationSoundForContact(String contactAddress) {
+        // Check if contact has a custom notification tone
+        String customToneUri = userPreferences.getContactNotificationTone(contactAddress);
+        if (customToneUri != null && !customToneUri.isEmpty()) {
+            try {
+                return Uri.parse(customToneUri);
+            } catch (Exception e) {
+                Log.w(TAG, "Invalid custom tone URI for contact " + contactAddress + ": " + customToneUri, e);
+            }
+        }
+        
+        // Fall back to default notification sound
+        return RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+    }
+    
+    /**
      * Shows a notification for a received SMS message.
      *
      * @param sender The sender of the message
@@ -109,8 +133,8 @@ public class NotificationHelper {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
         
-        // Get notification sound
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        // Get notification sound for this contact
+        Uri notificationSound = getNotificationSoundForContact(sender);
         
         // Build notification with BigTextStyle to show full message content
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_MESSAGES)
@@ -121,7 +145,7 @@ public class NotificationHelper {
                         .bigText(body)
                         .setBigContentTitle(sender))
                 .setAutoCancel(true)
-                .setSound(defaultSoundUri)
+                .setSound(notificationSound)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent);
         
@@ -277,6 +301,7 @@ public class NotificationHelper {
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setStyle(messagingStyle)
                 .setAutoCancel(true)
+                .setSound(getNotificationSoundForContact(sender))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent);
         

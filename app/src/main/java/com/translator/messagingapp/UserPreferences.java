@@ -45,6 +45,9 @@ public class UserPreferences {
     private static final String KEY_CUSTOM_MESSAGE_VIEW_BACKGROUND_COLOR = "custom_message_view_background_color";
     private static final String KEY_CUSTOM_INCOMING_BUBBLE_TEXT_COLOR = "custom_incoming_bubble_text_color";
     private static final String KEY_CUSTOM_OUTGOING_BUBBLE_TEXT_COLOR = "custom_outgoing_bubble_text_color";
+    
+    // Contact notification tone keys
+    private static final String KEY_CONTACT_NOTIFICATION_TONE_PREFIX = "contact_notification_tone_";
 
     private final SharedPreferences preferences;
 
@@ -569,6 +572,76 @@ public class UserPreferences {
      */
     public void setCustomOutgoingBubbleTextColor(int color) {
         preferences.edit().putInt(KEY_CUSTOM_OUTGOING_BUBBLE_TEXT_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the notification tone URI for a specific contact.
+     *
+     * @param contactAddress The contact's phone number or address
+     * @return The notification tone URI string, or null if no custom tone is set
+     */
+    public String getContactNotificationTone(String contactAddress) {
+        if (contactAddress == null || contactAddress.isEmpty()) {
+            return null;
+        }
+        // Normalize the address to ensure consistent storage/retrieval
+        String normalizedAddress = normalizeAddress(contactAddress);
+        return preferences.getString(KEY_CONTACT_NOTIFICATION_TONE_PREFIX + normalizedAddress, null);
+    }
+
+    /**
+     * Sets the notification tone URI for a specific contact.
+     *
+     * @param contactAddress The contact's phone number or address
+     * @param toneUri The notification tone URI string, or null to remove custom tone
+     */
+    public void setContactNotificationTone(String contactAddress, String toneUri) {
+        if (contactAddress == null || contactAddress.isEmpty()) {
+            return;
+        }
+        // Normalize the address to ensure consistent storage/retrieval
+        String normalizedAddress = normalizeAddress(contactAddress);
+        SharedPreferences.Editor editor = preferences.edit();
+        if (toneUri == null || toneUri.isEmpty()) {
+            editor.remove(KEY_CONTACT_NOTIFICATION_TONE_PREFIX + normalizedAddress);
+        } else {
+            editor.putString(KEY_CONTACT_NOTIFICATION_TONE_PREFIX + normalizedAddress, toneUri);
+        }
+        editor.apply();
+    }
+
+    /**
+     * Checks if a contact has a custom notification tone set.
+     *
+     * @param contactAddress The contact's phone number or address
+     * @return True if a custom tone is set, false otherwise
+     */
+    public boolean hasContactNotificationTone(String contactAddress) {
+        return getContactNotificationTone(contactAddress) != null;
+    }
+
+    /**
+     * Normalizes a phone number/address for consistent storage.
+     * This removes non-digit characters and ensures consistent formatting.
+     *
+     * @param address The phone number or address to normalize
+     * @return The normalized address
+     */
+    private String normalizeAddress(String address) {
+        if (address == null) {
+            return "";
+        }
+        // Remove all non-digit characters except + sign at the beginning
+        String normalized = address.replaceAll("[^\\d+]", "");
+        // If it starts with +1 and is 12 digits, remove the +1 for US numbers
+        if (normalized.startsWith("+1") && normalized.length() == 12) {
+            normalized = normalized.substring(2);
+        }
+        // If it starts with 1 and is 11 digits, remove the 1 for US numbers
+        else if (normalized.startsWith("1") && normalized.length() == 11) {
+            normalized = normalized.substring(1);
+        }
+        return normalized.toLowerCase();
     }
 }
 

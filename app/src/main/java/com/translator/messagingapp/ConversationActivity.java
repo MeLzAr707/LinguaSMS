@@ -8,6 +8,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
@@ -43,7 +44,7 @@ import java.util.concurrent.Executors;
 /**
  * Activity for displaying a conversation.
  */
-public class ConversationActivity extends BaseActivity implements MessageRecyclerAdapter.OnMessageClickListener {
+public class ConversationActivity extends BaseActivity implements MessageRecyclerAdapter.OnMessageClickListener, ContactSettingsDialog.OnToneSelectedListener {
     private static final String TAG = "ConversationActivity";
     
     // Static field to track currently active conversation for notification suppression
@@ -1086,6 +1087,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         } else if (id == R.id.action_translate) {
             translateInput();
             return true;
+        } else if (id == R.id.action_contact_settings) {
+            showContactSettingsDialog();
+            return true;
         } else if (id == R.id.action_translate_all) {
             translateAllMessages();
             return true;
@@ -1527,6 +1531,73 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Update the adapter
         adapter.setGroupConversation(isGroup);
         Log.d(TAG, "Group conversation status: " + isGroup);
+    }
+
+    /**
+     * Shows the contact settings dialog.
+     */
+    private void showContactSettingsDialog() {
+        if (TextUtils.isEmpty(address)) {
+            Toast.makeText(this, "Unable to access contact settings", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
+        dialog.show();
+    }
+
+    @Override
+    public void onToneSelected(String contactAddress, String toneUri) {
+        // Callback when user selects a notification tone
+        Log.d(TAG, "Notification tone selected for " + contactAddress + ": " + toneUri);
+        // No additional action needed as the preference is already saved in the dialog
+    }
+
+    @Override
+    public void onRequestRingtoneSelection(int requestCode) {
+        // Start ringtone picker activity
+        Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, getString(R.string.select_notification_tone));
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
+        intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false);
+        
+        // Set current selection if any
+        UserPreferences prefs = new UserPreferences(this);
+        String currentTone = prefs.getContactNotificationTone(address);
+        if (currentTone != null && !currentTone.isEmpty()) {
+            try {
+                Uri currentUri = Uri.parse(currentTone);
+                intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentUri);
+            } catch (Exception e) {
+                Log.w(TAG, "Invalid current tone URI: " + currentTone, e);
+            }
+        } else {
+            // Set default notification sound as current selection
+            Uri defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, defaultUri);
+        }
+        
+        try {
+            startActivityForResult(intent, requestCode);
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting ringtone picker", e);
+            Toast.makeText(this, getString(R.string.error_setting_tone), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == ContactSettingsDialog.getRingtonePickerRequestCode() && resultCode == RESULT_OK) {
+            Uri selectedUri = data != null ? 
+                data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI) : null;
+            
+            // Create a new dialog instance to handle the result
+            ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
+            dialog.handleRingtonePickerResult(selectedUri);
+        }
     }
 
 
