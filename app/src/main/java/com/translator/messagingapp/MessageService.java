@@ -45,6 +45,7 @@ public class MessageService {
     private final TranslationManager translationManager;
     private final TranslationCache translationCache;
     private final RcsService rcsService;
+    private final UserPreferences userPreferences;
 
     /**
      * Creates a new MessageService.
@@ -57,6 +58,7 @@ public class MessageService {
         this.translationManager = translationManager;
         this.translationCache = translationCache;
         this.rcsService = new RcsService(context);
+        this.userPreferences = new UserPreferences(context);
     }
 
     /**
@@ -824,6 +826,16 @@ public class MessageService {
                         message.setThreadId(Long.parseLong(threadId));
                         message.setMessageType(Message.MESSAGE_TYPE_SMS);
 
+                        // Restore translation state from cache if available
+                        if (translationCache != null) {
+                            boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
+                            
+                            // For auto-translated incoming messages, ensure showTranslation is true
+                            if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
+                                message.setShowTranslation(true);
+                            }
+                        }
+
                         messages.add(message);
                     } catch (Exception e) {
                         Log.e(TAG, "Error processing SMS message in thread " + threadId, e);
@@ -873,6 +885,16 @@ public class MessageService {
 
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
+
+                        // Restore translation state from cache if available
+                        if (translationCache != null) {
+                            boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
+                            
+                            // For auto-translated incoming messages, ensure showTranslation is true
+                            if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
+                                message.setShowTranslation(true);
+                            }
+                        }
 
                         messages.add(message);
                     } catch (Exception e) {
@@ -925,6 +947,16 @@ public class MessageService {
                         message.setThreadId(Long.parseLong(threadId));
                         message.setMessageType(Message.MESSAGE_TYPE_SMS);
 
+                        // Restore translation state from cache if available
+                        if (translationCache != null) {
+                            boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
+                            
+                            // For auto-translated incoming messages, ensure showTranslation is true
+                            if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
+                                message.setShowTranslation(true);
+                            }
+                        }
+
                         messages.add(message);
                     } catch (Exception e) {
                         Log.e(TAG, "Error processing SMS message in thread " + threadId, e);
@@ -976,6 +1008,16 @@ public class MessageService {
 
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
+
+                        // Restore translation state from cache if available
+                        if (translationCache != null) {
+                            boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
+                            
+                            // For auto-translated incoming messages, ensure showTranslation is true
+                            if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
+                                message.setShowTranslation(true);
+                            }
+                        }
 
                         messages.add(message);
                     } catch (Exception e) {

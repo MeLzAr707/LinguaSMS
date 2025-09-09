@@ -420,6 +420,52 @@ public class Message {
                 Log.e(TAG, "Error restoring translation state", e);
             }
         }
+        
+        return false;
+    }
+
+    /**
+     * Restores the translation state from the cache, with auto-translation support.
+     *
+     * @param cache The translation cache
+     * @param userPreferences User preferences to determine target language for auto-translation
+     * @return true if translation state was restored, false otherwise
+     */
+    public boolean restoreTranslationState(TranslationCache cache, UserPreferences userPreferences) {
+        // First try the standard message-specific cache
+        if (restoreTranslationState(cache)) {
+            return true;
+        }
+        
+        // If not found, check for auto-translation cache entries
+        // Auto-translation uses format: "originalText_targetLanguage" -> translatedText
+        if (body != null && !body.trim().isEmpty() && userPreferences != null) {
+            // Get the target language that auto-translation would have used
+            String targetLanguage = isIncoming() ?
+                    userPreferences.getPreferredIncomingLanguage() :
+                    userPreferences.getPreferredOutgoingLanguage();
+
+            // If not set, fall back to general preferred language
+            if (targetLanguage == null || targetLanguage.isEmpty()) {
+                targetLanguage = userPreferences.getPreferredLanguage();
+            }
+            
+            if (targetLanguage != null && !targetLanguage.isEmpty()) {
+                String autoTransCacheKey = body + "_" + targetLanguage;
+                String autoTranslatedText = cache.get(autoTransCacheKey);
+                
+                if (autoTranslatedText != null && !autoTranslatedText.trim().isEmpty()) {
+                    // Found auto-translation result
+                    translatedText = autoTranslatedText;
+                    originalLanguage = ""; // Auto-translation doesn't always detect source language accurately
+                    translatedLanguage = targetLanguage;
+                    showTranslation = true; // Auto-translated messages should show translation by default
+                    Log.d(TAG, "Restored auto-translation state for message " + getId() + " (target: " + targetLanguage + ")");
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
 
