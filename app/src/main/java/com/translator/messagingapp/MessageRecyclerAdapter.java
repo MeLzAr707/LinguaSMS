@@ -557,6 +557,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         
         /**
          * Load media (image/video) using Glide with proper error handling and responsive sizing
+         * Supports GIF animations by detecting GIF content type and using appropriate loading method
          */
         private void loadMediaWithGlide(Uri mediaUri, MmsMessage.Attachment attachment) {
             if (mediaUri == null || mediaImage == null) {
@@ -570,39 +571,56 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .fitCenter(); // Changed from centerCrop to fitCenter for better aspect ratio handling
                 
-                Glide.with(context)
-                    .load(mediaUri)
-                    .apply(options)
-                    .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.drawable.Drawable>() {
-                        @Override
-                        public void onResourceReady(@NonNull android.graphics.drawable.Drawable resource, 
-                                                  com.bumptech.glide.request.transition.Transition<? super android.graphics.drawable.Drawable> transition) {
-                            if (mediaImage != null) {
-                                mediaImage.setImageDrawable(resource);
-                                // Use fitCenter to maintain aspect ratio while filling available width
-                                mediaImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                                mediaImage.setVisibility(View.VISIBLE);
+                // Check if the attachment is a GIF to preserve animation
+                boolean isGif = attachment != null && attachment.isGif();
+                
+                if (isGif) {
+                    // For GIFs, use direct loading to preserve animation
+                    // Set the scale type first to ensure proper display
+                    mediaImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    mediaImage.setVisibility(View.VISIBLE);
+                    
+                    Glide.with(context)
+                        .asGif() // Explicitly load as GIF to preserve animation
+                        .load(mediaUri)
+                        .apply(options)
+                        .into(mediaImage);
+                } else {
+                    // For non-GIF images, use CustomTarget for better control over sizing
+                    Glide.with(context)
+                        .load(mediaUri)
+                        .apply(options)
+                        .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.drawable.Drawable>() {
+                            @Override
+                            public void onResourceReady(@NonNull android.graphics.drawable.Drawable resource, 
+                                                      com.bumptech.glide.request.transition.Transition<? super android.graphics.drawable.Drawable> transition) {
+                                if (mediaImage != null) {
+                                    mediaImage.setImageDrawable(resource);
+                                    // Use fitCenter to maintain aspect ratio while filling available width
+                                    mediaImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                                    mediaImage.setVisibility(View.VISIBLE);
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
-                            if (mediaImage != null && placeholder != null) {
-                                mediaImage.setImageDrawable(placeholder);
-                                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                            @Override
+                            public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {
+                                if (mediaImage != null && placeholder != null) {
+                                    mediaImage.setImageDrawable(placeholder);
+                                    mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                                }
                             }
-                        }
-                        
-                        @Override
-                        public void onLoadFailed(android.graphics.drawable.Drawable errorDrawable) {
-                            // Show attachment icon for failed loads
-                            if (mediaImage != null) {
-                                mediaImage.setImageResource(R.drawable.ic_attachment);
-                                mediaImage.setScaleType(ImageView.ScaleType.CENTER);
-                                mediaImage.setVisibility(View.VISIBLE);
+                            
+                            @Override
+                            public void onLoadFailed(android.graphics.drawable.Drawable errorDrawable) {
+                                // Show attachment icon for failed loads
+                                if (mediaImage != null) {
+                                    mediaImage.setImageResource(R.drawable.ic_attachment);
+                                    mediaImage.setScaleType(ImageView.ScaleType.CENTER);
+                                    mediaImage.setVisibility(View.VISIBLE);
+                                }
                             }
-                        }
-                    });
+                        });
+                }
             } catch (Exception e) {
                 // Fallback to attachment icon
                 if (mediaImage != null) {
