@@ -149,10 +149,11 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
     /**
      * Gets the appropriate display name for a conversation with improved logic.
      * Fixed to prevent 'unk-nown' display issue in group messages.
+     * Always shows phone number instead of "Unknown" when available.
      */
     private String getDisplayNameForConversation(Conversation conversation) {
         if (conversation == null) {
-            return "Unknown"; // Shorter to avoid truncation issues
+            return "No Contact"; // Avoid "Unknown" which could be truncated
         }
         
         String contactName = conversation.getContactName();
@@ -190,35 +191,38 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             }
         }
         
-        // Fall back to formatted phone number
+        // Always try to show phone number instead of "Unknown"
         if (!TextUtils.isEmpty(address)) {
             // Check if this looks like a group message
-            if (address.contains(",") || (address.contains("+") && address.contains("others"))) {
+            if (address.contains(",")) {
+                return getGroupDisplayName(address); // Handle group addresses
+            } else if (address.contains("+") && address.contains("others")) {
                 return address; // Already formatted group address
             }
             
+            // Single address - format as phone number
             return formatPhoneNumber(address);
         }
         
-        // Last resort - try to show at least a phone number instead of "Unknown"
+        // Last resort - extract phone number from any available data
         if (!TextUtils.isEmpty(address)) {
-            // Extract a phone number from the address if possible
             String phoneNumber = extractPhoneNumber(address);
             if (!TextUtils.isEmpty(phoneNumber)) {
                 return formatCompactPhoneNumber(phoneNumber);
             }
         }
         
-        return "Unknown";
+        // Only return generic text if we truly have no phone number data
+        return "No Number"; // Shorter and clearer than "Unknown"
     }
     
     /**
      * Get display name for group conversations with multiple addresses.
-     * Improved to prevent 'unk-nown' display issues and provide better fallbacks.
+     * Improved to prevent 'unk-nown' display issues and always provide meaningful participant info.
      */
     private String getGroupDisplayName(String addresses) {
         if (TextUtils.isEmpty(addresses)) {
-            return "Unknown"; // Shorter to avoid truncation
+            return "Group Chat"; // Descriptive instead of "Unknown"
         }
         
         String[] addressArray = addresses.split(",");
@@ -226,7 +230,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             // Not actually a group, treat as single address
             String singleAddress = addresses.trim();
             if (TextUtils.isEmpty(singleAddress)) {
-                return "Unknown"; // Avoid "Unknown Contact" which could be truncated
+                return "No Number"; // Better than "Unknown"
             }
             String contactName = ContactUtils.getContactName(context, singleAddress);
             return !TextUtils.isEmpty(contactName) ? contactName : formatPhoneNumber(singleAddress);
@@ -235,7 +239,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // For group conversations, try to get contact names for each participant
         StringBuilder groupName = new StringBuilder();
         int nameCount = 0;
-        int maxNamesToShow = 2; // Reduced to 2 to avoid overly long names that could be truncated
+        int maxNamesToShow = 2; // Keep limit to avoid overly long names
         
         for (int i = 0; i < addressArray.length && nameCount < maxNamesToShow; i++) {
             String address = addressArray[i].trim();
@@ -248,7 +252,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             if (!TextUtils.isEmpty(contactName)) {
                 displayName = contactName;
             } else {
-                // For group display, use a more compact phone number format
+                // Always show phone number instead of generic text
                 displayName = formatCompactPhoneNumber(address);
             }
             
@@ -262,18 +266,19 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         // If there are more participants than we showed
         if (addressArray.length > maxNamesToShow) {
             int remaining = addressArray.length - maxNamesToShow;
-            groupName.append(" +").append(remaining); // Compact format to avoid truncation
+            groupName.append(" +").append(remaining);
         }
         
-        // Ensure we always return something meaningful and not too long
+        // Ensure we always return something meaningful
         String result = groupName.toString();
         if (result.length() == 0) {
-            return "Group"; // Short fallback
+            // If we couldn't build a group name, show the count
+            return addressArray.length + " participants";
         }
         
-        // If the result is too long, truncate it intelligently to avoid "unk-nown" issue
-        if (result.length() > 20) {
-            return result.substring(0, 17) + "...";
+        // If the result is too long, truncate it intelligently to avoid UI issues
+        if (result.length() > 25) {
+            return result.substring(0, 22) + "...";
         }
         
         return result;
@@ -285,7 +290,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
      */
     String formatPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isEmpty()) {
-            return "Unknown";
+            return "No Number"; // Never return "Unknown" - be specific
         }
 
         // Remove any spaces, dashes, parentheses, and plus signs for processing
@@ -320,7 +325,7 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             }
         }
 
-        // If we can't format it nicely, return as-is
+        // If we can't format it nicely, return the original (it's still better than "Unknown")
         return phoneNumber;
     }
 

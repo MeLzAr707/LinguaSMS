@@ -131,17 +131,19 @@ public class GroupMessageDisplayFixTest {
         assertNotEquals("Should not return 'unk-nown'", "unk-nown", result1);
         
         String result2 = testAdapter.formatPhoneNumber("");
-        assertEquals("Should return 'Unknown' for empty string", "Unknown", result2);
+        assertEquals("Should return 'No Number' for empty string", "No Number", result2);
         
         String result3 = testAdapter.formatPhoneNumber(null);
-        assertEquals("Should return 'Unknown' for null", "Unknown", result3);
+        assertEquals("Should return 'No Number' for null", "No Number", result3);
         
         String result4 = testAdapter.formatPhoneNumber("invalid");
         assertNotEquals("Should not return 'unk-nown' for invalid input", "unk-nown", result4);
+        assertEquals("Should return original input for invalid format", "invalid", result4);
         
         // Test edge case that might cause corruption
         String result5 = testAdapter.formatPhoneNumber("uk");  // Could this become 'unk'?
         assertNotEquals("Should not return 'unk-nown'", "unk-nown", result5);
+        assertEquals("Should return original input", "uk", result5);
     }
 
     /**
@@ -214,8 +216,8 @@ public class GroupMessageDisplayFixTest {
             return formatPhoneNumberForTest(address);
         }
         
-        // Last resort: Unknown contact
-        return "Unknown"; // Shorter to match the fix
+        // Last resort: No Number instead of "Unknown" to match the fix
+        return "No Number";
     }
 
     /**
@@ -268,7 +270,7 @@ public class GroupMessageDisplayFixTest {
      */
     private String formatPhoneNumberForTest(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isEmpty()) {
-            return "Unknown"; // This should never become 'unk-nown'
+            return "No Number"; // Updated to match the fix - never return "Unknown"
         }
 
         // Remove any spaces, dashes, parentheses, and plus signs for processing
@@ -303,7 +305,7 @@ public class GroupMessageDisplayFixTest {
             }
         }
 
-        // If we can't format it nicely, return as-is (but never 'unk-nown')
+        // If we can't format it nicely, return original (never return "Unknown")
         return phoneNumber;
     }
 }

@@ -192,7 +192,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle(contactName != null ? contactName : address);
+            // Use improved display name logic that shows phone number instead of "Unknown"
+            String displayTitle = getDisplayTitle(contactName, address);
+            getSupportActionBar().setTitle(displayTitle);
         }
         
         // Apply theme-specific toolbar styling
@@ -1593,6 +1595,136 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Log.e(TAG, "Error starting ringtone picker", e);
             Toast.makeText(this, getString(R.string.error_setting_tone), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Gets the appropriate display title for the conversation toolbar.
+     * Ensures we show phone number instead of "Unknown" when contact name is not available.
+     */
+    private String getDisplayTitle(String contactName, String address) {
+        // Clean up contact name - handle string "null", empty, or actual null
+        if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
+            contactName = null;
+        }
+        
+        // If we have a valid contact name, use it
+        if (contactName != null && !contactName.equals(address)) {
+            return contactName;
+        }
+        
+        // Try to look up contact name as fallback
+        if (!TextUtils.isEmpty(address)) {
+            String lookedUpName = ContactUtils.getContactName(this, address);
+            if (!TextUtils.isEmpty(lookedUpName)) {
+                return lookedUpName;
+            }
+            
+            // Always show formatted phone number instead of "Unknown"
+            if (address.contains(",")) {
+                // Handle group conversation addresses
+                return getGroupDisplayTitle(address);
+            } else {
+                // Single address - format as phone number
+                return formatPhoneNumberForTitle(address);
+            }
+        }
+        
+        // Last resort - be descriptive instead of just "Unknown"
+        return "No Contact Info";
+    }
+
+    /**
+     * Formats a group address for the conversation title.
+     */
+    private String getGroupDisplayTitle(String addresses) {
+        if (TextUtils.isEmpty(addresses)) {
+            return "Group Chat";
+        }
+        
+        String[] addressArray = addresses.split(",");
+        if (addressArray.length <= 1) {
+            String singleAddress = addresses.trim();
+            return formatPhoneNumberForTitle(singleAddress);
+        }
+        
+        // For group, show participant count and first few numbers
+        StringBuilder titleBuilder = new StringBuilder();
+        int participantCount = 0;
+        int maxToShow = 2;
+        
+        for (int i = 0; i < addressArray.length && participantCount < maxToShow; i++) {
+            String address = addressArray[i].trim();
+            if (TextUtils.isEmpty(address)) {
+                continue;
+            }
+            
+            String contactName = ContactUtils.getContactName(this, address);
+            String displayName = !TextUtils.isEmpty(contactName) ? contactName : formatCompactPhoneForTitle(address);
+            
+            if (participantCount > 0) {
+                titleBuilder.append(", ");
+            }
+            titleBuilder.append(displayName);
+            participantCount++;
+        }
+        
+        if (addressArray.length > maxToShow) {
+            int remaining = addressArray.length - maxToShow;
+            titleBuilder.append(" +").append(remaining);
+        }
+        
+        String result = titleBuilder.toString();
+        return result.length() > 0 ? result : "Group (" + addressArray.length + ")";
+    }
+
+    /**
+     * Formats a phone number for display in the title bar.
+     */
+    private String formatPhoneNumberForTitle(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return "No Number";
+        }
+        
+        // Remove any non-digit characters except +
+        String cleanNumber = phoneNumber.replaceAll("[^\\d+]", "");
+        
+        // Remove country code for cleaner display
+        if (cleanNumber.startsWith("+1") && cleanNumber.length() == 12) {
+            cleanNumber = cleanNumber.substring(2);
+        } else if (cleanNumber.startsWith("1") && cleanNumber.length() == 11) {
+            cleanNumber = cleanNumber.substring(1);
+        }
+        
+        // Format as (XXX) XXX-XXXX for 10-digit numbers
+        if (cleanNumber.length() == 10) {
+            return String.format("(%s) %s-%s",
+                    cleanNumber.substring(0, 3),
+                    cleanNumber.substring(3, 6),
+                    cleanNumber.substring(6));
+        }
+        
+        // Return original if we can't format it
+        return phoneNumber;
+    }
+
+    /**
+     * Formats a phone number compactly for group titles.
+     */
+    private String formatCompactPhoneForTitle(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return "???";
+        }
+        
+        // For titles, show last 4 digits with area code if available
+        String cleanNumber = phoneNumber.replaceAll("[^\\d]", "");
+        
+        if (cleanNumber.length() >= 7) {
+            return cleanNumber.substring(0, 3) + "-" + cleanNumber.substring(cleanNumber.length() - 4);
+        } else if (cleanNumber.length() >= 4) {
+            return "..." + cleanNumber.substring(cleanNumber.length() - 4);
+        }
+        
+        return phoneNumber.length() > 10 ? phoneNumber.substring(0, 8) + "..." : phoneNumber;
     }
 
 }
