@@ -1624,15 +1624,15 @@ public class MessageService {
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
 
                     // Check if message already exists to prevent duplicates
-                    // Always attempt storage regardless of default SMS app status
-                    if (!isMessageAlreadyStored(senderAddress, fullMessageBody.toString(), messageTimestamp)) {
+                    boolean messageAlreadyExists = isMessageAlreadyStored(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                    if (!messageAlreadyExists) {
                         Log.d(TAG, "Message not found in database, storing message");
                         storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
                     } else {
                         Log.d(TAG, "Message already exists in database, skipping storage to prevent duplicate");
                     }
 
-                    // Auto-translate the message if enabled
+                    // Auto-translate the message if enabled (always attempt regardless of storage status)
                     if (translationManager != null) {
                         try {
                             // Create SmsMessage object for translation
@@ -1679,10 +1679,11 @@ public class MessageService {
                         }
                     }
 
-                    // Show notification
+                    // Show notification (always show regardless of storage status)
                     showSmsNotification(senderAddress, fullMessageBody.toString());
                     
-                    // Broadcast message received to refresh UI
+                    // Broadcast message received to refresh UI (always broadcast regardless of storage status)
+                    // This ensures the UI updates even when Android auto-stored the message
                     broadcastMessageReceived();
                 }
             }
