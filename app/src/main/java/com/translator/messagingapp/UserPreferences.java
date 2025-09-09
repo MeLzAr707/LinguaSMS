@@ -631,17 +631,19 @@ public class UserPreferences {
         if (address == null) {
             return "";
         }
-        // Remove all non-digit characters except + sign at the beginning
-        String normalized = address.replaceAll("[^\\d+]", "");
-        // If it starts with +1 and is 12 digits, remove the +1 for US numbers
-        if (normalized.startsWith("+1") && normalized.length() == 12) {
-            normalized = normalized.substring(2);
+        // Remove all non-digit characters for processing
+        String digitsOnly = address.replaceAll("[^\\d]", "");
+        
+        // Handle US phone numbers
+        if (digitsOnly.length() == 11 && digitsOnly.startsWith("1")) {
+            // Remove US country code for 11-digit numbers starting with 1
+            digitsOnly = digitsOnly.substring(1);
+        } else if (digitsOnly.length() == 10) {
+            // Keep as-is for 10-digit numbers
         }
-        // If it starts with 1 and is 11 digits, remove the 1 for US numbers
-        else if (normalized.startsWith("1") && normalized.length() == 11) {
-            normalized = normalized.substring(1);
-        }
-        return normalized.toLowerCase();
+        // For other lengths, keep as-is (international numbers, short codes, etc.)
+        
+        return digitsOnly.toLowerCase();
     }
 }
 
