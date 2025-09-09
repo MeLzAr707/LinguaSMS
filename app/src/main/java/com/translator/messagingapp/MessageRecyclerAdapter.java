@@ -20,6 +20,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +30,7 @@ import java.util.HashSet;
  * RecyclerView adapter for displaying messages in a conversation.
  */
 public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+    private static final String TAG = "MessageRecyclerAdapter";
     private static final int VIEW_TYPE_INCOMING = 1;
     private static final int VIEW_TYPE_OUTGOING = 2;
     private static final int VIEW_TYPE_INCOMING_MEDIA = 3;
@@ -731,6 +733,10 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             return;
         }
         
+        // Clear contact name cache when messages are updated to ensure fresh lookups
+        Log.d(TAG, "Clearing contact name cache due to message update");
+        contactNameCache.clear();
+        
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
                 new MessageDiffCallback(messages, newMessages));
         
@@ -749,29 +755,60 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     }
 
     /**
+     * Clears the contact name cache to force fresh contact lookups.
+     * This can be called if contacts have been updated in the system.
+     */
+    public void clearContactNameCache() {
+        Log.d(TAG, "Manually clearing contact name cache");
+        contactNameCache.clear();
+        notifyDataSetChanged(); // Refresh the display to show updated contact names
+    }
+
+    // Cache for contact name lookups to avoid repeated queries and ensure consistency
+    private final Map<String, String> contactNameCache = new HashMap<>();
+
+    /**
      * Gets the display name for a message sender in group conversations.
      * Returns contact name if available, otherwise the phone number.
+     * Uses caching to ensure consistent contact name resolution across messages.
      */
     private String getSenderDisplayName(Message message) {
         if (message == null || TextUtils.isEmpty(message.getAddress())) {
             return null;
         }
 
+        String address = message.getAddress();
+        Log.d(TAG, "Getting sender display name for address: " + address + " (message ID: " + message.getId() + ")");
+        
         // First try to get contact name from message
         String contactName = message.getContactName();
         if (!TextUtils.isEmpty(contactName) && !"null".equals(contactName)) {
+            Log.d(TAG, "Using contact name from message: " + contactName);
             return contactName;
         }
 
-        // Try to lookup contact name using ContactUtils
-        String address = message.getAddress();
+        // Check cache first to ensure consistent results
+        if (contactNameCache.containsKey(address)) {
+            String cachedName = contactNameCache.get(address);
+            Log.d(TAG, "Using cached contact name for " + address + ": " + cachedName);
+            return cachedName != null ? cachedName : formatPhoneNumberForDisplay(address);
+        }
+
+        // Try to lookup contact name using ContactUtils with the exact message address
         String lookedUpName = ContactUtils.getContactName(context, address);
+        
+        // Cache the result (even if null) to ensure consistency
+        contactNameCache.put(address, lookedUpName);
+        
         if (!TextUtils.isEmpty(lookedUpName)) {
+            Log.d(TAG, "Resolved contact name for " + address + ": " + lookedUpName);
             return lookedUpName;
         }
 
         // Fall back to formatted phone number
-        return formatPhoneNumberForDisplay(address);
+        String fallbackName = formatPhoneNumberForDisplay(address);
+        Log.d(TAG, "Using fallback formatted number for " + address + ": " + fallbackName);
+        return fallbackName;
     }
 
     /**

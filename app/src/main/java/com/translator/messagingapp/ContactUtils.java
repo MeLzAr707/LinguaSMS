@@ -31,16 +31,20 @@ public class ContactUtils {
             return null;
         }
 
+        Log.d(TAG, "Looking up contact name for: " + phoneNumber);
+
         // Try multiple phone number formats for better contact matching
         String[] phoneVariants = getPhoneNumberVariants(phoneNumber);
         
         for (String variant : phoneVariants) {
             String contactName = lookupContactName(context, variant);
             if (!TextUtils.isEmpty(contactName)) {
+                Log.d(TAG, "Found contact name '" + contactName + "' for phone number: " + phoneNumber + " (using variant: " + variant + ")");
                 return contactName;
             }
         }
 
+        Log.d(TAG, "No contact name found for phone number: " + phoneNumber);
         return null;
     }
     
