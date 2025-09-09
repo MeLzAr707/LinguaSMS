@@ -22,6 +22,8 @@ import com.bumptech.glide.request.RequestOptions;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * RecyclerView adapter for displaying messages in a conversation.
@@ -35,6 +37,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     private final Context context;
     private final List<Message> messages;
     private final OnMessageClickListener listener;
+    private boolean isGroupConversation = false;
 
     /**
      * Interface for message click events.
@@ -70,6 +73,37 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         this.context = context;
         this.messages = messages;
         this.listener = listener;
+        // Auto-detect if this is a group conversation based on multiple unique addresses
+        this.isGroupConversation = detectGroupConversation(messages);
+    }
+
+    /**
+     * Set whether this is a group conversation.
+     * This will affect how sender information is displayed for incoming messages.
+     */
+    public void setGroupConversation(boolean isGroupConversation) {
+        this.isGroupConversation = isGroupConversation;
+        notifyDataSetChanged();
+    }
+
+    /**
+     * Detects if this is a group conversation by checking if there are multiple unique sender addresses.
+     */
+    private boolean detectGroupConversation(List<Message> messages) {
+        if (messages == null || messages.size() < 2) {
+            return false;
+        }
+
+        Set<String> uniqueAddresses = new HashSet<>();
+        for (Message message : messages) {
+            if (message != null && message.getAddress() != null && message.getType() == Message.TYPE_INBOX) {
+                uniqueAddresses.add(message.getAddress());
+                if (uniqueAddresses.size() > 1) {
+                    return true; // Multiple senders = group conversation
+                }
+            }
+        }
+        return false;
     }
 
     @NonNull
@@ -137,6 +171,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView messageText;
         TextView originalText;
         TextView dateText;
+        TextView senderName;
         View translateButton;
         LinearLayout reactionsLayout;
 
@@ -145,6 +180,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             messageText = itemView.findViewById(R.id.message_text);
             originalText = itemView.findViewById(R.id.original_text);
             dateText = itemView.findViewById(R.id.message_date); // Fixed ID
+            senderName = itemView.findViewById(R.id.sender_name);
             translateButton = itemView.findViewById(R.id.translate_button);
             reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
         }
@@ -203,6 +239,21 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             // Set date
             if (dateText != null) {
                 dateText.setText(message.getFormattedDate());
+            }
+
+            // Set sender name for group conversations (only for incoming messages)
+            if (senderName != null) {
+                if (isGroupConversation && message.getType() == Message.TYPE_INBOX) {
+                    String senderDisplayName = getSenderDisplayName(message);
+                    if (!TextUtils.isEmpty(senderDisplayName)) {
+                        senderName.setText(senderDisplayName);
+                        senderName.setVisibility(View.VISIBLE);
+                    } else {
+                        senderName.setVisibility(View.GONE);
+                    }
+                } else {
+                    senderName.setVisibility(View.GONE);
+                }
             }
 
             // Set up click listeners
@@ -695,5 +746,60 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     public void updateTextSizes() {
         notifyDataSetChanged();
+    }
+
+    /**
+     * Gets the display name for a message sender in group conversations.
+     * Returns contact name if available, otherwise the phone number.
+     */
+    private String getSenderDisplayName(Message message) {
+        if (message == null || TextUtils.isEmpty(message.getAddress())) {
+            return null;
+        }
+
+        // First try to get contact name from message
+        String contactName = message.getContactName();
+        if (!TextUtils.isEmpty(contactName) && !"null".equals(contactName)) {
+            return contactName;
+        }
+
+        // Try to lookup contact name using ContactUtils
+        String address = message.getAddress();
+        String lookedUpName = ContactUtils.getContactName(context, address);
+        if (!TextUtils.isEmpty(lookedUpName)) {
+            return lookedUpName;
+        }
+
+        // Fall back to formatted phone number
+        return formatPhoneNumberForDisplay(address);
+    }
+
+    /**
+     * Formats a phone number for display as sender name.
+     */
+    private String formatPhoneNumberForDisplay(String phoneNumber) {
+        if (TextUtils.isEmpty(phoneNumber)) {
+            return "Unknown";
+        }
+
+        // Remove any non-digit characters for formatting
+        String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
+        
+        // If it's a 10-digit US number, format as (XXX) XXX-XXXX
+        if (digitsOnly.length() == 10) {
+            return String.format("(%s) %s-%s", 
+                digitsOnly.substring(0, 3), 
+                digitsOnly.substring(3, 6), 
+                digitsOnly.substring(6));
+        } else if (digitsOnly.length() == 11 && digitsOnly.startsWith("1")) {
+            // Handle 11-digit number with country code
+            return String.format("+1 (%s) %s-%s", 
+                digitsOnly.substring(1, 4), 
+                digitsOnly.substring(4, 7), 
+                digitsOnly.substring(7));
+        }
+        
+        // For other formats, just return the original phone number
+        return phoneNumber;
     }
 }
