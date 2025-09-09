@@ -100,6 +100,15 @@ public class Attachment {
     }
 
     /**
+     * Checks if this attachment is a GIF image.
+     *
+     * @return True if this attachment is a GIF image, false otherwise
+     */
+    public boolean isGif() {
+        return contentType != null && contentType.equals("image/gif");
+    }
+
+    /**
      * Gets the part ID of this attachment.
      *
      * @return The part ID
