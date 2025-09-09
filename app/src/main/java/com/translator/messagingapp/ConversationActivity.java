@@ -34,7 +34,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -231,6 +233,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         
         messagesRecyclerView.setAdapter(adapter);
 
+        // Check if this is a group conversation based on the address
+        updateGroupConversationStatus();
+
         // Set up pinch-to-zoom gesture detection
         setupGestureDetection();
 
@@ -375,6 +380,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         // Use DiffUtil to efficiently update the RecyclerView
                         adapter.updateMessages(new ArrayList<>(loadedMessages));
                         
+                        // Update group conversation status after messages are loaded
+                        updateGroupConversationStatus();
+                        
                         // Restore translation state for all loaded messages
                         restoreTranslationStateForMessages(loadedMessages);
                         
@@ -390,6 +398,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         hasMoreMessages = false;
                         // Update with empty list
                         adapter.updateMessages(new ArrayList<>());
+                        
+                        // Update group conversation status even for empty list
+                        updateGroupConversationStatus();
                     }
                     hideLoadingIndicator();
 
@@ -1482,6 +1493,41 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
     }
 
+    /**
+     * Updates the group conversation status in the adapter based on the current conversation.
+     */
+    private void updateGroupConversationStatus() {
+        if (adapter == null) {
+            return;
+        }
+
+        boolean isGroup = false;
+        
+        // Method 1: Check if address contains comma (multiple participants)
+        if (!TextUtils.isEmpty(address) && address.contains(",")) {
+            isGroup = true;
+            Log.d(TAG, "Detected group conversation from address: " + address);
+        }
+        
+        // Method 2: Check if we have messages from multiple senders
+        if (!isGroup && messages != null && messages.size() > 1) {
+            Set<String> uniqueAddresses = new HashSet<>();
+            for (Message message : messages) {
+                if (message != null && message.getAddress() != null && message.getType() == Message.TYPE_INBOX) {
+                    uniqueAddresses.add(message.getAddress());
+                    if (uniqueAddresses.size() > 1) {
+                        isGroup = true;
+                        Log.d(TAG, "Detected group conversation from messages with multiple senders");
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Update the adapter
+        adapter.setGroupConversation(isGroup);
+        Log.d(TAG, "Group conversation status: " + isGroup);
+    }
 
 
 }

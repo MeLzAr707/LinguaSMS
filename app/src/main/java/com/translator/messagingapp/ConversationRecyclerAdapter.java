@@ -200,7 +200,15 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
             return formatPhoneNumber(address);
         }
         
-        // Last resort - use shorter text to avoid truncation issues
+        // Last resort - try to show at least a phone number instead of "Unknown"
+        if (!TextUtils.isEmpty(address)) {
+            // Extract a phone number from the address if possible
+            String phoneNumber = extractPhoneNumber(address);
+            if (!TextUtils.isEmpty(phoneNumber)) {
+                return formatCompactPhoneNumber(phoneNumber);
+            }
+        }
+        
         return "Unknown";
     }
     
@@ -544,5 +552,26 @@ public class ConversationRecyclerAdapter extends RecyclerView.Adapter<Conversati
         conversations.addAll(newConversations);
         
         diffResult.dispatchUpdatesTo(this);
+    }
+
+    /**
+     * Extracts a phone number from an address string that might contain other characters.
+     */
+    private String extractPhoneNumber(String address) {
+        if (TextUtils.isEmpty(address)) {
+            return null;
+        }
+        
+        // Remove any non-digit characters except +
+        String cleaned = address.replaceAll("[^\\d+]", "");
+        
+        // If it looks like a phone number (has at least 10 digits)
+        String digitsOnly = cleaned.replaceAll("[^\\d]", "");
+        if (digitsOnly.length() >= 10) {
+            return cleaned;
+        }
+        
+        // Return original if it doesn't look like a phone number
+        return address.length() > 15 ? null : address; // Don't return very long strings
     }
 }
