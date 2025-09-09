@@ -270,7 +270,12 @@ public class MmsMessage extends Message {
         public boolean isAudio() {
             return contentType != null && contentType.startsWith("audio/");
         }
-
+        /**
+         * Checks if this attachment is a GIF image.
+         *
+         * @return True if this attachment is a GIF image, false otherwise
+         */
+        public boolean isGif() { return contentType != null && contentType.equals("image/gif"); }
         /**
          * Gets the part ID of this attachment.
          *
