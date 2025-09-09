@@ -38,7 +38,8 @@ public class MessageService {
 
     // Define missing MMS constants
     private static final int MESSAGE_TYPE_SEND_REQ = 128;
-    private static final int TYPE_TO = 151;
+    private static final int TYPE_FROM = 137; // Sender address
+    private static final int TYPE_TO = 151;   // Recipient address
 
     private final Context context;
     private final ExecutorService executorService;
@@ -338,6 +339,8 @@ public class MessageService {
 
     /**
      * Gets the address (phone number) from an MMS message.
+     * For incoming messages, returns the sender address.
+     * For outgoing messages, returns the recipient address(es).
      *
      * @param contentResolver The content resolver
      * @param messageId The MMS message ID
@@ -349,7 +352,10 @@ public class MessageService {
             return null;
         }
 
-        List<String> addresses = getMmsAddresses(contentResolver, messageId);
+        // Determine if this is an incoming or outgoing message
+        boolean isIncomingMessage = messageBox == Telephony.Mms.MESSAGE_BOX_INBOX;
+        
+        List<String> addresses = getMmsAddresses(contentResolver, messageId, isIncomingMessage);
         
         if (addresses.isEmpty()) {
             return null;
@@ -363,13 +369,22 @@ public class MessageService {
     
     /**
      * Gets all MMS addresses for a message.
+     * 
+     * @param contentResolver The content resolver
+     * @param messageId The MMS message ID
+     * @param isIncomingMessage True for incoming messages (get sender), false for outgoing (get recipients)
+     * @return List of addresses
      */
-    private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId) {
+    private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId, boolean isIncomingMessage) {
         List<String> addresses = new ArrayList<>();
         
-        // Query the addr table to get all addresses
+        // Query the addr table to get addresses
         Uri uri = Uri.parse("content://mms/" + messageId + "/addr");
-        String selection = "type=" + TYPE_TO;
+        
+        // For incoming messages, get the sender (TYPE_FROM)
+        // For outgoing messages, get the recipients (TYPE_TO)
+        int addressType = isIncomingMessage ? TYPE_FROM : TYPE_TO;
+        String selection = "type=" + addressType;
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, null, null)) {
             if (cursor != null) {
@@ -384,10 +399,58 @@ public class MessageService {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error getting MMS addresses for message " + messageId, e);
+            Log.e(TAG, "Error getting MMS addresses for message " + messageId + " (type=" + addressType + ")", e);
         }
 
         return addresses;
+    }
+    
+    /**
+     * Gets all MMS addresses for a message (legacy method for backward compatibility).
+     * This method assumes outgoing message behavior (TYPE_TO).
+     */
+    private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId) {
+        return getMmsAddresses(contentResolver, messageId, false); // false = outgoing
+    }
+    
+    /**
+     * Gets the specific sender address for an individual MMS message.
+     * This method ensures each message gets its actual sender address rather than a group address.
+     * 
+     * @param contentResolver The content resolver
+     * @param messageId The MMS message ID
+     * @param messageBox The message box type
+     * @return The individual sender's address for this message
+     */
+    public String getIndividualMmsMessageAddress(ContentResolver contentResolver, String messageId, int messageBox) {
+        if (messageId == null || messageId.isEmpty()) {
+            return null;
+        }
+
+        // For incoming messages, we need the sender's address (TYPE_FROM)
+        boolean isIncomingMessage = messageBox == Telephony.Mms.MESSAGE_BOX_INBOX;
+        
+        if (isIncomingMessage) {
+            // Get the actual sender address for this specific message
+            List<String> senderAddresses = getMmsAddresses(contentResolver, messageId, true);
+            if (!senderAddresses.isEmpty()) {
+                // For incoming messages, return the first (and usually only) sender address
+                return senderAddresses.get(0);
+            }
+        } else {
+            // For outgoing messages, get recipients
+            List<String> recipientAddresses = getMmsAddresses(contentResolver, messageId, false);
+            if (!recipientAddresses.isEmpty()) {
+                // For outgoing messages in group conversations, we might need to format multiple recipients
+                if (recipientAddresses.size() == 1) {
+                    return recipientAddresses.get(0);
+                } else {
+                    return formatGroupAddresses(recipientAddresses);
+                }
+            }
+        }
+        
+        return null;
     }
     
     /**
