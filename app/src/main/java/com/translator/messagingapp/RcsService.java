@@ -3,6 +3,8 @@ package com.translator.messagingapp;
 import android.content.Context;
 import android.os.Build;
 import android.util.Log;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service for handling RCS (Rich Communication Services) messaging.
@@ -15,6 +17,9 @@ public class RcsService {
     // We'll use a simple boolean to check if RCS is available
     // instead of using the RcsMessageStore which requires API level 29+
     private boolean rcsAvailable = false;
+    
+    // Cache for provider existence checks to avoid repeated failed lookups
+    private final Map<String, Boolean> providerExistenceCache = new HashMap<>();
 
     /**
      * Creates a new RcsService.
@@ -55,6 +60,45 @@ public class RcsService {
      */
     public boolean isRcsAvailable() {
         return rcsAvailable;
+    }
+
+    /**
+     * Checks if a content provider exists at the given URI.
+     * Results are cached to avoid repeated failed lookups.
+     *
+     * @param uriString The content provider URI to check
+     * @return True if the provider exists, false otherwise
+     */
+    private boolean doesProviderExist(String uriString) {
+        if (uriString == null || uriString.isEmpty()) {
+            return false;
+        }
+        
+        // Check cache first
+        Boolean cachedResult = providerExistenceCache.get(uriString);
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+        
+        boolean exists = false;
+        try {
+            android.content.ContentProviderClient client = context.getContentResolver()
+                .acquireContentProviderClient(android.net.Uri.parse(uriString));
+            if (client != null) {
+                exists = true;
+                client.close();
+            }
+        } catch (Exception e) {
+            // Provider doesn't exist or we don't have permission
+            Log.d(TAG, "Provider not available: " + uriString + " - " + e.getMessage());
+            exists = false;
+        }
+        
+        // Cache the result
+        providerExistenceCache.put(uriString, exists);
+        Log.d(TAG, "Provider existence check for " + uriString + ": " + exists);
+        
+        return exists;
     }
 
     /**
@@ -134,13 +178,22 @@ public class RcsService {
                 "content://com.google.android.apps.messaging.rcs/messages"
             };
             
+            boolean foundAnyProvider = false;
             for (String uriString : possibleUris) {
-                try {
-                    loadRcsMessagesFromUri(uriString, threadId, messages);
-                } catch (Exception e) {
-                    Log.d(TAG, "Failed to load RCS messages from " + uriString + ": " + e.getMessage());
-                    // Continue trying other URIs
+                // Check if provider exists before attempting to query
+                if (doesProviderExist(uriString)) {
+                    foundAnyProvider = true;
+                    try {
+                        loadRcsMessagesFromUri(uriString, threadId, messages);
+                    } catch (Exception e) {
+                        Log.d(TAG, "Failed to load RCS messages from " + uriString + ": " + e.getMessage());
+                        // Continue trying other URIs even if this one fails
+                    }
                 }
+            }
+            
+            if (!foundAnyProvider) {
+                Log.d(TAG, "No RCS content providers found on this device");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error loading RCS messages from provider", e);
@@ -366,27 +419,31 @@ public class RcsService {
             };
             
             for (String uriString : partUris) {
-                try {
-                    android.net.Uri uri = android.net.Uri.parse(uriString);
-                    try (android.database.Cursor cursor = contentResolver.query(uri, null, null, null, null)) {
-                        if (cursor != null && cursor.moveToFirst()) {
-                            do {
-                                int contentTypeIndex = cursor.getColumnIndex("ct");
-                                if (contentTypeIndex >= 0) {
-                                    String contentType = cursor.getString(contentTypeIndex);
-                                    if (contentType != null && contentType.startsWith("text/")) {
-                                        // Try to get text from different columns
-                                        String text = getTextFromPartCursor(cursor);
-                                        if (text != null && !text.isEmpty()) {
-                                            return text;
+                // Only attempt to query if the base provider exists
+                String baseUri = uriString.substring(0, uriString.indexOf('/', 10)); // Extract base URI
+                if (doesProviderExist(baseUri)) {
+                    try {
+                        android.net.Uri uri = android.net.Uri.parse(uriString);
+                        try (android.database.Cursor cursor = contentResolver.query(uri, null, null, null, null)) {
+                            if (cursor != null && cursor.moveToFirst()) {
+                                do {
+                                    int contentTypeIndex = cursor.getColumnIndex("ct");
+                                    if (contentTypeIndex >= 0) {
+                                        String contentType = cursor.getString(contentTypeIndex);
+                                        if (contentType != null && contentType.startsWith("text/")) {
+                                            // Try to get text from different columns
+                                            String text = getTextFromPartCursor(cursor);
+                                            if (text != null && !text.isEmpty()) {
+                                                return text;
+                                            }
                                         }
                                     }
-                                }
-                            } while (cursor.moveToNext());
+                                } while (cursor.moveToNext());
+                            }
                         }
+                    } catch (Exception e) {
+                        Log.d(TAG, "Failed to load parts from " + uriString);
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Failed to load parts from " + uriString);
                 }
             }
         } catch (Exception e) {
