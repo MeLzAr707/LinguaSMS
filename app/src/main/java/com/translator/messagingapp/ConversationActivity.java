@@ -1389,6 +1389,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.d(TAG, "Attachment selected: " + selectedUri.toString());
             }
         }
+        
+        if (requestCode == ContactSettingsDialog.getRingtonePickerRequestCode() && resultCode == RESULT_OK) {
+            Uri selectedUri = data != null ? 
+                data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI) : null;
+            
+            // Create a new dialog instance to handle the result
+            ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
+            dialog.handleRingtonePickerResult(selectedUri);
+        }
     }
 
     /**
@@ -1585,20 +1594,5 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, getString(R.string.error_setting_tone), Toast.LENGTH_SHORT).show();
         }
     }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        
-        if (requestCode == ContactSettingsDialog.getRingtonePickerRequestCode() && resultCode == RESULT_OK) {
-            Uri selectedUri = data != null ? 
-                data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI) : null;
-            
-            // Create a new dialog instance to handle the result
-            ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
-            dialog.handleRingtonePickerResult(selectedUri);
-        }
-    }
-
 
 }
