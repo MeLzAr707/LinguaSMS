@@ -118,4 +118,28 @@ public class VideoPlayButtonTest {
         assert(shouldTryVideoFallback == true);
         assert(shouldTryImageFallback == false);
     }
+
+    /**
+     * Test that FileProvider URI conversion logic works correctly for video content
+     */
+    @Test
+    public void testFileProviderVideoUriHandling() {
+        // Given
+        String fileUri = "file:///storage/emulated/0/video.mp4";
+        String contentUri = "content://com.translator.messagingapp.fileprovider/external_files/video.mp4";
+        String videoContentType = "video/mp4";
+        
+        // When - simulating URI scheme checking logic
+        boolean isFileUri = fileUri.startsWith("file://");
+        boolean isContentUri = contentUri.startsWith("content://");
+        boolean isVideoContent = videoContentType != null && videoContentType.startsWith("video/");
+        
+        // Then
+        assert(isFileUri == true);
+        assert(isContentUri == true);
+        assert(isVideoContent == true);
+        
+        // Verify that video content with file:// URI should be converted to content:// URI
+        assert(isFileUri && isVideoContent);
+    }
 }

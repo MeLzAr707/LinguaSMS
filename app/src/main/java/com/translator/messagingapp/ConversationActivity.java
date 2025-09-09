@@ -8,6 +8,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ContentResolver;
+import android.database.Cursor;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,6 +31,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -1169,12 +1172,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void openAttachment(Uri uri, String contentType) {
         try {
+            // Get the proper content URI for sharing
+            Uri shareableUri = getShareableUri(uri, contentType);
+            
             Intent intent = new Intent(Intent.ACTION_VIEW);
             
             if (contentType != null) {
-                intent.setDataAndType(uri, contentType);
+                intent.setDataAndType(shareableUri, contentType);  
             } else {
-                intent.setData(uri);
+                intent.setData(shareableUri);
             }
             
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -1186,7 +1192,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 // Try with a more generic content type for videos
                 if (contentType != null && contentType.startsWith("video/")) {
                     Intent fallbackIntent = new Intent(Intent.ACTION_VIEW);
-                    fallbackIntent.setDataAndType(uri, "video/*");
+                    fallbackIntent.setDataAndType(shareableUri, "video/*");
                     fallbackIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     
@@ -1194,11 +1200,24 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         startActivity(fallbackIntent);
                         return;
                     }
+                    
+                    // Try to explicitly launch a video player
+                    Intent videoIntent = new Intent(Intent.ACTION_VIEW);
+                    videoIntent.setDataAndType(shareableUri, "video/*");
+                    videoIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    videoIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    
+                    try {
+                        startActivity(Intent.createChooser(videoIntent, "Choose video player"));
+                        return;
+                    } catch (Exception e) {
+                        Log.w(TAG, "Could not launch video chooser", e);
+                    }
                 }
                 
                 // Try without content type as a final fallback
                 Intent genericIntent = new Intent(Intent.ACTION_VIEW);
-                genericIntent.setData(uri);
+                genericIntent.setData(shareableUri);
                 genericIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 genericIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 
@@ -1212,6 +1231,44 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Log.e(TAG, "Error opening attachment", e);
             Toast.makeText(this, "Error opening attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+    
+    /**
+     * Get a shareable URI for the given attachment URI
+     */
+    private Uri getShareableUri(Uri uri, String contentType) {
+        if (uri == null) {
+            return null;
+        }
+        
+        // If it's already a content:// URI, return as is
+        if ("content".equals(uri.getScheme())) {
+            return uri;
+        }
+        
+        // If it's a file:// URI, try to convert to content:// URI using FileProvider
+        if ("file".equals(uri.getScheme())) {
+            try {
+                // For video files, we need to ensure proper sharing permissions
+                if (contentType != null && contentType.startsWith("video/")) {
+                    // Try to get a FileProvider URI
+                    try {
+                        return FileProvider.getUriForFile(
+                            this,
+                            "com.translator.messagingapp.fileprovider",
+                            new java.io.File(uri.getPath())
+                        );
+                    } catch (Exception e) {
+                        Log.w(TAG, "Could not create FileProvider URI for video: " + uri, e);
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error converting file URI to content URI", e);
+            }
+        }
+        
+        // Return original URI if conversion fails
+        return uri;
     }
     
     /**

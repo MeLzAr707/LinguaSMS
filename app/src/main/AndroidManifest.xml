@@ -183,6 +183,17 @@
             android:readPermission="android.permission.READ_SMS"
             android:writePermission="android.permission.WRITE_SMS">
         </provider>
+
+        <!-- File Provider for secure file sharing -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.translator.messagingapp.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
     </application>
 </manifest>
 
