@@ -764,6 +764,29 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         notifyDataSetChanged(); // Refresh the display to show updated contact names
     }
 
+    /**
+     * Validates and normalizes a phone number address.
+     * Handles edge cases where addresses might contain non-standard formats.
+     */
+    private String normalizeAddress(String address) {
+        if (TextUtils.isEmpty(address)) {
+            return address;
+        }
+        
+        // Remove any obvious group formatting artifacts
+        if (address.contains(",")) {
+            // This might be a group address string, take the first part
+            String[] parts = address.split(",");
+            if (parts.length > 0) {
+                String firstPart = parts[0].trim();
+                Log.d(TAG, "Normalized group address '" + address + "' to '" + firstPart + "'");
+                return firstPart;
+            }
+        }
+        
+        return address.trim();
+    }
+
     // Cache for contact name lookups to avoid repeated queries and ensure consistency
     private final Map<String, String> contactNameCache = new HashMap<>();
 
@@ -777,7 +800,9 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             return null;
         }
 
-        String address = message.getAddress();
+        String rawAddress = message.getAddress();
+        String address = normalizeAddress(rawAddress);
+        
         Log.d(TAG, "Getting sender display name for address: " + address + " (message ID: " + message.getId() + ")");
         
         // First try to get contact name from message
@@ -794,8 +819,13 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             return cachedName != null ? cachedName : formatPhoneNumberForDisplay(address);
         }
 
-        // Try to lookup contact name using ContactUtils with the exact message address
-        String lookedUpName = ContactUtils.getContactName(context, address);
+        // Try to lookup contact name using ContactUtils with the normalized address
+        String lookedUpName = null;
+        try {
+            lookedUpName = ContactUtils.getContactName(context, address);
+        } catch (Exception e) {
+            Log.e(TAG, "Error looking up contact name for " + address, e);
+        }
         
         // Cache the result (even if null) to ensure consistency
         contactNameCache.put(address, lookedUpName);
