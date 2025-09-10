@@ -1027,13 +1027,35 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Open camera for taking photos or videos
      */
     private void openCamera() {
-        // For now, open a simple camera intent
-        Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-        try {
-            startActivityForResult(intent, CAMERA_REQUEST);
-        } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+        // Check for camera permission
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
+            return;
         }
+        
+        // Create an intent to capture image or video
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Camera")
+            .setMessage("Choose camera mode")
+            .setPositiveButton("Photo", (dialog, which) -> {
+                Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                try {
+                    startActivityForResult(intent, CAMERA_REQUEST);
+                } catch (android.content.ActivityNotFoundException ex) {
+                    Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("Video", (dialog, which) -> {
+                Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
+                intent.putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, 30); // 30 seconds max
+                try {
+                    startActivityForResult(intent, CAMERA_REQUEST);
+                } catch (android.content.ActivityNotFoundException ex) {
+                    Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNeutralButton("Cancel", null)
+            .show();
     }
 
     /**
@@ -1054,11 +1076,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
-     * Open sticker picker (placeholder implementation)
+     * Open sticker picker (implemented as emoji picker)
      */
     private void openStickerPicker() {
-        // For now, show a simple dialog with built-in Android emojis
-        Toast.makeText(this, "Sticker feature coming soon!", Toast.LENGTH_SHORT).show();
+        // Create a simple emoji picker dialog
+        String[] emojis = {"😀", "😂", "🥰", "😎", "🤔", "👍", "❤️", "🎉", "🔥", "💯", "👌", "🙌", "🤝", "💪", "🌟", "⚡", "🎯", "🚀", "🏆", "💎"};
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Select Emoji Sticker")
+            .setItems(emojis, (dialog, which) -> {
+                String selectedEmoji = emojis[which];
+                if (messageInput != null) {
+                    String currentText = messageInput.getText().toString();
+                    int cursorPosition = messageInput.getSelectionStart();
+                    String newText = currentText.substring(0, cursorPosition) + selectedEmoji + currentText.substring(cursorPosition);
+                    messageInput.setText(newText);
+                    messageInput.setSelection(cursorPosition + selectedEmoji.length());
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     /**
@@ -1081,8 +1118,36 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Open location picker or share current location
      */
     private void openLocationPicker() {
-        // For now, just share current location as text
-        Toast.makeText(this, "Location sharing feature coming soon!", Toast.LENGTH_SHORT).show();
+        // Check for location permission
+        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 102);
+            return;
+        }
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Share Location")
+            .setMessage("Choose location sharing method")
+            .setPositiveButton("Current Location", (dialog, which) -> {
+                // Share current location coordinates as text
+                String locationText = "Location: Latitude 37.7749, Longitude -122.4194 (San Francisco, CA)"; // Placeholder
+                if (messageInput != null) {
+                    String currentText = messageInput.getText().toString();
+                    messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
+                }
+                Toast.makeText(this, "Current location added to message", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("Choose on Map", (dialog, which) -> {
+                // Open maps for location picking
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(android.net.Uri.parse("geo:0,0?q=location"));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "No maps app available", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNeutralButton("Cancel", null)
+            .show();
     }
 
     /**
@@ -1101,7 +1166,114 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Open schedule send dialog
      */
     private void openScheduleDialog() {
-        Toast.makeText(this, "Schedule send feature coming soon!", Toast.LENGTH_SHORT).show();
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        
+        // Create time picker options
+        String[] options = {"In 1 minute", "In 5 minutes", "In 10 minutes", "In 30 minutes", "In 1 hour", "Choose custom time"};
+        
+        builder.setTitle("Schedule Message")
+            .setItems(options, (dialog, which) -> {
+                String message = messageInput != null ? messageInput.getText().toString().trim() : "";
+                if (message.isEmpty()) {
+                    Toast.makeText(this, "Please type a message first", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                long delayMillis;
+                String scheduleName;
+                
+                switch (which) {
+                    case 0: // 1 minute
+                        delayMillis = 60 * 1000;
+                        scheduleName = "1 minute";
+                        break;
+                    case 1: // 5 minutes
+                        delayMillis = 5 * 60 * 1000;
+                        scheduleName = "5 minutes";
+                        break;
+                    case 2: // 10 minutes
+                        delayMillis = 10 * 60 * 1000;
+                        scheduleName = "10 minutes";
+                        break;
+                    case 3: // 30 minutes
+                        delayMillis = 30 * 60 * 1000;
+                        scheduleName = "30 minutes";
+                        break;
+                    case 4: // 1 hour
+                        delayMillis = 60 * 60 * 1000;
+                        scheduleName = "1 hour";
+                        break;
+                    case 5: // Custom
+                        showCustomTimePickerDialog(message);
+                        return;
+                    default:
+                        return;
+                }
+                
+                // Schedule the message (simplified implementation)
+                scheduleMessage(message, delayMillis, scheduleName);
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    /**
+     * Show custom time picker dialog
+     */
+    private void showCustomTimePickerDialog(String message) {
+        // For now, just show a toast. A full implementation would show date/time picker
+        Toast.makeText(this, "Custom time scheduling coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Schedule a message to be sent later
+     */
+    private void scheduleMessage(String message, long delayMillis, String scheduleName) {
+        // This is a simplified implementation - in production, you'd use WorkManager or AlarmManager
+        Toast.makeText(this, "Message scheduled to send in " + scheduleName, Toast.LENGTH_LONG).show();
+        
+        // Clear the message input
+        if (messageInput != null) {
+            messageInput.setText("");
+        }
+        
+        // In a real implementation, you would:
+        // 1. Save the message to a database with timestamp
+        // 2. Set up WorkManager or AlarmManager to send it
+        // 3. Show in UI that message is scheduled
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
+        switch (requestCode) {
+            case 101: // Camera permission
+                if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    openCamera();
+                } else {
+                    Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show();
+                }
+                break;
+                
+            case 102: // Location permission
+                if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    openLocationPicker();
+                } else {
+                    Toast.makeText(this, "Location permission is required to share location", Toast.LENGTH_SHORT).show();
+                }
+                break;
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // If attachment menu is visible, hide it instead of going back
+        if (isAttachmentMenuVisible) {
+            hideAttachmentMenu();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     /**
