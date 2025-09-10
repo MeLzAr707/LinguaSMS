@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
 import android.provider.ContactsContract;
+import android.provider.OpenableColumns;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.io.InputStream;
 
 /**
  * Activity for displaying a conversation.
@@ -638,12 +640,23 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         executorService.execute(() -> {
             try {
                 boolean success;
+                
+                // Add logging as requested in issue #594 to confirm MMS vs SMS path
                 if (hasAttachments) {
+                    Log.d(TAG, "Sending MMS message to " + address + " with " + attachmentsToSend.size() + " attachments");
+                    Log.d(TAG, "Attachment URIs: " + attachmentsToSend.toString());
+                    
                     // Send as MMS with attachments
                     success = messageService.sendMmsMessage(address, null, messageText, attachmentsToSend);
+                    
+                    Log.d(TAG, "MMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 } else {
+                    Log.d(TAG, "Sending SMS message to " + address + " (no attachments)");
+                    
                     // Send as regular SMS
                     success = messageService.sendSmsMessage(address, messageText);
+                    
+                    Log.d(TAG, "SMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 }
 
                 runOnUiThread(() -> {
@@ -742,6 +755,82 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
         }
         return fileName;
+    }
+    
+    /**
+     * Validates that an attachment size is within MMS limits.
+     * 
+     * @param uri The attachment URI to validate
+     * @return true if size is valid, false if too large
+     */
+    private boolean validateAttachmentSize(Uri uri) {
+        try {
+            long fileSize = getFileSizeFromUri(uri);
+            
+            // Check against MMS size limit (1MB)
+            final long MAX_MMS_SIZE = 1024 * 1024; // 1MB - matches MessageService.MAX_MMS_SIZE
+            
+            if (fileSize > MAX_MMS_SIZE) {
+                String fileName = getFileName(uri);
+                String fileSizeStr = String.format("%.1f MB", fileSize / (1024.0 * 1024.0));
+                
+                Toast.makeText(this, 
+                    "File too large for MMS: " + fileName + " (" + fileSizeStr + "). " +
+                    "Maximum size is 1MB. Please choose a smaller file.", 
+                    Toast.LENGTH_LONG).show();
+                    
+                Log.w(TAG, "Attachment too large: " + fileName + " - " + fileSize + " bytes (limit: " + MAX_MMS_SIZE + ")");
+                return false;
+            }
+            
+            Log.d(TAG, "Attachment size validation passed: " + fileSize + " bytes");
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error validating attachment size for URI: " + uri, e);
+            Toast.makeText(this, "Error checking file size. Please try a different file.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+    
+    /**
+     * Gets the file size in bytes for a given URI.
+     * 
+     * @param uri The URI to get size for
+     * @return The file size in bytes, or 0 if unable to determine
+     */
+    private long getFileSizeFromUri(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri, 
+                new String[]{OpenableColumns.SIZE}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (sizeIndex >= 0) {
+                    long size = cursor.getLong(sizeIndex);
+                    if (size > 0) {
+                        return size;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file size from cursor for URI: " + uri, e);
+        }
+        
+        // Fallback: try to get size via input stream
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+            if (inputStream != null) {
+                long size = 0;
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    size += read;
+                }
+                return size;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file size from stream for URI: " + uri, e);
+        }
+        
+        return 0; // Unable to determine size
     }
 
     private void showLoadingIndicator() {
@@ -1012,11 +1101,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Open gallery picker for images and videos
      */
     private void openGalleryPicker() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("image/*,video/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
         intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
+        
+        // Add flags for URI permissions as recommended in issue #594
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.gallery)), GALLERY_PICK_REQUEST);
@@ -1065,10 +1158,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void openGifPicker() {
         // For now, use a generic image picker but filter for GIFs
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("image/gif");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        // Add flags for URI permissions as recommended in issue #594
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.gifs)), GIF_PICK_REQUEST);
@@ -1104,10 +1201,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Open files picker for documents
      */
     private void openFilesPicker() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        // Add flags for URI permissions as recommended in issue #594
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.files)), FILES_PICK_REQUEST);
@@ -2073,6 +2174,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void handleFileAttachment(Uri selectedUri, int requestCode) {
         if (selectedUri != null) {
+            // Take persistent URI permission as recommended in issue #594
+            try {
+                getContentResolver().takePersistableUriPermission(selectedUri, 
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Log.d(TAG, "Persistent URI permission granted for: " + selectedUri);
+            } catch (SecurityException e) {
+                Log.w(TAG, "Could not take persistent permission for URI: " + selectedUri, e);
+                // Continue anyway - some content providers don't support persistent permissions
+            }
+            
+            // Validate file size against MMS limits
+            if (!validateAttachmentSize(selectedUri)) {
+                return; // Error message already shown by validateAttachmentSize
+            }
+            
             // Store the attachment for sending
             selectedAttachments.add(selectedUri);
             

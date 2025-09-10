@@ -31,6 +31,8 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
+import java.io.InputStream;
+
 public class NewMessageActivity extends BaseActivity {
     private static final String TAG = "NewMessageActivity";
     private static final int CONTACT_PICKER_RESULT = 1001;
@@ -260,11 +262,15 @@ public class NewMessageActivity extends BaseActivity {
     }
 
     private void openAttachmentPicker() {
-        // Create an intent to pick attachments
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        // Create an intent to pick attachments with proper permissions
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        // Add flags for URI permissions as recommended in issue #594
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         
         try {
             startActivityForResult(Intent.createChooser(intent, "Select attachment"), ATTACHMENT_PICK_REQUEST);
@@ -314,6 +320,21 @@ public class NewMessageActivity extends BaseActivity {
         } else if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri selectedUri = data.getData();
             if (selectedUri != null) {
+                // Take persistent URI permission as recommended in issue #594
+                try {
+                    getContentResolver().takePersistableUriPermission(selectedUri, 
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    Log.d(TAG, "Persistent URI permission granted for: " + selectedUri);
+                } catch (SecurityException e) {
+                    Log.w(TAG, "Could not take persistent permission for URI: " + selectedUri, e);
+                    // Continue anyway - some content providers don't support persistent permissions
+                }
+                
+                // Validate file size against MMS limits
+                if (!validateAttachmentSize(selectedUri)) {
+                    return; // Error message already shown by validateAttachmentSize
+                }
+                
                 // Store the attachment for sending
                 selectedAttachments.clear(); // Clear previous attachments (single attachment for now)
                 selectedAttachments.add(selectedUri);
@@ -361,9 +382,15 @@ public class NewMessageActivity extends BaseActivity {
             final String finalRecipient = recipient;
             List<Uri> attachmentsToSend = hasAttachments ? new ArrayList<>(selectedAttachments) : null;
             
+            // Add logging as requested in issue #594 to confirm MMS vs SMS path
             if (hasAttachments) {
+                Log.d(TAG, "Sending MMS message to " + finalRecipient + " with " + attachmentsToSend.size() + " attachments");
+                Log.d(TAG, "Attachment URIs: " + attachmentsToSend.toString());
+                
                 // Send as MMS with attachments
                 boolean success = messageService.sendMmsMessage(finalRecipient, null, messageText, attachmentsToSend);
+                
+                Log.d(TAG, "MMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 
                 if (success) {
                     // Success - open conversation
@@ -376,6 +403,8 @@ public class NewMessageActivity extends BaseActivity {
                     Toast.makeText(this, "Error sending MMS message", Toast.LENGTH_SHORT).show();
                 }
             } else {
+                Log.d(TAG, "Sending SMS message to " + finalRecipient + " (no attachments)");
+                
                 // Send as regular SMS with callback
                 messageService.sendSmsMessage(recipient, messageText, null, () -> {
                     // Success callback
@@ -747,6 +776,83 @@ public class NewMessageActivity extends BaseActivity {
      * Shows GenAI features dialog for message composition.
      */
 
+
+
+    /**
+     * Validates that an attachment size is within MMS limits.
+     * 
+     * @param uri The attachment URI to validate
+     * @return true if size is valid, false if too large
+     */
+    private boolean validateAttachmentSize(Uri uri) {
+        try {
+            long fileSize = getFileSizeFromUri(uri);
+            
+            // Check against MMS size limit (1MB)
+            final long MAX_MMS_SIZE = 1024 * 1024; // 1MB - matches MessageService.MAX_MMS_SIZE
+            
+            if (fileSize > MAX_MMS_SIZE) {
+                String fileName = getFileNameFromUri(uri);
+                String fileSizeStr = String.format("%.1f MB", fileSize / (1024.0 * 1024.0));
+                
+                Toast.makeText(this, 
+                    "File too large for MMS: " + fileName + " (" + fileSizeStr + "). " +
+                    "Maximum size is 1MB. Please choose a smaller file.", 
+                    Toast.LENGTH_LONG).show();
+                    
+                Log.w(TAG, "Attachment too large: " + fileName + " - " + fileSize + " bytes (limit: " + MAX_MMS_SIZE + ")");
+                return false;
+            }
+            
+            Log.d(TAG, "Attachment size validation passed: " + fileSize + " bytes");
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error validating attachment size for URI: " + uri, e);
+            Toast.makeText(this, "Error checking file size. Please try a different file.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+    
+    /**
+     * Gets the file size in bytes for a given URI.
+     * 
+     * @param uri The URI to get size for
+     * @return The file size in bytes, or 0 if unable to determine
+     */
+    private long getFileSizeFromUri(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri, 
+                new String[]{OpenableColumns.SIZE}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (sizeIndex >= 0) {
+                    long size = cursor.getLong(sizeIndex);
+                    if (size > 0) {
+                        return size;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file size from cursor for URI: " + uri, e);
+        }
+        
+        // Fallback: try to get size via input stream
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+            if (inputStream != null) {
+                long size = 0;
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    size += read;
+                }
+                return size;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file size from stream for URI: " + uri, e);
+        }
+        
+        return 0; // Unable to determine size
+    }
 
     /**
      * Copies text to clipboard.
