@@ -227,6 +227,15 @@
 
     <!-- Debug -->
 
+    <!-- Text Rewriter -->
+    <string name="rewrite_text">Rewrite Text</string>
+    <string name="choose_tone">Choose Message Tone</string>
+    <string name="formal_tone">Formal</string>
+    <string name="friendly_tone">Friendly</string>
+    <string name="concise_tone">Concise</string>
+    <string name="original_tone">Original</string>
+    <string name="rewriting_text">Rewriting text…</string>
+
     <!-- Layout IDs -->
 
 

@@ -75,6 +75,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ImageButton emojiButton;
     private ImageButton attachmentButton;
     private ImageButton translateButton;
+    private ImageButton rewriteTextButton;
 
     // Data
     private String threadId;
@@ -98,6 +99,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TranslationManager translationManager;
     private TranslationCache translationCache;
     private UserPreferences userPreferences;
+    private TextRewriterService textRewriterService;
 
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
@@ -115,6 +117,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
         translationCache = ((TranslatorApp) getApplication()).getTranslationCache();
         userPreferences = new UserPreferences(this);
+        textRewriterService = new TextRewriterService(this);
 
         // Get thread ID and address from intent
         threadId = getIntent().getStringExtra("thread_id");
@@ -215,6 +218,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
+        rewriteTextButton = findViewById(R.id.rewrite_text_button);
 
         // Check for critical views to prevent null pointer exceptions
         if (messagesRecyclerView == null) {
@@ -257,6 +261,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up translate input button
         if (translateInputButton != null) {
             translateInputButton.setOnClickListener(v -> translateInput());
+        }
+
+        // Set up text rewriter button
+        if (rewriteTextButton != null) {
+            rewriteTextButton.setOnClickListener(v -> rewriteText());
         }
 
         // Set up attachment button
@@ -783,6 +792,131 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     });
                 }
             }, true); // Force translation for outgoing messages
+        });
+    }
+
+    private void rewriteText() {
+        String inputText = messageInput.getText().toString().trim();
+        if (inputText.isEmpty()) {
+            Toast.makeText(this, "Please enter text to rewrite", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show tone selection dialog
+        ToneSelectionDialog toneDialog = new ToneSelectionDialog(this, inputText, 
+            new ToneSelectionDialog.OnToneSelectedListener() {
+                @Override
+                public void onToneSelected(TextRewriterService.Tone tone) {
+                    if (tone == TextRewriterService.Tone.ORIGINAL) {
+                        // Send original text without rewriting
+                        sendMessageWithText(inputText);
+                        return;
+                    }
+                    
+                    // Show progress while rewriting  
+                    showProgressDialog("Rewriting text...");
+                    
+                    // Rewrite text in background
+                    textRewriterService.rewriteText(inputText, tone, new TextRewriterService.RewriteCallback() {
+                        @Override
+                        public void onRewriteComplete(boolean success, String rewrittenText, String errorMessage) {
+                            runOnUiThread(() -> {
+                                hideProgressDialog();
+                                
+                                if (success && rewrittenText != null) {
+                                    // Show preview dialog
+                                    showRewrittenTextPreview(inputText, rewrittenText, tone);
+                                } else {
+                                    Toast.makeText(ConversationActivity.this,
+                                            "Error rewriting text: " + 
+                                            (errorMessage != null ? errorMessage : "Unknown error"),
+                                            Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                @Override
+                public void onDialogCancelled() {
+                    // User cancelled, do nothing
+                }
+            });
+        
+        toneDialog.show();
+    }
+    
+    private void showRewrittenTextPreview(String originalText, String rewrittenText, TextRewriterService.Tone tone) {
+        TextPreviewDialog previewDialog = new TextPreviewDialog(this, originalText, rewrittenText, tone,
+            new TextPreviewDialog.OnPreviewActionListener() {
+                @Override
+                public void onSendConfirmed(String finalText) {
+                    // Send the rewritten text
+                    sendMessageWithText(finalText);
+                }
+                
+                @Override
+                public void onEditRequested() {
+                    // Put rewritten text back in input for editing
+                    messageInput.setText(rewrittenText);
+                    messageInput.setSelection(rewrittenText.length());
+                }
+                
+                @Override
+                public void onDialogCancelled() {
+                    // User cancelled, do nothing
+                }
+            });
+        
+        previewDialog.show();
+    }
+    
+    private void sendMessageWithText(String messageText) {
+        // Clear input
+        messageInput.setText("");
+        
+        // Send the message using existing logic
+        boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+        List<Uri> attachmentsToSend = new ArrayList<>(selectedAttachments);
+        selectedAttachments.clear();
+        updateSendButtonForAttachments();
+
+        // Show progress
+        showLoadingIndicator();
+
+        // Send message in background
+        executorService.execute(() -> {
+            try {
+                boolean success;
+                if (hasAttachments) {
+                    // Send as MMS with attachments
+                    success = messageService.sendMmsMessage(address, null, messageText, attachmentsToSend);
+                } else {
+                    // Send as regular SMS
+                    success = messageService.sendSmsMessage(address, messageText);
+                }
+
+                runOnUiThread(() -> {
+                    hideLoadingIndicator();
+
+                    if (success) {
+                        // Note: Message refresh will be handled by broadcast receiver
+                        Log.d(TAG, "Message sent successfully, waiting for broadcast to refresh UI");
+                    } else {
+                        Toast.makeText(ConversationActivity.this,
+                                R.string.error_sending_message,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending message", e);
+                runOnUiThread(() -> {
+                    hideLoadingIndicator();
+                    Toast.makeText(ConversationActivity.this,
+                            getString(R.string.error_sending_message) + ": " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
         });
     }
 
@@ -1475,6 +1609,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
+        }
+        
+        if (textRewriterService != null) {
+            textRewriterService.shutdown();
         }
         
         // Note: BroadcastReceiver cleanup is handled in onPause()
