@@ -9,14 +9,18 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.OpenableColumns;
 import android.telephony.PhoneNumberUtils;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.appcompat.widget.Toolbar;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 public class NewMessageActivity extends BaseActivity {
     private static final String TAG = "NewMessageActivity";
@@ -43,6 +49,11 @@ public class NewMessageActivity extends BaseActivity {
     private TextWatcher recipientTextWatcher;
     private TextWatcher messageTextWatcher;
     protected boolean isActivityActive = true;
+    
+    // Attachment preview components
+    private LinearLayout attachmentPreviewContainer;
+    private ImageView attachmentPreviewImage;
+    private ImageButton removeAttachmentButton;
 
     // Service classes
     private MessageService messageService;
@@ -88,6 +99,11 @@ public class NewMessageActivity extends BaseActivity {
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
             attachmentButton = findViewById(R.id.attachment_button);  // This is an ImageButton in XML
+            
+            // Initialize attachment preview components
+            attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
+            attachmentPreviewImage = findViewById(R.id.attachment_preview_image);
+            removeAttachmentButton = findViewById(R.id.remove_attachment_button);
 
             // Restore state if available
             if (savedInstanceState != null) {
@@ -123,11 +139,20 @@ public class NewMessageActivity extends BaseActivity {
                 attachmentButton.setOnLongClickListener(v -> {
                     if (selectedAttachments != null && !selectedAttachments.isEmpty()) {
                         selectedAttachments.clear();
-                        updateSendButtonForAttachments();
+                        updateAttachmentPreview();
                         Toast.makeText(this, "Attachments cleared", Toast.LENGTH_SHORT).show();
                         return true;
                     }
                     return false;
+                });
+            }
+            
+            // Set up remove attachment button
+            if (removeAttachmentButton != null) {
+                removeAttachmentButton.setOnClickListener(v -> {
+                    selectedAttachments.clear();
+                    updateAttachmentPreview();
+                    Toast.makeText(this, "Attachment removed", Toast.LENGTH_SHORT).show();
                 });
             }
 
@@ -290,15 +315,16 @@ public class NewMessageActivity extends BaseActivity {
             Uri selectedUri = data.getData();
             if (selectedUri != null) {
                 // Store the attachment for sending
+                selectedAttachments.clear(); // Clear previous attachments (single attachment for now)
                 selectedAttachments.add(selectedUri);
                 
-                // Show confirmation and update UI to indicate attachment is selected
-                String fileName = selectedUri.getLastPathSegment();
+                // Show confirmation and update preview
+                String fileName = getFileNameFromUri(selectedUri);
                 Toast.makeText(this, "Attachment selected: " + fileName, Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "Attachment selected: " + selectedUri.toString());
                 
-                // Update send button to indicate MMS mode
-                updateSendButtonForAttachments();
+                // Update preview and send button
+                updateAttachmentPreview();
             }
         }
     }
@@ -367,6 +393,85 @@ public class NewMessageActivity extends BaseActivity {
     }
 
     /**
+     * Updates the attachment preview display based on selected attachments
+     */
+    private void updateAttachmentPreview() {
+        if (attachmentPreviewContainer == null || attachmentPreviewImage == null) {
+            return;
+        }
+
+        boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+        
+        if (hasAttachments) {
+            // Show preview container
+            attachmentPreviewContainer.setVisibility(View.VISIBLE);
+            
+            // Load the first attachment (single attachment for now)
+            Uri attachmentUri = selectedAttachments.get(0);
+            String mimeType = getContentResolver().getType(attachmentUri);
+            
+            if (mimeType != null && mimeType.startsWith("image/")) {
+                // Load image using Glide
+                try {
+                    Glide.with(this)
+                        .load(attachmentUri)
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .skipMemoryCache(true)
+                        .into(attachmentPreviewImage);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error loading image preview", e);
+                    // Fallback to attachment icon
+                    attachmentPreviewImage.setImageResource(R.drawable.ic_attachment);
+                }
+            } else {
+                // Show attachment icon for non-image files
+                attachmentPreviewImage.setImageResource(R.drawable.ic_attachment);
+            }
+            
+            updateSendButtonForAttachments();
+        } else {
+            // Hide preview container
+            attachmentPreviewContainer.setVisibility(View.GONE);
+            updateSendButtonForAttachments();
+        }
+    }
+
+    /**
+     * Gets the display name of a file from its URI
+     */
+    private String getFileNameFromUri(Uri uri) {
+        String fileName = "Unknown";
+        
+        try {
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (nameIndex != -1) {
+                            fileName = cursor.getString(nameIndex);
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+            
+            // Fallback to path segment if display name not found
+            if ("Unknown".equals(fileName)) {
+                String lastSegment = uri.getLastPathSegment();
+                if (lastSegment != null) {
+                    fileName = lastSegment;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting file name from URI", e);
+        }
+        
+        return fileName;
+    }
+
+    /**
      * Updates the send button appearance based on whether attachments are selected
      */
     private void updateSendButtonForAttachments() {
@@ -375,10 +480,9 @@ public class NewMessageActivity extends BaseActivity {
             if (hasAttachments) {
                 // Change send button to indicate MMS mode
                 sendButton.setAlpha(1.0f);
-                // You could change the button text or appearance here if desired
             } else {
-                // Reset to normal SMS mode
-                sendButton.setAlpha(1.0f);
+                // Reset to normal SMS mode - check if we have text content
+                updateSendButtonState();
             }
         }
     }
@@ -551,6 +655,15 @@ public class NewMessageActivity extends BaseActivity {
                 attachmentButton.setOnClickListener(null);
                 attachmentButton = null;
             }
+            
+            if (removeAttachmentButton != null) {
+                removeAttachmentButton.setOnClickListener(null);
+                removeAttachmentButton = null;
+            }
+
+            // Clear references
+            attachmentPreviewContainer = null;
+            attachmentPreviewImage = null;
 
             // Clear references
             messageService = null;

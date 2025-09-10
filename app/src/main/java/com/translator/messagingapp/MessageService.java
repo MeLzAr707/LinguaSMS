@@ -1165,6 +1165,13 @@ public class MessageService {
      */
     public boolean sendMmsMessage(String address, String subject, String body, List<Uri> attachments) {
         try {
+            // Check if we can send MMS
+            SmsManager smsManager = SmsManager.getDefault();
+            if (smsManager == null) {
+                Log.e(TAG, "SMS Manager not available");
+                return false;
+            }
+            
             // Create a new MMS message
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
@@ -1184,6 +1191,18 @@ public class MessageService {
 
             // Get the message ID
             String messageId = messageUri.getLastPathSegment();
+            if (messageId == null) {
+                Log.e(TAG, "Failed to get message ID");
+                return false;
+            }
+
+            // Add the sender address (required for MMS)
+            ContentValues senderValues = new ContentValues();
+            senderValues.put(Telephony.Mms.Addr.ADDRESS, "insert-address-token");
+            senderValues.put(Telephony.Mms.Addr.TYPE, TYPE_FROM);
+            senderValues.put(Telephony.Mms.Addr.CHARSET, "106");
+            Uri senderUri = Uri.parse("content://mms/" + messageId + "/addr");
+            context.getContentResolver().insert(senderUri, senderValues);
 
             // Add the recipient
             ContentValues addrValues = new ContentValues();
@@ -1193,7 +1212,7 @@ public class MessageService {
             Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
             context.getContentResolver().insert(addrUri, addrValues);
 
-            // Add the text part
+            // Add the text part if present
             if (!TextUtils.isEmpty(body)) {
                 ContentValues textValues = new ContentValues();
                 textValues.put(Telephony.Mms.Part.MSG_ID, messageId);
@@ -1251,29 +1270,75 @@ public class MessageService {
                                     }
                                 }
                             }
+                        } else {
+                            Log.e(TAG, "Failed to create attachment part URI");
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Error adding attachment to MMS", e);
+                        // Continue with other attachments even if one fails
                     }
                 }
             }
 
-            // Move the message to the outbox
-            ContentValues outboxValues = new ContentValues();
-            outboxValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
-            context.getContentResolver().update(messageUri, outboxValues, null, null);
+            // Move the message to the sent box and trigger sending
+            ContentValues sendValues = new ContentValues();
+            sendValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
+            context.getContentResolver().update(messageUri, sendValues, null, null);
 
-            // Request to send the message
-            Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
-            context.sendBroadcast(intent);
+            // Use proper MMS sending approach
+            try {
+                // Try to use system MMS sending service
+                Intent sendIntent = new Intent();
+                sendIntent.setAction("android.intent.action.MMS_SEND_REQUEST");
+                sendIntent.putExtra("mms_uri", messageUri.toString());
+                sendIntent.putExtra("recipient", address);
+                context.sendBroadcast(sendIntent);
+                
+                Log.d(TAG, "MMS send request broadcast sent for message: " + messageId);
+                
+            } catch (Exception e) {
+                Log.w(TAG, "System MMS send failed, trying fallback", e);
+                
+                // Fallback: Use the original broadcast approach
+                Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
+                intent.putExtra("message_uri", messageUri.toString());
+                context.sendBroadcast(intent);
+            }
 
+            // Store in sent messages
+            storeSentMmsMessage(address, body, attachments);
+            
             // Broadcast message sent to refresh UI
             broadcastMessageSent();
 
+            Log.d(TAG, "MMS message created and send triggered for: " + address);
             return true;
+            
         } catch (Exception e) {
             Log.e(TAG, "Error sending MMS message", e);
             return false;
+        }
+    }
+    
+    /**
+     * Store the sent MMS message in the sent folder for reference
+     */
+    private void storeSentMmsMessage(String address, String body, List<Uri> attachments) {
+        try {
+            ContentValues values = new ContentValues();
+            values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
+            values.put(Telephony.Mms.MESSAGE_TYPE, MESSAGE_TYPE_SEND_REQ);
+            values.put(Telephony.Mms.CONTENT_TYPE, "application/vnd.wap.multipart.related");
+            values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000);
+            values.put(Telephony.Mms.READ, 1);
+            values.put(Telephony.Mms.SEEN, 1);
+            
+            Uri sentUri = context.getContentResolver().insert(Uri.parse("content://mms/sent"), values);
+            if (sentUri != null) {
+                Log.d(TAG, "Sent MMS message stored: " + sentUri);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to store sent MMS message", e);
         }
     }
 
