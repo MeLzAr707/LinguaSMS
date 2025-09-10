@@ -34,7 +34,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 public class NewMessageActivity extends BaseActivity {
     private static final String TAG = "NewMessageActivity";
     private static final int CONTACT_PICKER_RESULT = 1001;
-    private static final int ATTACHMENT_PICK_REQUEST = 1002;
+    private static final int ATTACHMENT_PICK_REQUEST = 1009;
 
     private EditText recipientInput;
     private EditText messageInput;

@@ -110,12 +110,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     // Pagination variables
     private static final int PAGE_SIZE = 50;
     private static final int ATTACHMENT_PICK_REQUEST = 1001;
-    private static final int GALLERY_PICK_REQUEST = 1002;
-    private static final int CAMERA_REQUEST = 1003;
-    private static final int GIF_PICK_REQUEST = 1004;
-    private static final int FILES_PICK_REQUEST = 1005;
-    private static final int LOCATION_PICK_REQUEST = 1006;
-    private static final int CONTACTS_PICK_REQUEST = 1007;
+    private static final int GALLERY_PICK_REQUEST = 1003;
+    private static final int CAMERA_REQUEST = 1004;
+    private static final int GIF_PICK_REQUEST = 1005;
+    private static final int FILES_PICK_REQUEST = 1006;
+    private static final int LOCATION_PICK_REQUEST = 1007;
+    private static final int CONTACTS_PICK_REQUEST = 1008;
     private int currentPage = 0;
     private boolean isLoading = false;
     private boolean hasMoreMessages = true;
