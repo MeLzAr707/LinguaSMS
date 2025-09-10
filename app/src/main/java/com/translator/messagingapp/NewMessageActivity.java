@@ -376,7 +376,6 @@ public class NewMessageActivity extends BaseActivity {
                 // Change send button to indicate MMS mode
                 sendButton.setAlpha(1.0f);
                 // You could change the button text or appearance here if desired
-                Toast.makeText(this, selectedAttachments.size() + " attachment(s) ready to send", Toast.LENGTH_SHORT).show();
             } else {
                 // Reset to normal SMS mode
                 sendButton.setAlpha(1.0f);

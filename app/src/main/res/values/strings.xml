@@ -38,6 +38,9 @@
 
     <!-- Attachments -->
     <string name="attachment_image">Attachment image</string>
+    <string name="attachment_preview">Attachment preview</string>
+    <string name="attachment_selected">Attachment selected</string>
+    <string name="remove_attachment">Remove attachment</string>
 
     <!-- Settings -->
     <string name="settings">Settings</string>

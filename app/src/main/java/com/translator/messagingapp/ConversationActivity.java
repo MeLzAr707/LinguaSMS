@@ -76,6 +76,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private ImageButton attachmentButton;
     private ImageButton translateButton;
 
+    // Attachment preview components
+    private LinearLayout attachmentPreviewContainer;
+    private TextView attachmentPreviewText;
+    private ImageButton attachmentRemoveButton;
+
     // Data
     private String threadId;
     private String address;
@@ -215,6 +220,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
+        
+        // Initialize attachment preview components
+        attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
+        attachmentPreviewText = findViewById(R.id.attachment_preview_text);
+        attachmentRemoveButton = findViewById(R.id.attachment_remove_button);
 
         // Check for critical views to prevent null pointer exceptions
         if (messagesRecyclerView == null) {
@@ -266,13 +276,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Long press to clear selected attachments
             attachmentButton.setOnLongClickListener(v -> {
                 if (selectedAttachments != null && !selectedAttachments.isEmpty()) {
-                    selectedAttachments.clear();
-                    updateSendButtonForAttachments();
-                    Toast.makeText(this, "Attachments cleared", Toast.LENGTH_SHORT).show();
+                    clearAttachments();
                     return true;
                 }
                 return false;
             });
+        }
+
+        // Set up attachment remove button
+        if (attachmentRemoveButton != null) {
+            attachmentRemoveButton.setOnClickListener(v -> clearAttachments());
         }
 
         // Update UI based on theme
@@ -568,6 +581,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         messageInput.setText("");
         List<Uri> attachmentsToSend = new ArrayList<>(selectedAttachments);
         selectedAttachments.clear();
+        updateAttachmentPreview(); // Clear the preview
         updateSendButtonForAttachments(); // Reset send button appearance
 
         // Show progress
@@ -620,12 +634,67 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 // Change send button to indicate MMS mode
                 sendButton.setAlpha(1.0f);
                 // You could change the icon or background color here if desired
-                Toast.makeText(this, selectedAttachments.size() + " attachment(s) ready to send", Toast.LENGTH_SHORT).show();
             } else {
                 // Reset to normal SMS mode
                 sendButton.setAlpha(1.0f);
             }
         }
+    }
+
+    /**
+     * Clears all selected attachments and updates the UI
+     */
+    private void clearAttachments() {
+        selectedAttachments.clear();
+        updateAttachmentPreview();
+        updateSendButtonForAttachments();
+        Toast.makeText(this, "Attachments cleared", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Updates the attachment preview UI based on selected attachments
+     */
+    private void updateAttachmentPreview() {
+        if (attachmentPreviewContainer == null || attachmentPreviewText == null) {
+            return;
+        }
+
+        boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+        
+        if (hasAttachments) {
+            // Show the preview container
+            attachmentPreviewContainer.setVisibility(View.VISIBLE);
+            
+            // Update the preview text
+            int count = selectedAttachments.size();
+            String previewText;
+            if (count == 1) {
+                // Show filename for single attachment
+                Uri uri = selectedAttachments.get(0);
+                String fileName = getFileName(uri);
+                previewText = fileName != null ? fileName : "Attachment";
+            } else {
+                // Show count for multiple attachments
+                previewText = count + " attachments selected";
+            }
+            attachmentPreviewText.setText(previewText);
+        } else {
+            // Hide the preview container
+            attachmentPreviewContainer.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Gets the filename from a URI
+     */
+    private String getFileName(Uri uri) {
+        if (uri == null) return null;
+        
+        String fileName = uri.getLastPathSegment();
+        if (fileName != null && fileName.contains("/")) {
+            fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+        }
+        return fileName;
     }
 
     private void showLoadingIndicator() {
@@ -1492,11 +1561,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 selectedAttachments.add(selectedUri);
                 
                 // Show confirmation and update UI to indicate attachment is selected
-                String fileName = selectedUri.getLastPathSegment();
-                Toast.makeText(this, "Attachment selected: " + fileName, Toast.LENGTH_SHORT).show();
+                String fileName = getFileName(selectedUri);
+                Toast.makeText(this, "Attachment selected: " + (fileName != null ? fileName : "file"), Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "Attachment selected: " + selectedUri.toString());
                 
-                // Update send button to indicate MMS mode
+                // Update attachment preview and send button
+                updateAttachmentPreview();
                 updateSendButtonForAttachments();
             }
         }

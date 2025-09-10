@@ -15,7 +15,7 @@ import android.widget.Toast;
  */
 public class ContactSettingsDialog {
     private static final String TAG = "ContactSettingsDialog";
-    private static final int REQUEST_CODE_RINGTONE_PICKER = 1001;
+    private static final int REQUEST_CODE_RINGTONE_PICKER = 1002;
     
     private final Context context;
     private final String contactAddress;
