@@ -130,6 +130,21 @@
         </androidx.cardview.widget.CardView>
     </LinearLayout>
 
+    <!-- Attachment Menu Container -->
+    <FrameLayout
+        android:id="@+id/attachment_menu_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toTopOf="@+id/message_input_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <include
+            android:id="@+id/attachment_menu"
+            layout="@layout/attachment_menu_layout" />
+
+    </FrameLayout>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/message_input_container"
         android:layout_width="0dp"

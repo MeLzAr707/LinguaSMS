@@ -232,5 +232,16 @@
 
     <!-- Layout IDs -->
 
+    <!-- Attachment Menu -->
+    <string name="attachment_options">Attachment Options</string>
+    <string name="gallery">Gallery</string>
+    <string name="camera">Camera</string>
+    <string name="gifs">GIFs</string>
+    <string name="stickers">Stickers</string>
+    <string name="files">Files</string>
+    <string name="location">Location</string>
+    <string name="contacts">Contacts</string>
+    <string name="schedule_send">Schedule</string>
+
 
 </resources>

@@ -82,6 +82,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private TextView attachmentPreviewText;
     private ImageButton attachmentRemoveButton;
 
+    // Attachment menu components
+    private View attachmentMenu;
+    private FrameLayout attachmentMenuContainer;
+    private LinearLayout attachmentGallery;
+    private LinearLayout attachmentCamera;
+    private LinearLayout attachmentGifs;
+    private LinearLayout attachmentStickers;
+    private LinearLayout attachmentFiles;
+    private LinearLayout attachmentLocation;
+    private LinearLayout attachmentContacts;
+    private LinearLayout attachmentSchedule;
+    private boolean isAttachmentMenuVisible = false;
+
     // Data
     private String threadId;
     private String address;
@@ -95,6 +108,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     // Pagination variables
     private static final int PAGE_SIZE = 50;
     private static final int ATTACHMENT_PICK_REQUEST = 1001;
+    private static final int GALLERY_PICK_REQUEST = 1002;
+    private static final int CAMERA_REQUEST = 1003;
+    private static final int GIF_PICK_REQUEST = 1004;
+    private static final int FILES_PICK_REQUEST = 1005;
+    private static final int LOCATION_PICK_REQUEST = 1006;
+    private static final int CONTACTS_PICK_REQUEST = 1007;
     private int currentPage = 0;
     private boolean isLoading = false;
     private boolean hasMoreMessages = true;
@@ -227,6 +246,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         attachmentPreviewText = findViewById(R.id.attachment_preview_text);
         attachmentRemoveButton = findViewById(R.id.attachment_remove_button);
 
+        // Initialize attachment menu components
+        attachmentMenuContainer = findViewById(R.id.attachment_menu_container);
+        attachmentMenu = findViewById(R.id.attachment_menu);
+        attachmentGallery = findViewById(R.id.attachment_gallery);
+        attachmentCamera = findViewById(R.id.attachment_camera);
+        attachmentGifs = findViewById(R.id.attachment_gifs);
+        attachmentStickers = findViewById(R.id.attachment_stickers);
+        attachmentFiles = findViewById(R.id.attachment_files);
+        attachmentLocation = findViewById(R.id.attachment_location);
+        attachmentContacts = findViewById(R.id.attachment_contacts);
+        attachmentSchedule = findViewById(R.id.attachment_schedule);
+
         // Check for critical views to prevent null pointer exceptions
         if (messagesRecyclerView == null) {
             Log.e(TAG, "messagesRecyclerView not found in layout");
@@ -272,7 +303,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Set up attachment button
         if (attachmentButton != null) {
-            attachmentButton.setOnClickListener(v -> openAttachmentPicker());
+            attachmentButton.setOnClickListener(v -> toggleAttachmentMenu());
             
             // Long press to clear selected attachments
             attachmentButton.setOnLongClickListener(v -> {
@@ -287,6 +318,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up attachment remove button
         if (attachmentRemoveButton != null) {
             attachmentRemoveButton.setOnClickListener(v -> clearAttachments());
+        }
+
+        // Set up attachment menu listeners
+        setupAttachmentMenuListeners();
+
+        // Set up click listener to hide attachment menu when clicking outside
+        if (attachmentMenuContainer != null) {
+            attachmentMenuContainer.setOnClickListener(v -> {
+                // Only hide if clicking on the container itself (not child views)
+                if (v == attachmentMenuContainer) {
+                    hideAttachmentMenu();
+                }
+            });
         }
 
         // Update UI based on theme
@@ -856,18 +900,216 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         });
     }
 
-    private void openAttachmentPicker() {
-        // Create an intent to pick attachments
+    /**
+     * Toggle the visibility of the attachment menu
+     */
+    private void toggleAttachmentMenu() {
+        if (attachmentMenu != null) {
+            if (isAttachmentMenuVisible) {
+                hideAttachmentMenu();
+            } else {
+                showAttachmentMenu();
+            }
+        }
+    }
+
+    /**
+     * Show the attachment menu with animation
+     */
+    private void showAttachmentMenu() {
+        if (attachmentMenu != null && !isAttachmentMenuVisible) {
+            attachmentMenu.setVisibility(View.VISIBLE);
+            attachmentMenu.animate()
+                .alpha(1.0f)
+                .scaleX(1.0f)
+                .scaleY(1.0f)
+                .setDuration(200)
+                .start();
+            isAttachmentMenuVisible = true;
+        }
+    }
+
+    /**
+     * Hide the attachment menu with animation
+     */
+    private void hideAttachmentMenu() {
+        if (attachmentMenu != null && isAttachmentMenuVisible) {
+            attachmentMenu.animate()
+                .alpha(0.0f)
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .setDuration(200)
+                .withEndAction(() -> attachmentMenu.setVisibility(View.GONE))
+                .start();
+            isAttachmentMenuVisible = false;
+        }
+    }
+
+    /**
+     * Setup click listeners for attachment menu options
+     */
+    private void setupAttachmentMenuListeners() {
+        if (attachmentGallery != null) {
+            attachmentGallery.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openGalleryPicker();
+            });
+        }
+
+        if (attachmentCamera != null) {
+            attachmentCamera.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openCamera();
+            });
+        }
+
+        if (attachmentGifs != null) {
+            attachmentGifs.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openGifPicker();
+            });
+        }
+
+        if (attachmentStickers != null) {
+            attachmentStickers.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openStickerPicker();
+            });
+        }
+
+        if (attachmentFiles != null) {
+            attachmentFiles.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openFilesPicker();
+            });
+        }
+
+        if (attachmentLocation != null) {
+            attachmentLocation.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openLocationPicker();
+            });
+        }
+
+        if (attachmentContacts != null) {
+            attachmentContacts.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openContactsPicker();
+            });
+        }
+
+        if (attachmentSchedule != null) {
+            attachmentSchedule.setOnClickListener(v -> {
+                hideAttachmentMenu();
+                openScheduleDialog();
+            });
+        }
+    }
+
+    /**
+     * Open gallery picker for images and videos
+     */
+    private void openGalleryPicker() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*,video/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
+        
+        try {
+            startActivityForResult(Intent.createChooser(intent, getString(R.string.gallery)), GALLERY_PICK_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No gallery app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Open camera for taking photos or videos
+     */
+    private void openCamera() {
+        // For now, open a simple camera intent
+        Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            startActivityForResult(intent, CAMERA_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Open GIF picker
+     */
+    private void openGifPicker() {
+        // For now, use a generic image picker but filter for GIFs
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/gif");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        
+        try {
+            startActivityForResult(Intent.createChooser(intent, getString(R.string.gifs)), GIF_PICK_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No GIF picker found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Open sticker picker (placeholder implementation)
+     */
+    private void openStickerPicker() {
+        // For now, show a simple dialog with built-in Android emojis
+        Toast.makeText(this, "Sticker feature coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Open files picker for documents
+     */
+    private void openFilesPicker() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
         
         try {
-            startActivityForResult(Intent.createChooser(intent, "Select attachment"), ATTACHMENT_PICK_REQUEST);
+            startActivityForResult(Intent.createChooser(intent, getString(R.string.files)), FILES_PICK_REQUEST);
         } catch (android.content.ActivityNotFoundException ex) {
-            Toast.makeText(this, "Please install a file manager to select attachments", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No file manager found", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Open location picker or share current location
+     */
+    private void openLocationPicker() {
+        // For now, just share current location as text
+        Toast.makeText(this, "Location sharing feature coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Open contacts picker
+     */
+    private void openContactsPicker() {
+        Intent intent = new Intent(Intent.ACTION_PICK, android.provider.ContactsContract.Contacts.CONTENT_URI);
+        try {
+            startActivityForResult(intent, CONTACTS_PICK_REQUEST);
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(this, "No contacts app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Open schedule send dialog
+     */
+    private void openScheduleDialog() {
+        Toast.makeText(this, "Schedule send feature coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Legacy attachment picker method - kept for backward compatibility
+     */
+    private void openAttachmentPicker() {
+        // Show the new attachment menu instead
+        toggleAttachmentMenu();
     }
 
     private void makePhoneCall() {
@@ -1555,20 +1797,27 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         
-        if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
+        if (resultCode == RESULT_OK && data != null) {
             Uri selectedUri = data.getData();
-            if (selectedUri != null) {
-                // Store the attachment for sending
-                selectedAttachments.add(selectedUri);
-                
-                // Show confirmation and update UI to indicate attachment is selected
-                String fileName = getFileName(selectedUri);
-                Toast.makeText(this, "Attachment selected: " + (fileName != null ? fileName : "file"), Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "Attachment selected: " + selectedUri.toString());
-                
-                // Update attachment preview and send button
-                updateAttachmentPreview();
-                updateSendButtonForAttachments();
+            
+            switch (requestCode) {
+                case ATTACHMENT_PICK_REQUEST:
+                case GALLERY_PICK_REQUEST:
+                case GIF_PICK_REQUEST:
+                case FILES_PICK_REQUEST:
+                    handleFileAttachment(selectedUri, requestCode);
+                    break;
+                    
+                case CAMERA_REQUEST:
+                    handleCameraResult(data);
+                    break;
+                    
+                case CONTACTS_PICK_REQUEST:
+                    handleContactResult(selectedUri);
+                    break;
+                    
+                default:
+                    break;
             }
         }
         
@@ -1579,6 +1828,67 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Create a new dialog instance to handle the result
             ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
             dialog.handleRingtonePickerResult(selectedUri);
+        }
+    }
+
+    /**
+     * Handle file attachment result from various pickers
+     */
+    private void handleFileAttachment(Uri selectedUri, int requestCode) {
+        if (selectedUri != null) {
+            // Store the attachment for sending
+            selectedAttachments.add(selectedUri);
+            
+            // Show confirmation and update UI to indicate attachment is selected
+            String fileName = getFileName(selectedUri);
+            String attachmentType = getAttachmentTypeName(requestCode);
+            Toast.makeText(this, attachmentType + " selected: " + (fileName != null ? fileName : "file"), Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Attachment selected: " + selectedUri.toString());
+            
+            // Update attachment preview and send button
+            updateAttachmentPreview();
+            updateSendButtonForAttachments();
+        }
+    }
+
+    /**
+     * Handle camera result
+     */
+    private void handleCameraResult(Intent data) {
+        // Camera usually returns a bitmap in the extras
+        android.graphics.Bitmap photo = (android.graphics.Bitmap) data.getExtras().get("data");
+        if (photo != null) {
+            // For now, just show a toast. In a full implementation, we'd save the image and add it as attachment
+            Toast.makeText(this, "Photo captured! (Implementation in progress)", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Handle contact selection result
+     */
+    private void handleContactResult(Uri selectedUri) {
+        if (selectedUri != null) {
+            // For now, just show a toast. In a full implementation, we'd extract contact info and send as vCard
+            Toast.makeText(this, "Contact selected! (Implementation in progress)", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Get a human-readable name for the attachment type
+     */
+    private String getAttachmentTypeName(int requestCode) {
+        switch (requestCode) {
+            case GALLERY_PICK_REQUEST:
+                return "Gallery item";
+            case GIF_PICK_REQUEST:
+                return "GIF";
+            case FILES_PICK_REQUEST:
+                return "File";
+            case ATTACHMENT_PICK_REQUEST:
+            default:
+                return "Attachment";
+        }
+    }
         }
     }
 

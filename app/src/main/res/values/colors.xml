@@ -58,6 +58,16 @@
     <!-- Theme-aware colors for message bubbles -->
     <color name="incoming_message_background">@color/background_light</color>
 
+    <!-- Attachment Menu Colors -->
+    <color name="attachment_gallery_bg">#4CAF50</color>     <!-- Green -->
+    <color name="attachment_camera_bg">#2196F3</color>      <!-- Blue -->
+    <color name="attachment_gif_bg">#FF9800</color>         <!-- Orange -->
+    <color name="attachment_sticker_bg">#E91E63</color>     <!-- Pink -->
+    <color name="attachment_files_bg">#607D8B</color>       <!-- Blue Grey -->
+    <color name="attachment_location_bg">#F44336</color>    <!-- Red -->
+    <color name="attachment_contacts_bg">#9C27B0</color>    <!-- Purple -->
+    <color name="attachment_schedule_bg">#795548</color>    <!-- Brown -->
+
 </resources>
 
 
