@@ -66,6 +66,8 @@ public class NotificationHelper {
             messagesChannel.setDescription("Notifications for new messages");
             messagesChannel.enableVibration(true);
             messagesChannel.enableLights(true);
+            // Set sound to null to allow individual notifications to control their own sound
+            messagesChannel.setSound(null, null);
             
             // Translations channel
             NotificationChannel translationsChannel = new NotificationChannel(
@@ -83,6 +85,8 @@ public class NotificationHelper {
             mmsChannel.setDescription("Notifications for multimedia messages");
             mmsChannel.enableVibration(true);
             mmsChannel.enableLights(true);
+            // Set sound to null to allow individual notifications to control their own sound
+            mmsChannel.setSound(null, null);
             
             // Create the channels
             notificationManager.createNotificationChannel(messagesChannel);
@@ -116,15 +120,16 @@ public class NotificationHelper {
     /**
      * Shows a notification for a received SMS message.
      *
-     * @param sender The sender of the message
+     * @param senderAddress The sender's phone number/address
      * @param body The message body
      * @param threadId The conversation thread ID
+     * @param senderDisplayName The sender's display name (optional, can be null)
      */
-    public void showSmsReceivedNotification(String sender, String body, String threadId) {
+    public void showSmsReceivedNotification(String senderAddress, String body, String threadId, String senderDisplayName) {
         // Create intent for opening the conversation
         Intent intent = new Intent(context, ConversationActivity.class);
         intent.putExtra("thread_id", threadId);
-        intent.putExtra("address", sender);
+        intent.putExtra("address", senderAddress); // Use the actual address for the intent
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         
         // Create pending intent
@@ -134,17 +139,20 @@ public class NotificationHelper {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
         
-        // Get notification sound for this contact
-        Uri notificationSound = getNotificationSoundForContact(sender);
+        // Get notification sound for this contact using the address
+        Uri notificationSound = getNotificationSoundForContact(senderAddress);
+        
+        // Use display name for notification title, fall back to address if not provided
+        String notificationTitle = !TextUtils.isEmpty(senderDisplayName) ? senderDisplayName : senderAddress;
         
         // Build notification with BigTextStyle to show full message content
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_MESSAGES)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle(sender)
+                .setContentTitle(notificationTitle)
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle()
                         .bigText(body)
-                        .setBigContentTitle(sender))
+                        .setBigContentTitle(notificationTitle))
                 .setAutoCancel(true)
                 .setSound(notificationSound)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -155,12 +163,33 @@ public class NotificationHelper {
     }
     
     /**
+     * Backward compatibility method for the old signature.
+     * @deprecated Use showSmsReceivedNotification(String, String, String, String) instead
+     */
+    @Deprecated
+    public void showSmsReceivedNotification(String sender, String body, String threadId) {
+        // For backward compatibility, assume sender is the address if no display name
+        showSmsReceivedNotification(sender, body, threadId, null);
+    }
+    
+    /**
      * Shows a notification for a received MMS message.
      *
      * @param title The notification title
      * @param body The notification body
      */
     public void showMmsReceivedNotification(String title, String body) {
+        showMmsReceivedNotification(title, body, null);
+    }
+    
+    /**
+     * Shows a notification for a received MMS message with optional contact-specific tone support.
+     *
+     * @param title The notification title
+     * @param body The notification body
+     * @param senderAddress The sender's phone number/address (null if not available)
+     */
+    public void showMmsReceivedNotification(String title, String body, String senderAddress) {
         // Create intent for opening the main activity
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -172,8 +201,13 @@ public class NotificationHelper {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
         
-        // Get notification sound
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        // Get notification sound - use contact-specific if sender address is available
+        Uri notificationSound;
+        if (senderAddress != null && !senderAddress.isEmpty() && !"Unknown".equals(senderAddress)) {
+            notificationSound = getNotificationSoundForContact(senderAddress);
+        } else {
+            notificationSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        }
         
         // Build notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_MMS)
@@ -181,7 +215,7 @@ public class NotificationHelper {
                 .setContentTitle(title)
                 .setContentText(body)
                 .setAutoCancel(true)
-                .setSound(defaultSoundUri)
+                .setSound(notificationSound)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent);
         

@@ -1922,7 +1922,7 @@ public class MessageService {
             
             // Create and show notification
             NotificationHelper notificationHelper = new NotificationHelper(context);
-            notificationHelper.showSmsReceivedNotification(displayName, body, threadId);
+            notificationHelper.showSmsReceivedNotification(address, body, threadId, displayName);
             
             Log.d(TAG, "Showed notification for SMS from " + address);
         } catch (Exception e) {
@@ -1959,15 +1959,15 @@ public class MessageService {
             }
             
             // Extract and store MMS data from the WAP push intent
-            boolean mmsStored = extractAndStoreMmsFromIntent(intent);
+            MmsProcessingResult result = extractAndStoreMmsFromIntent(intent);
             
             // Show notification regardless of storage success to maintain existing behavior
             NotificationHelper notificationHelper = new NotificationHelper(context);
-            if (mmsStored) {
-                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+            if (result.success) {
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message", result.senderAddress);
                 Log.d(TAG, "MMS stored successfully and notification shown");
             } else {
-                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message", null);
                 Log.w(TAG, "MMS storage failed but notification shown");
             }
             
@@ -1979,7 +1979,7 @@ public class MessageService {
             // Still show notification and broadcast to maintain existing behavior
             try {
                 NotificationHelper notificationHelper = new NotificationHelper(context);
-                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message");
+                notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message", null);
                 broadcastMessageReceived();
             } catch (Exception notificationError) {
                 Log.e(TAG, "Error showing fallback notification", notificationError);
@@ -2008,14 +2008,28 @@ public class MessageService {
             }
         }
     }
+    
+    /**
+     * Helper class to return both MMS processing success status and sender information.
+     */
+    private static class MmsProcessingResult {
+        final boolean success;
+        final String senderAddress;
+        
+        MmsProcessingResult(boolean success, String senderAddress) {
+            this.success = success;
+            this.senderAddress = senderAddress;
+        }
+    }
+    
     /**
      * Extracts MMS data from a WAP push intent and stores it in the system's MMS content provider.
      * This method handles the core functionality that was missing - actually saving received MMS.
      *
      * @param intent The WAP push intent containing MMS data
-     * @return True if MMS was successfully stored, false otherwise
+     * @return MmsProcessingResult containing success status and sender address
      */
-    private boolean extractAndStoreMmsFromIntent(Intent intent) {
+    private MmsProcessingResult extractAndStoreMmsFromIntent(Intent intent) {
         try {
             Log.d(TAG, "Extracting MMS data from WAP push intent");
             
@@ -2058,7 +2072,7 @@ public class MessageService {
             Uri mmsUri = context.getContentResolver().insert(Uri.parse("content://mms"), mmsValues);
             if (mmsUri == null) {
                 Log.e(TAG, "Failed to insert MMS message into content provider");
-                return false;
+                return new MmsProcessingResult(false, fromAddress);
             }
             
             String messageId = mmsUri.getLastPathSegment();
@@ -2097,11 +2111,11 @@ public class MessageService {
             }
             
             Log.d(TAG, "Successfully stored MMS message in content provider");
-            return true;
+            return new MmsProcessingResult(true, fromAddress);
             
         } catch (Exception e) {
             Log.e(TAG, "Error extracting and storing MMS from intent", e);
-            return false;
+            return new MmsProcessingResult(false, null);
         }
     }
 

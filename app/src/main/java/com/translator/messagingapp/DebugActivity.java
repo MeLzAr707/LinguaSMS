@@ -648,11 +648,11 @@ public class DebugActivity extends BaseActivity {
             NotificationHelper notificationHelper = new NotificationHelper(this);
             
             // Show short message notification
-            notificationHelper.showSmsReceivedNotification("Test Contact", shortMessage, "test_thread_123");
+            notificationHelper.showSmsReceivedNotification("+1234567890", shortMessage, "test_thread_123", "Test Contact");
             
             // Show long message notification after 2 seconds to see both
             new android.os.Handler().postDelayed(() -> {
-                notificationHelper.showSmsReceivedNotification("Test Contact", longMessage, "test_thread_456");
+                notificationHelper.showSmsReceivedNotification("+1987654321", longMessage, "test_thread_456", "Test Contact Long");
             }, 2000);
             
             // Update result text
