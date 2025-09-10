@@ -24,6 +24,7 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -2061,8 +2062,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 return "Attachment";
         }
     }
-        }
-    }
+
+
 
     /**
      * Restores translation state for a list of messages from the cache.
