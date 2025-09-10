@@ -14,6 +14,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
+import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -1129,13 +1130,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         builder.setTitle("Share Location")
             .setMessage("Choose location sharing method")
             .setPositiveButton("Current Location", (dialog, which) -> {
-                // Share current location coordinates as text
-                String locationText = "Location: Latitude 37.7749, Longitude -122.4194 (San Francisco, CA)"; // Placeholder
-                if (messageInput != null) {
-                    String currentText = messageInput.getText().toString();
-                    messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
-                }
-                Toast.makeText(this, "Current location added to message", Toast.LENGTH_SHORT).show();
+                getCurrentLocationAndShare();
             })
             .setNegativeButton("Choose on Map", (dialog, which) -> {
                 // Open maps for location picking
@@ -1143,12 +1138,81 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     Intent intent = new Intent(Intent.ACTION_VIEW);
                     intent.setData(android.net.Uri.parse("geo:0,0?q=location"));
                     startActivity(intent);
+                    
+                    // Add a generic location message as fallback
+                    String locationText = "📍 Location shared via maps";
+                    if (messageInput != null) {
+                        String currentText = messageInput.getText().toString();
+                        messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
+                    }
                 } catch (Exception e) {
                     Toast.makeText(this, "No maps app available", Toast.LENGTH_SHORT).show();
                 }
             })
             .setNeutralButton("Cancel", null)
             .show();
+    }
+    
+    /**
+     * Get current location and share it in the message
+     */
+    private void getCurrentLocationAndShare() {
+        try {
+            android.location.LocationManager locationManager = (android.location.LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            
+            if (locationManager != null && (locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) || 
+                locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER))) {
+                    
+                // Create a location listener for a single location update
+                android.location.LocationListener locationListener = new android.location.LocationListener() {
+                    @Override
+                    public void onLocationChanged(android.location.Location location) {
+                        if (location != null) {
+                            double latitude = location.getLatitude();
+                            double longitude = location.getLongitude();
+                            String locationText = String.format("📍 Location: %.6f, %.6f\n🗺️ https://maps.google.com/maps?q=%.6f,%.6f", 
+                                latitude, longitude, latitude, longitude);
+                            
+                            if (messageInput != null) {
+                                String currentText = messageInput.getText().toString();
+                                messageInput.setText(currentText + (currentText.isEmpty() ? "" : "\n") + locationText);
+                            }
+                            
+                            Toast.makeText(ConversationActivity.this, "Current location added to message", Toast.LENGTH_SHORT).show();
+                            locationManager.removeUpdates(this);
+                        }
+                    }
+                    
+                    @Override
+                    public void onStatusChanged(String provider, int status, Bundle extras) {}
+                    
+                    @Override
+                    public void onProviderEnabled(String provider) {}
+                    
+                    @Override
+                    public void onProviderDisabled(String provider) {}
+                };
+                
+                // Request location update
+                if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    locationManager.requestSingleUpdate(android.location.LocationManager.GPS_PROVIDER, locationListener, null);
+                    locationManager.requestSingleUpdate(android.location.LocationManager.NETWORK_PROVIDER, locationListener, null);
+                    Toast.makeText(this, "Getting current location...", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                // Location services not available, use a fallback
+                String locationText = "📍 Location services not available";
+                if (messageInput != null) {
+                    String currentText = messageInput.getText().toString();
+                    messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
+                }
+                Toast.makeText(this, "Location services not available", Toast.LENGTH_SHORT).show();
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting location", e);
+            Toast.makeText(this, "Error getting location", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
@@ -2028,11 +2092,51 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      * Handle camera result
      */
     private void handleCameraResult(Intent data) {
-        // Camera usually returns a bitmap in the extras
+        if (data == null) {
+            Toast.makeText(this, "Camera capture cancelled", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Camera usually returns a bitmap in the extras for photo capture
         android.graphics.Bitmap photo = (android.graphics.Bitmap) data.getExtras().get("data");
         if (photo != null) {
-            // For now, just show a toast. In a full implementation, we'd save the image and add it as attachment
-            Toast.makeText(this, "Photo captured! (Implementation in progress)", Toast.LENGTH_SHORT).show();
+            try {
+                // Save the captured photo to internal storage
+                String filename = "camera_" + System.currentTimeMillis() + ".jpg";
+                java.io.FileOutputStream fos = openFileOutput(filename, Context.MODE_PRIVATE);
+                photo.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, fos);
+                fos.close();
+                
+                // Create URI for the saved file
+                java.io.File savedFile = new java.io.File(getFilesDir(), filename);
+                Uri photoUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", savedFile);
+                
+                // Add to selected attachments
+                selectedAttachments.add(photoUri);
+                
+                // Update UI
+                updateAttachmentPreview();
+                updateSendButtonForAttachments();
+                
+                Toast.makeText(this, "Photo captured and ready to send", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Camera photo saved: " + photoUri.toString());
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving camera photo", e);
+                Toast.makeText(this, "Error saving photo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            // Handle video capture result or other camera results
+            Uri videoUri = data.getData();
+            if (videoUri != null) {
+                selectedAttachments.add(videoUri);
+                updateAttachmentPreview();
+                updateSendButtonForAttachments();
+                Toast.makeText(this, "Video captured and ready to send", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Camera video captured: " + videoUri.toString());
+            } else {
+                Toast.makeText(this, "No photo or video captured", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -2041,8 +2145,69 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void handleContactResult(Uri selectedUri) {
         if (selectedUri != null) {
-            // For now, just show a toast. In a full implementation, we'd extract contact info and send as vCard
-            Toast.makeText(this, "Contact selected! (Implementation in progress)", Toast.LENGTH_SHORT).show();
+            try {
+                // Query contact data
+                String[] projection = {
+                    android.provider.ContactsContract.Contacts.DISPLAY_NAME,
+                    android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+                };
+                
+                Cursor cursor = getContentResolver().query(selectedUri, projection, null, null, null);
+                if (cursor != null && cursor.moveToFirst()) {
+                    String contactName = cursor.getString(cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME));
+                    boolean hasPhoneNumber = cursor.getInt(cursor.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0;
+                    
+                    if (hasPhoneNumber) {
+                        // Get phone number
+                        String contactId = selectedUri.getLastPathSegment();
+                        Cursor phoneCursor = getContentResolver().query(
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            new String[]{contactId},
+                            null
+                        );
+                        
+                        if (phoneCursor != null && phoneCursor.moveToFirst()) {
+                            String phoneNumber = phoneCursor.getString(phoneCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER));
+                            
+                            // Create contact info string to insert into message
+                            String contactInfo = "Contact: " + contactName + " - " + phoneNumber;
+                            
+                            // Insert contact info into message input
+                            if (messageInput != null) {
+                                String currentText = messageInput.getText().toString();
+                                messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + contactInfo);
+                            }
+                            
+                            Toast.makeText(this, "Contact info added to message", Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "Contact selected: " + contactName + " - " + phoneNumber);
+                            
+                            phoneCursor.close();
+                        } else {
+                            Toast.makeText(this, "Could not get phone number for contact", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        // Just insert contact name
+                        String contactInfo = "Contact: " + contactName;
+                        if (messageInput != null) {
+                            String currentText = messageInput.getText().toString();
+                            messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + contactInfo);
+                        }
+                        Toast.makeText(this, "Contact name added to message", Toast.LENGTH_SHORT).show();
+                    }
+                    
+                    cursor.close();
+                } else {
+                    Toast.makeText(this, "Could not read contact information", Toast.LENGTH_SHORT).show();
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error handling contact selection", e);
+                Toast.makeText(this, "Error reading contact: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "No contact selected", Toast.LENGTH_SHORT).show();
         }
     }
 
