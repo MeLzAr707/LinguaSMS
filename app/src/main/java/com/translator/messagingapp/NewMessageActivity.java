@@ -20,6 +20,8 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import androidx.appcompat.widget.Toolbar;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.List;
 import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
 
@@ -47,6 +49,9 @@ public class NewMessageActivity extends BaseActivity {
     private TranslationManager translationManager;
     private DefaultSmsAppManager defaultSmsAppManager;
     private UserPreferences userPreferences;
+    
+    // Selected attachments for sending
+    private List<Uri> selectedAttachments;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +65,9 @@ public class NewMessageActivity extends BaseActivity {
             translationManager = ((TranslatorApp) getApplication()).getTranslationManager();
             defaultSmsAppManager = ((TranslatorApp) getApplication()).getDefaultSmsAppManager();
             userPreferences = ((TranslatorApp) getApplication()).getUserPreferences();
+
+            // Initialize data
+            selectedAttachments = new ArrayList<>();
 
             // Set up toolbar
             Toolbar toolbar = findViewById(R.id.toolbar);
@@ -110,6 +118,17 @@ public class NewMessageActivity extends BaseActivity {
             // Set up attachment button
             if (attachmentButton != null) {
                 attachmentButton.setOnClickListener(v -> openAttachmentPicker());
+                
+                // Long press to clear selected attachments
+                attachmentButton.setOnLongClickListener(v -> {
+                    if (selectedAttachments != null && !selectedAttachments.isEmpty()) {
+                        selectedAttachments.clear();
+                        updateSendButtonForAttachments();
+                        Toast.makeText(this, "Attachments cleared", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                    return false;
+                });
             }
 
             // Set up translate button
@@ -270,10 +289,16 @@ public class NewMessageActivity extends BaseActivity {
         } else if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri selectedUri = data.getData();
             if (selectedUri != null) {
-                // For now, just show a toast that attachment was selected
-                // In a full implementation, this would handle sending MMS
-                Toast.makeText(this, "Attachment selected: " + selectedUri.getLastPathSegment(), Toast.LENGTH_SHORT).show();
+                // Store the attachment for sending
+                selectedAttachments.add(selectedUri);
+                
+                // Show confirmation and update UI to indicate attachment is selected
+                String fileName = selectedUri.getLastPathSegment();
+                Toast.makeText(this, "Attachment selected: " + fileName, Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "Attachment selected: " + selectedUri.toString());
+                
+                // Update send button to indicate MMS mode
+                updateSendButtonForAttachments();
             }
         }
     }
@@ -289,8 +314,10 @@ public class NewMessageActivity extends BaseActivity {
 
         String recipient = recipientInput != null ? recipientInput.getText().toString().trim() : "";
         String messageText = messageInput != null ? messageInput.getText().toString().trim() : "";
+        boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
 
-        if (recipient.isEmpty() || messageText.isEmpty()) {
+        // For MMS, allow empty text if there are attachments
+        if (recipient.isEmpty() || (messageText.isEmpty() && !hasAttachments)) {
             return;
         }
 
@@ -305,24 +332,55 @@ public class NewMessageActivity extends BaseActivity {
         recipient = PhoneNumberUtils.stripSeparators(recipient);
 
         try {
-            // Send message using MessageService
             final String finalRecipient = recipient;
-            messageService.sendSmsMessage(recipient, messageText, null, () -> {
-                // Success callback
-
-                // Set result and finish
-                setResult(RESULT_OK);
-
-                // Open conversation with this recipient
-                Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
-                intent.putExtra("address", finalRecipient);
-                startActivity(intent);
-
-                finish();
-            });
+            List<Uri> attachmentsToSend = hasAttachments ? new ArrayList<>(selectedAttachments) : null;
+            
+            if (hasAttachments) {
+                // Send as MMS with attachments
+                boolean success = messageService.sendMmsMessage(finalRecipient, null, messageText, attachmentsToSend);
+                
+                if (success) {
+                    // Success - open conversation
+                    setResult(RESULT_OK);
+                    Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
+                    intent.putExtra("address", finalRecipient);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    Toast.makeText(this, "Error sending MMS message", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                // Send as regular SMS with callback
+                messageService.sendSmsMessage(recipient, messageText, null, () -> {
+                    // Success callback
+                    setResult(RESULT_OK);
+                    Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
+                    intent.putExtra("address", finalRecipient);
+                    startActivity(intent);
+                    finish();
+                });
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error sending message", e);
             Toast.makeText(this, "Error sending message: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Updates the send button appearance based on whether attachments are selected
+     */
+    private void updateSendButtonForAttachments() {
+        if (sendButton != null) {
+            boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+            if (hasAttachments) {
+                // Change send button to indicate MMS mode
+                sendButton.setAlpha(1.0f);
+                // You could change the button text or appearance here if desired
+                Toast.makeText(this, selectedAttachments.size() + " attachment(s) ready to send", Toast.LENGTH_SHORT).show();
+            } else {
+                // Reset to normal SMS mode
+                sendButton.setAlpha(1.0f);
+            }
         }
     }
 

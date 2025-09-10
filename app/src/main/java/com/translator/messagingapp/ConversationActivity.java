@@ -83,6 +83,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private List<Message> messages;
     private ExecutorService executorService;
     
+    // Selected attachments for sending
+    private List<Uri> selectedAttachments;
+    
     // Pagination variables
     private static final int PAGE_SIZE = 50;
     private static final int ATTACHMENT_PICK_REQUEST = 1001;
@@ -141,6 +144,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Initialize data
         messages = new ArrayList<>();
+        selectedAttachments = new ArrayList<>();
 
         // Initialize UI components
         initializeComponents();
@@ -258,6 +262,17 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up attachment button
         if (attachmentButton != null) {
             attachmentButton.setOnClickListener(v -> openAttachmentPicker());
+            
+            // Long press to clear selected attachments
+            attachmentButton.setOnLongClickListener(v -> {
+                if (selectedAttachments != null && !selectedAttachments.isEmpty()) {
+                    selectedAttachments.clear();
+                    updateSendButtonForAttachments();
+                    Toast.makeText(this, "Attachments cleared", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            });
         }
 
         // Update UI based on theme
@@ -542,12 +557,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
-        if (messageText.isEmpty()) {
+        boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+        
+        // For MMS, allow empty text if there are attachments
+        if (messageText.isEmpty() && !hasAttachments) {
             return;
         }
 
-        // Clear input
+        // Clear input and attachments
         messageInput.setText("");
+        List<Uri> attachmentsToSend = new ArrayList<>(selectedAttachments);
+        selectedAttachments.clear();
+        updateSendButtonForAttachments(); // Reset send button appearance
 
         // Show progress
         showLoadingIndicator();
@@ -555,7 +576,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Send message in background
         executorService.execute(() -> {
             try {
-                boolean success = messageService.sendSmsMessage(address, messageText);
+                boolean success;
+                if (hasAttachments) {
+                    // Send as MMS with attachments
+                    success = messageService.sendMmsMessage(address, null, messageText, attachmentsToSend);
+                } else {
+                    // Send as regular SMS
+                    success = messageService.sendSmsMessage(address, messageText);
+                }
 
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
@@ -580,6 +608,24 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 });
             }
         });
+    }
+
+    /**
+     * Updates the send button appearance based on whether attachments are selected
+     */
+    private void updateSendButtonForAttachments() {
+        if (sendButton != null) {
+            boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+            if (hasAttachments) {
+                // Change send button to indicate MMS mode
+                sendButton.setAlpha(1.0f);
+                // You could change the icon or background color here if desired
+                Toast.makeText(this, selectedAttachments.size() + " attachment(s) ready to send", Toast.LENGTH_SHORT).show();
+            } else {
+                // Reset to normal SMS mode
+                sendButton.setAlpha(1.0f);
+            }
+        }
     }
 
     private void showLoadingIndicator() {
@@ -1442,10 +1488,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (requestCode == ATTACHMENT_PICK_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri selectedUri = data.getData();
             if (selectedUri != null) {
-                // For now, just show a toast that attachment was selected
-                // In a full implementation, this would handle sending MMS
-                Toast.makeText(this, "Attachment selected: " + selectedUri.getLastPathSegment(), Toast.LENGTH_SHORT).show();
+                // Store the attachment for sending
+                selectedAttachments.add(selectedUri);
+                
+                // Show confirmation and update UI to indicate attachment is selected
+                String fileName = selectedUri.getLastPathSegment();
+                Toast.makeText(this, "Attachment selected: " + fileName, Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "Attachment selected: " + selectedUri.toString());
+                
+                // Update send button to indicate MMS mode
+                updateSendButtonForAttachments();
             }
         }
         
