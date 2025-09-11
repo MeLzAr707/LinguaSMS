@@ -1231,6 +1231,12 @@ public class MessageService {
             if (attachments != null && !attachments.isEmpty()) {
                 for (Uri attachmentUri : attachments) {
                     try {
+                        // Validate URI permission before processing
+                        if (!validateUriAccess(attachmentUri)) {
+                            Log.w(TAG, "Skipping attachment due to access issues: " + attachmentUri);
+                            continue;
+                        }
+                        
                         // Get the attachment details
                         String mimeType = context.getContentResolver().getType(attachmentUri);
                         if (mimeType == null) {
@@ -1244,6 +1250,9 @@ public class MessageService {
                             if (cursor != null && cursor.moveToFirst()) {
                                 fileName = cursor.getString(0);
                             }
+                        } catch (Exception e) {
+                            Log.w(TAG, "Could not get filename for: " + attachmentUri, e);
+                            // Use default filename
                         }
 
                         // Create the part
@@ -1258,20 +1267,28 @@ public class MessageService {
                         Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
                         Uri newPartUri = context.getContentResolver().insert(partUri, partValues);
 
-                        // Copy the attachment data
+                        // Copy the attachment data - stream binary data into MMS part
                         if (newPartUri != null) {
                             try (InputStream is = context.getContentResolver().openInputStream(attachmentUri);
                                  OutputStream os = context.getContentResolver().openOutputStream(newPartUri)) {
                                 if (is != null && os != null) {
-                                    byte[] buffer = new byte[1024];
+                                    // Use larger buffer for better performance (8KB as recommended in issue)
+                                    byte[] buffer = new byte[8192];
                                     int len;
+                                    long totalBytes = 0;
                                     while ((len = is.read(buffer)) != -1) {
                                         os.write(buffer, 0, len);
+                                        totalBytes += len;
                                     }
+                                    Log.d(TAG, "Copied " + totalBytes + " bytes for attachment: " + fileName);
+                                } else {
+                                    Log.e(TAG, "Failed to open streams for attachment: " + attachmentUri);
+                                    throw new IOException("Could not open input or output stream");
                                 }
                             }
                         } else {
                             Log.e(TAG, "Failed to create attachment part URI");
+                            throw new IOException("Could not create attachment part URI");
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Error adding attachment to MMS", e);
@@ -1280,28 +1297,19 @@ public class MessageService {
                 }
             }
 
-            // Move the message to the sent box and trigger sending
-            ContentValues sendValues = new ContentValues();
-            sendValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
-            context.getContentResolver().update(messageUri, sendValues, null, null);
-
-            // Use proper MMS sending approach
-            // Use the MmsSendingHelper to send the MMS using the appropriate API
-            boolean sendResult = MmsSendingHelper.sendMms(
-                    context,
-                    messageUri,
-                    null,  // locationUrl - not needed for most carriers
-                    address,
-                    subject
-            );
-
-            if (!sendResult) {
-                // Fallback: Use the original broadcast approach
-                Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
-                intent.putExtra("message_uri", messageUri.toString());
-                context.sendBroadcast(intent);
-                Log.w(TAG, "Using fallback MMS sending approach");
-            }
+            // Store message in outbox and let system handle sending
+            // The message is already in MESSAGE_BOX_OUTBOX, so the system will pick it up
+            Log.d(TAG, "MMS message stored in outbox with URI: " + messageUri);
+            
+            // Trigger system MMS sending by notifying the MMS service
+            // This is the correct approach for content provider stored MMS
+            Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
+            intent.putExtra("content_uri", messageUri.toString());
+            context.sendBroadcast(intent);
+            
+            // Alternative: Use SmsManager for direct sending if needed
+            // Note: SmsManager.sendMultimediaMessage expects a PDU file URI, not content provider URI
+            // For now, rely on the content provider approach which is more standard
 
             // Store in sent messages
             storeSentMmsMessage(address, body, attachments);
@@ -1338,6 +1346,34 @@ public class MessageService {
         } catch (Exception e) {
             Log.w(TAG, "Failed to store sent MMS message", e);
         }
+    }
+
+    /**
+     * Validates that we can access the given URI for reading.
+     * This helps ensure that persistent URI permissions are working correctly.
+     *
+     * @param uri The URI to validate
+     * @return True if the URI can be accessed for reading
+     */
+    private boolean validateUriAccess(Uri uri) {
+        try {
+            // Try to open an input stream to validate access
+            try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+                if (is != null) {
+                    // Try to read a few bytes to ensure full access
+                    byte[] testBuffer = new byte[10];
+                    is.read(testBuffer);
+                    return true;
+                }
+            }
+        } catch (SecurityException e) {
+            Log.w(TAG, "Security exception accessing URI (missing persistent permission?): " + uri, e);
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "Error accessing URI: " + uri, e);
+            return false;
+        }
+        return false;
     }
 
     /**
