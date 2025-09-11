@@ -1171,7 +1171,7 @@ public class MessageService {
                 Log.e(TAG, "SMS Manager not available");
                 return false;
             }
-            
+
             // Create a new MMS message
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
@@ -1286,40 +1286,38 @@ public class MessageService {
             context.getContentResolver().update(messageUri, sendValues, null, null);
 
             // Use proper MMS sending approach
-            try {
-                // Try to use system MMS sending service
-                Intent sendIntent = new Intent();
-                sendIntent.setAction("android.intent.action.MMS_SEND_REQUEST");
-                sendIntent.putExtra("mms_uri", messageUri.toString());
-                sendIntent.putExtra("recipient", address);
-                context.sendBroadcast(sendIntent);
-                
-                Log.d(TAG, "MMS send request broadcast sent for message: " + messageId);
-                
-            } catch (Exception e) {
-                Log.w(TAG, "System MMS send failed, trying fallback", e);
-                
+            // Use the MmsSendingHelper to send the MMS using the appropriate API
+            boolean sendResult = MmsSendingHelper.sendMms(
+                    context,
+                    messageUri,
+                    null,  // locationUrl - not needed for most carriers
+                    address,
+                    subject
+            );
+
+            if (!sendResult) {
                 // Fallback: Use the original broadcast approach
                 Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
                 intent.putExtra("message_uri", messageUri.toString());
                 context.sendBroadcast(intent);
+                Log.w(TAG, "Using fallback MMS sending approach");
             }
 
             // Store in sent messages
             storeSentMmsMessage(address, body, attachments);
-            
+
             // Broadcast message sent to refresh UI
             broadcastMessageSent();
 
             Log.d(TAG, "MMS message created and send triggered for: " + address);
             return true;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error sending MMS message", e);
             return false;
         }
     }
-    
+
     /**
      * Store the sent MMS message in the sent folder for reference
      */
@@ -1332,7 +1330,7 @@ public class MessageService {
             values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000);
             values.put(Telephony.Mms.READ, 1);
             values.put(Telephony.Mms.SEEN, 1);
-            
+
             Uri sentUri = context.getContentResolver().insert(Uri.parse("content://mms/sent"), values);
             if (sentUri != null) {
                 Log.d(TAG, "Sent MMS message stored: " + sentUri);
