@@ -52,13 +52,24 @@ public class MmsSendingHelper {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 SmsManager smsManager = SmsManager.getDefault();
                 
+                // Create PendingIntents for send and delivery reports
+                android.content.Intent sentIntent = new android.content.Intent("com.translator.messagingapp.MMS_SENT");
+                sentIntent.putExtra("message_uri", contentUri.toString());
+                
+                android.app.PendingIntent sentPendingIntent = android.app.PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    sentIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                
                 // Use the sendMultimediaMessage method available in API 21+
                 smsManager.sendMultimediaMessage(
                     context,
                     contentUri,
                     locationUrl,
                     null,  // configOverrides
-                    null   // sentIntent
+                    sentPendingIntent   // sentIntent for callback
                 );
                 
                 Log.d(TAG, "MMS sent using new API: " + contentUri);
@@ -81,10 +92,10 @@ public class MmsSendingHelper {
      */
     private static boolean sendMmsUsingLegacyApi(Context context, Uri contentUri, String address) {
         try {
-            // Use the broadcast intent approach for older versions
+            // Use the system MMS send action for better compatibility
             android.content.Intent intent = new android.content.Intent();
-            intent.setAction("android.intent.action.MMS_SEND_REQUEST");
-            intent.putExtra("mms_uri", contentUri.toString());
+            intent.setAction("android.provider.Telephony.MMS_SENT");
+            intent.putExtra("message_uri", contentUri.toString());
             intent.putExtra("recipient", address);
             context.sendBroadcast(intent);
             

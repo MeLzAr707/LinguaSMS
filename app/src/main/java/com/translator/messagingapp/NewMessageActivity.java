@@ -30,6 +30,8 @@ import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import android.content.BroadcastReceiver;
 
 import java.io.InputStream;
 
@@ -61,6 +63,9 @@ public class NewMessageActivity extends BaseActivity {
     private MessageService messageService;
     private TranslationManager translationManager;
     private DefaultSmsAppManager defaultSmsAppManager;
+    
+    // MMS send result receiver
+    private BroadcastReceiver mmsSendResultReceiver;
     private UserPreferences userPreferences;
     
     // Selected attachments for sending
@@ -174,6 +179,9 @@ public class NewMessageActivity extends BaseActivity {
 
             // Set up text watchers for input validation
             setupTextWatchers();
+            
+            // Set up MMS send result receiver
+            setupMmsSendResultReceiver();
 
         } catch (Exception e) {
             Log.e(TAG, "Error initializing NewMessageActivity", e);
@@ -235,6 +243,52 @@ public class NewMessageActivity extends BaseActivity {
         
         // Apply custom colors if using custom theme
         applyCustomColorsToViews();
+    }
+
+    /**
+     * Sets up the broadcast receiver to handle MMS send results
+     */
+    private void setupMmsSendResultReceiver() {
+        mmsSendResultReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.translator.messagingapp.MMS_SEND_RESULT".equals(intent.getAction())) {
+                    boolean success = intent.getBooleanExtra("success", false);
+                    String messageUri = intent.getStringExtra("message_uri");
+                    
+                    Log.d(TAG, "Received MMS send result: " + (success ? "SUCCESS" : "FAILED"));
+                    
+                    if (success) {
+                        // MMS sent successfully - navigate to conversation
+                        String recipient = recipientInput != null ? recipientInput.getText().toString().trim() : "";
+                        if (!recipient.isEmpty()) {
+                            // Extract phone number if in format "Name <number>"
+                            if (recipient.contains("<") && recipient.contains(">")) {
+                                recipient = recipient.substring(
+                                        recipient.indexOf("<") + 1,
+                                        recipient.indexOf(">"));
+                            }
+                            recipient = PhoneNumberUtils.stripSeparators(recipient);
+                            
+                            Intent conversationIntent = new Intent(NewMessageActivity.this, ConversationActivity.class);
+                            conversationIntent.putExtra("address", recipient);
+                            startActivity(conversationIntent);
+                            finish();
+                        } else {
+                            Toast.makeText(NewMessageActivity.this, "MMS sent successfully", Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+                    } else {
+                        // MMS send failed - show error
+                        Toast.makeText(NewMessageActivity.this, "Failed to send MMS message", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        };
+        
+        // Register the receiver
+        android.content.IntentFilter filter = new android.content.IntentFilter("com.translator.messagingapp.MMS_SEND_RESULT");
+        LocalBroadcastManager.getInstance(this).registerReceiver(mmsSendResultReceiver, filter);
     }
 
     private void updateSendButtonState() {
@@ -390,15 +444,16 @@ public class NewMessageActivity extends BaseActivity {
                 // Send as MMS with attachments
                 boolean success = messageService.sendMmsMessage(finalRecipient, null, messageText, attachmentsToSend);
                 
-                Log.d(TAG, "MMS send result: " + (success ? "SUCCESS" : "FAILED"));
+                Log.d(TAG, "MMS send initiated: " + (success ? "SUCCESS" : "FAILED"));
                 
                 if (success) {
-                    // Success - open conversation
-                    setResult(RESULT_OK);
-                    Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
-                    intent.putExtra("address", finalRecipient);
-                    startActivity(intent);
-                    finish();
+                    // MMS send initiated successfully - wait for result callback
+                    // Clear attachments since send was initiated
+                    selectedAttachments.clear();
+                    updateAttachmentPreview();
+                    
+                    // Show sending indicator to user
+                    Toast.makeText(this, "Sending MMS...", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Error sending MMS message", Toast.LENGTH_SHORT).show();
                 }
@@ -693,6 +748,16 @@ public class NewMessageActivity extends BaseActivity {
             // Clear references
             attachmentPreviewContainer = null;
             attachmentPreviewImage = null;
+
+            // Unregister MMS send result receiver
+            if (mmsSendResultReceiver != null) {
+                try {
+                    LocalBroadcastManager.getInstance(this).unregisterReceiver(mmsSendResultReceiver);
+                    mmsSendResultReceiver = null;
+                } catch (Exception e) {
+                    Log.w(TAG, "Error unregistering MMS send result receiver", e);
+                }
+            }
 
             // Clear references
             messageService = null;
