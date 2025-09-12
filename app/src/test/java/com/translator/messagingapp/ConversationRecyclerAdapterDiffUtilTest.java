@@ -1,5 +1,11 @@
 package com.translator.messagingapp;
 
+import com.translator.messagingapp.message.*;
+import com.translator.messagingapp.conversation.*;
+import com.translator.messagingapp.mms.*;
+import com.translator.messagingapp.contact.*;
+import com.translator.messagingapp.notification.*;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 

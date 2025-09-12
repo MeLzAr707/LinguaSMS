@@ -1,5 +1,11 @@
 package com.translator.messagingapp;
 
+import com.translator.messagingapp.message.*;
+import com.translator.messagingapp.conversation.*;
+import com.translator.messagingapp.mms.*;
+import com.translator.messagingapp.contact.*;
+import com.translator.messagingapp.notification.*;
+
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;

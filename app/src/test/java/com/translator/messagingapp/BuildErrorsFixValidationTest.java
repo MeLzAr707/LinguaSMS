@@ -114,7 +114,7 @@ public class BuildErrorsFixValidationTest {
         // This test verifies that BaseActivity can be compiled without duplicate case label errors
         // Since we can't easily test switch statement compilation directly, we verify the class loads
         try {
-            Class.forName("com.translator.messagingapp.BaseActivity");
+            Class.forName("com.translator.messagingapp.ui.BaseActivity");
             assertTrue("BaseActivity should load without compilation errors", true);
         } catch (ClassNotFoundException e) {
             fail("BaseActivity should exist and be compilable: " + e.getMessage());
@@ -125,7 +125,7 @@ public class BuildErrorsFixValidationTest {
     public void testConversationActivityImplementsAllMethods() {
         // Verify that ConversationActivity can be compiled without @Override errors
         try {
-            Class.forName("com.translator.messagingapp.ConversationActivity");
+            Class.forName("com.translator.messagingapp.conversation.ConversationActivity");
             assertTrue("ConversationActivity should load without compilation errors", true);
         } catch (ClassNotFoundException e) {
             fail("ConversationActivity should exist and be compilable: " + e.getMessage());
@@ -136,7 +136,7 @@ public class BuildErrorsFixValidationTest {
     public void testSearchActivityImplementsAllMethods() {
         // Verify that SearchActivity can be compiled without @Override errors
         try {
-            Class.forName("com.translator.messagingapp.SearchActivity");
+            Class.forName("com.translator.messagingapp.ui.SearchActivity");
             assertTrue("SearchActivity should load without compilation errors", true);
         } catch (ClassNotFoundException e) {
             fail("SearchActivity should exist and be compilable: " + e.getMessage());
