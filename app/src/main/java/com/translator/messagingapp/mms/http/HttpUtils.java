@@ -67,7 +67,20 @@ public class HttpUtils {
             Log.d(TAG, "HTTP " + method + " to: " + urlString);
             
             URL url = new URL(urlString);
-            connection = (HttpURLConnection) url.openConnection();
+            
+            // Check if we need to use a proxy
+            String mmsProxy = getMmsProxy(context);
+            int mmsProxyPort = getMmsProxyPort(context);
+            
+            if (mmsProxy != null && !mmsProxy.isEmpty() && mmsProxyPort > 0) {
+                Log.d(TAG, "Using MMS proxy: " + mmsProxy + ":" + mmsProxyPort);
+                java.net.Proxy proxy = new java.net.Proxy(java.net.Proxy.Type.HTTP, 
+                    new java.net.InetSocketAddress(mmsProxy, mmsProxyPort));
+                connection = (HttpURLConnection) url.openConnection(proxy);
+            } else {
+                Log.d(TAG, "Using direct connection (no proxy)");
+                connection = (HttpURLConnection) url.openConnection();
+            }
             
             // Configure connection
             setupConnection(connection, method, contentType);
@@ -174,9 +187,43 @@ public class HttpUtils {
      * @return The MMSC URL, or null if not available
      */
     public static String getMmscUrl(Context context) {
-        // This would use ApnSettings to get the actual MMSC URL
-        // For now, return a placeholder
-        return "http://mmsc.example.com/mms";
+        try {
+            // Try to get MMSC URL from carrier configuration
+            android.telephony.CarrierConfigManager configManager = 
+                (android.telephony.CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            
+            if (configManager != null) {
+                android.os.PersistableBundle config = configManager.getConfig();
+                if (config != null) {
+                    String mmscUrl = config.getString("mms_url_string");
+                    if (mmscUrl != null && !mmscUrl.isEmpty()) {
+                        Log.d(TAG, "Found MMSC URL from carrier config: " + mmscUrl);
+                        return mmscUrl;
+                    }
+                }
+            }
+            
+            // Fallback: Try to read from APN settings
+            String mmscUrl = getApnMmscUrl(context);
+            if (mmscUrl != null) {
+                Log.d(TAG, "Found MMSC URL from APN settings: " + mmscUrl);
+                return mmscUrl;
+            }
+            
+            // Last resort: Try some common carrier MMSC URLs based on operator
+            mmscUrl = getCarrierMmscUrl(context);
+            if (mmscUrl != null) {
+                Log.d(TAG, "Using carrier-specific MMSC URL: " + mmscUrl);
+                return mmscUrl;
+            }
+            
+            Log.e(TAG, "No MMSC URL found for current carrier");
+            return null;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMSC URL", e);
+            return null;
+        }
     }
 
     /**
@@ -186,9 +233,28 @@ public class HttpUtils {
      * @return The MMS proxy, or null if not available
      */
     public static String getMmsProxy(Context context) {
-        // This would use ApnSettings to get the actual MMS proxy
-        // For now, return null (no proxy)
-        return null;
+        try {
+            // Try to get MMS proxy from carrier configuration
+            android.telephony.CarrierConfigManager configManager = 
+                (android.telephony.CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            
+            if (configManager != null) {
+                android.os.PersistableBundle config = configManager.getConfig();
+                if (config != null) {
+                    String mmsProxy = config.getString("mms_http_proxy_string");
+                    if (mmsProxy != null && !mmsProxy.isEmpty()) {
+                        return mmsProxy;
+                    }
+                }
+            }
+            
+            // Fallback: Try to read from APN settings
+            return getApnMmsProxy(context);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMS proxy", e);
+            return null;
+        }
     }
 
     /**
@@ -198,8 +264,171 @@ public class HttpUtils {
      * @return The MMS proxy port, or -1 if not available
      */
     public static int getMmsProxyPort(Context context) {
-        // This would use ApnSettings to get the actual MMS proxy port
-        // For now, return -1 (no proxy)
+        try {
+            // Try to get MMS proxy port from carrier configuration
+            android.telephony.CarrierConfigManager configManager = 
+                (android.telephony.CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            
+            if (configManager != null) {
+                android.os.PersistableBundle config = configManager.getConfig();
+                if (config != null) {
+                    int mmsPort = config.getInt("mms_http_proxy_port_int");
+                    if (mmsPort > 0) {
+                        return mmsPort;
+                    }
+                }
+            }
+            
+            // Fallback: Try to read from APN settings
+            return getApnMmsProxyPort(context);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMS proxy port", e);
+            return -1;
+        }
+    }
+
+    /**
+     * Reads MMSC URL from APN settings.
+     */
+    private static String getApnMmscUrl(Context context) {
+        String[] projection = {"mmsc"};
+        try (android.database.Cursor cursor = context.getContentResolver().query(
+                android.net.Uri.parse("content://telephony/carriers/preferapn"), 
+                projection, null, null, null)) {
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String mmscUrl = cursor.getString(0);
+                if (mmscUrl != null && !mmscUrl.isEmpty()) {
+                    return mmscUrl;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading APN MMSC URL", e);
+        }
+        return null;
+    }
+
+    /**
+     * Reads MMS proxy from APN settings.
+     */
+    private static String getApnMmsProxy(Context context) {
+        String[] projection = {"mmsproxy"};
+        try (android.database.Cursor cursor = context.getContentResolver().query(
+                android.net.Uri.parse("content://telephony/carriers/preferapn"), 
+                projection, null, null, null)) {
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String mmsProxy = cursor.getString(0);
+                if (mmsProxy != null && !mmsProxy.isEmpty()) {
+                    return mmsProxy;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading APN MMS proxy", e);
+        }
+        return null;
+    }
+
+    /**
+     * Reads MMS proxy port from APN settings.
+     */
+    private static int getApnMmsProxyPort(Context context) {
+        String[] projection = {"mmsport"};
+        try (android.database.Cursor cursor = context.getContentResolver().query(
+                android.net.Uri.parse("content://telephony/carriers/preferapn"), 
+                projection, null, null, null)) {
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String portStr = cursor.getString(0);
+                if (portStr != null && !portStr.isEmpty()) {
+                    return Integer.parseInt(portStr);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading APN MMS proxy port", e);
+        }
         return -1;
+    }
+
+    /**
+     * Validates that MMS configuration is available and correct.
+     * @param context The application context
+     * @return True if MMS can be configured, false otherwise
+     */
+    public static boolean validateMmsConfiguration(Context context) {
+        try {
+            // Check MMSC URL
+            String mmscUrl = getMmscUrl(context);
+            if (mmscUrl == null || mmscUrl.isEmpty()) {
+                Log.e(TAG, "MMS validation failed: No MMSC URL available");
+                return false;
+            }
+            
+            // Validate URL format
+            try {
+                new java.net.URL(mmscUrl);
+            } catch (java.net.MalformedURLException e) {
+                Log.e(TAG, "MMS validation failed: Invalid MMSC URL format: " + mmscUrl);
+                return false;
+            }
+            
+            // Check network connectivity
+            android.net.ConnectivityManager connectivityManager = 
+                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+                if (networkInfo == null || !networkInfo.isConnected()) {
+                    Log.w(TAG, "MMS validation warning: No active network connection");
+                    // Don't return false here as network might come back
+                }
+            }
+            
+            Log.d(TAG, "MMS configuration validated successfully. MMSC URL: " + mmscUrl);
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error validating MMS configuration", e);
+            return false;
+        }
+    }
+
+    /**
+     * Gets carrier-specific MMSC URL based on operator.
+     */
+    private static String getCarrierMmscUrl(Context context) {
+        try {
+            android.telephony.TelephonyManager telephonyManager = 
+                (android.telephony.TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            
+            if (telephonyManager != null) {
+                String operatorName = telephonyManager.getNetworkOperatorName();
+                String operatorMcc = telephonyManager.getNetworkOperator();
+                
+                Log.d(TAG, "Operator: " + operatorName + " MCC/MNC: " + operatorMcc);
+                
+                // Common US carriers
+                if (operatorMcc != null) {
+                    if (operatorMcc.startsWith("310")) { // US carriers
+                        if (operatorName != null) {
+                            String lowerName = operatorName.toLowerCase();
+                            if (lowerName.contains("verizon")) {
+                                return "http://mms.vtext.com/servlets/mms";
+                            } else if (lowerName.contains("t-mobile") || lowerName.contains("tmobile")) {
+                                return "http://mms.msg.eng.t-mobile.com/mms/wapenc";
+                            } else if (lowerName.contains("at&t") || lowerName.contains("att")) {
+                                return "http://mmsc.mobile.att.net";
+                            } else if (lowerName.contains("sprint")) {
+                                return "http://mms.sprintpcs.com";
+                            }
+                        }
+                    }
+                    // Add other countries/carriers as needed
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error determining carrier MMSC URL", e);
+        }
+        return null;
     }
 }

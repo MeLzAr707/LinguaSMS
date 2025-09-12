@@ -1333,29 +1333,38 @@ public class MessageService {
             // The message is already in MESSAGE_BOX_OUTBOX, so the system will pick it up
             Log.d(TAG, "MMS message stored in outbox with URI: " + messageUri);
             
-            // Move message to sent box immediately to show in UI
-            // This prevents the message from being stuck in outbox and not visible
-            ContentValues sentValues = new ContentValues();
-            sentValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
-            int updatedRows = context.getContentResolver().update(messageUri, sentValues, null, null);
-            if (updatedRows > 0) {
-                Log.d(TAG, "MMS message moved from outbox to sent for UI display");
+            // Instead of just moving to sent, keep in outbox for proper sending
+            // Use the transaction-based MMS sending architecture
+            ContentValues outboxValues = new ContentValues();
+            outboxValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
+            context.getContentResolver().update(messageUri, outboxValues, null, null);
+            
+            // Use MmsSendingHelper for proper MMS sending
+            boolean sendSuccess = com.translator.messagingapp.mms.MmsSendingHelper.sendMms(
+                context, messageUri, null, address, subject);
+            
+            if (sendSuccess) {
+                Log.d(TAG, "MMS send process initiated successfully");
+                
+                // Move to sent box only after successful sending initiation
+                ContentValues sentValues = new ContentValues();
+                sentValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
+                int updatedRows = context.getContentResolver().update(messageUri, sentValues, null, null);
+                if (updatedRows > 0) {
+                    Log.d(TAG, "MMS message moved to sent box after successful send initiation");
+                }
             } else {
-                Log.w(TAG, "Failed to move MMS message from outbox to sent");
+                Log.e(TAG, "Failed to initiate MMS sending");
+                
+                // Move to failed/draft box if sending failed
+                ContentValues failedValues = new ContentValues();
+                failedValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_FAILED);
+                context.getContentResolver().update(messageUri, failedValues, null, null);
+                
+                // Broadcast message sent to refresh UI even if failed (to show error state)
+                broadcastMessageSent();
+                return false;
             }
-            
-            // Trigger system MMS sending by notifying the MMS service
-            // This is the correct approach for content provider stored MMS
-            Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
-            intent.putExtra("content_uri", messageUri.toString());
-            context.sendBroadcast(intent);
-            
-            // Alternative: Use SmsManager for direct sending if needed
-            // Note: SmsManager.sendMultimediaMessage expects a PDU file URI, not content provider URI
-            // For now, rely on the content provider approach which is more standard
-
-            // Store in sent messages - no longer needed since we moved the original message
-            // storeSentMmsMessage(address, body, attachments);
 
             // Broadcast message sent to refresh UI
             broadcastMessageSent();

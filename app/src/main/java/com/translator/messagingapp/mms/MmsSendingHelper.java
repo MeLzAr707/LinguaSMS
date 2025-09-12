@@ -34,6 +34,12 @@ public class MmsSendingHelper {
         try {
             Log.d(TAG, "Sending MMS using compatibility manager for Android " + Build.VERSION.SDK_INT);
             
+            // First validate MMS configuration
+            if (!com.translator.messagingapp.mms.http.HttpUtils.validateMmsConfiguration(context)) {
+                Log.e(TAG, "MMS configuration validation failed - cannot send MMS");
+                return false;
+            }
+            
             // Use the compatibility manager to get the best strategy
             MmsCompatibilityManager.MmsSendingStrategy strategy = 
                     MmsCompatibilityManager.getSendingStrategy(context);
