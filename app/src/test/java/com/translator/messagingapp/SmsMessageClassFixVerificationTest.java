@@ -45,7 +45,7 @@ public class SmsMessageClassFixVerificationTest {
         String messageBody = "Another test message";
         long timestamp = System.currentTimeMillis();
         
-        com.translator.messagingapp.SmsMessage smsMessage = new com.translator.messagingapp.SmsMessage(
+        com.translator.messagingapp.sms.SmsMessage smsMessage = new com.translator.messagingapp.sms.SmsMessage(
             senderAddress, messageBody, new Date(timestamp)
         );
         smsMessage.setIncoming(true);

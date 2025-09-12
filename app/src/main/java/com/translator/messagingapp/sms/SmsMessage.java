@@ -1,4 +1,4 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.sms;
 
 import java.util.Date;
 

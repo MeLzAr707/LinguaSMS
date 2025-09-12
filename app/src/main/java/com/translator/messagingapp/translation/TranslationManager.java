@@ -1,8 +1,10 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.translation;
 
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.translator.messagingapp.sms.SmsMessage;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;

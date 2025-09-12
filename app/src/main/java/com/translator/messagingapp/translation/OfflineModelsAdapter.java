@@ -1,4 +1,4 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.translation;
 
 import android.view.LayoutInflater;
 import android.view.View;

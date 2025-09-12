@@ -59,13 +59,13 @@ public class AutoTranslateFixTest {
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         verify(mockTranslationManager).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             callbackCaptor.capture()
         );
         
         // Simulate successful auto-translation
-        com.translator.messagingapp.SmsMessage translatedMessage = 
-            new com.translator.messagingapp.SmsMessage("1234567890", "Hello world", new Date());
+        com.translator.messagingapp.sms.SmsMessage translatedMessage = 
+            new com.translator.messagingapp.sms.SmsMessage("1234567890", "Hello world", new Date());
         translatedMessage.setTranslatedText("Hola mundo");
         translatedMessage.setTranslatedLanguage("es");
         translatedMessage.setOriginalLanguage("en");
@@ -94,7 +94,7 @@ public class AutoTranslateFixTest {
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         verify(mockTranslationManager).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             callbackCaptor.capture()
         );
         
@@ -126,13 +126,13 @@ public class AutoTranslateFixTest {
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         verify(mockTranslationManager).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             callbackCaptor.capture()
         );
         
         // Simulate successful translation with null cache
-        com.translator.messagingapp.SmsMessage translatedMessage = 
-            new com.translator.messagingapp.SmsMessage("1234567890", "Hello world", new Date());
+        com.translator.messagingapp.sms.SmsMessage translatedMessage = 
+            new com.translator.messagingapp.sms.SmsMessage("1234567890", "Hello world", new Date());
         translatedMessage.setTranslatedText("Hola mundo");
         translatedMessage.setTranslatedLanguage("es");
         

@@ -69,8 +69,8 @@ public class IncomingMessageAutoTranslationTest {
         messageService.handleIncomingSms(smsIntent);
         
         // Then: Translation manager should be called with the SMS message
-        ArgumentCaptor<com.translator.messagingapp.SmsMessage> messageCaptor = 
-            ArgumentCaptor.forClass(com.translator.messagingapp.SmsMessage.class);
+        ArgumentCaptor<com.translator.messagingapp.sms.SmsMessage> messageCaptor = 
+            ArgumentCaptor.forClass(com.translator.messagingapp.sms.SmsMessage.class);
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         
@@ -80,7 +80,7 @@ public class IncomingMessageAutoTranslationTest {
         );
         
         // Verify the SMS message has correct properties
-        com.translator.messagingapp.SmsMessage capturedMessage = messageCaptor.getValue();
+        com.translator.messagingapp.sms.SmsMessage capturedMessage = messageCaptor.getValue();
         assertNotNull("Captured message should not be null", capturedMessage);
         assertEquals("Message address should match", "1234567890", capturedMessage.getAddress());
         assertEquals("Message text should match", "Hello world", capturedMessage.getOriginalText());
@@ -101,7 +101,7 @@ public class IncomingMessageAutoTranslationTest {
         
         // Then: Translation manager should still be called (it will check auto-translate internally)
         verify(mockTranslationManager, times(1)).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             any(TranslationManager.SmsTranslationCallback.class)
         );
     }
@@ -121,13 +121,13 @@ public class IncomingMessageAutoTranslationTest {
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         verify(mockTranslationManager).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             callbackCaptor.capture()
         );
         
         // Simulate successful translation
-        com.translator.messagingapp.SmsMessage translatedMessage = 
-            new com.translator.messagingapp.SmsMessage("1234567890", "Hello world", new Date());
+        com.translator.messagingapp.sms.SmsMessage translatedMessage = 
+            new com.translator.messagingapp.sms.SmsMessage("1234567890", "Hello world", new Date());
         translatedMessage.setTranslatedText("Hola mundo");
         translatedMessage.setTranslatedLanguage("es");
         translatedMessage.setOriginalLanguage("en");
@@ -160,7 +160,7 @@ public class IncomingMessageAutoTranslationTest {
         ArgumentCaptor<TranslationManager.SmsTranslationCallback> callbackCaptor = 
             ArgumentCaptor.forClass(TranslationManager.SmsTranslationCallback.class);
         verify(mockTranslationManager).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             callbackCaptor.capture()
         );
         
@@ -192,7 +192,7 @@ public class IncomingMessageAutoTranslationTest {
         
         // Then: Should handle gracefully without calling translation manager
         verify(mockTranslationManager, never()).translateSmsMessage(
-            any(com.translator.messagingapp.SmsMessage.class), 
+            any(com.translator.messagingapp.sms.SmsMessage.class), 
             any(TranslationManager.SmsTranslationCallback.class)
         );
     }

@@ -69,7 +69,7 @@ public class SmsMessageClassConfusionTest {
         // Note: We can't easily test MessageService.createCustomSmsMessage() without a Context
         // But we can test the pattern it uses
         
-        com.translator.messagingapp.SmsMessage smsMessage = new com.translator.messagingapp.SmsMessage(
+        com.translator.messagingapp.sms.SmsMessage smsMessage = new com.translator.messagingapp.sms.SmsMessage(
             senderAddress, messageBody, new Date(timestamp)
         );
         smsMessage.setIncoming(true);

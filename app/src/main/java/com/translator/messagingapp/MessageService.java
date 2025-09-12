@@ -15,6 +15,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import com.translator.messagingapp.mms.MmsMessage;
 import java.io.OutputStream;
 
 import java.io.ByteArrayOutputStream;
@@ -1840,8 +1841,8 @@ public class MessageService {
                     if (translationManager != null) {
                         try {
                             // Create SmsMessage object for translation
-                            com.translator.messagingapp.SmsMessage smsMessage = 
-                                new com.translator.messagingapp.SmsMessage(senderAddress, fullMessageBody.toString(), new java.util.Date(messageTimestamp));
+                            com.translator.messagingapp.sms.SmsMessage smsMessage = 
+                                new com.translator.messagingapp.sms.SmsMessage(senderAddress, fullMessageBody.toString(), new java.util.Date(messageTimestamp));
                             smsMessage.setIncoming(true);
                             
                             // Attempt auto-translation
@@ -1849,7 +1850,7 @@ public class MessageService {
                             String finalSenderAddress = senderAddress;
                             translationManager.translateSmsMessage(smsMessage, new TranslationManager.SmsTranslationCallback() {
                                 @Override
-                                public void onTranslationComplete(boolean success, com.translator.messagingapp.SmsMessage translatedMessage) {
+                                public void onTranslationComplete(boolean success, com.translator.messagingapp.sms.SmsMessage translatedMessage) {
                                     if (success && translatedMessage != null) {
                                         Log.d(TAG, "Auto-translation completed for message from " + finalSenderAddress);
                                         

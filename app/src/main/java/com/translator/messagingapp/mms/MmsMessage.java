@@ -1,4 +1,4 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.mms;
 
 import android.net.Uri;
 import android.provider.Telephony;

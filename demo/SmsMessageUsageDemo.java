@@ -27,8 +27,8 @@ public class SmsMessageUsageDemo {
         try {
             // This was the exact pattern causing the error:
             // "constructor SmsMessage in class SmsMessage cannot be applied to given types"
-            com.translator.messagingapp.SmsMessage smsMessage = 
-                new com.translator.messagingapp.SmsMessage(senderAddress, messageBody, new Date(timestamp));
+            com.translator.messagingapp.sms.SmsMessage smsMessage = 
+                new com.translator.messagingapp.sms.SmsMessage(senderAddress, messageBody, new Date(timestamp));
             
             // Pattern 2: setIncoming method that was missing
             smsMessage.setIncoming(true);
@@ -56,8 +56,8 @@ public class SmsMessageUsageDemo {
         System.out.println("\n=== Demonstrating Fixed Implementation ===");
         
         // Custom SmsMessage can now be used without conflicts
-        com.translator.messagingapp.SmsMessage customSms = 
-            new com.translator.messagingapp.SmsMessage("+1111111111", "Custom message");
+        com.translator.messagingapp.sms.SmsMessage customSms = 
+            new com.translator.messagingapp.sms.SmsMessage("+1111111111", "Custom message");
         customSms.setIncoming(false);
         customSms.setRead(true);
         

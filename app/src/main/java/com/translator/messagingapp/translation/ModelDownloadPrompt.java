@@ -1,4 +1,4 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.translation;
 
 import android.app.Activity;
 import android.app.ProgressDialog;

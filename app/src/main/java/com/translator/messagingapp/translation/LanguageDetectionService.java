@@ -1,4 +1,4 @@
-package com.translator.messagingapp;
+package com.translator.messagingapp.translation;
 
 import android.content.Context;
 import android.text.TextUtils;
