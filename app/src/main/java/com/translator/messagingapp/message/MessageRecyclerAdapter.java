@@ -1,5 +1,6 @@
 package com.translator.messagingapp.message;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.message.*;
 
 import com.translator.messagingapp.contact.*;
@@ -27,6 +28,7 @@ import com.bumptech.glide.Glide;
 import com.translator.messagingapp.mms.MmsMessage;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
+import com.translator.messagingapp.util.SearchHighlightUtils;
 
 import java.util.HashMap;
 import java.util.List;

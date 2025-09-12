@@ -3,6 +3,7 @@ package com.translator.messagingapp.message;
 import com.translator.messagingapp.system.*;
 
 import com.translator.messagingapp.message.*;
+import com.translator.messagingapp.ui.MainActivity;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

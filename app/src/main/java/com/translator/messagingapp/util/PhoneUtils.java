@@ -1,5 +1,6 @@
 package com.translator.messagingapp.util;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.message.*;
 
 import android.app.Activity;

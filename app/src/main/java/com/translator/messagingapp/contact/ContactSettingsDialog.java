@@ -1,5 +1,6 @@
 package com.translator.messagingapp.contact;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.message.*;
 
 import com.translator.messagingapp.contact.*;

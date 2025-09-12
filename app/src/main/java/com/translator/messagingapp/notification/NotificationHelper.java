@@ -1,5 +1,6 @@
 package com.translator.messagingapp.notification;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.notification.*;
 
 import com.translator.messagingapp.message.*;
@@ -7,6 +8,7 @@ import com.translator.messagingapp.message.*;
 import com.translator.messagingapp.contact.*;
 
 import com.translator.messagingapp.conversation.*;
+import com.translator.messagingapp.ui.MainActivity;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;

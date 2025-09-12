@@ -1,5 +1,6 @@
 package com.translator.messagingapp.conversation;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.ui.*;
 
 import com.translator.messagingapp.system.*;
@@ -15,6 +16,7 @@ import com.translator.messagingapp.contact.*;
 import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
+import com.translator.messagingapp.util.EmojiPickerDialog;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;

@@ -15,6 +15,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.translator.messagingapp.R;
+
 import java.util.List;
 
 /**

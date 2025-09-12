@@ -1,5 +1,6 @@
 package com.translator.messagingapp.ui;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.ui.*;
 
 import com.translator.messagingapp.system.*;
@@ -13,6 +14,8 @@ import com.translator.messagingapp.contact.*;
 import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
+
+import com.translator.messagingapp.util.*;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;

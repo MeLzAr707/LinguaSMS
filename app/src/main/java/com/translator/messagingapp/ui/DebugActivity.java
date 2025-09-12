@@ -1,5 +1,6 @@
 package com.translator.messagingapp.ui;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.ui.*;
 
 import com.translator.messagingapp.notification.*;

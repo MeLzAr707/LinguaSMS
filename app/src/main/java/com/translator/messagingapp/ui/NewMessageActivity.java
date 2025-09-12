@@ -1,5 +1,6 @@
 package com.translator.messagingapp.ui;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.ui.*;
 
 import com.translator.messagingapp.system.*;
@@ -46,6 +47,8 @@ import android.content.res.ColorStateList;
 import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.translator.messagingapp.util.PhoneUtils;
+
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.content.BroadcastReceiver;
 

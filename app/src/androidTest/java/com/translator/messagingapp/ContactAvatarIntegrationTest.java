@@ -10,6 +10,8 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.*;
 
+import com.translator.messagingapp.contact.ContactUtils;
+
 /**
  * Integration test for ContactAvatarHelper with real Android context.
  */

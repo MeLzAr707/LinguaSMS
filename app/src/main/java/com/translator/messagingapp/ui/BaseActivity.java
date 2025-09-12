@@ -1,10 +1,12 @@
 package com.translator.messagingapp.ui;
 
+import com.translator.messagingapp.R;
 import com.translator.messagingapp.ui.*;
 
 import com.translator.messagingapp.message.*;
 
 import com.translator.messagingapp.contact.*;
+import com.translator.messagingapp.util.OpenGLCompatibilityHelper;
 
 import android.os.Bundle;
 import android.util.Log;

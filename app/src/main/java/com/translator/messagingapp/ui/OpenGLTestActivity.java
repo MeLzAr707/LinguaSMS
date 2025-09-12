@@ -1,6 +1,7 @@
 package com.translator.messagingapp.ui;
 
 import com.translator.messagingapp.ui.*;
+import com.translator.messagingapp.util.OpenGLCompatibilityHelper;
 
 import android.app.Activity;
 import android.content.Context;
