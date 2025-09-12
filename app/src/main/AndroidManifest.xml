@@ -41,7 +41,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
-        android:name=".TranslatorApp"
+        android:name=".system.TranslatorApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -56,7 +56,7 @@
 
         <!-- Activities -->
         <activity
-            android:name=".SplashActivity"
+            android:name=".ui.SplashActivity"
             android:exported="true"
             android:theme="@style/AppTheme_NoActionBar">
             <intent-filter>
@@ -66,7 +66,7 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
             android:theme="@style/AppTheme_NoActionBar">
             <!-- Added SMS/MMS intent filters -->
@@ -88,48 +88,48 @@
         </activity>
 
         <activity
-            android:name=".ConversationActivity"
+            android:name=".conversation.ConversationActivity"
             android:exported="true"
             android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
-            android:name=".NewMessageActivity"
+            android:name=".ui.NewMessageActivity"
             android:exported="true"
             android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
-            android:name=".SettingsActivity"
+            android:name=".ui.SettingsActivity"
             android:exported="false"
             android:theme="@style/AppTheme" />
 
         <activity
-            android:name=".ColorWheelActivity"
+            android:name=".ui.ColorWheelActivity"
             android:exported="false"
             android:theme="@style/AppTheme"
-            android:parentActivityName=".SettingsActivity">
+            android:parentActivityName=".ui.SettingsActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".SettingsActivity" />
+                android:value=".ui.SettingsActivity" />
         </activity>
 
         <activity
-            android:name=".SearchActivity"
+            android:name=".ui.SearchActivity"
             android:exported="false"
             android:theme="@style/AppTheme_NoActionBar" />
 
         <activity
-            android:name=".OfflineModelsActivity"
+            android:name=".translation.OfflineModelsActivity"
             android:exported="false"
             android:theme="@style/AppTheme"
-            android:parentActivityName=".SettingsActivity">
+            android:parentActivityName=".ui.SettingsActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".SettingsActivity" />
+                android:value=".ui.SettingsActivity" />
         </activity>
 
         <!-- Receivers -->
         <receiver
-            android:name=".SmsReceiver"
+            android:name=".sms.SmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
             <intent-filter>
@@ -139,7 +139,7 @@
         </receiver>
 
         <receiver
-            android:name=".MmsReceiver"
+            android:name=".mms.MmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_WAP_PUSH">
             <intent-filter>
@@ -150,7 +150,7 @@
 
         <!-- Added boot receiver for SMS/MMS handling after device restart -->
         <receiver
-            android:name=".BootReceiver"
+            android:name=".system.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -159,7 +159,7 @@
 
         <!-- Receiver for periodic message checks during deep sleep -->
         <receiver
-            android:name=".MessageCheckReceiver"
+            android:name=".message.MessageCheckReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.translator.messagingapp.CHECK_MESSAGES" />
@@ -168,7 +168,7 @@
 
         <!-- MMS Send Receiver -->
         <receiver
-            android:name=".MmsSendReceiver"
+            android:name=".mms.MmsSendReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MMS_SEND_REQUEST" />
@@ -179,7 +179,7 @@
 
         <!-- Services -->
         <service
-            android:name=".HeadlessSmsSendService"
+            android:name=".system.HeadlessSmsSendService"
             android:exported="true"
             android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
             <intent-filter>
@@ -194,7 +194,7 @@
 
         <!-- Foreground service for message monitoring during deep sleep -->
         <service
-            android:name=".MessageMonitoringService"
+            android:name=".message.MessageMonitoringService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
@@ -205,7 +205,7 @@
 
         <!-- Content Providers -->
         <provider
-            android:name=".SmsProvider"
+            android:name=".sms.SmsProvider"
             android:authorities="com.translator.messagingapp.provider"
             android:exported="true"
             android:readPermission="android.permission.READ_SMS"
