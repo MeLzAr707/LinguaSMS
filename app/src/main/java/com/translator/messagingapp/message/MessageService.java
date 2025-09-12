@@ -961,6 +961,10 @@ public class MessageService {
                         message.setRead(read);
                         message.setThreadId(Long.parseLong(threadId));
 
+                        // Log MMS message details for debugging
+                        Log.d(TAG, "Loading MMS message ID " + id + " in thread " + threadId + 
+                              " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
+
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
 
@@ -1084,6 +1088,10 @@ public class MessageService {
                         message.setRead(read);
                         message.setThreadId(Long.parseLong(threadId));
 
+                        // Log MMS message details for debugging
+                        Log.d(TAG, "Loading paginated MMS message ID " + id + " in thread " + threadId + 
+                              " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
+
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
 
@@ -1187,6 +1195,14 @@ public class MessageService {
                 return false;
             }
 
+            // Get or create thread ID for this address to ensure proper conversation linking
+            String threadId = getOrCreateThreadId(address);
+            if (threadId == null) {
+                Log.e(TAG, "Failed to get or create thread ID for address: " + address);
+                return false;
+            }
+            Log.d(TAG, "Using thread ID " + threadId + " for MMS to " + address);
+
             // Create a new MMS message
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
@@ -1196,6 +1212,7 @@ public class MessageService {
             values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000);
             values.put(Telephony.Mms.READ, 1);
             values.put(Telephony.Mms.SEEN, 1);
+            values.put(Telephony.Mms.THREAD_ID, threadId); // Explicitly set thread ID
 
             // Insert the message
             Uri messageUri = context.getContentResolver().insert(Uri.parse("content://mms"), values);
@@ -1316,6 +1333,17 @@ public class MessageService {
             // The message is already in MESSAGE_BOX_OUTBOX, so the system will pick it up
             Log.d(TAG, "MMS message stored in outbox with URI: " + messageUri);
             
+            // Move message to sent box immediately to show in UI
+            // This prevents the message from being stuck in outbox and not visible
+            ContentValues sentValues = new ContentValues();
+            sentValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
+            int updatedRows = context.getContentResolver().update(messageUri, sentValues, null, null);
+            if (updatedRows > 0) {
+                Log.d(TAG, "MMS message moved from outbox to sent for UI display");
+            } else {
+                Log.w(TAG, "Failed to move MMS message from outbox to sent");
+            }
+            
             // Trigger system MMS sending by notifying the MMS service
             // This is the correct approach for content provider stored MMS
             Intent intent = new Intent("android.provider.Telephony.MMS_SENT");
@@ -1326,8 +1354,8 @@ public class MessageService {
             // Note: SmsManager.sendMultimediaMessage expects a PDU file URI, not content provider URI
             // For now, rely on the content provider approach which is more standard
 
-            // Store in sent messages
-            storeSentMmsMessage(address, body, attachments);
+            // Store in sent messages - no longer needed since we moved the original message
+            // storeSentMmsMessage(address, body, attachments);
 
             // Broadcast message sent to refresh UI
             broadcastMessageSent();
@@ -1346,6 +1374,9 @@ public class MessageService {
      */
     private void storeSentMmsMessage(String address, String body, List<Uri> attachments) {
         try {
+            // Get the thread ID for proper conversation linking
+            String threadId = getOrCreateThreadId(address);
+            
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
             values.put(Telephony.Mms.MESSAGE_TYPE, MESSAGE_TYPE_SEND_REQ);
@@ -1353,9 +1384,38 @@ public class MessageService {
             values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000);
             values.put(Telephony.Mms.READ, 1);
             values.put(Telephony.Mms.SEEN, 1);
+            if (threadId != null) {
+                values.put(Telephony.Mms.THREAD_ID, threadId); // Ensure sent message links to conversation
+                Log.d(TAG, "Storing sent MMS with thread ID: " + threadId);
+            }
 
             Uri sentUri = context.getContentResolver().insert(Uri.parse("content://mms/sent"), values);
             if (sentUri != null) {
+                String messageId = sentUri.getLastPathSegment();
+                
+                // Add recipient address to sent message
+                if (messageId != null) {
+                    ContentValues addrValues = new ContentValues();
+                    addrValues.put(Telephony.Mms.Addr.ADDRESS, address);
+                    addrValues.put(Telephony.Mms.Addr.TYPE, TYPE_TO);
+                    addrValues.put(Telephony.Mms.Addr.CHARSET, "106");
+                    
+                    Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
+                    context.getContentResolver().insert(addrUri, addrValues);
+                    
+                    // Add text part if present
+                    if (!TextUtils.isEmpty(body)) {
+                        ContentValues textValues = new ContentValues();
+                        textValues.put(Telephony.Mms.Part.MSG_ID, messageId);
+                        textValues.put(Telephony.Mms.Part.CONTENT_TYPE, "text/plain");
+                        textValues.put(Telephony.Mms.Part.CHARSET, "106");
+                        textValues.put(Telephony.Mms.Part.TEXT, body);
+                        
+                        Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
+                        context.getContentResolver().insert(partUri, textValues);
+                    }
+                }
+                
                 Log.d(TAG, "Sent MMS message stored: " + sentUri);
             }
         } catch (Exception e) {
@@ -1808,6 +1868,60 @@ public class MessageService {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error getting thread ID for address: " + address, e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets or creates a thread ID for a specific address.
+     * This ensures that MMS messages are properly linked to conversation threads.
+     *
+     * @param address The address to get/create thread ID for
+     * @return The thread ID, or null if creation failed
+     */
+    private String getOrCreateThreadId(String address) {
+        if (address == null || address.isEmpty()) {
+            Log.e(TAG, "Cannot get thread ID for null/empty address");
+            return null;
+        }
+
+        // First try to get existing thread ID from SMS
+        String threadId = getThreadIdForAddress(address);
+        if (threadId != null) {
+            Log.d(TAG, "Found existing thread ID " + threadId + " for address " + address);
+            return threadId;
+        }
+
+        // Try to get from MMS
+        try {
+            Uri mmsUri = Uri.parse("content://mms");
+            String[] projection = new String[] { "thread_id" };
+            String selection = "thread_id IN (SELECT DISTINCT thread_id FROM pdu WHERE thread_id IN " +
+                    "(SELECT DISTINCT thread_id FROM addr WHERE address = ?))";
+            String[] selectionArgs = new String[] { address };
+
+            try (Cursor cursor = context.getContentResolver().query(mmsUri, projection, selection, selectionArgs, "thread_id DESC LIMIT 1")) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    threadId = cursor.getString(0);
+                    Log.d(TAG, "Found existing MMS thread ID " + threadId + " for address " + address);
+                    return threadId;
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error querying MMS for thread ID", e);
+        }
+
+        // Create a new thread by using the system's thread ID resolver
+        try {
+            // Use Telephony.Threads.getOrCreateThreadId to get/create thread ID
+            // This is the proper way to ensure thread continuity
+            long newThreadId = Telephony.Threads.getOrCreateThreadId(context, address);
+            threadId = String.valueOf(newThreadId);
+            Log.d(TAG, "Created new thread ID " + threadId + " for address " + address);
+            return threadId;
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating thread ID for address " + address, e);
         }
 
         return null;
@@ -2289,6 +2403,24 @@ public class MessageService {
     public void cleanup() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+        }
+    }
+
+    /**
+     * Gets a human-readable name for MMS message box type (for debugging).
+     */
+    private String getMmsBoxTypeName(int type) {
+        switch (type) {
+            case Telephony.Mms.MESSAGE_BOX_INBOX:
+                return "INBOX";
+            case Telephony.Mms.MESSAGE_BOX_SENT:
+                return "SENT";
+            case Telephony.Mms.MESSAGE_BOX_OUTBOX:
+                return "OUTBOX";
+            case Telephony.Mms.MESSAGE_BOX_DRAFTS:
+                return "DRAFTS";
+            default:
+                return "UNKNOWN(" + type + ")";
         }
     }
 
