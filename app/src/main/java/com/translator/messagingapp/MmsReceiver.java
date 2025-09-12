@@ -9,6 +9,7 @@ import android.util.Log;
 import com.translator.messagingapp.mms.NotificationTransaction;
 import com.translator.messagingapp.mms.Transaction;
 import com.translator.messagingapp.mms.TransactionService;
+import com.translator.messagingapp.mms.compat.MmsCompatibilityManager;
 
 /**
  * Broadcast receiver for handling incoming MMS messages.
@@ -49,6 +50,12 @@ public class MmsReceiver extends BroadcastReceiver {
      */
     private boolean handleWithTransactionArchitecture(Context context, Intent intent) {
         try {
+            // Get the appropriate receiving strategy for this Android version
+            MmsCompatibilityManager.MmsReceivingStrategy strategy = 
+                    MmsCompatibilityManager.getReceivingStrategy(context);
+            
+            Log.d(TAG, "Using receiving strategy: " + strategy.getStrategyName());
+            
             // Extract MMS data from intent
             byte[] pushData = intent.getByteArrayExtra("data");
             if (pushData == null) {
@@ -56,10 +63,33 @@ public class MmsReceiver extends BroadcastReceiver {
                 return false;
             }
             
-            Log.d(TAG, "Processing MMS with transaction architecture");
+            // Use the strategy to handle the notification
+            if (strategy.handleMmsNotification(pushData)) {
+                Log.d(TAG, "MMS notification handled by strategy: " + strategy.getStrategyName());
+                return true;
+            }
             
-            // For now, create a placeholder URI for the notification
-            // In a real implementation, this would parse the PDU and store the notification
+            // Fallback to direct transaction handling
+            return handleWithDirectTransactionArchitecture(context, pushData);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in transaction architecture handling", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handles MMS using direct transaction architecture (fallback).
+     *
+     * @param context The application context
+     * @param pushData The MMS push data
+     * @return True if handled successfully
+     */
+    private boolean handleWithDirectTransactionArchitecture(Context context, byte[] pushData) {
+        try {
+            Log.d(TAG, "Processing MMS with direct transaction architecture");
+            
+            // Create a placeholder URI for the notification
             Uri notificationUri = createNotificationEntry(context, pushData);
             if (notificationUri == null) {
                 Log.e(TAG, "Failed to create notification entry");
@@ -82,7 +112,7 @@ public class MmsReceiver extends BroadcastReceiver {
             return true;
             
         } catch (Exception e) {
-            Log.e(TAG, "Error in transaction architecture handling", e);
+            Log.e(TAG, "Error in direct transaction handling", e);
             return false;
         }
     }
