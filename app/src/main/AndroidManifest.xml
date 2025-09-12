@@ -198,6 +198,11 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- MMS Transaction Service -->
+        <service
+            android:name=".mms.TransactionService"
+            android:exported="false" />
+
         <!-- Content Providers -->
         <provider
             android:name=".SmsProvider"
