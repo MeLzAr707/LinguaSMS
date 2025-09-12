@@ -1,5 +1,11 @@
 package com.translator.messagingapp.translation;
 
+import com.translator.messagingapp.ui.*;
+
+import com.translator.messagingapp.message.*;
+
+import com.translator.messagingapp.translation.*;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;

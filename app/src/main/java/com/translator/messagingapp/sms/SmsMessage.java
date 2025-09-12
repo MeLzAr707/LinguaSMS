@@ -1,5 +1,9 @@
 package com.translator.messagingapp.sms;
 
+import com.translator.messagingapp.sms.*;
+
+import com.translator.messagingapp.message.*;
+
 import java.util.Date;
 
 /**

@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms;
 
+import com.translator.messagingapp.message.*;
+
 import android.app.Service;
 import android.content.Intent;
 import android.net.Uri;

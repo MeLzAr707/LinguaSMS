@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms.compat;
 
+import com.translator.messagingapp.message.*;
+
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;

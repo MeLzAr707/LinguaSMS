@@ -1,5 +1,9 @@
 package com.translator.messagingapp.translation;
 
+import com.translator.messagingapp.message.*;
+
+import com.translator.messagingapp.translation.*;
+
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;

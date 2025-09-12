@@ -1,5 +1,15 @@
 package com.translator.messagingapp.sms;
 
+import com.translator.messagingapp.system.*;
+
+import com.translator.messagingapp.sms.*;
+
+import com.translator.messagingapp.message.*;
+
+import com.translator.messagingapp.conversation.*;
+
+import com.translator.messagingapp.translation.*;
+
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;

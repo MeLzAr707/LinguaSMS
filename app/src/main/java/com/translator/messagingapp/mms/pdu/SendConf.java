@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms.pdu;
 
+import com.translator.messagingapp.message.*;
+
 /**
  * Represents an MMS Send Confirmation PDU.
  */

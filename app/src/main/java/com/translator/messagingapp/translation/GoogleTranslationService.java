@@ -1,5 +1,9 @@
 package com.translator.messagingapp.translation;
 
+import com.translator.messagingapp.message.*;
+
+import com.translator.messagingapp.translation.*;
+
 import android.util.Log;
 
 import org.json.JSONArray;

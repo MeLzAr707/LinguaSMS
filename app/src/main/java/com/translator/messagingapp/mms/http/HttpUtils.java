@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms.http;
 
+import com.translator.messagingapp.message.*;
+
 import android.content.Context;
 import android.util.Log;
 

@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms.pdu;
 
+import com.translator.messagingapp.message.*;
+
 /**
  * Represents an MMS Retrieve Confirmation PDU.
  * Used when downloading MMS content from the MMSC.

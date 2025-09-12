@@ -1,5 +1,7 @@
 package com.translator.messagingapp.mms.pdu;
 
+import com.translator.messagingapp.message.*;
+
 /**
  * Defines constants for MMS PDU headers.
  */
