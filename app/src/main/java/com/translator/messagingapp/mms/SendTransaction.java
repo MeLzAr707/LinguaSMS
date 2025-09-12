@@ -7,9 +7,14 @@ import android.provider.Telephony;
 import android.util.Log;
 
 import com.translator.messagingapp.mms.pdu.EncodedStringValue;
+import com.translator.messagingapp.mms.pdu.GenericPdu;
+import com.translator.messagingapp.mms.pdu.PduComposer;
 import com.translator.messagingapp.mms.pdu.PduHeaders;
+import com.translator.messagingapp.mms.pdu.PduParser;
+import com.translator.messagingapp.mms.pdu.PduPersister;
 import com.translator.messagingapp.mms.pdu.SendConf;
 import com.translator.messagingapp.mms.pdu.SendReq;
+import com.translator.messagingapp.mms.http.HttpUtils;
 
 /**
  * Transaction for sending MMS messages.
@@ -114,11 +119,21 @@ public class SendTransaction extends Transaction implements Runnable {
      */
     private SendReq loadSendRequest() {
         try {
-            // For now, create a basic send request
-            // In a real implementation, this would use PduPersister to load from content provider
-            SendReq sendReq = new SendReq();
-            sendReq.setTransactionId(generateTransactionId());
-            return sendReq;
+            // Use PduPersister to load from content provider
+            PduPersister persister = PduPersister.getPduPersister(mContext);
+            GenericPdu pdu = persister.load(mUri);
+            
+            if (pdu instanceof SendReq) {
+                return (SendReq) pdu;
+            } else if (pdu == null) {
+                // Create a basic send request if none exists
+                SendReq sendReq = new SendReq();
+                sendReq.setTransactionId(generateTransactionId());
+                return sendReq;
+            } else {
+                Log.e(TAG, "Loaded PDU is not a SendReq: " + pdu.getClass().getSimpleName());
+                return null;
+            }
         } catch (Exception e) {
             Log.e(TAG, "Failed to load send request", e);
             return null;
@@ -154,9 +169,9 @@ public class SendTransaction extends Transaction implements Runnable {
      */
     private byte[] createPduData(SendReq sendReq) {
         try {
-            // This would use PduComposer in a real implementation
-            // For now, return a basic PDU structure
-            return new byte[]{0x00}; // Placeholder
+            // Use PduComposer to create binary PDU data
+            PduComposer composer = new PduComposer(mContext, sendReq);
+            return composer.make();
         } catch (Exception e) {
             Log.e(TAG, "Failed to create PDU data", e);
             return null;
@@ -171,9 +186,20 @@ public class SendTransaction extends Transaction implements Runnable {
      */
     private byte[] sendPdu(byte[] pduData) {
         try {
-            // This would use HttpUtils in a real implementation
-            // For now, simulate a successful response
-            return new byte[]{0x01}; // Placeholder
+            // Get MMSC URL and send PDU
+            String mmscUrl = HttpUtils.getMmscUrl(mContext);
+            if (mmscUrl == null) {
+                Log.e(TAG, "No MMSC URL available");
+                return null;
+            }
+            
+            return HttpUtils.httpConnection(
+                mContext, 
+                mToken, 
+                mmscUrl, 
+                pduData, 
+                HttpUtils.CONTENT_TYPE_MMS
+            );
         } catch (Exception e) {
             Log.e(TAG, "Failed to send PDU", e);
             return null;
@@ -188,10 +214,16 @@ public class SendTransaction extends Transaction implements Runnable {
      */
     private SendConf parseResponse(byte[] response) {
         try {
-            // This would use PduParser in a real implementation
-            SendConf sendConf = new SendConf();
-            sendConf.setResponseStatus(PduHeaders.RESPONSE_STATUS_OK);
-            return sendConf;
+            // Use PduParser to parse the response
+            PduParser parser = new PduParser(response);
+            GenericPdu pdu = parser.parse();
+            
+            if (pdu instanceof SendConf) {
+                return (SendConf) pdu;
+            } else {
+                Log.e(TAG, "Response is not a SendConf: " + (pdu != null ? pdu.getClass().getSimpleName() : "null"));
+                return null;
+            }
         } catch (Exception e) {
             Log.e(TAG, "Failed to parse response", e);
             return null;
@@ -221,9 +253,9 @@ public class SendTransaction extends Transaction implements Runnable {
      */
     private Uri moveToSent() {
         try {
-            // This would use PduPersister.move() in a real implementation
-            // For now, just return the original URI
-            return mUri;
+            // Use PduPersister to move the message
+            PduPersister persister = PduPersister.getPduPersister(mContext);
+            return persister.move(mUri, Uri.parse("content://mms/sent"));
         } catch (Exception e) {
             Log.e(TAG, "Failed to move message to sent", e);
             return null;

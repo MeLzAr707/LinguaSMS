@@ -4,8 +4,13 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
+import com.translator.messagingapp.mms.pdu.GenericPdu;
 import com.translator.messagingapp.mms.pdu.NotificationInd;
 import com.translator.messagingapp.mms.pdu.PduHeaders;
+import com.translator.messagingapp.mms.pdu.PduParser;
+import com.translator.messagingapp.mms.pdu.PduPersister;
+import com.translator.messagingapp.mms.pdu.RetrieveConf;
+import com.translator.messagingapp.mms.http.HttpUtils;
 
 /**
  * Transaction for handling MMS notification indications and downloading MMS content.
@@ -112,11 +117,16 @@ public class NotificationTransaction extends Transaction implements Runnable {
      */
     private NotificationInd loadNotificationInd() {
         try {
-            // This would use PduPersister to load from content provider
-            // For now, create a basic notification indication
-            NotificationInd notificationInd = new NotificationInd();
-            notificationInd.setContentLocation("http://example.com/mms/download".getBytes());
-            return notificationInd;
+            // Use PduPersister to load from content provider
+            PduPersister persister = PduPersister.getPduPersister(mContext);
+            GenericPdu pdu = persister.load(mUri);
+            
+            if (pdu instanceof NotificationInd) {
+                return (NotificationInd) pdu;
+            } else {
+                Log.e(TAG, "Loaded PDU is not a NotificationInd: " + (pdu != null ? pdu.getClass().getSimpleName() : "null"));
+                return null;
+            }
         } catch (Exception e) {
             Log.e(TAG, "Failed to load notification indication", e);
             return null;
@@ -131,10 +141,17 @@ public class NotificationTransaction extends Transaction implements Runnable {
      */
     private byte[] downloadMmsContent(String contentLocation) {
         try {
-            // This would use HttpUtils to download from MMSC
-            // For now, return placeholder data
             Log.d(TAG, "Downloading MMS content from: " + contentLocation);
-            return new byte[]{0x02}; // Placeholder
+            
+            // Use HttpUtils to download from MMSC
+            return HttpUtils.httpConnection(
+                mContext, 
+                0, // No token needed for GET
+                contentLocation, 
+                null, // No data to send for GET
+                HttpUtils.CONTENT_TYPE_MMS,
+                HttpUtils.HTTP_GET_METHOD
+            );
         } catch (Exception e) {
             Log.e(TAG, "Failed to download MMS content", e);
             return null;
@@ -149,9 +166,20 @@ public class NotificationTransaction extends Transaction implements Runnable {
      */
     private Uri storeDownloadedMms(byte[] mmsData) {
         try {
-            // This would parse the data with PduParser and store with PduPersister
-            // For now, return a placeholder URI
-            return Uri.parse("content://mms/inbox/123");
+            // Parse the downloaded data
+            PduParser parser = new PduParser(mmsData);
+            GenericPdu pdu = parser.parse();
+            
+            if (!(pdu instanceof RetrieveConf)) {
+                Log.e(TAG, "Downloaded data is not a RetrieveConf: " + (pdu != null ? pdu.getClass().getSimpleName() : "null"));
+                return null;
+            }
+            
+            // Store the retrieved MMS in inbox
+            PduPersister persister = PduPersister.getPduPersister(mContext);
+            Uri inboxUri = Uri.parse("content://mms/inbox");
+            
+            return persister.persist(pdu, inboxUri, true, false, null);
         } catch (Exception e) {
             Log.e(TAG, "Failed to store downloaded MMS", e);
             return null;
