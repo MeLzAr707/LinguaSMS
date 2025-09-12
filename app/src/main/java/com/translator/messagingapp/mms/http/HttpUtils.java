@@ -188,7 +188,9 @@ public class HttpUtils {
      */
     public static String getMmscUrl(Context context) {
         try {
-            // Try to get MMSC URL from carrier configuration
+            Log.d(TAG, "Attempting to get MMSC URL using multiple methods...");
+            
+            // Method 1: Try to get MMSC URL from carrier configuration (preferred method)
             android.telephony.CarrierConfigManager configManager = 
                 (android.telephony.CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
             
@@ -199,25 +201,35 @@ public class HttpUtils {
                     if (mmscUrl != null && !mmscUrl.isEmpty()) {
                         Log.d(TAG, "Found MMSC URL from carrier config: " + mmscUrl);
                         return mmscUrl;
+                    } else {
+                        Log.d(TAG, "CarrierConfigManager returned empty/null MMSC URL");
                     }
+                } else {
+                    Log.d(TAG, "CarrierConfigManager config is null");
                 }
+            } else {
+                Log.d(TAG, "CarrierConfigManager is not available");
             }
             
-            // Fallback: Try to read from APN settings
-            String mmscUrl = getApnMmscUrl(context);
-            if (mmscUrl != null) {
-                Log.d(TAG, "Found MMSC URL from APN settings: " + mmscUrl);
-                return mmscUrl;
-            }
-            
-            // Last resort: Try some common carrier MMSC URLs based on operator
-            mmscUrl = getCarrierMmscUrl(context);
+            // Method 2: Try carrier-specific hardcoded URLs (more reliable on modern Android)
+            String mmscUrl = getCarrierMmscUrl(context);
             if (mmscUrl != null) {
                 Log.d(TAG, "Using carrier-specific MMSC URL: " + mmscUrl);
                 return mmscUrl;
+            } else {
+                Log.d(TAG, "No carrier-specific MMSC URL found");
             }
             
-            Log.e(TAG, "No MMSC URL found for current carrier");
+            // Method 3: Try to read from APN settings (may fail due to SecurityException)
+            mmscUrl = getApnMmscUrl(context);
+            if (mmscUrl != null) {
+                Log.d(TAG, "Found MMSC URL from APN settings: " + mmscUrl);
+                return mmscUrl;
+            } else {
+                Log.d(TAG, "APN settings did not provide MMSC URL");
+            }
+            
+            Log.e(TAG, "No MMSC URL found for current carrier using any method");
             return null;
             
         } catch (Exception e) {
@@ -290,6 +302,7 @@ public class HttpUtils {
 
     /**
      * Reads MMSC URL from APN settings.
+     * Note: This may fail on modern Android versions due to restricted APN access.
      */
     private static String getApnMmscUrl(Context context) {
         String[] projection = {"mmsc"};
@@ -300,9 +313,12 @@ public class HttpUtils {
             if (cursor != null && cursor.moveToFirst()) {
                 String mmscUrl = cursor.getString(0);
                 if (mmscUrl != null && !mmscUrl.isEmpty()) {
+                    Log.d(TAG, "Successfully retrieved MMSC URL from APN settings");
                     return mmscUrl;
                 }
             }
+        } catch (SecurityException e) {
+            Log.w(TAG, "SecurityException: No permission to access APN settings. This is expected on modern Android versions.", e);
         } catch (Exception e) {
             Log.w(TAG, "Error reading APN MMSC URL", e);
         }
@@ -311,6 +327,7 @@ public class HttpUtils {
 
     /**
      * Reads MMS proxy from APN settings.
+     * Note: This may fail on modern Android versions due to restricted APN access.
      */
     private static String getApnMmsProxy(Context context) {
         String[] projection = {"mmsproxy"};
@@ -321,9 +338,12 @@ public class HttpUtils {
             if (cursor != null && cursor.moveToFirst()) {
                 String mmsProxy = cursor.getString(0);
                 if (mmsProxy != null && !mmsProxy.isEmpty()) {
+                    Log.d(TAG, "Successfully retrieved MMS proxy from APN settings");
                     return mmsProxy;
                 }
             }
+        } catch (SecurityException e) {
+            Log.w(TAG, "SecurityException: No permission to access APN settings for MMS proxy. This is expected on modern Android versions.", e);
         } catch (Exception e) {
             Log.w(TAG, "Error reading APN MMS proxy", e);
         }
@@ -332,6 +352,7 @@ public class HttpUtils {
 
     /**
      * Reads MMS proxy port from APN settings.
+     * Note: This may fail on modern Android versions due to restricted APN access.
      */
     private static int getApnMmsProxyPort(Context context) {
         String[] projection = {"mmsport"};
@@ -342,9 +363,12 @@ public class HttpUtils {
             if (cursor != null && cursor.moveToFirst()) {
                 String portStr = cursor.getString(0);
                 if (portStr != null && !portStr.isEmpty()) {
+                    Log.d(TAG, "Successfully retrieved MMS proxy port from APN settings");
                     return Integer.parseInt(portStr);
                 }
             }
+        } catch (SecurityException e) {
+            Log.w(TAG, "SecurityException: No permission to access APN settings for MMS proxy port. This is expected on modern Android versions.", e);
         } catch (Exception e) {
             Log.w(TAG, "Error reading APN MMS proxy port", e);
         }
@@ -395,6 +419,7 @@ public class HttpUtils {
 
     /**
      * Gets carrier-specific MMSC URL based on operator.
+     * Enhanced with comprehensive carrier database.
      */
     private static String getCarrierMmscUrl(Context context) {
         try {
@@ -407,27 +432,158 @@ public class HttpUtils {
                 
                 Log.d(TAG, "Operator: " + operatorName + " MCC/MNC: " + operatorMcc);
                 
-                // Common US carriers
-                if (operatorMcc != null) {
-                    if (operatorMcc.startsWith("310")) { // US carriers
-                        if (operatorName != null) {
-                            String lowerName = operatorName.toLowerCase();
-                            if (lowerName.contains("verizon")) {
-                                return "http://mms.vtext.com/servlets/mms";
-                            } else if (lowerName.contains("t-mobile") || lowerName.contains("tmobile")) {
-                                return "http://mms.msg.eng.t-mobile.com/mms/wapenc";
-                            } else if (lowerName.contains("at&t") || lowerName.contains("att")) {
-                                return "http://mmsc.mobile.att.net";
-                            } else if (lowerName.contains("sprint")) {
-                                return "http://mms.sprintpcs.com";
-                            }
+                // First, try exact MCC/MNC matching for better accuracy
+                if (operatorMcc != null && operatorMcc.length() >= 5) {
+                    String mmscUrl = getMmscUrlByMccMnc(operatorMcc);
+                    if (mmscUrl != null) {
+                        Log.d(TAG, "Found MMSC URL by MCC/MNC: " + mmscUrl);
+                        return mmscUrl;
+                    }
+                }
+                
+                // Fallback to operator name matching
+                if (operatorMcc != null && operatorName != null) {
+                    if (operatorMcc.startsWith("310") || operatorMcc.startsWith("311")) { // US carriers
+                        String mmscUrl = getUsMmscUrlByOperatorName(operatorName);
+                        if (mmscUrl != null) {
+                            Log.d(TAG, "Found US MMSC URL by operator name: " + mmscUrl);
+                            return mmscUrl;
+                        }
+                    } else if (operatorMcc.startsWith("302")) { // Canada
+                        String mmscUrl = getCanadianMmscUrl(operatorName);
+                        if (mmscUrl != null) {
+                            Log.d(TAG, "Found Canadian MMSC URL: " + mmscUrl);
+                            return mmscUrl;
                         }
                     }
-                    // Add other countries/carriers as needed
+                    // Add other countries as needed
                 }
             }
         } catch (Exception e) {
             Log.w(TAG, "Error determining carrier MMSC URL", e);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets MMSC URL by exact MCC/MNC matching.
+     */
+    private static String getMmscUrlByMccMnc(String mccMnc) {
+        // US Carriers (MCC 310-316)
+        switch (mccMnc) {
+            case "311480": // Verizon (the specific case from the error)
+                return "http://mms.vtext.com/servlets/mms";
+            case "310004": // Verizon
+            case "310005": // Verizon
+            case "310006": // Verizon
+            case "310010": // Verizon
+            case "310012": // Verizon
+            case "310013": // Verizon
+            case "311270": // Verizon
+            case "311271": // Verizon
+            case "311272": // Verizon
+            case "311273": // Verizon
+            case "311274": // Verizon
+            case "311275": // Verizon
+            case "311276": // Verizon
+            case "311277": // Verizon
+            case "311278": // Verizon
+            case "311279": // Verizon
+            case "311280": // Verizon
+            case "311281": // Verizon
+            case "311282": // Verizon
+            case "311283": // Verizon
+            case "311284": // Verizon
+            case "311285": // Verizon
+            case "311286": // Verizon
+            case "311287": // Verizon
+            case "311288": // Verizon
+            case "311289": // Verizon
+            case "311390": // Verizon
+            case "311480": // Verizon
+            case "311481": // Verizon
+            case "311482": // Verizon
+            case "311483": // Verizon
+            case "311484": // Verizon
+            case "311485": // Verizon
+            case "311486": // Verizon
+            case "311487": // Verizon
+            case "311488": // Verizon
+            case "311489": // Verizon
+                return "http://mms.vtext.com/servlets/mms";
+            
+            case "310260": // T-Mobile
+            case "310026": // T-Mobile
+            case "310160": // T-Mobile
+            case "310200": // T-Mobile
+            case "310210": // T-Mobile
+            case "310220": // T-Mobile
+            case "310230": // T-Mobile
+            case "310240": // T-Mobile
+            case "310250": // T-Mobile
+            case "310270": // T-Mobile
+            case "310310": // T-Mobile
+            case "310580": // T-Mobile
+            case "310800": // T-Mobile
+                return "http://mms.msg.eng.t-mobile.com/mms/wapenc";
+            
+            case "310150": // AT&T
+            case "310070": // AT&T
+            case "310560": // AT&T
+            case "310680": // AT&T
+            case "310170": // AT&T
+            case "310280": // AT&T
+            case "310380": // AT&T
+            case "310410": // AT&T
+                return "http://mmsc.mobile.att.net";
+            
+            case "310120": // Sprint (now part of T-Mobile)
+            case "311490": // Sprint
+            case "311870": // Sprint
+            case "311880": // Sprint
+            case "312190": // Sprint
+                return "http://mms.sprintpcs.com";
+                
+            // Add more carriers as needed
+            default:
+                return null;
+        }
+    }
+    
+    /**
+     * Gets US MMSC URL by operator name (fallback method).
+     */
+    private static String getUsMmscUrlByOperatorName(String operatorName) {
+        String lowerName = operatorName.toLowerCase();
+        if (lowerName.contains("verizon")) {
+            return "http://mms.vtext.com/servlets/mms";
+        } else if (lowerName.contains("t-mobile") || lowerName.contains("tmobile")) {
+            return "http://mms.msg.eng.t-mobile.com/mms/wapenc";
+        } else if (lowerName.contains("at&t") || lowerName.contains("att")) {
+            return "http://mmsc.mobile.att.net";
+        } else if (lowerName.contains("sprint")) {
+            return "http://mms.sprintpcs.com";
+        } else if (lowerName.contains("visible")) {
+            return "http://mms.vtext.com/servlets/mms"; // Visible uses Verizon network
+        } else if (lowerName.contains("cricket")) {
+            return "http://mmsc.mobile.att.net"; // Cricket uses AT&T network
+        } else if (lowerName.contains("metro")) {
+            return "http://mms.msg.eng.t-mobile.com/mms/wapenc"; // Metro uses T-Mobile network
+        }
+        return null;
+    }
+    
+    /**
+     * Gets Canadian MMSC URL by operator name.
+     */
+    private static String getCanadianMmscUrl(String operatorName) {
+        String lowerName = operatorName.toLowerCase();
+        if (lowerName.contains("rogers")) {
+            return "http://mms.gprs.rogers.com";
+        } else if (lowerName.contains("bell")) {
+            return "http://mms.bell.ca/mms/wapenc";
+        } else if (lowerName.contains("telus")) {
+            return "http://aliasredirect.net/proxy/mmsc";
         }
         return null;
     }
