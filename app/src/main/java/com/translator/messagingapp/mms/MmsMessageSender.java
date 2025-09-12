@@ -7,6 +7,8 @@ import android.net.Uri;
 import android.provider.Telephony;
 import android.util.Log;
 
+import com.translator.messagingapp.mms.pdu.PduHeaders;
+
 /**
  * Main entry point for sending MMS messages using the transaction-based architecture.
  * This class prepares MMS messages and initiates the sending process through TransactionService.
@@ -95,13 +97,13 @@ public class MmsMessageSender {
             values.put(Telephony.Mms.EXPIRY, expiry / 1000L);
             
             // Set priority (normal)
-            values.put(Telephony.Mms.PRIORITY, Telephony.Mms.PRIORITY_NORMAL);
+            values.put(Telephony.Mms.PRIORITY, PduHeaders.PRIORITY_NORMAL);
             
             // Set delivery report (off by default)
-            values.put(Telephony.Mms.DELIVERY_REPORT, Telephony.Mms.DELIVERY_REPORT_NO);
+            values.put(Telephony.Mms.DELIVERY_REPORT, PduHeaders.VALUE_NO);
             
             // Set read report (off by default)
-            values.put(Telephony.Mms.READ_REPORT, Telephony.Mms.READ_REPORT_NO);
+            values.put(Telephony.Mms.READ_REPORT, PduHeaders.VALUE_NO);
             
             // Set message class (personal)
             values.put(Telephony.Mms.MESSAGE_CLASS, "personal");
