@@ -192,10 +192,32 @@ public class MmsCompatibilityManager {
         private boolean sendWithSmsManager(Uri messageUri) {
             try {
                 SmsManager smsManager = SmsManager.getDefault();
-                smsManager.sendMultimediaMessage(mContext, messageUri, null, null, null);
+                
+                // Create PendingIntent for send result  
+                android.content.Intent sentIntent = new android.content.Intent("com.translator.messagingapp.MMS_SENT");
+                sentIntent.putExtra("message_uri", messageUri.toString());
+                
+                android.app.PendingIntent sentPendingIntent = android.app.PendingIntent.getBroadcast(
+                    mContext,
+                    (int) System.currentTimeMillis(), // Unique request code
+                    sentIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                
+                smsManager.sendMultimediaMessage(mContext, messageUri, null, null, sentPendingIntent);
+                Log.d(TAG, "MMS sent via SmsManager with PendingIntent");
                 return true;
             } catch (Exception e) {
                 Log.e(TAG, "SmsManager send failed", e);
+                return false;
+            }
+        }
+        
+        private boolean isSmsManagerMmsApiAvailable() {
+            try {
+                // Check if SmsManager.sendMultimediaMessage is available
+                return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP;
+            } catch (Exception e) {
                 return false;
             }
         }

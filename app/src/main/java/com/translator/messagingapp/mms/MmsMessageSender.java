@@ -92,6 +92,12 @@ public class MmsMessageSender {
      */
     private boolean updateHeaders() {
         try {
+            // Check if we're the default SMS app before trying to write to ContentProvider
+            if (!com.translator.messagingapp.util.PhoneUtils.isDefaultSmsApp(mContext)) {
+                Log.w(TAG, "Not default SMS app - skipping header updates");
+                return true; // Don't fail the send, just skip the update
+            }
+            
             ContentValues values = new ContentValues();
             
             // Set expiry (7 days)
@@ -126,6 +132,12 @@ public class MmsMessageSender {
      */
     private boolean updateDate() {
         try {
+            // Check if we're the default SMS app before trying to write to ContentProvider
+            if (!com.translator.messagingapp.util.PhoneUtils.isDefaultSmsApp(mContext)) {
+                Log.w(TAG, "Not default SMS app - skipping date update");
+                return true; // Don't fail the send, just skip the update
+            }
+            
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000L);
             
@@ -145,6 +157,12 @@ public class MmsMessageSender {
      */
     private Uri moveToOutbox() {
         try {
+            // Check if we're the default SMS app before trying to write to ContentProvider
+            if (!com.translator.messagingapp.util.PhoneUtils.isDefaultSmsApp(mContext)) {
+                Log.w(TAG, "Not default SMS app - skipping move to outbox");
+                return mMessageUri; // Return original URI, don't fail the send
+            }
+            
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
             
@@ -192,7 +210,16 @@ public class MmsMessageSender {
             serviceIntent.putExtra(TransactionService.EXTRA_TRANSACTION_TYPE, Transaction.SEND_TRANSACTION);
             serviceIntent.putExtra(TransactionService.EXTRA_TOKEN, token);
             
-            mContext.startService(serviceIntent);
+            // Use appropriate service start method based on Android version
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                // Android 8+ requires foreground service for background operations
+                Log.d(TAG, "Starting TransactionService as foreground service (Android 8+)");
+                mContext.startForegroundService(serviceIntent);
+            } else {
+                // Older Android versions can use regular service
+                Log.d(TAG, "Starting TransactionService as regular service");
+                mContext.startService(serviceIntent);
+            }
             return true;
             
         } catch (Exception e) {

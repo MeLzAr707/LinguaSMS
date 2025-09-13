@@ -184,17 +184,78 @@ public class MmsSendingHelper {
         try {
             Log.d(TAG, "Using fallback legacy API for MMS sending");
             
-            // Use the system MMS send action for better compatibility
-            android.content.Intent intent = new android.content.Intent();
-            intent.setAction("android.provider.Telephony.MMS_SENT");
-            intent.putExtra("message_uri", contentUri.toString());
-            intent.putExtra("recipient", address);
-            context.sendBroadcast(intent);
+            // On Android 5.0+, try SmsManager even in legacy fallback
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                Log.d(TAG, "Using SmsManager for legacy fallback on Android 5.0+");
+                return sendMmsUsingSmsManager(context, contentUri, address);
+            }
             
-            Log.d(TAG, "MMS sent using fallback legacy API: " + contentUri);
-            return true;
+            // For older versions, try to trigger the transaction service directly
+            try {
+                MmsMessageSender sender = MmsMessageSender.create(context, contentUri);
+                if (sender != null) {
+                    Log.d(TAG, "Using transaction architecture for legacy fallback");
+                    return sender.sendMessage(System.currentTimeMillis());
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Transaction architecture failed in legacy fallback", e);
+            }
+            
+            // Last resort: Try to send intent to system's MMS app
+            try {
+                android.content.Intent intent = new android.content.Intent();
+                intent.setAction(android.content.Intent.ACTION_SENDTO);
+                intent.setData(android.net.Uri.parse("mms:" + address));
+                intent.putExtra("android.intent.extra.STREAM", contentUri);
+                intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                
+                Log.d(TAG, "Delegated MMS to system app");
+                return true;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to delegate to system MMS app", e);
+            }
+            
+            Log.e(TAG, "All legacy fallback methods failed");
+            return false;
         } catch (Exception e) {
             Log.e(TAG, "Error sending MMS using fallback legacy API", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Sends MMS using SmsManager (Android 5.0+)
+     */
+    private static boolean sendMmsUsingSmsManager(Context context, Uri contentUri, String address) {
+        try {
+            SmsManager smsManager = SmsManager.getDefault();
+            
+            // Create PendingIntent for send result
+            android.content.Intent sentIntent = new android.content.Intent("com.translator.messagingapp.MMS_SENT");
+            sentIntent.putExtra("message_uri", contentUri.toString());
+            sentIntent.putExtra("recipient", address);
+            
+            android.app.PendingIntent sentPendingIntent = android.app.PendingIntent.getBroadcast(
+                context,
+                (int) System.currentTimeMillis(), // Unique request code
+                sentIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+            );
+            
+            // Send using SmsManager
+            smsManager.sendMultimediaMessage(
+                context,
+                contentUri,
+                null, // locationUrl
+                null, // configOverrides
+                sentPendingIntent
+            );
+            
+            Log.d(TAG, "MMS sent using SmsManager: " + contentUri);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending MMS using SmsManager", e);
             return false;
         }
     }

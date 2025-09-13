@@ -57,12 +57,53 @@ public class TransactionService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Start as foreground service on Android 8+ when needed
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundServiceWithNotification();
+        }
+        
         if (intent != null) {
             handleIntent(intent);
         }
         
         // Don't restart automatically if killed
         return START_NOT_STICKY;
+    }
+    
+    private void startForegroundServiceWithNotification() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+                // Create notification channel for MMS operations
+                android.app.NotificationManager notificationManager = 
+                    (android.app.NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                
+                if (notificationManager != null) {
+                    String channelId = "mms_transaction_service";
+                    String channelName = "MMS Transaction Service";
+                    
+                    android.app.NotificationChannel channel = new android.app.NotificationChannel(
+                        channelId, 
+                        channelName, 
+                        android.app.NotificationManager.IMPORTANCE_LOW
+                    );
+                    channel.setDescription("Handles MMS message transactions");
+                    notificationManager.createNotificationChannel(channel);
+                    
+                    // Create notification for foreground service
+                    android.app.Notification notification = new android.app.Notification.Builder(this, channelId)
+                        .setContentTitle("Sending MMS")
+                        .setContentText("Processing MMS message transaction")
+                        .setSmallIcon(android.R.drawable.ic_dialog_email)
+                        .build();
+                    
+                    startForeground(1001, notification);
+                    
+                    Log.d(TAG, "Started as foreground service with notification");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to start foreground service notification", e);
+            }
+        }
     }
 
     @Override
