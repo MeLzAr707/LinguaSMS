@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default secure configuration -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Allow cleartext HTTP traffic for known MMS carriers -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Verizon MMS -->
+        <domain includeSubdomains="true">mms.vtext.com</domain>
+        
+        <!-- AT&T MMS -->
+        <domain includeSubdomains="true">mmsc.mobile.att.net</domain>
+        <domain includeSubdomains="true">mms.att.net</domain>
+        
+        <!-- T-Mobile MMS -->
+        <domain includeSubdomains="true">mms.msg.eng.t-mobile.com</domain>
+        <domain includeSubdomains="true">mms.t-mobile.com</domain>
+        
+        <!-- Sprint MMS (now part of T-Mobile) -->
+        <domain includeSubdomains="true">mms.sprintpcs.com</domain>
+        
+        <!-- Other US carriers -->
+        <domain includeSubdomains="true">mms.uscc.net</domain>
+        <domain includeSubdomains="true">mms.mymetropcs.com</domain>
+        <domain includeSubdomains="true">mms.cricketwireless.net</domain>
+        
+        <!-- Canadian carriers -->
+        <domain includeSubdomains="true">mms.gprs.rogers.com</domain>
+        <domain includeSubdomains="true">mms.bell.ca</domain>
+        <domain includeSubdomains="true">aliasredirect.net</domain>
+        
+        <!-- Generic MMS domains that might be encountered -->
+        <domain includeSubdomains="true">mmsc.cingular.com</domain>
+        <domain includeSubdomains="true">mms.alltel.net</domain>
+    </domain-config>
+</network-security-config>

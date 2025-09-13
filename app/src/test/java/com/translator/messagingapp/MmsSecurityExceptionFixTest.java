@@ -196,8 +196,61 @@ public class MmsSecurityExceptionFixTest {
         // Should be null for unknown carriers, but should not crash
         assertNull("Should return null for unknown carrier", mmscUrl);
         
-        // Validation should fail gracefully
+        // Validation should still return true on Android 5.0+ (Lollipop)
         boolean isValid = HttpUtils.validateMmsConfiguration(mockContext);
-        assertFalse("MMS configuration should be invalid for unknown carrier", isValid);
+        assertTrue("MMS configuration should be valid even for unknown carrier on Android 5.0+", isValid);
+    }
+
+    @Test
+    public void testCleartextHttpAllowedForMmscDomains() {
+        // Test that the known MMSC URLs use HTTP (cleartext) which should be allowed
+        // by the network security configuration
+        
+        // Test Verizon
+        when(mockCarrierConfigManager.getConfig()).thenReturn(null);
+        when(mockTelephonyManager.getNetworkOperatorName()).thenReturn("Verizon");
+        when(mockTelephonyManager.getNetworkOperator()).thenReturn("311480");
+        
+        when(mockContentResolver.query(any(Uri.class), any(String[].class), any(), any(), any()))
+            .thenThrow(new SecurityException("No permission to access APN settings"));
+
+        String mmscUrl = HttpUtils.getMmscUrl(mockContext);
+        
+        assertNotNull("Should get Verizon MMSC URL", mmscUrl);
+        assertTrue("Verizon MMSC URL should use HTTP (cleartext)", mmscUrl.startsWith("http://"));
+        assertTrue("Verizon MMSC URL should be mms.vtext.com domain", 
+                  mmscUrl.contains("mms.vtext.com"));
+        
+        // Test T-Mobile
+        setUp();
+        when(mockCarrierConfigManager.getConfig()).thenReturn(null);
+        when(mockTelephonyManager.getNetworkOperatorName()).thenReturn("T-Mobile");
+        when(mockTelephonyManager.getNetworkOperator()).thenReturn("310260");
+        
+        when(mockContentResolver.query(any(Uri.class), any(String[].class), any(), any(), any()))
+            .thenThrow(new SecurityException("No permission to access APN settings"));
+
+        mmscUrl = HttpUtils.getMmscUrl(mockContext);
+        
+        assertNotNull("Should get T-Mobile MMSC URL", mmscUrl);
+        assertTrue("T-Mobile MMSC URL should use HTTP (cleartext)", mmscUrl.startsWith("http://"));
+        assertTrue("T-Mobile MMSC URL should be correct domain", 
+                  mmscUrl.contains("mms.msg.eng.t-mobile.com"));
+        
+        // Test AT&T
+        setUp();
+        when(mockCarrierConfigManager.getConfig()).thenReturn(null);
+        when(mockTelephonyManager.getNetworkOperatorName()).thenReturn("AT&T");
+        when(mockTelephonyManager.getNetworkOperator()).thenReturn("310150");
+        
+        when(mockContentResolver.query(any(Uri.class), any(String[].class), any(), any(), any()))
+            .thenThrow(new SecurityException("No permission to access APN settings"));
+
+        mmscUrl = HttpUtils.getMmscUrl(mockContext);
+        
+        assertNotNull("Should get AT&T MMSC URL", mmscUrl);
+        assertTrue("AT&T MMSC URL should use HTTP (cleartext)", mmscUrl.startsWith("http://"));
+        assertTrue("AT&T MMSC URL should be correct domain", 
+                  mmscUrl.contains("mmsc.mobile.att.net"));
     }
 }
