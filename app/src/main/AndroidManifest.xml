@@ -205,7 +205,8 @@
         <!-- MMS Transaction Service -->
         <service
             android:name=".mms.TransactionService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
             
         <!-- System MMS Transaction Service (required for MMS functionality) -->
         <service

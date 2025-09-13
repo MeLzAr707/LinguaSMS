@@ -97,9 +97,16 @@ public class TransactionService extends Service {
                         .setSmallIcon(android.R.drawable.ic_dialog_email)
                         .build();
                     
-                    startForeground(1001, notification);
+                    // Start foreground service with appropriate service type for Android 10+ (API 29+)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        startForeground(1001, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+                    } else {
+                        startForeground(1001, notification);
+                    }
                     
-                    Log.d(TAG, "Started as foreground service with notification");
+                    Log.d(TAG, "Started as foreground service with notification" + 
+                        (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q ? 
+                         " and DATA_SYNC service type" : ""));
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to start foreground service notification", e);
