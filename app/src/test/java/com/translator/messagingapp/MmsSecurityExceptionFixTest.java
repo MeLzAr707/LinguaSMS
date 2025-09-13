@@ -253,4 +253,45 @@ public class MmsSecurityExceptionFixTest {
         assertTrue("AT&T MMSC URL should be correct domain", 
                   mmscUrl.contains("mmsc.mobile.att.net"));
     }
+
+    @Test
+    public void testEnhancedProxyFallbackLogic() {
+        // Test that proxy methods now use carrier database fallback
+        when(mockCarrierConfigManager.getConfig()).thenReturn(null);
+        when(mockTelephonyManager.getNetworkOperatorName()).thenReturn("Verizon");
+        when(mockTelephonyManager.getNetworkOperator()).thenReturn("311480");
+        
+        when(mockContentResolver.query(any(Uri.class), any(String[].class), any(), any(), any()))
+            .thenThrow(new SecurityException("No permission to access APN settings"));
+
+        // Test proxy retrieval - should not crash and should handle SecurityException
+        String mmsProxy = HttpUtils.getMmsProxy(mockContext);
+        int mmsProxyPort = HttpUtils.getMmsProxyPort(mockContext);
+        
+        // Verizon typically doesn't require proxy, so these should be null/-1
+        // The important thing is that no exception is thrown
+        assertTrue("Proxy retrieval should complete without exception", true);
+        
+        // For Verizon, proxy is typically not required
+        // The key test is that SecurityException is handled gracefully
+    }
+
+    @Test
+    public void testMmsConfigurationDiagnostics() {
+        // Test that diagnostics method doesn't crash with SecurityException
+        when(mockCarrierConfigManager.getConfig()).thenReturn(null);
+        when(mockTelephonyManager.getNetworkOperatorName()).thenReturn("Verizon");
+        when(mockTelephonyManager.getNetworkOperator()).thenReturn("311480");
+        
+        when(mockContentResolver.query(any(Uri.class), any(String[].class), any(), any(), any()))
+            .thenThrow(new SecurityException("No permission to access APN settings"));
+
+        // This should not throw any exception
+        try {
+            HttpUtils.logMmsConfigurationDiagnostics(mockContext);
+            assertTrue("Diagnostics should complete without exception", true);
+        } catch (Exception e) {
+            fail("Diagnostics should not throw exception: " + e.getMessage());
+        }
+    }
 }

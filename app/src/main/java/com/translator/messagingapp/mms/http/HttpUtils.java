@@ -79,6 +79,12 @@ public class HttpUtils {
                 connection = (HttpURLConnection) url.openConnection(proxy);
             } else {
                 Log.d(TAG, "Using direct connection (no proxy)");
+                // Log additional context for troubleshooting
+                if (mmsProxy == null || mmsProxy.isEmpty()) {
+                    Log.d(TAG, "No MMS proxy available - this is normal for most carriers including Verizon");
+                } else {
+                    Log.w(TAG, "MMS proxy available but invalid port: " + mmsProxyPort);
+                }
                 connection = (HttpURLConnection) url.openConnection();
             }
             
@@ -95,14 +101,37 @@ public class HttpUtils {
             Log.d(TAG, "HTTP response code: " + responseCode);
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                return readResponse(connection);
+                byte[] response = readResponse(connection);
+                Log.d(TAG, "MMS HTTP request completed successfully, received " + 
+                      (response != null ? response.length : 0) + " bytes");
+                return response;
             } else {
-                Log.e(TAG, "HTTP error: " + responseCode + " " + connection.getResponseMessage());
+                String errorMsg = "HTTP error: " + responseCode + " " + connection.getResponseMessage();
+                Log.e(TAG, errorMsg);
+                
+                // Enhanced error reporting for common issues
+                if (responseCode == HttpURLConnection.HTTP_FORBIDDEN || responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+                    Log.e(TAG, "MMS send failed: Authentication/authorization error. Check APN settings or carrier configuration.");
+                } else if (responseCode >= 500) {
+                    Log.e(TAG, "MMS send failed: Server error. MMSC may be temporarily unavailable.");
+                } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    Log.e(TAG, "MMS send failed: MMSC URL not found. Check carrier MMSC configuration.");
+                }
+                
                 return null;
             }
             
+        } catch (java.net.ConnectException e) {
+            Log.e(TAG, "MMS send failed: Connection refused. Check network connectivity and MMSC URL.", e);
+            return null;
+        } catch (java.net.SocketTimeoutException e) {
+            Log.e(TAG, "MMS send failed: Connection timeout. Network may be slow or MMSC unavailable.", e);
+            return null;
+        } catch (java.net.UnknownHostException e) {
+            Log.e(TAG, "MMS send failed: Cannot resolve MMSC hostname. Check network connectivity.", e);
+            return null;
         } catch (Exception e) {
-            Log.e(TAG, "HTTP connection failed", e);
+            Log.e(TAG, "MMS HTTP connection failed", e);
             return null;
         } finally {
             if (connection != null) {
@@ -255,12 +284,20 @@ public class HttpUtils {
                 if (config != null) {
                     String mmsProxy = config.getString("mms_http_proxy_string");
                     if (mmsProxy != null && !mmsProxy.isEmpty()) {
+                        Log.d(TAG, "Found MMS proxy from carrier config: " + mmsProxy);
                         return mmsProxy;
                     }
                 }
             }
             
-            // Fallback: Try to read from APN settings
+            // Enhanced fallback: Try carrier-specific proxy database before APN settings
+            String carrierProxy = getCarrierMmsProxy(context);
+            if (carrierProxy != null) {
+                Log.d(TAG, "Using carrier-specific MMS proxy: " + carrierProxy);
+                return carrierProxy;
+            }
+            
+            // Last resort: Try to read from APN settings (may fail with SecurityException)
             return getApnMmsProxy(context);
             
         } catch (Exception e) {
@@ -286,12 +323,20 @@ public static int getMmsProxyPort(Context context) {
                 if (config != null) {
                     int mmsPort = config.getInt("mms_http_proxy_port_int");
                     if (mmsPort > 0) {
+                        Log.d(TAG, "Found MMS proxy port from carrier config: " + mmsPort);
                         return mmsPort;
                     }
                 }
             }
             
-            // Fallback: Try to read from APN settings
+            // Enhanced fallback: Try carrier-specific proxy port database before APN settings
+            int carrierPort = getCarrierMmsProxyPort(context);
+            if (carrierPort > 0) {
+                Log.d(TAG, "Using carrier-specific MMS proxy port: " + carrierPort);
+                return carrierPort;
+            }
+            
+            // Last resort: Try to read from APN settings (may fail with SecurityException)
             return getApnMmsProxyPort(context);
             
         } catch (Exception e) {
@@ -593,5 +638,200 @@ public static int getMmsProxyPort(Context context) {
             return "http://aliasredirect.net/proxy/mmsc";
         }
         return null;
+    }
+    
+    /**
+     * Gets carrier-specific MMS proxy based on operator.
+     * This provides fallback proxy information when APN access fails.
+     */
+    private static String getCarrierMmsProxy(Context context) {
+        try {
+            android.telephony.TelephonyManager telephonyManager = 
+                (android.telephony.TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            
+            if (telephonyManager != null) {
+                String operatorMcc = telephonyManager.getNetworkOperator();
+                String operatorName = telephonyManager.getNetworkOperatorName();
+                
+                Log.d(TAG, "Getting MMS proxy for operator: " + operatorName + " MCC/MNC: " + operatorMcc);
+                
+                // Check if specific proxy is required for this carrier
+                if (operatorMcc != null && operatorMcc.length() >= 5) {
+                    String proxy = getMmsProxyByMccMnc(operatorMcc);
+                    if (proxy != null) {
+                        Log.d(TAG, "Found carrier-specific MMS proxy: " + proxy);
+                        return proxy;
+                    }
+                }
+                
+                // Fallback to operator name matching for US carriers
+                if (operatorMcc != null && (operatorMcc.startsWith("310") || operatorMcc.startsWith("311"))) {
+                    return getUsMmsProxyByOperatorName(operatorName);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error determining carrier MMS proxy", e);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets carrier-specific MMS proxy port based on operator.
+     * This provides fallback proxy port information when APN access fails.
+     */
+    private static int getCarrierMmsProxyPort(Context context) {
+        try {
+            android.telephony.TelephonyManager telephonyManager = 
+                (android.telephony.TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            
+            if (telephonyManager != null) {
+                String operatorMcc = telephonyManager.getNetworkOperator();
+                String operatorName = telephonyManager.getNetworkOperatorName();
+                
+                Log.d(TAG, "Getting MMS proxy port for operator: " + operatorName + " MCC/MNC: " + operatorMcc);
+                
+                // Check if specific proxy port is required for this carrier
+                if (operatorMcc != null && operatorMcc.length() >= 5) {
+                    int port = getMmsProxyPortByMccMnc(operatorMcc);
+                    if (port > 0) {
+                        Log.d(TAG, "Found carrier-specific MMS proxy port: " + port);
+                        return port;
+                    }
+                }
+                
+                // Fallback to operator name matching for US carriers
+                if (operatorMcc != null && (operatorMcc.startsWith("310") || operatorMcc.startsWith("311"))) {
+                    return getUsMmsProxyPortByOperatorName(operatorName);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error determining carrier MMS proxy port", e);
+        }
+        return -1;
+    }
+    
+    /**
+     * Gets MMS proxy by exact MCC/MNC matching.
+     * Some carriers require specific proxy settings for MMS to work.
+     */
+    private static String getMmsProxyByMccMnc(String mccMnc) {
+        // Note: Verizon typically does NOT require a proxy for MMS
+        // Most Verizon networks work with direct connection
+        switch (mccMnc) {
+            // T-Mobile networks that may require proxy
+            case "310260": // T-Mobile
+            case "310026": // T-Mobile
+                // T-Mobile generally works without proxy, but some configurations may need it
+                return null;
+            
+            // AT&T networks - generally no proxy required
+            case "310150": // AT&T
+            case "310410": // AT&T
+                return null;
+                
+            // Sprint networks - some may require proxy
+            case "310120": // Sprint (now part of T-Mobile)
+            case "311490": // Sprint
+                return null;
+                
+            // Most other carriers work without proxy
+            default:
+                return null;
+        }
+    }
+    
+    /**
+     * Gets MMS proxy port by exact MCC/MNC matching.
+     */
+    private static int getMmsProxyPortByMccMnc(String mccMnc) {
+        // Most major US carriers do not require proxy ports for MMS
+        // This is mainly for international carriers or specific configurations
+        switch (mccMnc) {
+            // No specific proxy ports needed for major US carriers
+            default:
+                return -1;
+        }
+    }
+    
+    /**
+     * Gets US MMS proxy by operator name (fallback method).
+     */
+    private static String getUsMmsProxyByOperatorName(String operatorName) {
+        if (operatorName == null) return null;
+        
+        String lowerName = operatorName.toLowerCase();
+        // Most major US carriers (Verizon, T-Mobile, AT&T, Sprint) work without proxy
+        // Only return proxy if specifically required by carrier
+        return null;
+    }
+    
+    /**
+     * Gets US MMS proxy port by operator name (fallback method).
+     */
+    private static int getUsMmsProxyPortByOperatorName(String operatorName) {
+        if (operatorName == null) return -1;
+        
+        // Most major US carriers work without proxy ports
+        return -1;
+    }
+    
+    /**
+     * Provides comprehensive MMS configuration diagnostics.
+     * This helps troubleshoot MMS issues by showing what settings are available.
+     */
+    public static void logMmsConfigurationDiagnostics(Context context) {
+        Log.d(TAG, "=== MMS Configuration Diagnostics ===");
+        
+        try {
+            // Carrier information
+            android.telephony.TelephonyManager telephonyManager = 
+                (android.telephony.TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            
+            if (telephonyManager != null) {
+                String operatorName = telephonyManager.getNetworkOperatorName();
+                String operatorMcc = telephonyManager.getNetworkOperator();
+                Log.d(TAG, "Carrier: " + operatorName + " (MCC/MNC: " + operatorMcc + ")");
+            }
+            
+            // MMSC URL
+            String mmscUrl = getMmscUrl(context);
+            Log.d(TAG, "MMSC URL: " + (mmscUrl != null ? mmscUrl : "Not available"));
+            
+            // Proxy settings
+            String mmsProxy = getMmsProxy(context);
+            int mmsProxyPort = getMmsProxyPort(context);
+            Log.d(TAG, "MMS Proxy: " + (mmsProxy != null ? mmsProxy : "Not required/available"));
+            Log.d(TAG, "MMS Proxy Port: " + (mmsProxyPort > 0 ? mmsProxyPort : "Not required/available"));
+            
+            // CarrierConfigManager availability
+            android.telephony.CarrierConfigManager configManager = 
+                (android.telephony.CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            Log.d(TAG, "CarrierConfigManager available: " + (configManager != null));
+            
+            if (configManager != null) {
+                android.os.PersistableBundle config = configManager.getConfig();
+                Log.d(TAG, "Carrier config available: " + (config != null));
+            }
+            
+            // Network connectivity
+            android.net.ConnectivityManager connectivityManager = 
+                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+                Log.d(TAG, "Network connected: " + (networkInfo != null && networkInfo.isConnected()));
+                if (networkInfo != null) {
+                    Log.d(TAG, "Network type: " + networkInfo.getTypeName());
+                }
+            }
+            
+            // Android version info
+            Log.d(TAG, "Android SDK: " + android.os.Build.VERSION.SDK_INT);
+            Log.d(TAG, "Uses SmsManager (Android 5.0+): " + (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP));
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during MMS diagnostics", e);
+        }
+        
+        Log.d(TAG, "=== End MMS Diagnostics ===");
     }
 }

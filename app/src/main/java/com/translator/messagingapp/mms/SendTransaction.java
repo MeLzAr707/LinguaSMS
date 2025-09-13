@@ -191,19 +191,34 @@ public class SendTransaction extends Transaction implements Runnable {
             // Get MMSC URL and send PDU
             String mmscUrl = HttpUtils.getMmscUrl(mContext);
             if (mmscUrl == null) {
-                Log.e(TAG, "No MMSC URL available");
+                Log.e(TAG, "No MMSC URL available for current carrier");
+                // Log diagnostics to help troubleshoot
+                HttpUtils.logMmsConfigurationDiagnostics(mContext);
                 return null;
             }
             
-            return HttpUtils.httpConnection(
+            Log.d(TAG, "Sending MMS PDU to MMSC: " + mmscUrl);
+            byte[] response = HttpUtils.httpConnection(
                 mContext, 
                 mToken, 
                 mmscUrl, 
                 pduData, 
                 HttpUtils.CONTENT_TYPE_MMS
             );
+            
+            if (response == null) {
+                Log.e(TAG, "MMS send failed - no response from MMSC");
+                // Log diagnostics to help troubleshoot the failure
+                HttpUtils.logMmsConfigurationDiagnostics(mContext);
+            } else {
+                Log.d(TAG, "MMS send completed, received " + response.length + " bytes response");
+            }
+            
+            return response;
         } catch (Exception e) {
             Log.e(TAG, "Failed to send PDU", e);
+            // Log diagnostics when there's an exception
+            HttpUtils.logMmsConfigurationDiagnostics(mContext);
             return null;
         }
     }
