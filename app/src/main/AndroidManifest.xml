@@ -206,6 +206,11 @@
         <service
             android:name=".mms.TransactionService"
             android:exported="false" />
+            
+        <!-- System MMS Transaction Service (required for MMS functionality) -->
+        <service
+            android:name="com.android.mms.transaction.TransactionService"
+            android:exported="false" />
 
         <!-- Content Providers -->
         <provider
