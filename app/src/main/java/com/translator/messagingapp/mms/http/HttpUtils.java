@@ -275,7 +275,7 @@ public class HttpUtils {
      * @param context The application context
      * @return The MMS proxy port, or -1 if not available
      */
-    public static int getMmsProxyPort(Context context) {
+public static int getMmsProxyPort(Context context) {
         try {
             // Try to get MMS proxy port from carrier configuration
             android.telephony.CarrierConfigManager configManager = 
@@ -500,7 +500,6 @@ public class HttpUtils {
             case "311288": // Verizon
             case "311289": // Verizon
             case "311390": // Verizon
-            case "311480": // Verizon
             case "311481": // Verizon
             case "311482": // Verizon
             case "311483": // Verizon
