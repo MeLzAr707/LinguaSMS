@@ -1203,7 +1203,13 @@ public class MessageService {
      */
     public boolean sendMmsMessage(String address, String subject, String body, List<Uri> attachments) {
         try {
-            // Check if we can send MMS
+            // Validate prerequisites for sending MMS
+            if (!validateMmsSendingPrerequisites(address, body, attachments)) {
+                Log.e(TAG, "MMS sending prerequisites not met");
+                return false;
+            }
+
+            // Check if we can send MMS - get SmsManager instance
             SmsManager smsManager = SmsManager.getDefault();
             if (smsManager == null) {
                 Log.e(TAG, "SMS Manager not available");
@@ -1389,8 +1395,131 @@ public class MessageService {
 
         } catch (Exception e) {
             Log.e(TAG, "Error sending MMS message", e);
+            
+            // Log diagnostics when MMS sending fails to help troubleshoot
+            logMmsDiagnostics();
+            
             return false;
         }
+    }
+
+    /**
+     * Validates prerequisites for sending MMS messages according to Android best practices.
+     *
+     * @param address The recipient address
+     * @param body The message body
+     * @param attachments The attachments
+     * @return True if prerequisites are met
+     */
+    private boolean validateMmsSendingPrerequisites(String address, String body, List<Uri> attachments) {
+        // Validate recipient address
+        if (TextUtils.isEmpty(address)) {
+            Log.e(TAG, "Cannot send MMS: recipient address is empty");
+            return false;
+        }
+
+        // Validate that we have content to send (either text or attachments)
+        boolean hasText = !TextUtils.isEmpty(body);
+        boolean hasAttachments = attachments != null && !attachments.isEmpty();
+        
+        if (!hasText && !hasAttachments) {
+            Log.e(TAG, "Cannot send MMS: no content (text or attachments) provided");
+            return false;
+        }
+
+        // Validate attachment URIs if present
+        if (hasAttachments) {
+            for (Uri attachmentUri : attachments) {
+                if (attachmentUri == null) {
+                    Log.e(TAG, "Cannot send MMS: null attachment URI found");
+                    return false;
+                }
+                
+                if (!validateUriAccess(attachmentUri)) {
+                    Log.e(TAG, "Cannot send MMS: attachment URI access validation failed: " + attachmentUri);
+                    return false;
+                }
+            }
+        }
+
+        // Check network connectivity for MMS
+        if (!isNetworkAvailableForMms()) {
+            Log.e(TAG, "Cannot send MMS: network not available");
+            return false;
+        }
+
+        // Check if app has required permissions
+        if (!hasRequiredMmsPermissions()) {
+            Log.e(TAG, "Cannot send MMS: missing required permissions");
+            return false;
+        }
+
+        Log.d(TAG, "MMS sending prerequisites validated successfully");
+        return true;
+    }
+
+    /**
+     * Checks if network is available for MMS sending.
+     *
+     * @return True if network is available
+     */
+    private boolean isNetworkAvailableForMms() {
+        try {
+            android.net.ConnectivityManager connectivityManager = 
+                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            
+            if (connectivityManager == null) {
+                Log.w(TAG, "ConnectivityManager not available");
+                return false;
+            }
+
+            android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+            boolean isConnected = networkInfo != null && networkInfo.isConnected();
+            
+            if (!isConnected) {
+                Log.d(TAG, "No active network connection");
+                return false;
+            }
+
+            // Check if we're on a network that supports MMS (mobile data or WiFi with MMS support)
+            int networkType = networkInfo.getType();
+            boolean supportsMms = networkType == android.net.ConnectivityManager.TYPE_MOBILE ||
+                                 networkType == android.net.ConnectivityManager.TYPE_WIFI;
+            
+            if (!supportsMms) {
+                Log.d(TAG, "Current network type does not support MMS: " + networkInfo.getTypeName());
+                return false;
+            }
+
+            Log.d(TAG, "Network available for MMS: " + networkInfo.getTypeName());
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking network availability for MMS", e);
+            return false;
+        }
+    }
+
+    /**
+     * Checks if the app has all required permissions for MMS sending.
+     *
+     * @return True if all required permissions are granted
+     */
+    private boolean hasRequiredMmsPermissions() {
+        String[] requiredPermissions = {
+            android.Manifest.permission.SEND_MMS,
+            android.Manifest.permission.WRITE_SMS,
+            android.Manifest.permission.READ_SMS
+        };
+
+        for (String permission : requiredPermissions) {
+            if (context.checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, "Missing required MMS permission: " + permission);
+                return false;
+            }
+        }
+
+        Log.d(TAG, "All required MMS permissions are granted");
+        return true;
     }
 
     /**
@@ -1449,30 +1578,84 @@ public class MessageService {
 
     /**
      * Validates that we can access the given URI for reading.
-     * This helps ensure that persistent URI permissions are working correctly.
+     * Enhanced validation according to Android best practices for attachment handling.
      *
      * @param uri The URI to validate
      * @return True if the URI can be accessed for reading
      */
     private boolean validateUriAccess(Uri uri) {
+        if (uri == null) {
+            Log.w(TAG, "Cannot validate null URI");
+            return false;
+        }
+
         try {
+            // First, validate that we can get basic information about the URI
+            String mimeType = context.getContentResolver().getType(uri);
+            Log.d(TAG, "URI mime type: " + mimeType + " for URI: " + uri);
+
+            // Check file size to ensure it's within reasonable limits for MMS
+            long fileSize = getFileSizeFromUri(uri);
+            if (fileSize > MAX_MMS_SIZE) {
+                Log.w(TAG, "File size (" + fileSize + " bytes) exceeds MMS limit (" + MAX_MMS_SIZE + " bytes): " + uri);
+                return false;
+            }
+
             // Try to open an input stream to validate access
             try (InputStream is = context.getContentResolver().openInputStream(uri)) {
                 if (is != null) {
                     // Try to read a few bytes to ensure full access
-                    byte[] testBuffer = new byte[10];
-                    is.read(testBuffer);
-                    return true;
+                    byte[] testBuffer = new byte[Math.min(1024, (int)fileSize)];
+                    int bytesRead = is.read(testBuffer);
+                    
+                    if (bytesRead > 0) {
+                        Log.d(TAG, "Successfully validated URI access, read " + bytesRead + " bytes: " + uri);
+                        return true;
+                    } else {
+                        Log.w(TAG, "Unable to read any data from URI: " + uri);
+                        return false;
+                    }
+                } else {
+                    Log.w(TAG, "Cannot open input stream for URI: " + uri);
+                    return false;
                 }
             }
         } catch (SecurityException e) {
             Log.w(TAG, "Security exception accessing URI (missing persistent permission?): " + uri, e);
             return false;
+        } catch (FileNotFoundException e) {
+            Log.w(TAG, "File not found for URI: " + uri, e);
+            return false;
+        } catch (IOException e) {
+            Log.w(TAG, "I/O error accessing URI: " + uri, e);
+            return false;
         } catch (Exception e) {
-            Log.w(TAG, "Error accessing URI: " + uri, e);
+            Log.w(TAG, "Unexpected error accessing URI: " + uri, e);
             return false;
         }
-        return false;
+    }
+
+    /**
+     * Gets the file size from a URI.
+     *
+     * @param uri The URI to check
+     * @return The file size in bytes, or -1 if unknown
+     */
+    private long getFileSizeFromUri(Uri uri) {
+        try {
+            String[] projection = {android.provider.OpenableColumns.SIZE};
+            try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                        return cursor.getLong(sizeIndex);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error getting file size for URI: " + uri, e);
+        }
+        return -1; // Unknown size
     }
 
     /**
@@ -2507,5 +2690,78 @@ public class MessageService {
         } catch (Exception e) {
             Log.e(TAG, "Error loading paginated RCS messages for thread " + threadId, e);
         }
+    }
+
+    /**
+     * Provides MMS diagnostic information for troubleshooting.
+     * This method helps identify MMS configuration issues and provides useful debugging information.
+     *
+     * @return Diagnostic information string
+     */
+    public String getMmsDiagnosticInfo() {
+        StringBuilder diagnostics = new StringBuilder();
+        diagnostics.append("=== MMS Diagnostic Information ===\n");
+        
+        try {
+            // Check MMS permissions
+            diagnostics.append("MMS Permissions:\n");
+            String[] mmsPermissions = {
+                android.Manifest.permission.SEND_MMS,
+                android.Manifest.permission.RECEIVE_MMS,
+                android.Manifest.permission.READ_SMS,
+                android.Manifest.permission.WRITE_SMS
+            };
+            
+            for (String permission : mmsPermissions) {
+                boolean granted = context.checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                diagnostics.append("  ").append(permission).append(": ").append(granted ? "GRANTED" : "DENIED").append("\n");
+            }
+            
+            // Check network status
+            diagnostics.append("\nNetwork Status:\n");
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                android.net.NetworkInfo networkInfo = cm.getActiveNetworkInfo();
+                if (networkInfo != null) {
+                    diagnostics.append("  Connected: ").append(networkInfo.isConnected()).append("\n");
+                    diagnostics.append("  Network Type: ").append(networkInfo.getTypeName()).append("\n");
+                    diagnostics.append("  Supports MMS: ").append(isNetworkAvailableForMms()).append("\n");
+                } else {
+                    diagnostics.append("  No active network\n");
+                }
+            } else {
+                diagnostics.append("  ConnectivityManager unavailable\n");
+            }
+            
+            // Check MMS capabilities
+            diagnostics.append("\nMMS Configuration:\n");
+            com.translator.messagingapp.mms.http.HttpUtils.logMmsConfigurationDiagnostics(context);
+            
+            // Check if app is default SMS app
+            diagnostics.append("Default SMS App: ").append(com.translator.messagingapp.util.PhoneUtils.isDefaultSmsApp(context)).append("\n");
+            
+            // Check Android version compatibility
+            diagnostics.append("Android API Level: ").append(android.os.Build.VERSION.SDK_INT).append("\n");
+            diagnostics.append("MMS API Available: ").append(android.os.Build.VERSION.SDK_INT >= 21).append("\n");
+            
+        } catch (Exception e) {
+            diagnostics.append("Error during diagnostics: ").append(e.getMessage()).append("\n");
+            Log.e(TAG, "Error during MMS diagnostics", e);
+        }
+        
+        diagnostics.append("=== End Diagnostics ===\n");
+        return diagnostics.toString();
+    }
+
+    /**
+     * Logs comprehensive MMS diagnostic information for troubleshooting.
+     * This should be called when MMS sending fails to help identify the issue.
+     */
+    public void logMmsDiagnostics() {
+        String diagnostics = getMmsDiagnosticInfo();
+        Log.i(TAG, diagnostics);
+        
+        // Also log to console for easier debugging
+        System.out.println(diagnostics);
     }
 }

@@ -263,6 +263,27 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
         
+        // Set up text change listener for message input to update send button state
+        if (messageInput != null) {
+            messageInput.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                    // No action needed
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    // Update send button state as user types
+                    updateSendButtonForTextInput();
+                }
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {
+                    // No action needed
+                }
+            });
+        }
+        
         // Initialize attachment preview components
         attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
         attachmentPreviewText = findViewById(R.id.attachment_preview_text);
@@ -684,38 +705,92 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         // Note: Message refresh will be handled by broadcast receiver
                         // when MESSAGE_SENT broadcast is received from MessageService
                         Log.d(TAG, "Message sent successfully, waiting for broadcast to refresh UI");
+                        
+                        // Provide user feedback for successful MMS send
+                        if (hasAttachments) {
+                            Toast.makeText(ConversationActivity.this, 
+                                    "MMS sent successfully", 
+                                    Toast.LENGTH_SHORT).show();
+                        }
                     } else {
-                        Toast.makeText(ConversationActivity.this,
-                                R.string.error_sending_message,
-                                Toast.LENGTH_SHORT).show();
+                        // Enhanced error messaging for better user experience
+                        String errorMessage;
+                        if (hasAttachments) {
+                            errorMessage = "Failed to send MMS. Check network connection and try again.";
+                            Log.e(TAG, "MMS sending failed for recipient: " + address);
+                        } else {
+                            errorMessage = getString(R.string.error_sending_message);
+                            Log.e(TAG, "SMS sending failed for recipient: " + address);
+                        }
+                        
+                        Toast.makeText(ConversationActivity.this, errorMessage, Toast.LENGTH_LONG).show();
                     }
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error sending message", e);
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
-                    Toast.makeText(ConversationActivity.this,
-                            getString(R.string.error_sending_message) + ": " + e.getMessage(),
-                            Toast.LENGTH_SHORT).show();
+                    
+                    // Enhanced error messaging based on message type
+                    String errorMessage;
+                    if (hasAttachments) {
+                        errorMessage = "Failed to send MMS: " + e.getMessage() + 
+                                      ". Check network connection, file permissions, and attachment sizes.";
+                    } else {
+                        errorMessage = getString(R.string.error_sending_message) + ": " + e.getMessage();
+                    }
+                    
+                    Toast.makeText(ConversationActivity.this, errorMessage, Toast.LENGTH_LONG).show();
                 });
             }
         });
     }
 
     /**
-     * Updates the send button appearance based on whether attachments are selected
+     * Updates the send button appearance and state based on whether attachments are selected.
+     * Enhanced to follow Android best practices for button state management.
      */
     private void updateSendButtonForAttachments() {
         if (sendButton != null) {
             boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+            boolean hasText = messageInput != null && !messageInput.getText().toString().trim().isEmpty();
+            
+            // Enable/disable button based on content availability
+            boolean shouldEnable = hasText || hasAttachments;
+            sendButton.setEnabled(shouldEnable);
+            
             if (hasAttachments) {
                 // Change send button to indicate MMS mode
                 sendButton.setAlpha(1.0f);
-                // You could change the icon or background color here if desired
+                // Could add visual indicator for MMS mode (e.g., different color/icon)
+                sendButton.setContentDescription("Send MMS message with attachments");
+                Log.d(TAG, "Send button configured for MMS mode with " + selectedAttachments.size() + " attachments");
             } else {
                 // Reset to normal SMS mode
-                sendButton.setAlpha(1.0f);
+                sendButton.setAlpha(shouldEnable ? 1.0f : 0.5f);
+                sendButton.setContentDescription("Send SMS message");
+                Log.d(TAG, "Send button configured for SMS mode");
             }
+        }
+    }
+
+    /**
+     * Updates send button state when message text changes.
+     * Called from text change listeners to ensure consistent button state.
+     */
+    private void updateSendButtonForTextInput() {
+        if (sendButton != null && messageInput != null) {
+            String currentText = messageInput.getText().toString().trim();
+            boolean hasText = !currentText.isEmpty();
+            boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
+            
+            // Enable button if we have either text or attachments
+            boolean shouldEnable = hasText || hasAttachments;
+            sendButton.setEnabled(shouldEnable);
+            sendButton.setAlpha(shouldEnable ? 1.0f : 0.5f);
+            
+            Log.d(TAG, "Send button updated for text input - enabled: " + shouldEnable + 
+                      " (hasText: " + hasText + ", hasAttachments: " + hasAttachments + ")");
         }
     }
 
