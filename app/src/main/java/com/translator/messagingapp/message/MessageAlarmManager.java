@@ -68,7 +68,7 @@ public class MessageAlarmManager {
                 );
                 Log.d(TAG, "Scheduled exact alarm");
             }
-            }
+
         } catch (Exception e) {
             Log.e(TAG, "Failed to schedule alarm", e);
         }
