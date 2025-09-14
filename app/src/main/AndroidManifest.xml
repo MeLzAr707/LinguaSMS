@@ -34,8 +34,6 @@
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
     <!-- Permissions for MMS carrier configuration -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Permission for APN settings access (may not be granted to non-system apps) -->
-    <uses-permission android:name="android.permission.WRITE_APN_SETTINGS" />
     <!-- Permissions for deep sleep handling -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -208,11 +206,6 @@
             android:name=".mms.TransactionService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-            
-        <!-- System MMS Transaction Service (required for MMS functionality) -->
-        <service
-            android:name="com.android.mms.transaction.TransactionService"
-            android:exported="false" />
 
         <!-- Content Providers -->
         <provider
