@@ -1506,8 +1506,7 @@ public class MessageService {
      */
     private boolean hasRequiredMmsPermissions() {
         String[] requiredPermissions = {
-            android.Manifest.permission.SEND_MMS,
-            android.Manifest.permission.WRITE_SMS,
+            android.Manifest.permission.SEND_SMS,
             android.Manifest.permission.READ_SMS
         };
 
@@ -2706,10 +2705,9 @@ public class MessageService {
             // Check MMS permissions
             diagnostics.append("MMS Permissions:\n");
             String[] mmsPermissions = {
-                android.Manifest.permission.SEND_MMS,
+                android.Manifest.permission.SEND_SMS,
                 android.Manifest.permission.RECEIVE_MMS,
                 android.Manifest.permission.READ_SMS,
-                android.Manifest.permission.WRITE_SMS
             };
             
             for (String permission : mmsPermissions) {
