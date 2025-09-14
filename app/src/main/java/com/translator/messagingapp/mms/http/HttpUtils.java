@@ -147,6 +147,25 @@ public class HttpUtils {
             Log.e(TAG, "  2. DNS server problems");
             Log.e(TAG, "  3. Firewall blocking DNS requests");
             Log.e(TAG, "  4. Incorrect MMSC URL configuration");
+            
+            // Try to provide additional diagnostic information
+            try {
+                java.net.URL url = new java.net.URL(urlString);
+                String hostname = url.getHost();
+                Log.e(TAG, "Failed to resolve hostname: " + hostname);
+                
+                // Check if it's an IP address vs hostname
+                if (isIpAddress(hostname)) {
+                    Log.e(TAG, "MMSC URL uses IP address, DNS should not be needed");
+                } else {
+                    Log.e(TAG, "MMSC URL uses hostname, DNS resolution required");
+                    // Run additional DNS diagnostics for troubleshooting
+                    testDnsResolution(urlString);
+                }
+            } catch (Exception ex) {
+                Log.w(TAG, "Could not parse URL for additional diagnostics", ex);
+            }
+            
             return null;
         } catch (Exception e) {
             Log.e(TAG, "MMS HTTP connection failed", e);
@@ -187,8 +206,20 @@ public class HttpUtils {
         connection.setRequestProperty("User-Agent", "Android MMS/1.0");
         connection.setRequestProperty("Accept-Language", "en-US");
         
-        // Disable caching
+        // Additional headers for better compatibility
+        connection.setRequestProperty("Connection", "close"); // Ensure connection is closed after request
+        connection.setRequestProperty("Cache-Control", "no-cache");
+        
+        // Disable caching and following redirects for MMS
         connection.setUseCaches(false);
+        connection.setInstanceFollowRedirects(false); // MMS should not follow redirects
+        
+        // Enable input stream even for POST (needed to read response)
+        connection.setDoInput(true);
+        
+        Log.d(TAG, "HTTP connection configured: method=" + method + 
+              ", connectTimeout=" + connection.getConnectTimeout() + 
+              ", readTimeout=" + connection.getReadTimeout());
     }
 
     /**
@@ -918,6 +949,86 @@ public static int getMmsProxyPort(Context context) {
         } catch (Exception e) {
             Log.w(TAG, "Unexpected error getting MMS proxy port", e);
             return -1;
+        }
+    }
+
+    /**
+     * Checks if a hostname is an IP address (IPv4 or IPv6).
+     * 
+     * @param hostname The hostname to check
+     * @return true if it's an IP address, false if it's a domain name
+     */
+    private static boolean isIpAddress(String hostname) {
+        if (hostname == null || hostname.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Try to parse as an IP address
+            java.net.InetAddress.getByName(hostname);
+            
+            // If it contains dots and only digits/dots, it's likely IPv4
+            if (hostname.matches("^[0-9.]+$")) {
+                return true;
+            }
+            
+            // If it contains colons, it's likely IPv6
+            if (hostname.contains(":")) {
+                return true;
+            }
+            
+            return false;
+        } catch (Exception e) {
+            // If parsing fails, it's likely a domain name
+            return false;
+        }
+    }
+
+    /**
+     * Tests DNS resolution for the MMSC URL hostname.
+     * This helps identify DNS issues before attempting the full HTTP connection.
+     * 
+     * @param urlString The MMSC URL to test
+     * @return true if DNS resolution succeeds, false otherwise
+     */
+    private static boolean testDnsResolution(String urlString) {
+        try {
+            java.net.URL url = new java.net.URL(urlString);
+            String hostname = url.getHost();
+            
+            if (hostname == null || hostname.trim().isEmpty()) {
+                Log.e(TAG, "DNS test failed: No hostname in URL");
+                return false;
+            }
+            
+            Log.d(TAG, "Testing DNS resolution for hostname: " + hostname);
+            
+            // If it's already an IP address, no DNS needed
+            if (isIpAddress(hostname)) {
+                Log.d(TAG, "Hostname is an IP address, DNS resolution not required");
+                return true;
+            }
+            
+            // Attempt to resolve the hostname
+            java.net.InetAddress[] addresses = java.net.InetAddress.getAllByName(hostname);
+            if (addresses != null && addresses.length > 0) {
+                Log.d(TAG, "DNS resolution successful for " + hostname + ": " + addresses.length + " address(es) found");
+                for (java.net.InetAddress addr : addresses) {
+                    Log.d(TAG, "  Resolved to: " + addr.getHostAddress());
+                }
+                return true;
+            } else {
+                Log.e(TAG, "DNS resolution failed: No addresses found for " + hostname);
+                return false;
+            }
+            
+        } catch (java.net.UnknownHostException e) {
+            Log.e(TAG, "DNS resolution test failed: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            Log.w(TAG, "DNS resolution test error", e);
+            // Don't fail on unexpected errors during test - let the main connection attempt handle it
+            return true;
         }
     }
 }
