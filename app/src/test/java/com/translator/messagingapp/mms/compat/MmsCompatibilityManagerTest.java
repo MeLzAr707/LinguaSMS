@@ -67,24 +67,16 @@ public class MmsCompatibilityManagerTest {
     public void testSmsManagerApiAvailability() {
         boolean available = MmsCompatibilityManager.isSmsManagerMmsApiAvailable();
         
-        // Should be true for Lollipop+ (API 21+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            assertTrue(available);
-        } else {
-            assertFalse(available);
-        }
+        // Should always be true for API 24+ (minSdkVersion)
+        assertTrue(available);
     }
 
     @Test
     public void testReflectionAccessNeeds() {
         boolean needsReflection = MmsCompatibilityManager.needsReflectionAccess();
         
-        // Should be true for pre-Lollipop versions
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            assertTrue(needsReflection);
-        } else {
-            assertFalse(needsReflection);
-        }
+        // Should always be false for API 24+ (minSdkVersion)
+        assertFalse(needsReflection);
     }
 
     @Test
@@ -102,23 +94,13 @@ public class MmsCompatibilityManagerTest {
         
         assertNotNull(flags);
         
-        // Most features should be supported
+        // All features should be supported on API 24+
         assertTrue(flags.supportsGroupMms);
         assertTrue(flags.supportsDeliveryReports);
         assertTrue(flags.supportsReadReports);
         assertTrue(flags.supportsRichContent);
-        
-        // Large messages support depends on version
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            assertTrue(flags.supportsLargeMessages);
-        }
-        
-        // Special permissions required on Marshmallow+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            assertTrue(flags.requiresSpecialPermissions);
-        } else {
-            assertFalse(flags.requiresSpecialPermissions);
-        }
+        assertTrue(flags.supportsLargeMessages); // Always true since minSdkVersion 24 > KitKat
+        assertTrue(flags.requiresSpecialPermissions); // Always true since minSdkVersion 24 > Marshmallow
     }
 
     @Test
@@ -159,10 +141,7 @@ public class MmsCompatibilityManagerTest {
 
     @Test
     public void testVersionConstants() {
-        // Test that version constants are properly defined
-        assertEquals(Build.VERSION_CODES.KITKAT, MmsCompatibilityManager.KITKAT);
-        assertEquals(Build.VERSION_CODES.LOLLIPOP, MmsCompatibilityManager.LOLLIPOP);
-        assertEquals(Build.VERSION_CODES.M, MmsCompatibilityManager.MARSHMALLOW);
+        // Test that version constants are properly defined for API 24+
         assertEquals(Build.VERSION_CODES.N, MmsCompatibilityManager.NOUGAT);
         assertEquals(Build.VERSION_CODES.O, MmsCompatibilityManager.OREO);
     }
@@ -181,5 +160,8 @@ public class MmsCompatibilityManagerTest {
         assertNotNull(sendingName);
         assertNotNull(receivingName);
         assertEquals(sendingName, receivingName);
+        
+        // On API 24+, strategy names should be either "Nougat" or "OreoAndAbove"
+        assertTrue(sendingName.equals("Nougat") || sendingName.equals("OreoAndAbove"));
     }
 }

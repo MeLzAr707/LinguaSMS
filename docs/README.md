@@ -2,6 +2,11 @@
 
 This branch contains performance optimizations for the LinguaSMS app, focusing on improving the loading speed of conversations and messages.
 
+## System Requirements
+
+- **Android 7.0 (API Level 24) or higher**
+- **MMS functionality requires Android 7.0+**
+
 ## Key Optimizations
 
 ### 1. Enhanced Caching

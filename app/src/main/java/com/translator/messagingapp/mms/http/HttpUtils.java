@@ -422,52 +422,15 @@ public static int getMmsProxyPort(Context context) {
 
     /**
      * Validates that MMS configuration is available and correct.
+     * Since minimum SDK is 24, SmsManager handles MMS configuration automatically.
+     * 
      * @param context The application context
-     * @return True if MMS can be configured, false otherwise
+     * @return Always true since SmsManager handles MMS configuration on API 24+
      */
     public static boolean validateMmsConfiguration(Context context) {
-        try {
-            // On Android 5.0+, SmsManager can handle MMS without manual MMSC configuration
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                Log.d(TAG, "Android 5.0+ detected - SmsManager available for MMS, skipping MMSC validation");
-                return true;
-            }
-            
-            // For older Android versions, try to validate MMSC configuration
-            String mmscUrl = getMmscUrl(context);
-            if (mmscUrl == null || mmscUrl.isEmpty()) {
-                Log.w(TAG, "MMS validation warning: No MMSC URL available, but continuing anyway");
-                // Don't fail completely - the transaction architecture might still work
-                return true;
-            }
-            
-            // Validate URL format if we have one
-            try {
-                new java.net.URL(mmscUrl);
-                Log.d(TAG, "MMS configuration validated successfully. MMSC URL: " + mmscUrl);
-            } catch (java.net.MalformedURLException e) {
-                Log.w(TAG, "MMS validation warning: Invalid MMSC URL format: " + mmscUrl + ", but continuing anyway");
-                // Don't fail completely - other methods might work
-            }
-            
-            // Check network connectivity
-            android.net.ConnectivityManager connectivityManager = 
-                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (connectivityManager != null) {
-                android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-                if (networkInfo == null || !networkInfo.isConnected()) {
-                    Log.w(TAG, "MMS validation warning: No active network connection");
-                    // Don't return false here as network might come back
-                }
-            }
-            
-            return true;
-            
-        } catch (Exception e) {
-            Log.w(TAG, "Error validating MMS configuration, but continuing anyway", e);
-            // Don't fail completely on validation errors
-            return true;
-        }
+        // On API 24+, SmsManager handles MMS configuration automatically
+        Log.d(TAG, "API 24+ detected - SmsManager available for MMS, configuration handled automatically");
+        return true;
     }
 
     /**
@@ -826,7 +789,7 @@ public static int getMmsProxyPort(Context context) {
             
             // Android version info
             Log.d(TAG, "Android SDK: " + android.os.Build.VERSION.SDK_INT);
-            Log.d(TAG, "Uses SmsManager (Android 5.0+): " + (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP));
+            Log.d(TAG, "Uses SmsManager (Always available on API 24+): true");
             
         } catch (Exception e) {
             Log.e(TAG, "Error during MMS diagnostics", e);

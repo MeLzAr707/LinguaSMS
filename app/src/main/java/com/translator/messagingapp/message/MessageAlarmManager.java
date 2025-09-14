@@ -51,28 +51,23 @@ public class MessageAlarmManager {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 // Use setExactAndAllowWhileIdle for API 23+ to work during Doze mode
+                // Since minSdkVersion is 24, this is always the path taken
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
                     pendingIntent
                 );
                 Log.d(TAG, "Scheduled exact alarm with Doze mode compatibility");
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                // Use setExact for API 19-22
+            } else {
+                // This branch should never execute since minSdkVersion is 24 > Marshmallow (23)
+                // But keeping for safety
                 alarmManager.setExact(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
                     pendingIntent
                 );
                 Log.d(TAG, "Scheduled exact alarm");
-            } else {
-                // Fallback for older versions
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                );
-                Log.d(TAG, "Scheduled regular alarm");
+            }
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to schedule alarm", e);

@@ -19,15 +19,13 @@ import com.translator.messagingapp.mms.TransactionService;
 public class MmsCompatibilityManager {
     private static final String TAG = "MmsCompatibilityManager";
 
-    // Android version constants
-    public static final int KITKAT = Build.VERSION_CODES.KITKAT;
-    public static final int LOLLIPOP = Build.VERSION_CODES.LOLLIPOP;
-    public static final int MARSHMALLOW = Build.VERSION_CODES.M;
-    public static final int NOUGAT = Build.VERSION_CODES.N;
+    // Android version constants (API 24+ only)
+    public static final int NOUGAT = Build.VERSION_CODES.N;  // API 24 - minimum supported
     public static final int OREO = Build.VERSION_CODES.O;
 
     /**
      * Gets the best MMS sending strategy for the current Android version.
+     * Since minimum SDK is 24 (Android N), only modern API strategies are supported.
      *
      * @param context The application context
      * @return The appropriate sending strategy
@@ -35,20 +33,19 @@ public class MmsCompatibilityManager {
     public static MmsSendingStrategy getSendingStrategy(Context context) {
         int sdkVersion = Build.VERSION.SDK_INT;
         
-        if (sdkVersion >= LOLLIPOP) {
-            // Android 5.0+ - Use official SmsManager API with transaction fallback
-            return new LollipopAndAboveSendingStrategy(context);
-        } else if (sdkVersion >= KITKAT) {
-            // Android 4.4 - Use transaction architecture with KitKat-specific handling
-            return new KitKatSendingStrategy(context);
+        // Since minSdkVersion is 24, we only support Android N+ strategies
+        if (sdkVersion >= OREO) {
+            // Android 8.0+ - Use transaction architecture with Oreo optimizations
+            return new OreoAndAboveSendingStrategy(context);
         } else {
-            // Android < 4.4 - Use legacy direct approach
-            return new PreKitKatSendingStrategy(context);
+            // Android 7.0-7.1 - Use transaction architecture with Nougat support
+            return new NougatSendingStrategy(context);
         }
     }
 
     /**
      * Gets the best MMS receiving strategy for the current Android version.
+     * Since minimum SDK is 24 (Android N), only modern API strategies are supported.
      *
      * @param context The application context
      * @return The appropriate receiving strategy
@@ -56,12 +53,11 @@ public class MmsCompatibilityManager {
     public static MmsReceivingStrategy getReceivingStrategy(Context context) {
         int sdkVersion = Build.VERSION.SDK_INT;
         
-        if (sdkVersion >= LOLLIPOP) {
-            return new LollipopAndAboveReceivingStrategy(context);
-        } else if (sdkVersion >= KITKAT) {
-            return new KitKatReceivingStrategy(context);
+        // Since minSdkVersion is 24, we only support Android N+ strategies
+        if (sdkVersion >= OREO) {
+            return new OreoAndAboveReceivingStrategy(context);
         } else {
-            return new PreKitKatReceivingStrategy(context);
+            return new NougatReceivingStrategy(context);
         }
     }
 
@@ -77,20 +73,22 @@ public class MmsCompatibilityManager {
 
     /**
      * Checks if the official SmsManager MMS API is available.
+     * Since minimum SDK is 24, this is always true.
      *
-     * @return True if SmsManager.sendMultimediaMessage is available
+     * @return Always true for API 24+
      */
     public static boolean isSmsManagerMmsApiAvailable() {
-        return Build.VERSION.SDK_INT >= LOLLIPOP;
+        return true; // Always available since minSdkVersion is 24 (> Lollipop=21)
     }
 
     /**
      * Checks if reflection-based access is needed for MMS operations.
+     * Since minimum SDK is 24, this is always false.
      *
-     * @return True if reflection is needed
+     * @return Always false for API 24+
      */
     public static boolean needsReflectionAccess() {
-        return Build.VERSION.SDK_INT < LOLLIPOP;
+        return false; // Never needed since minSdkVersion is 24 (> Lollipop=21)
     }
 
     /**
@@ -101,10 +99,8 @@ public class MmsCompatibilityManager {
     public static long getMmsOperationTimeout() {
         if (Build.VERSION.SDK_INT >= OREO) {
             return 90000; // 90 seconds for newer versions
-        } else if (Build.VERSION.SDK_INT >= LOLLIPOP) {
-            return 120000; // 2 minutes for Lollipop+
         } else {
-            return 180000; // 3 minutes for older versions
+            return 120000; // 2 minutes for Nougat
         }
     }
 
@@ -137,6 +133,7 @@ public class MmsCompatibilityManager {
 
     /**
      * Feature flags for different Android versions.
+     * Since minimum SDK is 24, all modern features are supported.
      */
     public static class MmsFeatureFlags {
         public final boolean supportsGroupMms;
@@ -147,44 +144,42 @@ public class MmsCompatibilityManager {
         public final boolean requiresSpecialPermissions;
 
         public MmsFeatureFlags() {
-            int sdkVersion = Build.VERSION.SDK_INT;
-            
-            // Most features are supported on all versions, but some have limitations
+            // All features are supported on API 24+
             supportsGroupMms = true;
             supportsDeliveryReports = true;
             supportsReadReports = true;
             supportsRichContent = true;
-            supportsLargeMessages = sdkVersion >= KITKAT;
-            requiresSpecialPermissions = sdkVersion >= MARSHMALLOW;
+            supportsLargeMessages = true; // Always true since minSdkVersion 24 > KitKat
+            requiresSpecialPermissions = true; // Always true since minSdkVersion 24 > Marshmallow
         }
     }
 
     /**
-     * Android 5.0+ sending strategy.
+     * Android 8.0+ sending strategy.
      */
-    private static class LollipopAndAboveSendingStrategy implements MmsSendingStrategy {
+    private static class OreoAndAboveSendingStrategy implements MmsSendingStrategy {
         private final Context mContext;
 
-        public LollipopAndAboveSendingStrategy(Context context) {
+        public OreoAndAboveSendingStrategy(Context context) {
             mContext = context;
         }
 
         @Override
         public boolean sendMms(Uri messageUri, String address, String subject) {
             try {
-                // Primary: Use transaction architecture
+                // Use transaction architecture optimized for Oreo+
                 MmsMessageSender sender = MmsMessageSender.create(mContext, messageUri);
                 boolean success = sender.sendMessage(System.currentTimeMillis());
                 
-                if (!success && isSmsManagerMmsApiAvailable()) {
-                    // Fallback: Use SmsManager API
+                if (!success) {
+                    // Fallback: Use SmsManager API (always available on API 24+)
                     Log.d(TAG, "Transaction send failed, trying SmsManager API");
                     return sendWithSmsManager(messageUri);
                 }
                 
                 return success;
             } catch (Exception e) {
-                Log.e(TAG, "Error in Lollipop+ sending strategy", e);
+                Log.e(TAG, "Error in Oreo+ sending strategy", e);
                 return false;
             }
         }
@@ -212,12 +207,68 @@ public class MmsCompatibilityManager {
                 return false;
             }
         }
-        
-        private boolean isSmsManagerMmsApiAvailable() {
+
+        @Override
+        public boolean isAvailable() {
+            return MmsMessageSender.isMmsSendingAvailable(mContext);
+        }
+
+        @Override
+        public String getStrategyName() {
+            return "OreoAndAbove";
+        }
+    }
+
+    /**
+     * Android 7.0-7.1 sending strategy.
+     */
+    private static class NougatSendingStrategy implements MmsSendingStrategy {
+        private final Context mContext;
+
+        public NougatSendingStrategy(Context context) {
+            mContext = context;
+        }
+
+        @Override
+        public boolean sendMms(Uri messageUri, String address, String subject) {
             try {
-                // Check if SmsManager.sendMultimediaMessage is available
-                return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP;
+                // Use transaction architecture with SmsManager API fallback
+                MmsMessageSender sender = MmsMessageSender.create(mContext, messageUri);
+                boolean success = sender.sendMessage(System.currentTimeMillis());
+                
+                if (!success) {
+                    // Fallback: Use SmsManager API (always available on API 24+)
+                    Log.d(TAG, "Transaction send failed, trying SmsManager API");
+                    return sendWithSmsManager(messageUri);
+                }
+                
+                return success;
             } catch (Exception e) {
+                Log.e(TAG, "Error in Nougat sending strategy", e);
+                return false;
+            }
+        }
+
+        private boolean sendWithSmsManager(Uri messageUri) {
+            try {
+                SmsManager smsManager = SmsManager.getDefault();
+                
+                // Create PendingIntent for send result  
+                android.content.Intent sentIntent = new android.content.Intent("com.translator.messagingapp.MMS_SENT");
+                sentIntent.putExtra("message_uri", messageUri.toString());
+                
+                android.app.PendingIntent sentPendingIntent = android.app.PendingIntent.getBroadcast(
+                    mContext,
+                    (int) System.currentTimeMillis(), // Unique request code
+                    sentIntent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                );
+                
+                smsManager.sendMultimediaMessage(mContext, messageUri, null, null, sentPendingIntent);
+                Log.d(TAG, "MMS sent via SmsManager with PendingIntent");
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "SmsManager send failed", e);
                 return false;
             }
         }
@@ -229,83 +280,17 @@ public class MmsCompatibilityManager {
 
         @Override
         public String getStrategyName() {
-            return "LollipopAndAbove";
+            return "Nougat";
         }
     }
 
     /**
-     * Android 4.4 sending strategy.
+     * Android 8.0+ receiving strategy.
      */
-    private static class KitKatSendingStrategy implements MmsSendingStrategy {
+    private static class OreoAndAboveReceivingStrategy implements MmsReceivingStrategy {
         private final Context mContext;
 
-        public KitKatSendingStrategy(Context context) {
-            mContext = context;
-        }
-
-        @Override
-        public boolean sendMms(Uri messageUri, String address, String subject) {
-            try {
-                // Use transaction architecture with KitKat-specific adjustments
-                MmsMessageSender sender = MmsMessageSender.create(mContext, messageUri);
-                return sender.sendMessage(System.currentTimeMillis());
-            } catch (Exception e) {
-                Log.e(TAG, "Error in KitKat sending strategy", e);
-                return false;
-            }
-        }
-
-        @Override
-        public boolean isAvailable() {
-            return true; // Always available on KitKat
-        }
-
-        @Override
-        public String getStrategyName() {
-            return "KitKat";
-        }
-    }
-
-    /**
-     * Pre-Android 4.4 sending strategy.
-     */
-    private static class PreKitKatSendingStrategy implements MmsSendingStrategy {
-        private final Context mContext;
-
-        public PreKitKatSendingStrategy(Context context) {
-            mContext = context;
-        }
-
-        @Override
-        public boolean sendMms(Uri messageUri, String address, String subject) {
-            try {
-                // Use transaction architecture with legacy compatibility
-                MmsMessageSender sender = MmsMessageSender.create(mContext, messageUri);
-                return sender.sendMessage(System.currentTimeMillis());
-            } catch (Exception e) {
-                Log.e(TAG, "Error in pre-KitKat sending strategy", e);
-                return false;
-            }
-        }
-
-        @Override
-        public boolean isAvailable() {
-            return true; // Always available
-        }
-
-        @Override
-        public String getStrategyName() {
-            return "PreKitKat";
-        }
-    }
-
-    /**
-     * Android 5.0+ receiving strategy.
-     */
-    private static class LollipopAndAboveReceivingStrategy implements MmsReceivingStrategy {
-        private final Context mContext;
-
-        public LollipopAndAboveReceivingStrategy(Context context) {
+        public OreoAndAboveReceivingStrategy(Context context) {
             mContext = context;
         }
 
@@ -315,7 +300,7 @@ public class MmsCompatibilityManager {
                 // Use transaction architecture for notification handling
                 return startNotificationTransaction(pduData);
             } catch (Exception e) {
-                Log.e(TAG, "Error in Lollipop+ receiving strategy", e);
+                Log.e(TAG, "Error in Oreo+ receiving strategy", e);
                 return false;
             }
         }
@@ -333,23 +318,34 @@ public class MmsCompatibilityManager {
 
         @Override
         public String getStrategyName() {
-            return "LollipopAndAbove";
+            return "OreoAndAbove";
         }
     }
 
     /**
-     * Android 4.4 receiving strategy.
+     * Android 7.0-7.1 receiving strategy.
      */
-    private static class KitKatReceivingStrategy implements MmsReceivingStrategy {
+    private static class NougatReceivingStrategy implements MmsReceivingStrategy {
         private final Context mContext;
 
-        public KitKatReceivingStrategy(Context context) {
+        public NougatReceivingStrategy(Context context) {
             mContext = context;
         }
 
         @Override
         public boolean handleMmsNotification(byte[] pduData) {
-            // KitKat-specific notification handling
+            try {
+                // Use transaction architecture for notification handling
+                return startNotificationTransaction(pduData);
+            } catch (Exception e) {
+                Log.e(TAG, "Error in Nougat receiving strategy", e);
+                return false;
+            }
+        }
+
+        private boolean startNotificationTransaction(byte[] pduData) {
+            // Create notification entry and start transaction
+            // This would integrate with the TransactionService
             return true; // Placeholder
         }
 
@@ -360,34 +356,7 @@ public class MmsCompatibilityManager {
 
         @Override
         public String getStrategyName() {
-            return "KitKat";
-        }
-    }
-
-    /**
-     * Pre-Android 4.4 receiving strategy.
-     */
-    private static class PreKitKatReceivingStrategy implements MmsReceivingStrategy {
-        private final Context mContext;
-
-        public PreKitKatReceivingStrategy(Context context) {
-            mContext = context;
-        }
-
-        @Override
-        public boolean handleMmsNotification(byte[] pduData) {
-            // Legacy notification handling
-            return true; // Placeholder
-        }
-
-        @Override
-        public boolean isAutoDownloadSupported() {
-            return true; // Limited support
-        }
-
-        @Override
-        public String getStrategyName() {
-            return "PreKitKat";
+            return "Nougat";
         }
     }
 }

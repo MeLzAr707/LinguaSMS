@@ -1,19 +1,36 @@
 # MMS Troubleshooting Guide
 
+## System Requirements
+
+### Android Version Compatibility
+
+**Minimum Requirements:**
+- Android 7.0 (API Level 24) or higher
+- MMS functionality is only supported on devices running Android 7.0 (Nougat) and above
+
+**Technical Rationale:**
+The app's minimum SDK version is set to 24 (Android 7.0) to ensure:
+1. Full access to modern SmsManager APIs for reliable MMS handling
+2. Consistent behavior across supported devices
+3. Elimination of legacy compatibility code and associated bugs
+4. Support for modern MMS features and security improvements
+
+**If you're running an older Android version:**
+- MMS features will not be available
+- The app may not install on devices below Android 7.0
+- For older devices, consider using alternative messaging apps that support your Android version
+
 ## Common MMS Issues and Solutions
 
 ### SecurityException: No permission to access APN settings
 
 **Issue:** You see errors like "SecurityException: No permission to access APN settings" in the logs.
 
-**Cause:** Modern Android versions (5.0+) restrict access to APN settings for regular apps. This is expected behavior.
+**Cause:** Modern Android versions (7.0+) automatically handle MMS configuration through the SmsManager API. Legacy manual configuration is no longer needed or supported.
 
-**Solution:** The app automatically handles this by:
-1. Using CarrierConfigManager (preferred method)
-2. Falling back to carrier-specific database
-3. Using direct connection without proxy (works for most carriers)
+**Solution:** The app automatically uses the modern SmsManager API on all supported devices (Android 7.0+). No manual configuration is required.
 
-**Status:** ✅ Fixed - The app now handles this gracefully and should work without manual intervention.
+**Status:** ✅ Automatically handled - Modern Android devices handle MMS configuration automatically.
 
 ### MMS fails to send on Verizon
 
