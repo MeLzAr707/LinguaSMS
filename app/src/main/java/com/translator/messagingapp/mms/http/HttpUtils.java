@@ -62,15 +62,27 @@ public class HttpUtils {
             return null;
         }
 
+        // Validate network connectivity before attempting connection
+        if (!isNetworkAvailable(context)) {
+            Log.e(TAG, "MMS send failed: No network connectivity available");
+            return null;
+        }
+
+        // Validate MMSC URL format
+        if (!isValidMmscUrl(urlString)) {
+            Log.e(TAG, "MMS send failed: Invalid MMSC URL format: " + urlString);
+            return null;
+        }
+
         HttpURLConnection connection = null;
         try {
             Log.d(TAG, "HTTP " + method + " to: " + urlString);
             
             URL url = new URL(urlString);
             
-            // Check if we need to use a proxy
-            String mmsProxy = getMmsProxy(context);
-            int mmsProxyPort = getMmsProxyPort(context);
+            // Check if we need to use a proxy (handle SecurityExceptions gracefully)
+            String mmsProxy = getMmsProxySafe(context);
+            int mmsProxyPort = getMmsProxyPortSafe(context);
             
             if (mmsProxy != null && !mmsProxy.isEmpty() && mmsProxyPort > 0) {
                 Log.d(TAG, "Using MMS proxy: " + mmsProxy + ":" + mmsProxyPort);
@@ -129,6 +141,12 @@ public class HttpUtils {
             return null;
         } catch (java.net.UnknownHostException e) {
             Log.e(TAG, "MMS send failed: Cannot resolve MMSC hostname. Check network connectivity.", e);
+            // This is the specific error from the logs - provide additional context
+            Log.e(TAG, "DNS resolution failed for: " + urlString + ". This could be due to:");
+            Log.e(TAG, "  1. Network connectivity issues");
+            Log.e(TAG, "  2. DNS server problems");
+            Log.e(TAG, "  3. Firewall blocking DNS requests");
+            Log.e(TAG, "  4. Incorrect MMSC URL configuration");
             return null;
         } catch (Exception e) {
             Log.e(TAG, "MMS HTTP connection failed", e);
@@ -796,5 +814,110 @@ public static int getMmsProxyPort(Context context) {
         }
         
         Log.d(TAG, "=== End MMS Diagnostics ===");
+    }
+
+    /**
+     * Checks if network connectivity is available.
+     * 
+     * @param context The application context
+     * @return true if network is available, false otherwise
+     */
+    private static boolean isNetworkAvailable(Context context) {
+        try {
+            android.net.ConnectivityManager connectivityManager = 
+                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            
+            if (connectivityManager != null) {
+                android.net.NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+                boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+                
+                if (!isConnected) {
+                    Log.e(TAG, "Network check failed: No active network connection");
+                }
+                
+                return isConnected;
+            } else {
+                Log.w(TAG, "ConnectivityManager not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking network connectivity", e);
+            return false;
+        }
+    }
+
+    /**
+     * Validates that the MMSC URL has a proper format.
+     * 
+     * @param urlString The URL to validate
+     * @return true if URL format is valid, false otherwise
+     */
+    private static boolean isValidMmscUrl(String urlString) {
+        if (urlString == null || urlString.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            java.net.URL url = new java.net.URL(urlString);
+            String protocol = url.getProtocol();
+            String host = url.getHost();
+            
+            // MMSC URLs should use HTTP or HTTPS
+            if (!"http".equalsIgnoreCase(protocol) && !"https".equalsIgnoreCase(protocol)) {
+                Log.e(TAG, "Invalid MMSC URL protocol: " + protocol + " (should be http or https)");
+                return false;
+            }
+            
+            // Must have a valid hostname
+            if (host == null || host.trim().isEmpty()) {
+                Log.e(TAG, "Invalid MMSC URL: missing hostname");
+                return false;
+            }
+            
+            return true;
+        } catch (java.net.MalformedURLException e) {
+            Log.e(TAG, "Invalid MMSC URL format: " + urlString, e);
+            return false;
+        }
+    }
+
+    /**
+     * Gets MMS proxy in a safe way that handles SecurityExceptions gracefully.
+     * This prevents SecurityExceptions from disrupting the MMS sending process.
+     * 
+     * @param context The application context
+     * @return The MMS proxy, or null if not available or SecurityException occurs
+     */
+    private static String getMmsProxySafe(Context context) {
+        try {
+            return getMmsProxy(context);
+        } catch (SecurityException e) {
+            // Log but don't propagate SecurityException - this is expected on modern Android
+            Log.d(TAG, "SecurityException getting MMS proxy (expected on modern Android): " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            Log.w(TAG, "Unexpected error getting MMS proxy", e);
+            return null;
+        }
+    }
+
+    /**
+     * Gets MMS proxy port in a safe way that handles SecurityExceptions gracefully.
+     * This prevents SecurityExceptions from disrupting the MMS sending process.
+     * 
+     * @param context The application context
+     * @return The MMS proxy port, or -1 if not available or SecurityException occurs
+     */
+    private static int getMmsProxyPortSafe(Context context) {
+        try {
+            return getMmsProxyPort(context);
+        } catch (SecurityException e) {
+            // Log but don't propagate SecurityException - this is expected on modern Android
+            Log.d(TAG, "SecurityException getting MMS proxy port (expected on modern Android): " + e.getMessage());
+            return -1;
+        } catch (Exception e) {
+            Log.w(TAG, "Unexpected error getting MMS proxy port", e);
+            return -1;
+        }
     }
 }
