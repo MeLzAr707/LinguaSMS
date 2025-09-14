@@ -307,8 +307,23 @@ public class MessageService {
                 // Get the MMS ID
                 String id = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms._ID));
 
-                // Get the address (phone number)
-                String address = getMmsAddress(contentResolver, id, Telephony.Mms.MESSAGE_BOX_INBOX);
+                // Get the actual message box type to determine if this is incoming or outgoing
+                int messageBox = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Mms.MESSAGE_BOX));
+                Log.d(TAG, "Loading MMS conversation details for message ID " + id + " in box " + messageBox);
+
+                // Get the address (phone number) using the correct message box type
+                String address = getMmsAddress(contentResolver, id, messageBox);
+                
+                // If address is still null, try the opposite direction as fallback
+                // This helps with edge cases where the message box type detection might fail
+                if (TextUtils.isEmpty(address)) {
+                    Log.d(TAG, "Primary address lookup failed, trying fallback approach for message ID " + id);
+                    int fallbackBox = (messageBox == Telephony.Mms.MESSAGE_BOX_INBOX) ? 
+                        Telephony.Mms.MESSAGE_BOX_SENT : Telephony.Mms.MESSAGE_BOX_INBOX;
+                    address = getMmsAddress(contentResolver, id, fallbackBox);
+                }
+                
+                Log.d(TAG, "MMS conversation address resolved to: " + address + " for thread " + threadId);
 
                 // Get the latest message details
                 String snippet = getMmsText(contentResolver, id);

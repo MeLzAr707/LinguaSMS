@@ -223,10 +223,10 @@ public class ConversationDisplayTest {
         assertEquals("Should format 10-digit number", "(555) 123-4567", 
                     testAdapter.formatPhoneNumber("5551234567"));
         
-        assertEquals("Should handle null", "Unknown", 
+        assertEquals("Should handle null", "No Number", 
                     testAdapter.formatPhoneNumber(null));
         
-        assertEquals("Should handle empty", "Unknown", 
+        assertEquals("Should handle empty", "No Number", 
                     testAdapter.formatPhoneNumber(""));
     }
 }
