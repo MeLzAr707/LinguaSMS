@@ -2302,9 +2302,10 @@ public class MessageService {
                 if (fromAddress == null) {
                     fromAddress = intent.getStringExtra("sender");
                     if (fromAddress == null) {
-                        // Default fallback - we need an address for the conversation thread
-                        fromAddress = "Unknown";
-                        Log.w(TAG, "No sender address found in MMS intent, using fallback");
+                        // Default fallback - this should be very rare
+                        // Use a more descriptive placeholder and log the issue
+                        fromAddress = "0000000000"; // Use a phone-like format that won't display as "Unknown"
+                        Log.e(TAG, "No sender address found in MMS intent - this may cause display issues");
                     }
                 }
             }

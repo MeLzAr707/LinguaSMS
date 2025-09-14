@@ -874,7 +874,7 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
      */
     private String formatPhoneNumberForDisplay(String phoneNumber) {
         if (TextUtils.isEmpty(phoneNumber)) {
-            return "Unknown";
+            return "No Number";
         }
 
         // Remove any non-digit characters for formatting
