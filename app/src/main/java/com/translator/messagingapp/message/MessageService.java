@@ -12,6 +12,8 @@ import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
 
+import com.translator.messagingapp.p2p.*;
+
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -62,6 +64,7 @@ public class MessageService {
     private final TranslationCache translationCache;
     private final RcsService rcsService;
     private final UserPreferences userPreferences;
+    private final P2PService p2pService;
 
     /**
      * Creates a new MessageService.
@@ -75,6 +78,7 @@ public class MessageService {
         this.translationCache = translationCache;
         this.rcsService = new RcsService(context);
         this.userPreferences = new UserPreferences(context);
+        this.p2pService = new P2PService(context);
     }
 
     /**
@@ -2160,13 +2164,22 @@ public class MessageService {
                 }
 
                 if (senderAddress != null && fullMessageBody.length() > 0) {
-                    Log.d(TAG, "Received SMS from " + senderAddress + ": " + fullMessageBody.toString());
+                    String messageText = fullMessageBody.toString();
+                    Log.d(TAG, "Received SMS from " + senderAddress + ": " + messageText);
+
+                    // Check if this is a P2P connection trigger
+                    if (P2PEncryptionUtils.isValidP2PTrigger(messageText)) {
+                        Log.d(TAG, "Detected P2P connection trigger from " + senderAddress);
+                        handleP2PTrigger(senderAddress, messageText);
+                        // Do not store P2P trigger messages in regular SMS database
+                        return;
+                    }
 
                     // Check if message already exists to prevent duplicates
-                    boolean messageAlreadyExists = isMessageAlreadyStored(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                    boolean messageAlreadyExists = isMessageAlreadyStored(senderAddress, messageText, messageTimestamp);
                     if (!messageAlreadyExists) {
                         Log.d(TAG, "Message not found in database, storing message");
-                        storeSmsMessage(senderAddress, fullMessageBody.toString(), messageTimestamp);
+                        storeSmsMessage(senderAddress, messageText, messageTimestamp);
                     } else {
                         Log.d(TAG, "Message already exists in database, skipping storage to prevent duplicate");
                     }
@@ -2176,7 +2189,7 @@ public class MessageService {
                         try {
                             // Create SmsMessage object for translation
                             com.translator.messagingapp.sms.SmsMessage smsMessage = 
-                                new com.translator.messagingapp.sms.SmsMessage(senderAddress, fullMessageBody.toString(), new java.util.Date(messageTimestamp));
+                                new com.translator.messagingapp.sms.SmsMessage(senderAddress, messageText, new java.util.Date(messageTimestamp));
                             smsMessage.setIncoming(true);
                             
                             // Attempt auto-translation
@@ -2761,5 +2774,115 @@ public class MessageService {
         
         // Also log to console for easier debugging
         System.out.println(diagnostics);
+    }
+
+    /**
+     * Handles incoming P2P connection trigger SMS.
+     *
+     * @param senderAddress The phone number that sent the trigger
+     * @param triggerMessage The P2P trigger SMS content
+     */
+    private void handleP2PTrigger(String senderAddress, String triggerMessage) {
+        Log.d(TAG, "Processing P2P trigger from " + senderAddress);
+        
+        try {
+            // Extract encrypted payload from the trigger message
+            String encryptedPayload = P2PEncryptionUtils.extractEncryptedPayload(triggerMessage);
+            if (encryptedPayload == null) {
+                Log.e(TAG, "Failed to extract encrypted payload from P2P trigger");
+                return;
+            }
+
+            // Let P2PService handle the connection establishment
+            if (p2pService != null) {
+                p2pService.handleP2PTrigger(senderAddress, encryptedPayload);
+            } else {
+                Log.e(TAG, "P2PService is null, cannot handle P2P trigger");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling P2P trigger from " + senderAddress, e);
+        }
+    }
+
+    /**
+     * Creates and sends a P2P connection offer to the specified phone number.
+     *
+     * @param targetPhoneNumber The phone number to send the P2P offer to
+     * @return true if the offer was sent successfully, false otherwise
+     */
+    public boolean sendP2PConnectionOffer(String targetPhoneNumber) {
+        Log.d(TAG, "Creating P2P connection offer for " + targetPhoneNumber);
+        
+        try {
+            if (p2pService == null) {
+                Log.e(TAG, "P2PService is null, cannot create P2P offer");
+                return false;
+            }
+
+            // Create the encrypted P2P trigger message
+            String triggerMessage = p2pService.createP2PConnectionOffer(targetPhoneNumber);
+            if (triggerMessage == null) {
+                Log.e(TAG, "Failed to create P2P connection offer");
+                return false;
+            }
+
+            // Send the trigger message via SMS
+            return sendSms(targetPhoneNumber, triggerMessage);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending P2P connection offer to " + targetPhoneNumber, e);
+            return false;
+        }
+    }
+
+    /**
+     * Sends a message over an established P2P connection.
+     *
+     * @param phoneNumber The phone number of the P2P connection
+     * @param message The message to send
+     * @return true if sent successfully, false otherwise
+     */
+    public boolean sendP2PMessage(String phoneNumber, String message) {
+        if (p2pService == null) {
+            Log.e(TAG, "P2PService is null, cannot send P2P message");
+            return false;
+        }
+
+        return p2pService.sendP2PMessage(phoneNumber, message);
+    }
+
+    /**
+     * Checks if there's an active P2P connection with the given phone number.
+     *
+     * @param phoneNumber The phone number to check
+     * @return true if there's an active P2P connection, false otherwise
+     */
+    public boolean hasActiveP2PConnection(String phoneNumber) {
+        if (p2pService == null) {
+            return false;
+        }
+
+        return p2pService.hasActiveConnection(phoneNumber);
+    }
+
+    /**
+     * Closes the P2P connection with the specified phone number.
+     *
+     * @param phoneNumber The phone number to close the connection with
+     */
+    public void closeP2PConnection(String phoneNumber) {
+        if (p2pService != null) {
+            p2pService.closeConnection(phoneNumber);
+        }
+    }
+
+    /**
+     * Gets the P2PService instance for advanced P2P operations.
+     *
+     * @return The P2PService instance, or null if not available
+     */
+    public P2PService getP2PService() {
+        return p2pService;
     }
 }
