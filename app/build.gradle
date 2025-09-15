@@ -68,7 +68,7 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
 
     // WebRTC for P2P connections
-    implementation 'org.webrtc:google-webrtc:1.0.32006'
+    implementation 'org.webrtc:google-webrtc:1.0.24064'
     
     // Encryption utilities
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'

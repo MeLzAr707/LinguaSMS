@@ -1145,6 +1145,10 @@ public class MessageService {
      * @param body The message body
      * @return True if the message was sent successfully
      */
+    public boolean sendSms(String address, String body) {
+        return sendSmsMessage(address, body);
+    }
+
     /**
      * Sends an SMS message.
      *
