@@ -14,6 +14,7 @@
     <string name="action_translate">Translate</string>
     <string name="action_delete">Delete</string>
     <string name="action_call">Call</string>
+    <string name="action_p2p_connect">P2P Connect</string>
     <string name="action_mark_read">Mark as read</string>
     <string name="action_contact_settings">Contact Settings</string>
 

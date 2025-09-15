@@ -16,6 +16,7 @@ import com.translator.messagingapp.contact.*;
 import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
+import com.translator.messagingapp.p2p.*;
 import com.translator.messagingapp.util.EmojiPickerDialog;
 
 import android.annotation.SuppressLint;
@@ -124,6 +125,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private List<Message> messages;
     private ExecutorService executorService;
     
+    // P2P connection management
+    private BroadcastReceiver p2pBroadcastReceiver;
+    
     // Selected attachments for sending
     private List<Uri> selectedAttachments;
     
@@ -213,6 +217,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         
         // Register message update receiver when activity becomes visible
         setupMessageUpdateReceiver();
+        
+        // Register P2P connection receiver
+        setupP2PReceiver();
         
         // Refresh messages to catch any updates that may have been missed
         // while the activity was not visible (MESSAGE_RECEIVED broadcasts
@@ -1878,6 +1885,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         } else if (id == R.id.action_call) {
             makePhoneCall();
             return true;
+        } else if (id == R.id.action_p2p_connect) {
+            initiateP2PConnection();
+            return true;
         } else if (id == R.id.action_translate) {
             translateInput();
             return true;
@@ -2218,6 +2228,17 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
+        }
+        
+        // Unregister P2P receiver
+        if (p2pBroadcastReceiver != null) {
+            try {
+                androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this).unregisterReceiver(p2pBroadcastReceiver);
+                p2pBroadcastReceiver = null;
+                Log.d(TAG, "P2P broadcast receiver unregistered");
+            } catch (Exception e) {
+                Log.w(TAG, "Error unregistering P2P receiver", e);
+            }
         }
         
         // Note: BroadcastReceiver cleanup is handled in onPause()
@@ -2762,6 +2783,183 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
         
         return phoneNumber.length() > 10 ? phoneNumber.substring(0, 8) + "..." : phoneNumber;
+    }
+
+    /**
+     * Sets up the P2P connection broadcast receiver.
+     */
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private void setupP2PReceiver() {
+        try {
+            // Prevent double registration
+            if (p2pBroadcastReceiver != null) {
+                Log.d(TAG, "P2P broadcast receiver already registered, skipping");
+                return;
+            }
+
+            // Create the P2P broadcast receiver
+            p2pBroadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    if (action == null) return;
+
+                    switch (action) {
+                        case P2PService.ACTION_P2P_CONNECTION_ESTABLISHED:
+                            String connectionId = intent.getStringExtra(P2PService.EXTRA_CONNECTION_ID);
+                            String phoneNumber = intent.getStringExtra(P2PService.EXTRA_PHONE_NUMBER);
+                            handleP2PConnectionEstablished(connectionId, phoneNumber);
+                            break;
+
+                        case P2PService.ACTION_P2P_CONNECTION_FAILED:
+                            String failedPhone = intent.getStringExtra(P2PService.EXTRA_PHONE_NUMBER);
+                            String error = intent.getStringExtra(P2PService.EXTRA_ERROR);
+                            handleP2PConnectionFailed(failedPhone, error);
+                            break;
+
+                        case P2PService.ACTION_P2P_MESSAGE_RECEIVED:
+                            String message = intent.getStringExtra(P2PService.EXTRA_MESSAGE);
+                            handleP2PMessageReceived(message);
+                            break;
+
+                        case P2PService.ACTION_P2P_CONNECTION_CLOSED:
+                            handleP2PConnectionClosed();
+                            break;
+
+                        default:
+                            Log.d(TAG, "Unknown P2P action: " + action);
+                            break;
+                    }
+                }
+            };
+
+            // Register the receiver for P2P events
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(P2PService.ACTION_P2P_CONNECTION_ESTABLISHED);
+            filter.addAction(P2PService.ACTION_P2P_CONNECTION_FAILED);
+            filter.addAction(P2PService.ACTION_P2P_MESSAGE_RECEIVED);
+            filter.addAction(P2PService.ACTION_P2P_CONNECTION_CLOSED);
+
+            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this)
+                    .registerReceiver(p2pBroadcastReceiver, filter);
+
+            Log.d(TAG, "P2P broadcast receiver registered successfully");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up P2P receiver", e);
+        }
+    }
+
+    /**
+     * Initiates a P2P connection with the current conversation contact.
+     */
+    private void initiateP2PConnection() {
+        if (address == null || address.trim().isEmpty()) {
+            Toast.makeText(this, "No phone number available for P2P connection", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (messageService == null) {
+            Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Check if P2P connection already exists
+        if (messageService.hasActiveP2PConnection(address)) {
+            Toast.makeText(this, "P2P connection already active with this contact", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show progress dialog
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                .setTitle("Establishing P2P Connection")
+                .setMessage("Sending connection request to " + (contactName != null ? contactName : address) + "...")
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+
+        // Attempt to send P2P connection offer
+        executorService.execute(() -> {
+            boolean success = messageService.sendP2PConnectionOffer(address);
+            
+            runOnUiThread(() -> {
+                progressDialog.dismiss();
+                
+                if (success) {
+                    Toast.makeText(this, "P2P connection request sent", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Failed to send P2P connection request", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    /**
+     * Handles successful P2P connection establishment.
+     */
+    private void handleP2PConnectionEstablished(String connectionId, String phoneNumber) {
+        Log.d(TAG, "P2P connection established: " + connectionId + " with " + phoneNumber);
+        
+        runOnUiThread(() -> {
+            if (address != null && address.equals(phoneNumber)) {
+                Toast.makeText(this, "P2P connection established! Messages will now be sent directly.", Toast.LENGTH_LONG).show();
+                
+                // Update UI to indicate P2P mode (could add an indicator icon)
+                if (getSupportActionBar() != null) {
+                    String title = getSupportActionBar().getTitle() + " [P2P]";
+                    getSupportActionBar().setTitle(title);
+                }
+            }
+        });
+    }
+
+    /**
+     * Handles P2P connection failure.
+     */
+    private void handleP2PConnectionFailed(String phoneNumber, String error) {
+        Log.w(TAG, "P2P connection failed with " + phoneNumber + ": " + error);
+        
+        runOnUiThread(() -> {
+            if (address != null && address.equals(phoneNumber)) {
+                Toast.makeText(this, "P2P connection failed: " + error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    /**
+     * Handles incoming P2P message.
+     */
+    private void handleP2PMessageReceived(String message) {
+        Log.d(TAG, "P2P message received: " + message);
+        
+        runOnUiThread(() -> {
+            // For now, just show a toast. In a full implementation, this would
+            // add the message to the conversation view
+            Toast.makeText(this, "P2P message: " + message, Toast.LENGTH_SHORT).show();
+            
+            // Refresh messages to show the new P2P message
+            loadMessages();
+        });
+    }
+
+    /**
+     * Handles P2P connection closure.
+     */
+    private void handleP2PConnectionClosed() {
+        Log.d(TAG, "P2P connection closed");
+        
+        runOnUiThread(() -> {
+            Toast.makeText(this, "P2P connection closed", Toast.LENGTH_SHORT).show();
+            
+            // Remove P2P indicator from title
+            if (getSupportActionBar() != null) {
+                String title = getSupportActionBar().getTitle().toString();
+                if (title.endsWith(" [P2P]")) {
+                    title = title.substring(0, title.length() - 6);
+                    getSupportActionBar().setTitle(title);
+                }
+            }
+        });
     }
 
 }

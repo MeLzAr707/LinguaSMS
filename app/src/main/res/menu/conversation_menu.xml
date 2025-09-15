@@ -8,6 +8,12 @@
         android:title="@string/action_call" />
 
     <item
+        android:id="@+id/action_p2p_connect"
+        android:icon="@android:drawable/stat_sys_data_bluetooth"
+        app:showAsAction="ifRoom"
+        android:title="@string/action_p2p_connect" />
+
+    <item
         android:id="@+id/action_translate"
         android:icon="@android:drawable/ic_menu_edit"
         app:showAsAction="ifRoom"
