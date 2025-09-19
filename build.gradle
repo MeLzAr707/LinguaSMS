@@ -12,5 +12,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Add specific repository for WebRTC if needed
+        maven { url 'https://jitpack.io' }
     }
 }
