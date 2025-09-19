@@ -73,3 +73,8 @@
 -keep class com.google.android.material.** { *; }
 -dontwarn androidx.**
 -dontwarn com.google.android.material.**
+
+# WebRTC specific rules for proper functionality
+-keep class org.webrtc.** { *; }
+-keepclassmembers class org.webrtc.** { *; }
+-dontwarn org.webrtc.**
