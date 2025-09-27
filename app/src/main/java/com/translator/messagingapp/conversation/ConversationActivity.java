@@ -121,7 +121,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private boolean isAttachmentMenuVisible = false;
 
     // Secret message components
-    private CheckBox secretMessageCheckbox;
     private String currentSecretMessage = "";
 
     // Data
@@ -273,7 +272,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
-        secretMessageCheckbox = findViewById(R.id.secret_message_checkbox);
 
         // Set up text change listener for message input to update send button state
         if (messageInput != null) {
@@ -375,12 +373,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             attachmentRemoveButton.setOnClickListener(v -> clearAttachments());
         }
 
-        // Set up secret message checkbox
-        if (secretMessageCheckbox != null) {
-            secretMessageCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (isChecked) {
-                    showSecretMessageDialog();
-                }
+        // Set up long-press listener for secret messages on message input
+        if (messageInput != null) {
+            messageInput.setOnLongClickListener(v -> {
+                showSecretMessageOptions();
+                return true;
             });
         }
 
@@ -708,7 +705,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Handle secret message encoding if enabled
                     String finalMessageText = messageText;
-                    if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                    if (!currentSecretMessage.isEmpty()) {
                         finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
                         Log.d(TAG, "Secret message encoded into MMS");
                     }
@@ -722,7 +719,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
                     // Handle secret message encoding if enabled
                     String finalMessageText = messageText;
-                    if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                    if (!currentSecretMessage.isEmpty()) {
                         finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
                         Log.d(TAG, "Secret message encoded into SMS");
                     }
@@ -782,6 +779,20 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
     /**
+     * Shows secret message options context menu
+     */
+    private void showSecretMessageOptions() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Message Options");
+        builder.setItems(new CharSequence[]{"Send as Secret Message"}, (dialog, which) -> {
+            if (which == 0) {
+                showSecretMessageDialog();
+            }
+        });
+        builder.show();
+    }
+
+    /**
      * Shows the secret message composition dialog
      */
     private void showSecretMessageDialog() {
@@ -801,9 +812,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 
                 // Update checkbox state and show feedback
                 if (secretMessage.isEmpty()) {
-                    if (secretMessageCheckbox != null) {
-                        secretMessageCheckbox.setChecked(false);
-                    }
                     currentSecretMessage = "";
                     Toast.makeText(ConversationActivity.this, R.string.secret_message, Toast.LENGTH_SHORT).show();
                 } else {
@@ -816,10 +824,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             dialog.show(getSupportFragmentManager(), "SecretMessageDialog");
         } catch (Exception e) {
             Log.e(TAG, "Error showing secret message dialog", e);
-            // Fallback: uncheck the checkbox
-            if (secretMessageCheckbox != null) {
-                secretMessageCheckbox.setChecked(false);
-            }
         }
     }
 

@@ -69,7 +69,6 @@ public class NewMessageActivity extends BaseActivity {
     private ImageButton translateButton;
     private ImageButton genAIButton;
     private ImageButton attachmentButton;
-    private CheckBox secretMessageCheckbox; // New field for secret message checkbox
     private final AtomicBoolean isTranslating = new AtomicBoolean(false);
     private String originalComposedText = "";
     private boolean isComposedTextTranslated = false;
@@ -132,7 +131,6 @@ public class NewMessageActivity extends BaseActivity {
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
             attachmentButton = findViewById(R.id.attachment_button);  // This is an ImageButton in XML
-            secretMessageCheckbox = findViewById(R.id.secret_message_checkbox); // Initialize secret message checkbox
             
             // Initialize attachment preview components
             attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
@@ -204,12 +202,11 @@ public class NewMessageActivity extends BaseActivity {
                 genAIButton.setContentDescription("AI Features");
             }
 
-            // Set up secret message checkbox
-            if (secretMessageCheckbox != null) {
-                secretMessageCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    if (isChecked) {
-                        showSecretMessageDialog();
-                    }
+            // Set up long-press listener for secret messages on message input
+            if (messageInput != null) {
+                messageInput.setOnLongClickListener(v -> {
+                    showSecretMessageOptions();
+                    return true;
                 });
             }
 
@@ -479,7 +476,7 @@ public class NewMessageActivity extends BaseActivity {
                 
                 // Handle secret message encoding if enabled
                 String finalMessageText = messageText;
-                if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                if (!currentSecretMessage.isEmpty()) {
                     finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
                     Log.d(TAG, "Secret message encoded into MMS");
                 }
@@ -505,7 +502,7 @@ public class NewMessageActivity extends BaseActivity {
                 
                 // Handle secret message encoding if enabled
                 String finalMessageText = messageText;
-                if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                if (!currentSecretMessage.isEmpty()) {
                     finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
                     Log.d(TAG, "Secret message encoded into SMS");
                 }
@@ -527,6 +524,20 @@ public class NewMessageActivity extends BaseActivity {
     }
 
     /**
+     * Shows secret message options context menu
+     */
+    private void showSecretMessageOptions() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Message Options");
+        builder.setItems(new CharSequence[]{"Send as Secret Message"}, (dialog, which) -> {
+            if (which == 0) {
+                showSecretMessageDialog();
+            }
+        });
+        builder.show();
+    }
+
+    /**
      * Shows the secret message composition dialog
      */
     private void showSecretMessageDialog() {
@@ -544,11 +555,8 @@ public class NewMessageActivity extends BaseActivity {
                 // Store the secret message
                 currentSecretMessage = secretMessage;
                 
-                // Update checkbox state and show feedback
+                // Show feedback
                 if (secretMessage.isEmpty()) {
-                    if (secretMessageCheckbox != null) {
-                        secretMessageCheckbox.setChecked(false);
-                    }
                     currentSecretMessage = "";
                     Toast.makeText(NewMessageActivity.this, R.string.secret_message, Toast.LENGTH_SHORT).show();
                 } else {
@@ -561,10 +569,6 @@ public class NewMessageActivity extends BaseActivity {
             dialog.show(getSupportFragmentManager(), "SecretMessageDialog");
         } catch (Exception e) {
             Log.e(TAG, "Error showing secret message dialog", e);
-            // Fallback: uncheck the checkbox
-            if (secretMessageCheckbox != null) {
-                secretMessageCheckbox.setChecked(false);
-            }
         }
     }
 
