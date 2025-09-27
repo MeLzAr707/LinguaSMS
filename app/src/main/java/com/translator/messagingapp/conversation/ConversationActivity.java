@@ -16,7 +16,6 @@ import com.translator.messagingapp.contact.*;
 import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
-import com.translator.messagingapp.p2p.*;
 import com.translator.messagingapp.util.EmojiPickerDialog;
 
 import android.annotation.SuppressLint;
@@ -73,14 +72,14 @@ import java.io.InputStream;
  */
 public class ConversationActivity extends BaseActivity implements MessageRecyclerAdapter.OnMessageClickListener, ContactSettingsDialog.OnToneSelectedListener {
     private static final String TAG = "ConversationActivity";
-    
+
     // Static field to track currently active conversation for notification suppression
     private static String currentlyActiveThreadId = null;
-    
+
     /**
      * Checks if a specific thread is currently being viewed.
      * This is used to suppress notifications for the active conversation.
-     * 
+     *
      * @param threadId The thread ID to check
      * @return true if the thread is currently active, false otherwise
      */
@@ -124,13 +123,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private String contactName;
     private List<Message> messages;
     private ExecutorService executorService;
-    
+
     // P2P connection management
     private BroadcastReceiver p2pBroadcastReceiver;
-    
+
     // Selected attachments for sending
     private List<Uri> selectedAttachments;
-    
+
     // Pagination variables
     private static final int PAGE_SIZE = 50;
     private static final int ATTACHMENT_PICK_REQUEST = 1001;
@@ -152,7 +151,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     // Gesture detection for pinch-to-zoom
     private ScaleGestureDetector scaleGestureDetector;
-    
+
     // BroadcastReceiver for message updates
     private BroadcastReceiver messageUpdateReceiver;
 
@@ -202,7 +201,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         // Load messages
         loadMessages();
-        
+
         // Apply custom colors if using custom theme
         applyCustomColorsToViews();
     }
@@ -210,17 +209,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onResume() {
         super.onResume();
-        
+
         // Set this thread as currently active for notification suppression
         currentlyActiveThreadId = threadId;
         Log.d(TAG, "Set active thread ID: " + threadId);
-        
+
         // Register message update receiver when activity becomes visible
         setupMessageUpdateReceiver();
-        
-        // Register P2P connection receiver
-        setupP2PReceiver();
-        
+
+
         // Refresh messages to catch any updates that may have been missed
         // while the activity was not visible (MESSAGE_RECEIVED broadcasts
         // are only received when the receiver is active)
@@ -230,11 +227,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onPause() {
         super.onPause();
-        
+
         // Clear the active thread ID since this conversation is no longer visible
         currentlyActiveThreadId = null;
         Log.d(TAG, "Cleared active thread ID");
-        
+
         // Unregister message update receiver when activity is not visible
         if (messageUpdateReceiver != null) {
             try {
@@ -257,7 +254,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             String displayTitle = getDisplayTitle(contactName, address);
             getSupportActionBar().setTitle(displayTitle);
         }
-        
+
         // Apply theme-specific toolbar styling
         updateToolbarTheme(toolbar);
 
@@ -269,7 +266,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
-        
+
         // Set up text change listener for message input to update send button state
         if (messageInput != null) {
             messageInput.addTextChangedListener(new android.text.TextWatcher() {
@@ -290,7 +287,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 }
             });
         }
-        
+
         // Initialize attachment preview components
         attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
         attachmentPreviewText = findViewById(R.id.attachment_preview_text);
@@ -319,7 +316,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         messagesRecyclerView.setLayoutManager(layoutManager);
-        
+
         // Try to use the updated adapter class if available
         try {
             // Use reflection to check if the updated adapter class exists
@@ -332,7 +329,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Use the regular adapter
             adapter = new MessageRecyclerAdapter(this, messages, this);
         }
-        
+
         messagesRecyclerView.setAdapter(adapter);
 
         // Check if this is a group conversation based on the address
@@ -354,7 +351,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up attachment button
         if (attachmentButton != null) {
             attachmentButton.setOnClickListener(v -> toggleAttachmentMenu());
-            
+
             // Long press to clear selected attachments
             attachmentButton.setOnLongClickListener(v -> {
                 if (selectedAttachments != null && !selectedAttachments.isEmpty()) {
@@ -393,14 +390,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
                 float scaleFactor = detector.getScaleFactor();
-                
+
                 // Update text size based on scale gesture
 
                 // Update all visible text views
                 if (adapter != null) {
                     adapter.updateTextSizes();
                 }
-                
+
                 return true;
             }
         });
@@ -411,7 +408,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             public boolean onTouch(View v, MotionEvent event) {
                 // Pass touch events to scale gesture detector
                 scaleGestureDetector.onTouchEvent(event);
-                
+
                 // Return false to allow normal RecyclerView scrolling when not scaling
                 return false;
             }
@@ -477,12 +474,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 // First, check cache for existing messages
                 Log.d(TAG, "Checking cache for thread ID: " + threadId);
                 List<Message> cachedMessages = MessageCache.getCachedMessages(threadId);
-                
+
                 final List<Message> loadedMessages;
                 if (cachedMessages != null && !cachedMessages.isEmpty()) {
                     Log.d(TAG, "Found " + cachedMessages.size() + " cached messages");
                     loadedMessages = cachedMessages;
-                    
+
                     // For cached messages, we might already have multiple pages
                     // Set hasMoreMessages based on cache size
                     hasMoreMessages = cachedMessages.size() >= PAGE_SIZE;
@@ -490,16 +487,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     // Load first page of messages from MessageService
                     Log.d(TAG, "Loading first page of messages for thread ID: " + threadId);
                     loadedMessages = loadMessagesPage(0, PAGE_SIZE);
-                    
+
                     // Sort messages chronologically (oldest first) for display
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
                         Collections.sort(loadedMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
-                        
+
                         // Cache the loaded messages
                         MessageCache.cacheMessages(threadId, new ArrayList<>(loadedMessages));
                     }
                 }
-                
+
                 Log.d(TAG, "Loaded " + (loadedMessages != null ? loadedMessages.size() : 0) + " messages");
 
                 // Update UI on main thread
@@ -508,18 +505,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     if (loadedMessages != null && !loadedMessages.isEmpty()) {
                         // Use DiffUtil to efficiently update the RecyclerView
                         adapter.updateMessages(new ArrayList<>(loadedMessages));
-                        
+
                         // Update group conversation status after messages are loaded
                         updateGroupConversationStatus();
-                        
+
                         // Restore translation state for all loaded messages
                         restoreTranslationStateForMessages(loadedMessages);
-                        
+
                         Log.d(TAG, "Updated UI with " + loadedMessages.size() + " messages using DiffUtil");
-                        
+
                         // Set up pagination
                         setupPagination();
-                        
+
                         // Check if we have more messages to load
                         hasMoreMessages = loadedMessages.size() >= PAGE_SIZE;
                     } else {
@@ -527,7 +524,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         hasMoreMessages = false;
                         // Update with empty list
                         adapter.updateMessages(new ArrayList<>());
-                        
+
                         // Update group conversation status even for empty list
                         updateGroupConversationStatus();
                     }
@@ -596,14 +593,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
-                
+
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
                 if (layoutManager == null) return;
-                
+
                 int visibleItemCount = layoutManager.getChildCount();
                 int totalItemCount = layoutManager.getItemCount();
                 int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
-                
+
                 // Load more when scrolling up (towards older messages)
                 if (!isLoading && hasMoreMessages && firstVisibleItemPosition == 0 && dy < 0) {
                     loadMoreMessages();
@@ -619,15 +616,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (isLoading || !hasMoreMessages) {
             return;
         }
-        
+
         isLoading = true;
         currentPage++;
-        
+
         executorService.execute(() -> {
             try {
                 Log.d(TAG, "Loading more messages - page " + currentPage);
                 List<Message> newMessages = loadMessagesPage(currentPage, PAGE_SIZE);
-                
+
                 runOnUiThread(() -> {
                     if (newMessages.isEmpty()) {
                         hasMoreMessages = false;
@@ -635,20 +632,20 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     } else {
                         // Sort new messages chronologically (oldest first) for consistency
                         Collections.sort(newMessages, (m1, m2) -> Long.compare(m1.getDate(), m2.getDate()));
-                        
+
                         // Restore translation state for new messages
                         restoreTranslationStateForMessages(newMessages);
-                        
+
                         // Insert at the beginning (older messages)
                         messages.addAll(0, newMessages);
                         adapter.notifyItemRangeInserted(0, newMessages.size());
-                        
+
                         // Maintain scroll position
                         LinearLayoutManager layoutManager = (LinearLayoutManager) messagesRecyclerView.getLayoutManager();
                         if (layoutManager != null) {
                             layoutManager.scrollToPositionWithOffset(newMessages.size(), 0);
                         }
-                        
+
                         Log.d(TAG, "Added " + newMessages.size() + " older messages");
                     }
                     isLoading = false;
@@ -666,7 +663,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
         boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
-        
+
         // For MMS, allow empty text if there are attachments
         if (messageText.isEmpty() && !hasAttachments) {
             return;
@@ -686,22 +683,22 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         executorService.execute(() -> {
             try {
                 boolean success;
-                
+
                 // Add logging as requested in issue #594 to confirm MMS vs SMS path
                 if (hasAttachments) {
                     Log.d(TAG, "Sending MMS message to " + address + " with " + attachmentsToSend.size() + " attachments");
                     Log.d(TAG, "Attachment URIs: " + attachmentsToSend.toString());
-                    
+
                     // Send as MMS with attachments
                     success = messageService.sendMmsMessage(address, null, messageText, attachmentsToSend);
-                    
+
                     Log.d(TAG, "MMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 } else {
                     Log.d(TAG, "Sending SMS message to " + address + " (no attachments)");
-                    
+
                     // Send as regular SMS
                     success = messageService.sendSmsMessage(address, messageText);
-                    
+
                     Log.d(TAG, "SMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 }
 
@@ -712,11 +709,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         // Note: Message refresh will be handled by broadcast receiver
                         // when MESSAGE_SENT broadcast is received from MessageService
                         Log.d(TAG, "Message sent successfully, waiting for broadcast to refresh UI");
-                        
+
                         // Provide user feedback for successful MMS send
                         if (hasAttachments) {
-                            Toast.makeText(ConversationActivity.this, 
-                                    "MMS sent successfully", 
+                            Toast.makeText(ConversationActivity.this,
+                                    "MMS sent successfully",
                                     Toast.LENGTH_SHORT).show();
                         }
                     } else {
@@ -729,7 +726,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             errorMessage = getString(R.string.error_sending_message);
                             Log.e(TAG, "SMS sending failed for recipient: " + address);
                         }
-                        
+
                         Toast.makeText(ConversationActivity.this, errorMessage, Toast.LENGTH_LONG).show();
                     }
                 });
@@ -737,16 +734,16 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.e(TAG, "Error sending message", e);
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
-                    
+
                     // Enhanced error messaging based on message type
                     String errorMessage;
                     if (hasAttachments) {
-                        errorMessage = "Failed to send MMS: " + e.getMessage() + 
-                                      ". Check network connection, file permissions, and attachment sizes.";
+                        errorMessage = "Failed to send MMS: " + e.getMessage() +
+                                ". Check network connection, file permissions, and attachment sizes.";
                     } else {
                         errorMessage = getString(R.string.error_sending_message) + ": " + e.getMessage();
                     }
-                    
+
                     Toast.makeText(ConversationActivity.this, errorMessage, Toast.LENGTH_LONG).show();
                 });
             }
@@ -761,11 +758,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (sendButton != null) {
             boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
             boolean hasText = messageInput != null && !messageInput.getText().toString().trim().isEmpty();
-            
+
             // Enable/disable button based on content availability
             boolean shouldEnable = hasText || hasAttachments;
             sendButton.setEnabled(shouldEnable);
-            
+
             if (hasAttachments) {
                 // Change send button to indicate MMS mode
                 sendButton.setAlpha(1.0f);
@@ -790,14 +787,14 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             String currentText = messageInput.getText().toString().trim();
             boolean hasText = !currentText.isEmpty();
             boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
-            
+
             // Enable button if we have either text or attachments
             boolean shouldEnable = hasText || hasAttachments;
             sendButton.setEnabled(shouldEnable);
             sendButton.setAlpha(shouldEnable ? 1.0f : 0.5f);
-            
-            Log.d(TAG, "Send button updated for text input - enabled: " + shouldEnable + 
-                      " (hasText: " + hasText + ", hasAttachments: " + hasAttachments + ")");
+
+            Log.d(TAG, "Send button updated for text input - enabled: " + shouldEnable +
+                    " (hasText: " + hasText + ", hasAttachments: " + hasAttachments + ")");
         }
     }
 
@@ -820,11 +817,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
 
         boolean hasAttachments = selectedAttachments != null && !selectedAttachments.isEmpty();
-        
+
         if (hasAttachments) {
             // Show the preview container
             attachmentPreviewContainer.setVisibility(View.VISIBLE);
-            
+
             // Update the preview text
             int count = selectedAttachments.size();
             String previewText;
@@ -849,58 +846,58 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private String getFileName(Uri uri) {
         if (uri == null) return null;
-        
+
         String fileName = uri.getLastPathSegment();
         if (fileName != null && fileName.contains("/")) {
             fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
         }
         return fileName;
     }
-    
+
     /**
      * Validates that an attachment size is within MMS limits.
-     * 
+     *
      * @param uri The attachment URI to validate
      * @return true if size is valid, false if too large
      */
     private boolean validateAttachmentSize(Uri uri) {
         try {
             long fileSize = getFileSizeFromUri(uri);
-            
+
             // Check against MMS size limit (1MB)
             final long MAX_MMS_SIZE = 1024 * 1024; // 1MB - matches MessageService.MAX_MMS_SIZE
-            
+
             if (fileSize > MAX_MMS_SIZE) {
                 String fileName = getFileName(uri);
                 String fileSizeStr = String.format("%.1f MB", fileSize / (1024.0 * 1024.0));
-                
-                Toast.makeText(this, 
-                    "File too large for MMS: " + fileName + " (" + fileSizeStr + "). " +
-                    "Maximum size is 1MB. Please choose a smaller file.", 
-                    Toast.LENGTH_LONG).show();
-                    
+
+                Toast.makeText(this,
+                        "File too large for MMS: " + fileName + " (" + fileSizeStr + "). " +
+                                "Maximum size is 1MB. Please choose a smaller file.",
+                        Toast.LENGTH_LONG).show();
+
                 Log.w(TAG, "Attachment too large: " + fileName + " - " + fileSize + " bytes (limit: " + MAX_MMS_SIZE + ")");
                 return false;
             }
-            
+
             Log.d(TAG, "Attachment size validation passed: " + fileSize + " bytes");
             return true;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error validating attachment size for URI: " + uri, e);
             Toast.makeText(this, "Error checking file size. Please try a different file.", Toast.LENGTH_SHORT).show();
             return false;
         }
     }
-    
+
     /**
      * Gets the file size in bytes for a given URI.
-     * 
+     *
      * @param uri The URI to get size for
      * @return The file size in bytes, or 0 if unable to determine
      */
     private long getFileSizeFromUri(Uri uri) {
-        try (Cursor cursor = getContentResolver().query(uri, 
+        try (Cursor cursor = getContentResolver().query(uri,
                 new String[]{OpenableColumns.SIZE}, null, null, null)) {
             if (cursor != null && cursor.moveToFirst()) {
                 int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
@@ -914,7 +911,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         } catch (Exception e) {
             Log.e(TAG, "Error getting file size from cursor for URI: " + uri, e);
         }
-        
+
         // Fallback: try to get size via input stream
         try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
             if (inputStream != null) {
@@ -929,7 +926,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         } catch (Exception e) {
             Log.e(TAG, "Error getting file size from stream for URI: " + uri, e);
         }
-        
+
         return 0; // Unable to determine size
     }
 
@@ -953,26 +950,26 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.d(TAG, "Message update receiver already registered, skipping");
                 return;
             }
-            
+
             // Create the broadcast receiver
             messageUpdateReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     Log.d(TAG, "Message update broadcast received: " + intent.getAction());
-                    
+
                     // Handle different update actions on UI thread to ensure UI updates work
                     if (intent != null && intent.getAction() != null) {
                         runOnUiThread(() -> {
                             // Check if this broadcast is relevant to our current thread
                             String updatedThreadId = intent.getStringExtra("thread_id");
-                            
+
                             // Only process broadcasts for our thread or broadcasts without thread ID
                             if (updatedThreadId != null && !updatedThreadId.equals(threadId)) {
                                 // This update is for a different thread, ignore it
                                 Log.d(TAG, "Ignoring update for different thread: " + updatedThreadId);
                                 return;
                             }
-                            
+
                             switch (intent.getAction()) {
                                 case "com.translator.messagingapp.MESSAGE_RECEIVED":
                                     Log.d(TAG, "Refreshing messages due to received message in this thread");
@@ -1014,7 +1011,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Register receiver with LocalBroadcastManager for more reliable delivery
             LocalBroadcastManager.getInstance(this).registerReceiver(messageUpdateReceiver, filter);
             Log.d(TAG, "Message update receiver registered successfully with LocalBroadcastManager");
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error setting up message update receiver", e);
             // Don't throw the exception to prevent app crash
@@ -1069,7 +1066,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 public android.app.Activity getActivity() {
                     return ConversationActivity.this;
                 }
-                
+
                 @Override
                 public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
                     runOnUiThread(() -> {
@@ -1111,11 +1108,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (attachmentMenu != null && !isAttachmentMenuVisible) {
             attachmentMenu.setVisibility(View.VISIBLE);
             attachmentMenu.animate()
-                .alpha(1.0f)
-                .scaleX(1.0f)
-                .scaleY(1.0f)
-                .setDuration(200)
-                .start();
+                    .alpha(1.0f)
+                    .scaleX(1.0f)
+                    .scaleY(1.0f)
+                    .setDuration(200)
+                    .start();
             isAttachmentMenuVisible = true;
         }
     }
@@ -1126,12 +1123,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private void hideAttachmentMenu() {
         if (attachmentMenu != null && isAttachmentMenuVisible) {
             attachmentMenu.animate()
-                .alpha(0.0f)
-                .scaleX(0.8f)
-                .scaleY(0.8f)
-                .setDuration(200)
-                .withEndAction(() -> attachmentMenu.setVisibility(View.GONE))
-                .start();
+                    .alpha(0.0f)
+                    .scaleX(0.8f)
+                    .scaleY(0.8f)
+                    .setDuration(200)
+                    .withEndAction(() -> attachmentMenu.setVisibility(View.GONE))
+                    .start();
             isAttachmentMenuVisible = false;
         }
     }
@@ -1206,11 +1203,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
         intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
-        
+
         // Add flags for URI permissions as recommended in issue #594
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        
+
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.gallery)), GALLERY_PICK_REQUEST);
         } catch (android.content.ActivityNotFoundException ex) {
@@ -1227,30 +1224,30 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             requestPermissions(new String[]{android.Manifest.permission.CAMERA}, 101);
             return;
         }
-        
+
         // Create an intent to capture image or video
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("Camera")
-            .setMessage("Choose camera mode")
-            .setPositiveButton("Photo", (dialog, which) -> {
-                Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-                try {
-                    startActivityForResult(intent, CAMERA_REQUEST);
-                } catch (android.content.ActivityNotFoundException ex) {
-                    Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setNegativeButton("Video", (dialog, which) -> {
-                Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
-                intent.putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, 30); // 30 seconds max
-                try {
-                    startActivityForResult(intent, CAMERA_REQUEST);
-                } catch (android.content.ActivityNotFoundException ex) {
-                    Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setNeutralButton("Cancel", null)
-            .show();
+                .setMessage("Choose camera mode")
+                .setPositiveButton("Photo", (dialog, which) -> {
+                    Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                    try {
+                        startActivityForResult(intent, CAMERA_REQUEST);
+                    } catch (android.content.ActivityNotFoundException ex) {
+                        Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Video", (dialog, which) -> {
+                    Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
+                    intent.putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, 30); // 30 seconds max
+                    try {
+                        startActivityForResult(intent, CAMERA_REQUEST);
+                    } catch (android.content.ActivityNotFoundException ex) {
+                        Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNeutralButton("Cancel", null)
+                .show();
     }
 
     /**
@@ -1262,11 +1259,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         intent.setType("image/gif");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-        
+
         // Add flags for URI permissions as recommended in issue #594
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        
+
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.gifs)), GIF_PICK_REQUEST);
         } catch (android.content.ActivityNotFoundException ex) {
@@ -1280,21 +1277,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private void openStickerPicker() {
         // Create a simple emoji picker dialog
         String[] emojis = {"😀", "😂", "🥰", "😎", "🤔", "👍", "❤️", "🎉", "🔥", "💯", "👌", "🙌", "🤝", "💪", "🌟", "⚡", "🎯", "🚀", "🏆", "💎"};
-        
+
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("Select Emoji Sticker")
-            .setItems(emojis, (dialog, which) -> {
-                String selectedEmoji = emojis[which];
-                if (messageInput != null) {
-                    String currentText = messageInput.getText().toString();
-                    int cursorPosition = messageInput.getSelectionStart();
-                    String newText = currentText.substring(0, cursorPosition) + selectedEmoji + currentText.substring(cursorPosition);
-                    messageInput.setText(newText);
-                    messageInput.setSelection(cursorPosition + selectedEmoji.length());
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+                .setItems(emojis, (dialog, which) -> {
+                    String selectedEmoji = emojis[which];
+                    if (messageInput != null) {
+                        String currentText = messageInput.getText().toString();
+                        int cursorPosition = messageInput.getSelectionStart();
+                        String newText = currentText.substring(0, cursorPosition) + selectedEmoji + currentText.substring(cursorPosition);
+                        messageInput.setText(newText);
+                        messageInput.setSelection(cursorPosition + selectedEmoji.length());
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**
@@ -1305,11 +1302,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         intent.setType("*/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
-        
+
         // Add flags for URI permissions as recommended in issue #594
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        
+
         try {
             startActivityForResult(Intent.createChooser(intent, getString(R.string.files)), FILES_PICK_REQUEST);
         } catch (android.content.ActivityNotFoundException ex) {
@@ -1329,41 +1326,41 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("Share Location")
-            .setMessage("Choose location sharing method")
-            .setPositiveButton("Current Location", (dialog, which) -> {
-                getCurrentLocationAndShare();
-            })
-            .setNegativeButton("Choose on Map", (dialog, which) -> {
-                // Open maps for location picking
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(android.net.Uri.parse("geo:0,0?q=location"));
-                    startActivity(intent);
-                    
-                    // Add a generic location message as fallback
-                    String locationText = "📍 Location shared via maps";
-                    if (messageInput != null) {
-                        String currentText = messageInput.getText().toString();
-                        messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
+                .setMessage("Choose location sharing method")
+                .setPositiveButton("Current Location", (dialog, which) -> {
+                    getCurrentLocationAndShare();
+                })
+                .setNegativeButton("Choose on Map", (dialog, which) -> {
+                    // Open maps for location picking
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(android.net.Uri.parse("geo:0,0?q=location"));
+                        startActivity(intent);
+
+                        // Add a generic location message as fallback
+                        String locationText = "📍 Location shared via maps";
+                        if (messageInput != null) {
+                            String currentText = messageInput.getText().toString();
+                            messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + locationText);
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(this, "No maps app available", Toast.LENGTH_SHORT).show();
                     }
-                } catch (Exception e) {
-                    Toast.makeText(this, "No maps app available", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setNeutralButton("Cancel", null)
-            .show();
+                })
+                .setNeutralButton("Cancel", null)
+                .show();
     }
-    
+
     /**
      * Get current location and share it in the message
      */
     private void getCurrentLocationAndShare() {
         try {
             android.location.LocationManager locationManager = (android.location.LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            
-            if (locationManager != null && (locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) || 
-                locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER))) {
-                    
+
+            if (locationManager != null && (locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+                    locationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER))) {
+
                 // Create a location listener for a single location update
                 android.location.LocationListener locationListener = new android.location.LocationListener() {
                     @Override
@@ -1371,29 +1368,32 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         if (location != null) {
                             double latitude = location.getLatitude();
                             double longitude = location.getLongitude();
-                            String locationText = String.format("📍 Location: %.6f, %.6f\n🗺️ https://maps.google.com/maps?q=%.6f,%.6f", 
-                                latitude, longitude, latitude, longitude);
-                            
+                            String locationText = String.format("📍 Location: %.6f, %.6f\n🗺️ https://maps.google.com/maps?q=%.6f,%.6f",
+                                    latitude, longitude, latitude, longitude);
+
                             if (messageInput != null) {
                                 String currentText = messageInput.getText().toString();
                                 messageInput.setText(currentText + (currentText.isEmpty() ? "" : "\n") + locationText);
                             }
-                            
+
                             Toast.makeText(ConversationActivity.this, "Current location added to message", Toast.LENGTH_SHORT).show();
                             locationManager.removeUpdates(this);
                         }
                     }
-                    
+
                     @Override
-                    public void onStatusChanged(String provider, int status, Bundle extras) {}
-                    
+                    public void onStatusChanged(String provider, int status, Bundle extras) {
+                    }
+
                     @Override
-                    public void onProviderEnabled(String provider) {}
-                    
+                    public void onProviderEnabled(String provider) {
+                    }
+
                     @Override
-                    public void onProviderDisabled(String provider) {}
+                    public void onProviderDisabled(String provider) {
+                    }
                 };
-                
+
                 // Request location update
                 if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     locationManager.requestSingleUpdate(android.location.LocationManager.GPS_PROVIDER, locationListener, null);
@@ -1409,7 +1409,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 }
                 Toast.makeText(this, "Location services not available", Toast.LENGTH_SHORT).show();
             }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error getting location", e);
             Toast.makeText(this, "Error getting location", Toast.LENGTH_SHORT).show();
@@ -1433,54 +1433,54 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
      */
     private void openScheduleDialog() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        
+
         // Create time picker options
         String[] options = {"In 1 minute", "In 5 minutes", "In 10 minutes", "In 30 minutes", "In 1 hour", "Choose custom time"};
-        
+
         builder.setTitle("Schedule Message")
-            .setItems(options, (dialog, which) -> {
-                String message = messageInput != null ? messageInput.getText().toString().trim() : "";
-                if (message.isEmpty()) {
-                    Toast.makeText(this, "Please type a message first", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                long delayMillis;
-                String scheduleName;
-                
-                switch (which) {
-                    case 0: // 1 minute
-                        delayMillis = 60 * 1000;
-                        scheduleName = "1 minute";
-                        break;
-                    case 1: // 5 minutes
-                        delayMillis = 5 * 60 * 1000;
-                        scheduleName = "5 minutes";
-                        break;
-                    case 2: // 10 minutes
-                        delayMillis = 10 * 60 * 1000;
-                        scheduleName = "10 minutes";
-                        break;
-                    case 3: // 30 minutes
-                        delayMillis = 30 * 60 * 1000;
-                        scheduleName = "30 minutes";
-                        break;
-                    case 4: // 1 hour
-                        delayMillis = 60 * 60 * 1000;
-                        scheduleName = "1 hour";
-                        break;
-                    case 5: // Custom
-                        showCustomTimePickerDialog(message);
+                .setItems(options, (dialog, which) -> {
+                    String message = messageInput != null ? messageInput.getText().toString().trim() : "";
+                    if (message.isEmpty()) {
+                        Toast.makeText(this, "Please type a message first", Toast.LENGTH_SHORT).show();
                         return;
-                    default:
-                        return;
-                }
-                
-                // Schedule the message (simplified implementation)
-                scheduleMessage(message, delayMillis, scheduleName);
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+                    }
+
+                    long delayMillis;
+                    String scheduleName;
+
+                    switch (which) {
+                        case 0: // 1 minute
+                            delayMillis = 60 * 1000;
+                            scheduleName = "1 minute";
+                            break;
+                        case 1: // 5 minutes
+                            delayMillis = 5 * 60 * 1000;
+                            scheduleName = "5 minutes";
+                            break;
+                        case 2: // 10 minutes
+                            delayMillis = 10 * 60 * 1000;
+                            scheduleName = "10 minutes";
+                            break;
+                        case 3: // 30 minutes
+                            delayMillis = 30 * 60 * 1000;
+                            scheduleName = "30 minutes";
+                            break;
+                        case 4: // 1 hour
+                            delayMillis = 60 * 60 * 1000;
+                            scheduleName = "1 hour";
+                            break;
+                        case 5: // Custom
+                            showCustomTimePickerDialog(message);
+                            return;
+                        default:
+                            return;
+                    }
+
+                    // Schedule the message (simplified implementation)
+                    scheduleMessage(message, delayMillis, scheduleName);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**
@@ -1497,12 +1497,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private void scheduleMessage(String message, long delayMillis, String scheduleName) {
         // This is a simplified implementation - in production, you'd use WorkManager or AlarmManager
         Toast.makeText(this, "Message scheduled to send in " + scheduleName, Toast.LENGTH_LONG).show();
-        
+
         // Clear the message input
         if (messageInput != null) {
             messageInput.setText("");
         }
-        
+
         // In a real implementation, you would:
         // 1. Save the message to a database with timestamp
         // 2. Set up WorkManager or AlarmManager to send it
@@ -1512,7 +1512,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
+
         switch (requestCode) {
             case 101: // Camera permission
                 if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -1521,7 +1521,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_SHORT).show();
                 }
                 break;
-                
+
             case 102: // Location permission
                 if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     openLocationPicker();
@@ -1559,7 +1559,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Create intent to make phone call
         Intent callIntent = new Intent(Intent.ACTION_CALL);
         callIntent.setData(Uri.parse("tel:" + address));
-        
+
         try {
             startActivity(callIntent);
         } catch (SecurityException e) {
@@ -1613,33 +1613,33 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 if (!message.isTranslated() && message.getBody() != null && !message.getBody().trim().isEmpty()) {
                     final int position = i;
                     translationManager.translateText(
-                        message.getBody(),
-                        targetLanguage,
-                        new TranslationManager.EnhancedTranslationCallback() {
-                            @Override
-                            public android.app.Activity getActivity() {
-                                return ConversationActivity.this;
-                            }
+                            message.getBody(),
+                            targetLanguage,
+                            new TranslationManager.EnhancedTranslationCallback() {
+                                @Override
+                                public android.app.Activity getActivity() {
+                                    return ConversationActivity.this;
+                                }
 
-                            @Override
-                            public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
-                                runOnUiThread(() -> {
-                                    if (success && translatedText != null) {
-                                        message.setTranslatedText(translatedText);
-                                        message.setTranslated(true);
-                                        message.setShowTranslation(true);
-                                        adapter.notifyItemChanged(position);
-                                    }
+                                @Override
+                                public void onTranslationComplete(boolean success, String translatedText, String errorMessage) {
+                                    runOnUiThread(() -> {
+                                        if (success && translatedText != null) {
+                                            message.setTranslatedText(translatedText);
+                                            message.setTranslated(true);
+                                            message.setShowTranslation(true);
+                                            adapter.notifyItemChanged(position);
+                                        }
 
-                                    int completed = completedTranslations.incrementAndGet();
-                                    if (completed >= totalToTranslate) {
-                                        hideProgressDialog();
-                                        Toast.makeText(ConversationActivity.this, 
-                                            "Translation complete", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                            }
-                        }, true);
+                                        int completed = completedTranslations.incrementAndGet();
+                                        if (completed >= totalToTranslate) {
+                                            hideProgressDialog();
+                                            Toast.makeText(ConversationActivity.this,
+                                                    "Translation complete", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                                }
+                            }, true);
                 }
             }
         });
@@ -1647,11 +1647,11 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     private void showDeleteConversationDialog() {
         new AlertDialog.Builder(this)
-            .setTitle("Delete Conversation")
-            .setMessage("Are you sure you want to delete this entire conversation? This action cannot be undone.")
-            .setPositiveButton("Delete", (dialog, which) -> deleteConversation())
-            .setNegativeButton("Cancel", null)
-            .show();
+                .setTitle("Delete Conversation")
+                .setMessage("Are you sure you want to delete this entire conversation? This action cannot be undone.")
+                .setPositiveButton("Delete", (dialog, which) -> deleteConversation())
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void deleteConversation() {
@@ -1667,24 +1667,24 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         executorService.execute(() -> {
             try {
                 boolean success = messageService.deleteConversation(threadId);
-                
+
                 runOnUiThread(() -> {
                     hideProgressDialog();
-                    
+
                     if (success) {
-                        Toast.makeText(ConversationActivity.this, 
-                            "Conversation deleted", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ConversationActivity.this,
+                                "Conversation deleted", Toast.LENGTH_SHORT).show();
                         finish(); // Close the activity
                     } else {
-                        Toast.makeText(ConversationActivity.this, 
-                            "Failed to delete conversation", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ConversationActivity.this,
+                                "Failed to delete conversation", Toast.LENGTH_SHORT).show();
                     }
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     hideProgressDialog();
-                    Toast.makeText(ConversationActivity.this, 
-                        "Error deleting conversation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ConversationActivity.this,
+                            "Error deleting conversation: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
                 Log.e(TAG, "Error deleting conversation", e);
             }
@@ -1761,12 +1761,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (message.isTranslated()) {
             // Toggle between original and translated text
             message.setShowTranslation(!message.isShowTranslation());
-            
+
             // Save the updated show state to cache
             if (translationCache != null) {
                 message.saveTranslationState(translationCache);
             }
-            
+
             adapter.notifyItemChanged(position);
         } else {
             // Translate the message
@@ -1776,8 +1776,8 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
 
     /**
      * Shows the reaction picker dialog for a message.
-     * 
-     * @param message The message to react to
+     *
+     * @param message  The message to react to
      * @param position The position of the message in the list
      */
     private void showReactionPicker(Message message, int position) {
@@ -1785,7 +1785,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             // Add the reaction to the message
             String userId = "self"; // In a real app, this would be the user's ID
             boolean added = message.addReaction(emoji, userId);
-            
+
             if (added) {
                 // Update the UI
                 adapter.notifyItemChanged(position);
@@ -1793,7 +1793,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             } else {
                 // User already reacted with this emoji
                 Toast.makeText(this, R.string.reaction_removed, Toast.LENGTH_SHORT).show();
-                
+
                 // Remove the reaction
                 message.removeReaction(emoji, userId);
                 adapter.notifyItemChanged(position);
@@ -1885,9 +1885,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         } else if (id == R.id.action_call) {
             makePhoneCall();
             return true;
-        } else if (id == R.id.action_p2p_connect) {
-            initiateP2PConnection();
-            return true;
+
         } else if (id == R.id.action_translate) {
             translateInput();
             return true;
@@ -1929,7 +1927,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             openAttachment(attachment.getUri(), attachment.getContentType());
         }
     }
-    
+
     @Override
     public void onAttachmentClick(Uri uri, int position) {
         // Handle attachment click for URI - open with appropriate app
@@ -1937,7 +1935,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             openAttachment(uri, null);
         }
     }
-    
+
     @Override
     public void onAttachmentLongClick(MmsMessage.Attachment attachment, int position) {
         // Handle attachment long click - show options menu
@@ -1945,7 +1943,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             showAttachmentOptionsDialog(attachment.getUri(), attachment.getContentType(), attachment.getFileName());
         }
     }
-    
+
     @Override
     public void onAttachmentLongClick(Uri uri, int position) {
         // Handle attachment long click for URI - show options menu
@@ -1953,13 +1951,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             showAttachmentOptionsDialog(uri, null, null);
         }
     }
-    
+
     @Override
     public void onReactionClick(Message message, int position) {
         // Show reaction details or toggle user's reaction
         showReactionPicker(message, position);
     }
-    
+
     @Override
     public void onAddReactionClick(Message message, int position) {
         // Show reaction picker
@@ -1973,18 +1971,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         try {
             // Get the proper content URI for sharing
             Uri shareableUri = getShareableUri(uri, contentType);
-            
+
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            
+
             if (contentType != null) {
-                intent.setDataAndType(shareableUri, contentType);  
+                intent.setDataAndType(shareableUri, contentType);
             } else {
                 intent.setData(shareableUri);
             }
-            
+
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            
+
             if (intent.resolveActivity(getPackageManager()) != null) {
                 startActivity(intent);
             } else {
@@ -1994,18 +1992,18 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     fallbackIntent.setDataAndType(shareableUri, "video/*");
                     fallbackIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    
+
                     if (fallbackIntent.resolveActivity(getPackageManager()) != null) {
                         startActivity(fallbackIntent);
                         return;
                     }
-                    
+
                     // Try to explicitly launch a video player
                     Intent videoIntent = new Intent(Intent.ACTION_VIEW);
                     videoIntent.setDataAndType(shareableUri, "video/*");
                     videoIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     videoIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    
+
                     try {
                         startActivity(Intent.createChooser(videoIntent, "Choose video player"));
                         return;
@@ -2013,13 +2011,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         Log.w(TAG, "Could not launch video chooser", e);
                     }
                 }
-                
+
                 // Try without content type as a final fallback
                 Intent genericIntent = new Intent(Intent.ACTION_VIEW);
                 genericIntent.setData(shareableUri);
                 genericIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 genericIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                
+
                 if (genericIntent.resolveActivity(getPackageManager()) != null) {
                     startActivity(genericIntent);
                 } else {
@@ -2031,7 +2029,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, "Error opening attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-    
+
     /**
      * Get a shareable URI for the given attachment URI
      */
@@ -2039,12 +2037,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (uri == null) {
             return null;
         }
-        
+
         // If it's already a content:// URI, return as is
         if ("content".equals(uri.getScheme())) {
             return uri;
         }
-        
+
         // If it's a file:// URI, try to convert to content:// URI using FileProvider
         if ("file".equals(uri.getScheme())) {
             try {
@@ -2053,9 +2051,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     // Try to get a FileProvider URI
                     try {
                         return FileProvider.getUriForFile(
-                            this,
-                            "com.translator.messagingapp.fileprovider",
-                            new java.io.File(uri.getPath())
+                                this,
+                                "com.translator.messagingapp.fileprovider",
+                                new java.io.File(uri.getPath())
                         );
                     } catch (Exception e) {
                         Log.w(TAG, "Could not create FileProvider URI for video: " + uri, e);
@@ -2065,17 +2063,17 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.w(TAG, "Error converting file URI to content URI", e);
             }
         }
-        
+
         // Return original URI if conversion fails
         return uri;
     }
-    
+
     /**
      * Show options dialog for attachment (save, share, view)
      */
     private void showAttachmentOptionsDialog(Uri uri, String contentType, String fileName) {
         String[] options = {"View", "Save", "Share"};
-        
+
         new AlertDialog.Builder(this)
                 .setTitle("Attachment Options")
                 .setItems(options, (dialog, which) -> {
@@ -2093,7 +2091,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 })
                 .show();
     }
-    
+
     /**
      * Save attachment to device storage
      */
@@ -2110,7 +2108,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, "Error saving attachment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-    
+
     /**
      * Save attachment using modern MediaStore API (Android 10+)
      */
@@ -2119,7 +2117,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         try {
             android.content.ContentResolver resolver = getContentResolver();
             android.content.ContentValues values = new android.content.ContentValues();
-            
+
             // Determine the appropriate collection based on content type
             android.net.Uri collection;
             if (contentType != null && contentType.startsWith("image/")) {
@@ -2140,12 +2138,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 }
                 values.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/LinguaSMS");
             }
-            
+
             android.net.Uri newUri = resolver.insert(collection, values);
             if (newUri != null) {
                 try (java.io.InputStream input = resolver.openInputStream(uri);
                      java.io.OutputStream output = resolver.openOutputStream(newUri)) {
-                    
+
                     if (input != null && output != null) {
                         byte[] buffer = new byte[8192];
                         int length;
@@ -2161,7 +2159,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, "Error saving attachment", Toast.LENGTH_SHORT).show();
         }
     }
-    
+
     /**
      * Save attachment using legacy method (Android 9 and below)
      */
@@ -2170,23 +2168,23 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // or implement legacy file saving if needed
         Toast.makeText(this, "Please use the share option to save this attachment", Toast.LENGTH_LONG).show();
     }
-    
+
     /**
      * Share attachment using system share dialog
      */
     private void shareAttachment(Uri uri, String contentType) {
         try {
             Intent shareIntent = new Intent(Intent.ACTION_SEND);
-            
+
             if (contentType != null) {
                 shareIntent.setType(contentType);
             } else {
                 shareIntent.setType("*/*");
             }
-            
+
             shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            
+
             startActivity(Intent.createChooser(shareIntent, "Share attachment"));
         } catch (Exception e) {
             Log.e(TAG, "Error sharing attachment", e);
@@ -2224,12 +2222,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
+
         // Clean up resources
         if (executorService != null) {
             executorService.shutdownNow();
         }
-        
+
         // Unregister P2P receiver
         if (p2pBroadcastReceiver != null) {
             try {
@@ -2240,7 +2238,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 Log.w(TAG, "Error unregistering P2P receiver", e);
             }
         }
-        
+
         // Note: BroadcastReceiver cleanup is handled in onPause()
         Log.d(TAG, "ConversationActivity destroyed");
     }
@@ -2248,10 +2246,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        
+
         if (resultCode == RESULT_OK && data != null) {
             Uri selectedUri = data.getData();
-            
+
             switch (requestCode) {
                 case ATTACHMENT_PICK_REQUEST:
                 case GALLERY_PICK_REQUEST:
@@ -2259,24 +2257,24 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 case FILES_PICK_REQUEST:
                     handleFileAttachment(selectedUri, requestCode);
                     break;
-                    
+
                 case CAMERA_REQUEST:
                     handleCameraResult(data);
                     break;
-                    
+
                 case CONTACTS_PICK_REQUEST:
                     handleContactResult(selectedUri);
                     break;
-                    
+
                 default:
                     break;
             }
         }
-        
+
         if (requestCode == ContactSettingsDialog.getRingtonePickerRequestCode() && resultCode == RESULT_OK) {
-            Uri selectedUri = data != null ? 
-                data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI) : null;
-            
+            Uri selectedUri = data != null ?
+                    data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI) : null;
+
             // Create a new dialog instance to handle the result
             ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
             dialog.handleRingtonePickerResult(selectedUri);
@@ -2290,28 +2288,28 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (selectedUri != null) {
             // Take persistent URI permission as recommended in issue #594
             try {
-                getContentResolver().takePersistableUriPermission(selectedUri, 
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                getContentResolver().takePersistableUriPermission(selectedUri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 Log.d(TAG, "Persistent URI permission granted for: " + selectedUri);
             } catch (SecurityException e) {
                 Log.w(TAG, "Could not take persistent permission for URI: " + selectedUri, e);
                 // Continue anyway - some content providers don't support persistent permissions
             }
-            
+
             // Validate file size against MMS limits
             if (!validateAttachmentSize(selectedUri)) {
                 return; // Error message already shown by validateAttachmentSize
             }
-            
+
             // Store the attachment for sending
             selectedAttachments.add(selectedUri);
-            
+
             // Show confirmation and update UI to indicate attachment is selected
             String fileName = getFileName(selectedUri);
             String attachmentType = getAttachmentTypeName(requestCode);
             Toast.makeText(this, attachmentType + " selected: " + (fileName != null ? fileName : "file"), Toast.LENGTH_SHORT).show();
             Log.d(TAG, "Attachment selected: " + selectedUri.toString());
-            
+
             // Update attachment preview and send button
             updateAttachmentPreview();
             updateSendButtonForAttachments();
@@ -2326,7 +2324,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, "Camera capture cancelled", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
         // Camera usually returns a bitmap in the extras for photo capture
         android.graphics.Bitmap photo = (android.graphics.Bitmap) data.getExtras().get("data");
         if (photo != null) {
@@ -2336,21 +2334,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 java.io.FileOutputStream fos = openFileOutput(filename, Context.MODE_PRIVATE);
                 photo.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, fos);
                 fos.close();
-                
+
                 // Create URI for the saved file
                 java.io.File savedFile = new java.io.File(getFilesDir(), filename);
                 Uri photoUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", savedFile);
-                
+
                 // Add to selected attachments
                 selectedAttachments.add(photoUri);
-                
+
                 // Update UI
                 updateAttachmentPreview();
                 updateSendButtonForAttachments();
-                
+
                 Toast.makeText(this, "Photo captured and ready to send", Toast.LENGTH_SHORT).show();
                 Log.d(TAG, "Camera photo saved: " + photoUri.toString());
-                
+
             } catch (Exception e) {
                 Log.e(TAG, "Error saving camera photo", e);
                 Toast.makeText(this, "Error saving photo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -2378,41 +2376,41 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             try {
                 // Query contact data
                 String[] projection = {
-                    android.provider.ContactsContract.Contacts.DISPLAY_NAME,
-                    android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+                        android.provider.ContactsContract.Contacts.DISPLAY_NAME,
+                        android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
                 };
-                
+
                 Cursor cursor = getContentResolver().query(selectedUri, projection, null, null, null);
                 if (cursor != null && cursor.moveToFirst()) {
                     String contactName = cursor.getString(cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME));
                     boolean hasPhoneNumber = cursor.getInt(cursor.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)) > 0;
-                    
+
                     if (hasPhoneNumber) {
                         // Get phone number
                         String contactId = selectedUri.getLastPathSegment();
                         Cursor phoneCursor = getContentResolver().query(
-                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                            null,
-                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
-                            new String[]{contactId},
-                            null
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                null,
+                                android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                                new String[]{contactId},
+                                null
                         );
-                        
+
                         if (phoneCursor != null && phoneCursor.moveToFirst()) {
                             String phoneNumber = phoneCursor.getString(phoneCursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER));
-                            
+
                             // Create contact info string to insert into message
                             String contactInfo = "Contact: " + contactName + " - " + phoneNumber;
-                            
+
                             // Insert contact info into message input
                             if (messageInput != null) {
                                 String currentText = messageInput.getText().toString();
                                 messageInput.setText(currentText + (currentText.isEmpty() ? "" : " ") + contactInfo);
                             }
-                            
+
                             Toast.makeText(this, "Contact info added to message", Toast.LENGTH_SHORT).show();
                             Log.d(TAG, "Contact selected: " + contactName + " - " + phoneNumber);
-                            
+
                             phoneCursor.close();
                         } else {
                             Toast.makeText(this, "Could not get phone number for contact", Toast.LENGTH_SHORT).show();
@@ -2426,12 +2424,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                         }
                         Toast.makeText(this, "Contact name added to message", Toast.LENGTH_SHORT).show();
                     }
-                    
+
                     cursor.close();
                 } else {
                     Toast.makeText(this, "Could not read contact information", Toast.LENGTH_SHORT).show();
                 }
-                
+
             } catch (Exception e) {
                 Log.e(TAG, "Error handling contact selection", e);
                 Toast.makeText(this, "Error reading contact: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -2459,7 +2457,6 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     }
 
 
-
     /**
      * Restores translation state for a list of messages from the cache.
      */
@@ -2467,7 +2464,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (translationCache == null || messagesToRestore == null) {
             return;
         }
-        
+
         for (Message message : messagesToRestore) {
             try {
                 boolean restored = message.restoreTranslationState(translationCache);
@@ -2490,21 +2487,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
         // Other themes will be handled by the theme system automatically
     }
-    
+
     @Override
     protected void onThemeChanged() {
         super.onThemeChanged();
-        
+
         // Update toolbar colors when theme changes
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             updateToolbarTheme(toolbar);
         }
-        
+
         // Update button colors for custom theme
         applyCustomButtonColors();
     }
-    
+
     /**
      * Apply custom button colors if using custom theme
      */
@@ -2512,53 +2509,53 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             int defaultColor = getResources().getColor(android.R.color.holo_blue_dark);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
-            
+
             // Apply custom color to send button
             if (sendButton != null) {
                 sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply custom color to emoji button
             if (emojiButton != null) {
                 emojiButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply custom color to attachment button
             if (attachmentButton != null) {
                 attachmentButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply custom color to translate button
             if (translateButton != null) {
                 translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
         }
     }
-    
+
     @Override
     protected void applyCustomColorsToViews() {
         super.applyCustomColorsToViews();
-        
+
         if (userPreferences != null && userPreferences.isUsingCustomTheme()) {
             // Apply custom colors to send button and other UI elements
             int defaultColor = getResources().getColor(R.color.colorPrimary);
             int customButtonColor = userPreferences.getCustomButtonColor(defaultColor);
-            
+
             // Apply to send button
             if (sendButton != null) {
                 sendButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply to emoji button
             if (emojiButton != null) {
                 emojiButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply to attachment button
             if (attachmentButton != null) {
                 attachmentButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
             }
-            
+
             // Apply to translate button
             if (translateButton != null) {
                 translateButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(customButtonColor));
@@ -2575,13 +2572,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         }
 
         boolean isGroup = false;
-        
+
         // Method 1: Check if address contains comma (multiple participants)
         if (!TextUtils.isEmpty(address) && address.contains(",")) {
             isGroup = true;
             Log.d(TAG, "Detected group conversation from address: " + address);
         }
-        
+
         // Method 2: Check if we have messages from multiple senders
         if (!isGroup && messages != null && messages.size() > 1) {
             Set<String> uniqueAddresses = new HashSet<>();
@@ -2596,7 +2593,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 }
             }
         }
-        
+
         // Update the adapter
         adapter.setGroupConversation(isGroup);
         Log.d(TAG, "Group conversation status: " + isGroup);
@@ -2610,7 +2607,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Toast.makeText(this, "Unable to access contact settings", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
         ContactSettingsDialog dialog = new ContactSettingsDialog(this, address, contactName, this);
         dialog.show();
     }
@@ -2630,7 +2627,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, getString(R.string.select_notification_tone));
         intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
         intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false);
-        
+
         // Set current selection if any
         UserPreferences prefs = new UserPreferences(this);
         String currentTone = prefs.getContactNotificationTone(address);
@@ -2646,7 +2643,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             Uri defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
             intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, defaultUri);
         }
-        
+
         try {
             startActivityForResult(intent, requestCode);
         } catch (Exception e) {
@@ -2664,19 +2661,19 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (TextUtils.isEmpty(contactName) || "null".equals(contactName)) {
             contactName = null;
         }
-        
+
         // If we have a valid contact name, use it
         if (contactName != null && !contactName.equals(address)) {
             return contactName;
         }
-        
+
         // Try to look up contact name as fallback
         if (!TextUtils.isEmpty(address)) {
             String lookedUpName = ContactUtils.getContactName(this, address);
             if (!TextUtils.isEmpty(lookedUpName)) {
                 return lookedUpName;
             }
-            
+
             // Always show formatted phone number instead of "Unknown"
             if (address.contains(",")) {
                 // Handle group conversation addresses
@@ -2686,7 +2683,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 return formatPhoneNumberForTitle(address);
             }
         }
-        
+
         // Last resort - be descriptive instead of just "Unknown"
         return "No Contact Info";
     }
@@ -2698,39 +2695,39 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (TextUtils.isEmpty(addresses)) {
             return "Group Chat";
         }
-        
+
         String[] addressArray = addresses.split(",");
         if (addressArray.length <= 1) {
             String singleAddress = addresses.trim();
             return formatPhoneNumberForTitle(singleAddress);
         }
-        
+
         // For group, show participant count and first few numbers
         StringBuilder titleBuilder = new StringBuilder();
         int participantCount = 0;
         int maxToShow = 2;
-        
+
         for (int i = 0; i < addressArray.length && participantCount < maxToShow; i++) {
             String address = addressArray[i].trim();
             if (TextUtils.isEmpty(address)) {
                 continue;
             }
-            
+
             String contactName = ContactUtils.getContactName(this, address);
             String displayName = !TextUtils.isEmpty(contactName) ? contactName : formatCompactPhoneForTitle(address);
-            
+
             if (participantCount > 0) {
                 titleBuilder.append(", ");
             }
             titleBuilder.append(displayName);
             participantCount++;
         }
-        
+
         if (addressArray.length > maxToShow) {
             int remaining = addressArray.length - maxToShow;
             titleBuilder.append(" +").append(remaining);
         }
-        
+
         String result = titleBuilder.toString();
         return result.length() > 0 ? result : "Group (" + addressArray.length + ")";
     }
@@ -2742,17 +2739,17 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (TextUtils.isEmpty(phoneNumber)) {
             return "No Number";
         }
-        
+
         // Remove any non-digit characters except +
         String cleanNumber = phoneNumber.replaceAll("[^\\d+]", "");
-        
+
         // Remove country code for cleaner display
         if (cleanNumber.startsWith("+1") && cleanNumber.length() == 12) {
             cleanNumber = cleanNumber.substring(2);
         } else if (cleanNumber.startsWith("1") && cleanNumber.length() == 11) {
             cleanNumber = cleanNumber.substring(1);
         }
-        
+
         // Format as (XXX) XXX-XXXX for 10-digit numbers
         if (cleanNumber.length() == 10) {
             return String.format("(%s) %s-%s",
@@ -2760,7 +2757,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     cleanNumber.substring(3, 6),
                     cleanNumber.substring(6));
         }
-        
+
         // Return original if we can't format it
         return phoneNumber;
     }
@@ -2772,194 +2769,20 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         if (TextUtils.isEmpty(phoneNumber)) {
             return "???";
         }
-        
+
         // For titles, show last 4 digits with area code if available
         String cleanNumber = phoneNumber.replaceAll("[^\\d]", "");
-        
+
         if (cleanNumber.length() >= 7) {
             return cleanNumber.substring(0, 3) + "-" + cleanNumber.substring(cleanNumber.length() - 4);
         } else if (cleanNumber.length() >= 4) {
             return "..." + cleanNumber.substring(cleanNumber.length() - 4);
         }
-        
+
         return phoneNumber.length() > 10 ? phoneNumber.substring(0, 8) + "..." : phoneNumber;
     }
 
-    /**
-     * Sets up the P2P connection broadcast receiver.
-     */
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    private void setupP2PReceiver() {
-        try {
-            // Prevent double registration
-            if (p2pBroadcastReceiver != null) {
-                Log.d(TAG, "P2P broadcast receiver already registered, skipping");
-                return;
-            }
-
-            // Create the P2P broadcast receiver
-            p2pBroadcastReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String action = intent.getAction();
-                    if (action == null) return;
-
-                    switch (action) {
-                        case P2PService.ACTION_P2P_CONNECTION_ESTABLISHED:
-                            String connectionId = intent.getStringExtra(P2PService.EXTRA_CONNECTION_ID);
-                            String phoneNumber = intent.getStringExtra(P2PService.EXTRA_PHONE_NUMBER);
-                            handleP2PConnectionEstablished(connectionId, phoneNumber);
-                            break;
-
-                        case P2PService.ACTION_P2P_CONNECTION_FAILED:
-                            String failedPhone = intent.getStringExtra(P2PService.EXTRA_PHONE_NUMBER);
-                            String error = intent.getStringExtra(P2PService.EXTRA_ERROR);
-                            handleP2PConnectionFailed(failedPhone, error);
-                            break;
-
-                        case P2PService.ACTION_P2P_MESSAGE_RECEIVED:
-                            String message = intent.getStringExtra(P2PService.EXTRA_MESSAGE);
-                            handleP2PMessageReceived(message);
-                            break;
-
-                        case P2PService.ACTION_P2P_CONNECTION_CLOSED:
-                            handleP2PConnectionClosed();
-                            break;
-
-                        default:
-                            Log.d(TAG, "Unknown P2P action: " + action);
-                            break;
-                    }
-                }
-            };
-
-            // Register the receiver for P2P events
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(P2PService.ACTION_P2P_CONNECTION_ESTABLISHED);
-            filter.addAction(P2PService.ACTION_P2P_CONNECTION_FAILED);
-            filter.addAction(P2PService.ACTION_P2P_MESSAGE_RECEIVED);
-            filter.addAction(P2PService.ACTION_P2P_CONNECTION_CLOSED);
-
-            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this)
-                    .registerReceiver(p2pBroadcastReceiver, filter);
-
-            Log.d(TAG, "P2P broadcast receiver registered successfully");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error setting up P2P receiver", e);
-        }
-    }
-
-    /**
-     * Initiates a P2P connection with the current conversation contact.
-     */
-    private void initiateP2PConnection() {
-        if (address == null || address.trim().isEmpty()) {
-            Toast.makeText(this, "No phone number available for P2P connection", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (messageService == null) {
-            Toast.makeText(this, "Message service unavailable", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Check if P2P connection already exists
-        if (messageService.hasActiveP2PConnection(address)) {
-            Toast.makeText(this, "P2P connection already active with this contact", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Show progress dialog
-        AlertDialog progressDialog = new AlertDialog.Builder(this)
-                .setTitle("Establishing P2P Connection")
-                .setMessage("Sending connection request to " + (contactName != null ? contactName : address) + "...")
-                .setCancelable(false)
-                .create();
-        progressDialog.show();
-
-        // Attempt to send P2P connection offer
-        executorService.execute(() -> {
-            boolean success = messageService.sendP2PConnectionOffer(address);
-            
-            runOnUiThread(() -> {
-                progressDialog.dismiss();
-                
-                if (success) {
-                    Toast.makeText(this, "P2P connection request sent", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Failed to send P2P connection request", Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-    }
-
-    /**
-     * Handles successful P2P connection establishment.
-     */
-    private void handleP2PConnectionEstablished(String connectionId, String phoneNumber) {
-        Log.d(TAG, "P2P connection established: " + connectionId + " with " + phoneNumber);
-        
-        runOnUiThread(() -> {
-            if (address != null && address.equals(phoneNumber)) {
-                Toast.makeText(this, "P2P connection established! Messages will now be sent directly.", Toast.LENGTH_LONG).show();
-                
-                // Update UI to indicate P2P mode (could add an indicator icon)
-                if (getSupportActionBar() != null) {
-                    String title = getSupportActionBar().getTitle() + " [P2P]";
-                    getSupportActionBar().setTitle(title);
-                }
-            }
-        });
-    }
-
-    /**
-     * Handles P2P connection failure.
-     */
-    private void handleP2PConnectionFailed(String phoneNumber, String error) {
-        Log.w(TAG, "P2P connection failed with " + phoneNumber + ": " + error);
-        
-        runOnUiThread(() -> {
-            if (address != null && address.equals(phoneNumber)) {
-                Toast.makeText(this, "P2P connection failed: " + error, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    /**
-     * Handles incoming P2P message.
-     */
-    private void handleP2PMessageReceived(String message) {
-        Log.d(TAG, "P2P message received: " + message);
-        
-        runOnUiThread(() -> {
-            // For now, just show a toast. In a full implementation, this would
-            // add the message to the conversation view
-            Toast.makeText(this, "P2P message: " + message, Toast.LENGTH_SHORT).show();
-            
-            // Refresh messages to show the new P2P message
-            loadMessages();
-        });
-    }
-
-    /**
-     * Handles P2P connection closure.
-     */
-    private void handleP2PConnectionClosed() {
-        Log.d(TAG, "P2P connection closed");
-        
-        runOnUiThread(() -> {
-            Toast.makeText(this, "P2P connection closed", Toast.LENGTH_SHORT).show();
-            
-            // Remove P2P indicator from title
-            if (getSupportActionBar() != null) {
-                String title = getSupportActionBar().getTitle().toString();
-                if (title.endsWith(" [P2P]")) {
-                    title = title.substring(0, title.length() - 6);
-                    getSupportActionBar().setTitle(title);
-                }
-            }
-        });
-    }
-
 }
+
+
+

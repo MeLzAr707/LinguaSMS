@@ -12,7 +12,6 @@ import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
 
-import com.translator.messagingapp.p2p.*;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -64,7 +63,6 @@ public class MessageService {
     private final TranslationCache translationCache;
     private final RcsService rcsService;
     private final UserPreferences userPreferences;
-    private final P2PService p2pService;
 
     /**
      * Creates a new MessageService.
@@ -78,7 +76,6 @@ public class MessageService {
         this.translationCache = translationCache;
         this.rcsService = new RcsService(context);
         this.userPreferences = new UserPreferences(context);
-        this.p2pService = new P2PService(context);
     }
 
     /**
@@ -140,10 +137,10 @@ public class MessageService {
      */
     private List<Conversation> loadConversationsFromProvider(ContentResolver contentResolver) {
         List<Conversation> conversations = new ArrayList<>();
-        
+
         // Query the content provider for conversations
         Uri uri = Uri.parse("content://mms-sms/conversations?simple=true");
-        String[] projection = new String[] {
+        String[] projection = new String[]{
                 Telephony.Threads._ID,
                 Telephony.Threads.DATE,
                 Telephony.Threads.MESSAGE_COUNT,
@@ -174,7 +171,7 @@ public class MessageService {
      */
     private List<Conversation> loadConversationsFromSms(ContentResolver contentResolver) {
         List<Conversation> conversations = new ArrayList<>();
-        
+
         // Query SMS messages to find distinct thread IDs
         Uri uri = Uri.parse("content://sms");
         String sortOrder = "date DESC";
@@ -206,7 +203,7 @@ public class MessageService {
      */
     private List<Conversation> loadConversationsFromMms(ContentResolver contentResolver) {
         List<Conversation> conversations = new ArrayList<>();
-        
+
         // Query MMS messages to find distinct thread IDs
         Uri uri = Uri.parse("content://mms");
         String sortOrder = "date DESC";
@@ -245,7 +242,7 @@ public class MessageService {
         // First try to get SMS messages for this thread
         Uri smsUri = Uri.parse("content://sms");
         String smsSelection = "thread_id = ?";
-        String[] smsSelectionArgs = new String[] { threadId };
+        String[] smsSelectionArgs = new String[]{threadId};
         String sortOrder = "date DESC LIMIT 1";
 
         try (Cursor cursor = contentResolver.query(smsUri, null, smsSelection, smsSelectionArgs, sortOrder)) {
@@ -303,7 +300,7 @@ public class MessageService {
         // Query the MMS content provider for the latest message in this thread
         Uri mmsUri = Uri.parse("content://mms");
         String mmsSelection = "thread_id = ?";
-        String[] mmsSelectionArgs = new String[] { threadId };
+        String[] mmsSelectionArgs = new String[]{threadId};
         String sortOrder = "date DESC LIMIT 1";
 
         try (Cursor cursor = contentResolver.query(mmsUri, null, mmsSelection, mmsSelectionArgs, sortOrder)) {
@@ -317,16 +314,16 @@ public class MessageService {
 
                 // Get the address (phone number) using the correct message box type
                 String address = getMmsAddress(contentResolver, id, messageBox);
-                
+
                 // If address is still null, try the opposite direction as fallback
                 // This helps with edge cases where the message box type detection might fail
                 if (TextUtils.isEmpty(address)) {
                     Log.d(TAG, "Primary address lookup failed, trying fallback approach for message ID " + id);
-                    int fallbackBox = (messageBox == Telephony.Mms.MESSAGE_BOX_INBOX) ? 
-                        Telephony.Mms.MESSAGE_BOX_SENT : Telephony.Mms.MESSAGE_BOX_INBOX;
+                    int fallbackBox = (messageBox == Telephony.Mms.MESSAGE_BOX_INBOX) ?
+                            Telephony.Mms.MESSAGE_BOX_SENT : Telephony.Mms.MESSAGE_BOX_INBOX;
                     address = getMmsAddress(contentResolver, id, fallbackBox);
                 }
-                
+
                 Log.d(TAG, "MMS conversation address resolved to: " + address + " for thread " + threadId);
 
                 // Get the latest message details
@@ -377,8 +374,8 @@ public class MessageService {
      * For outgoing messages, returns the recipient address(es).
      *
      * @param contentResolver The content resolver
-     * @param messageId The MMS message ID
-     * @param messageBox The message box type
+     * @param messageId       The MMS message ID
+     * @param messageBox      The message box type
      * @return The address
      */
     public String getMmsAddress(ContentResolver contentResolver, String messageId, int messageBox) {
@@ -388,9 +385,9 @@ public class MessageService {
 
         // Determine if this is an incoming or outgoing message
         boolean isIncomingMessage = messageBox == Telephony.Mms.MESSAGE_BOX_INBOX;
-        
+
         List<String> addresses = getMmsAddresses(contentResolver, messageId, isIncomingMessage);
-        
+
         if (addresses.isEmpty()) {
             return null;
         } else if (addresses.size() == 1) {
@@ -400,21 +397,21 @@ public class MessageService {
             return formatGroupAddresses(addresses);
         }
     }
-    
+
     /**
      * Gets all MMS addresses for a message.
-     * 
-     * @param contentResolver The content resolver
-     * @param messageId The MMS message ID
+     *
+     * @param contentResolver   The content resolver
+     * @param messageId         The MMS message ID
      * @param isIncomingMessage True for incoming messages (get sender), false for outgoing (get recipients)
      * @return List of addresses
      */
     private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId, boolean isIncomingMessage) {
         List<String> addresses = new ArrayList<>();
-        
+
         // Query the addr table to get addresses
         Uri uri = Uri.parse("content://mms/" + messageId + "/addr");
-        
+
         // For incoming messages, get the sender (TYPE_FROM)
         // For outgoing messages, get the recipients (TYPE_TO)
         int addressType = isIncomingMessage ? TYPE_FROM : TYPE_TO;
@@ -438,7 +435,7 @@ public class MessageService {
 
         return addresses;
     }
-    
+
     /**
      * Gets all MMS addresses for a message (legacy method for backward compatibility).
      * This method assumes outgoing message behavior (TYPE_TO).
@@ -446,14 +443,14 @@ public class MessageService {
     private List<String> getMmsAddresses(ContentResolver contentResolver, String messageId) {
         return getMmsAddresses(contentResolver, messageId, false); // false = outgoing
     }
-    
+
     /**
      * Gets the specific sender address for an individual MMS message.
      * This method ensures each message gets its actual sender address rather than a group address.
-     * 
+     *
      * @param contentResolver The content resolver
-     * @param messageId The MMS message ID
-     * @param messageBox The message box type
+     * @param messageId       The MMS message ID
+     * @param messageBox      The message box type
      * @return The individual sender's address for this message
      */
     public String getIndividualMmsMessageAddress(ContentResolver contentResolver, String messageId, int messageBox) {
@@ -463,7 +460,7 @@ public class MessageService {
 
         // For incoming messages, we need the sender's address (TYPE_FROM)
         boolean isIncomingMessage = messageBox == Telephony.Mms.MESSAGE_BOX_INBOX;
-        
+
         if (isIncomingMessage) {
             // Get the actual sender address for this specific message
             List<String> senderAddresses = getMmsAddresses(contentResolver, messageId, true);
@@ -483,10 +480,10 @@ public class MessageService {
                 }
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Formats multiple addresses for group message display.
      * Improved to prevent 'unk-nown' display issues.
@@ -495,15 +492,15 @@ public class MessageService {
         if (addresses.size() <= 1) {
             return addresses.isEmpty() ? null : addresses.get(0);
         }
-        
+
         List<String> contactNames = new ArrayList<>();
-        
+
         // Try to get contact names for each address
         for (String address : addresses) {
             if (TextUtils.isEmpty(address)) {
                 continue; // Skip empty addresses
             }
-            
+
             String contactName = ContactUtils.getContactName(context, address);
             if (!TextUtils.isEmpty(contactName)) {
                 contactNames.add(contactName);
@@ -515,7 +512,7 @@ public class MessageService {
                 }
             }
         }
-        
+
         if (contactNames.isEmpty()) {
             return "Group"; // Short fallback to avoid truncation
         } else if (contactNames.size() == 1) {
@@ -527,7 +524,7 @@ public class MessageService {
             return contactNames.get(0) + " +" + (contactNames.size() - 1);
         }
     }
-    
+
     /**
      * Formats a phone number for group display (shorter format).
      * Improved to prevent 'unk-nown' display issues.
@@ -536,17 +533,17 @@ public class MessageService {
         if (TextUtils.isEmpty(phoneNumber)) {
             return "???"; // Very short fallback to avoid "Unknown" truncation
         }
-        
+
         // Remove any non-digit characters
         String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
-        
+
         // For group display, show last 4 digits with minimal prefix
         if (digitsOnly.length() >= 4) {
             return "..." + digitsOnly.substring(digitsOnly.length() - 4);
         } else if (digitsOnly.length() > 0) {
             return "..." + digitsOnly;
         }
-        
+
         // If no digits, return a safe short string
         return phoneNumber.length() > 8 ? phoneNumber.substring(0, 5) + "..." : phoneNumber;
     }
@@ -555,7 +552,7 @@ public class MessageService {
      * Gets the text content from an MMS message.
      *
      * @param contentResolver The content resolver
-     * @param messageId The MMS message ID
+     * @param messageId       The MMS message ID
      * @return The text content
      */
     public String getMmsText(ContentResolver contentResolver, String messageId) {
@@ -574,25 +571,25 @@ public class MessageService {
                     int contentTypeIndex = cursor.getColumnIndex("ct");
                     int dataIndex = cursor.getColumnIndex("_data");
                     int textIndex = cursor.getColumnIndex("text");
-                    
+
                     String contentType = null;
                     if (contentTypeIndex >= 0) {
                         contentType = cursor.getString(contentTypeIndex);
                     }
-                    
+
                     // Look for various text content types - be more inclusive
                     boolean isTextPart = false;
                     if (contentType != null) {
                         String lowerContentType = contentType.toLowerCase();
-                        isTextPart = lowerContentType.startsWith("text/plain") || 
-                                    lowerContentType.startsWith("text/") ||
-                                    lowerContentType.equals("text") ||
-                                    lowerContentType.contains("text");
+                        isTextPart = lowerContentType.startsWith("text/plain") ||
+                                lowerContentType.startsWith("text/") ||
+                                lowerContentType.equals("text") ||
+                                lowerContentType.contains("text");
                     } else {
                         // If content type is null, still check for text data
                         isTextPart = true;
                     }
-                    
+
                     if (isTextPart) {
                         // Try to get text from _data column first (file-based storage)
                         if (dataIndex >= 0) {
@@ -601,20 +598,20 @@ public class MessageService {
                                 // Text is stored in a file
                                 text = getMmsTextFromFile(contentResolver, data);
                                 if (text != null && !text.trim().isEmpty()) {
-                                    Log.d(TAG, "Found MMS text from file for message " + messageId + ": " + 
-                                          text.substring(0, Math.min(50, text.length())));
+                                    Log.d(TAG, "Found MMS text from file for message " + messageId + ": " +
+                                            text.substring(0, Math.min(50, text.length())));
                                     break;
                                 }
                             }
                         }
-                        
+
                         // Try to get text directly from text column
                         if (textIndex >= 0) {
                             String directText = cursor.getString(textIndex);
                             if (directText != null && !directText.trim().isEmpty()) {
                                 text = directText;
-                                Log.d(TAG, "Found MMS text directly for message " + messageId + ": " + 
-                                      text.substring(0, Math.min(50, text.length())));
+                                Log.d(TAG, "Found MMS text directly for message " + messageId + ": " +
+                                        text.substring(0, Math.min(50, text.length())));
                                 break;
                             }
                         }
@@ -638,7 +635,7 @@ public class MessageService {
      * Gets text content from an MMS file.
      *
      * @param contentResolver The content resolver
-     * @param dataPath The path to the file
+     * @param dataPath        The path to the file
      * @return The text content
      */
     private String getMmsTextFromFile(ContentResolver contentResolver, String dataPath) {
@@ -646,7 +643,7 @@ public class MessageService {
             Log.d(TAG, "Data path is null or empty for MMS text file");
             return null;
         }
-        
+
         Uri uri = Uri.parse("content://mms/part/" + dataPath);
         String text = null;
 
@@ -658,7 +655,7 @@ public class MessageService {
                 while ((len = is.read(buffer)) != -1) {
                     baos.write(buffer, 0, len);
                 }
-                
+
                 // Convert bytes to string and handle potential encoding issues
                 byte[] textBytes = baos.toByteArray();
                 if (textBytes.length > 0) {
@@ -683,8 +680,8 @@ public class MessageService {
      * Loads attachments for an MMS message.
      *
      * @param contentResolver The content resolver
-     * @param messageId The MMS message ID
-     * @param mmsMessage The MMS message to add attachments to
+     * @param messageId       The MMS message ID
+     * @param mmsMessage      The MMS message to add attachments to
      */
     private void loadMmsAttachments(ContentResolver contentResolver, String messageId, MmsMessage mmsMessage) {
         if (messageId == null || messageId.isEmpty() || mmsMessage == null) {
@@ -704,11 +701,11 @@ public class MessageService {
 
                     String contentType = null;
                     String partId = null;
-                    
+
                     if (contentTypeIndex >= 0) {
                         contentType = cursor.getString(contentTypeIndex);
                     }
-                    
+
                     if (dataIdIndex >= 0) {
                         partId = cursor.getString(dataIdIndex);
                     }
@@ -722,10 +719,10 @@ public class MessageService {
                     boolean isAttachment = true;
                     if (contentType != null) {
                         String lowerContentType = contentType.toLowerCase();
-                        if (lowerContentType.startsWith("text/plain") || 
-                            lowerContentType.equals("application/smil") ||
-                            lowerContentType.startsWith("text/") ||
-                            lowerContentType.equals("text")) {
+                        if (lowerContentType.startsWith("text/plain") ||
+                                lowerContentType.equals("application/smil") ||
+                                lowerContentType.startsWith("text/") ||
+                                lowerContentType.equals("text")) {
                             isAttachment = false;
                         }
                     }
@@ -733,12 +730,12 @@ public class MessageService {
                     if (isAttachment) {
                         // This is an attachment (image, video, audio, etc.)
                         Uri attachmentUri = Uri.parse("content://mms/part/" + partId);
-                        
+
                         String fileName = null;
                         if (nameIndex >= 0) {
                             fileName = cursor.getString(nameIndex);
                         }
-                        
+
                         long size = 0;
                         if (sizeIndex >= 0) {
                             size = cursor.getLong(sizeIndex);
@@ -746,20 +743,20 @@ public class MessageService {
 
                         // Create attachment object
                         MmsMessage.Attachment attachment = new MmsMessage.Attachment(
-                            attachmentUri, 
-                            contentType, 
-                            fileName, 
-                            size
+                                attachmentUri,
+                                contentType,
+                                fileName,
+                                size
                         );
 
                         mmsMessage.addAttachment(attachment);
-                        Log.d(TAG, "Loaded attachment: " + contentType + " for MMS " + messageId + 
-                              " (URI: " + attachmentUri + ")");
+                        Log.d(TAG, "Loaded attachment: " + contentType + " for MMS " + messageId +
+                                " (URI: " + attachmentUri + ")");
                     } else {
                         Log.d(TAG, "Skipped text/metadata part: " + contentType + " for MMS " + messageId);
                     }
                 } while (cursor.moveToNext());
-                
+
                 Log.d(TAG, "Loaded " + mmsMessage.getAttachmentObjects().size() + " attachments for MMS " + messageId);
             } else {
                 Log.d(TAG, "No MMS parts found for message " + messageId);
@@ -782,7 +779,7 @@ public class MessageService {
         // Count unread SMS messages
         Uri smsUri = Uri.parse("content://sms/inbox");
         String smsSelection = "thread_id = ? AND read = 0";
-        String[] smsSelectionArgs = new String[] { threadId };
+        String[] smsSelectionArgs = new String[]{threadId};
 
         try (Cursor cursor = contentResolver.query(smsUri, null, smsSelection, smsSelectionArgs, null)) {
             if (cursor != null) {
@@ -795,7 +792,7 @@ public class MessageService {
         // Count unread MMS messages
         Uri mmsUri = Uri.parse("content://mms/inbox");
         String mmsSelection = "thread_id = ? AND read = 0";
-        String[] mmsSelectionArgs = new String[] { threadId };
+        String[] mmsSelectionArgs = new String[]{threadId};
 
         try (Cursor cursor = contentResolver.query(mmsUri, null, mmsSelection, mmsSelectionArgs, null)) {
             if (cursor != null) {
@@ -848,8 +845,8 @@ public class MessageService {
      * Loads messages for a specific thread with pagination support.
      *
      * @param threadId The thread ID
-     * @param offset The number of messages to skip
-     * @param limit The maximum number of messages to load
+     * @param offset   The number of messages to skip
+     * @param limit    The maximum number of messages to load
      * @return A list of messages
      */
     public List<Message> loadMessagesPaginated(String threadId, int offset, int limit) {
@@ -879,8 +876,8 @@ public class MessageService {
                 messages = new ArrayList<>(messages.subList(0, limit));
             }
 
-            Log.d(TAG, "Loaded " + messages.size() + " paginated messages for thread " + threadId + 
-                  " (offset: " + offset + ", limit: " + limit + ")");
+            Log.d(TAG, "Loaded " + messages.size() + " paginated messages for thread " + threadId +
+                    " (offset: " + offset + ", limit: " + limit + ")");
         } catch (Exception e) {
             Log.e(TAG, "Error loading paginated messages for thread " + threadId, e);
         }
@@ -892,13 +889,13 @@ public class MessageService {
      * Loads SMS messages for a thread.
      *
      * @param contentResolver The content resolver
-     * @param threadId The thread ID
-     * @param messages The list to add messages to
+     * @param threadId        The thread ID
+     * @param messages        The list to add messages to
      */
     private void loadSmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
         Uri uri = Uri.parse("content://sms");
         String selection = "thread_id = ?";
-        String[] selectionArgs = new String[] { threadId };
+        String[] selectionArgs = new String[]{threadId};
         String sortOrder = "date ASC";
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
@@ -926,7 +923,7 @@ public class MessageService {
                         // Restore translation state from cache if available
                         if (translationCache != null) {
                             boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
-                            
+
                             // For auto-translated incoming messages, ensure showTranslation is true
                             if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
                                 message.setShowTranslation(true);
@@ -951,13 +948,13 @@ public class MessageService {
      * Loads MMS messages for a thread.
      *
      * @param contentResolver The content resolver
-     * @param threadId The thread ID
-     * @param messages The list to add messages to
+     * @param threadId        The thread ID
+     * @param messages        The list to add messages to
      */
     private void loadMmsMessages(ContentResolver contentResolver, String threadId, List<Message> messages) {
         Uri uri = Uri.parse("content://mms");
         String selection = "thread_id = ?";
-        String[] selectionArgs = new String[] { threadId };
+        String[] selectionArgs = new String[]{threadId};
         String sortOrder = "date ASC";
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
@@ -981,8 +978,8 @@ public class MessageService {
                         message.setThreadId(Long.parseLong(threadId));
 
                         // Log MMS message details for debugging
-                        Log.d(TAG, "Loading MMS message ID " + id + " in thread " + threadId + 
-                              " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
+                        Log.d(TAG, "Loading MMS message ID " + id + " in thread " + threadId +
+                                " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
 
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
@@ -990,7 +987,7 @@ public class MessageService {
                         // Restore translation state from cache if available
                         if (translationCache != null) {
                             boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
-                            
+
                             // For auto-translated incoming messages, ensure showTranslation is true
                             if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
                                 message.setShowTranslation(true);
@@ -1015,15 +1012,15 @@ public class MessageService {
      * Loads SMS messages for a thread with pagination.
      *
      * @param contentResolver The content resolver
-     * @param threadId The thread ID
-     * @param messages The list to add messages to
-     * @param offset The number of messages to skip
-     * @param limit The maximum number of messages to load
+     * @param threadId        The thread ID
+     * @param messages        The list to add messages to
+     * @param offset          The number of messages to skip
+     * @param limit           The maximum number of messages to load
      */
     private void loadSmsMessagesPaginated(ContentResolver contentResolver, String threadId, List<Message> messages, int offset, int limit) {
         Uri uri = Uri.parse("content://sms");
         String selection = "thread_id = ?";
-        String[] selectionArgs = new String[] { threadId };
+        String[] selectionArgs = new String[]{threadId};
         String sortOrder = "date DESC LIMIT " + limit + " OFFSET " + offset;
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
@@ -1051,7 +1048,7 @@ public class MessageService {
                         // Restore translation state from cache if available
                         if (translationCache != null) {
                             boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
-                            
+
                             // For auto-translated incoming messages, ensure showTranslation is true
                             if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
                                 message.setShowTranslation(true);
@@ -1076,15 +1073,15 @@ public class MessageService {
      * Loads MMS messages for a thread with pagination.
      *
      * @param contentResolver The content resolver
-     * @param threadId The thread ID
-     * @param messages The list to add messages to
-     * @param offset The number of messages to skip
-     * @param limit The maximum number of messages to load
+     * @param threadId        The thread ID
+     * @param messages        The list to add messages to
+     * @param offset          The number of messages to skip
+     * @param limit           The maximum number of messages to load
      */
     private void loadMmsMessagesPaginated(ContentResolver contentResolver, String threadId, List<Message> messages, int offset, int limit) {
         Uri uri = Uri.parse("content://mms");
         String selection = "thread_id = ?";
-        String[] selectionArgs = new String[] { threadId };
+        String[] selectionArgs = new String[]{threadId};
         String sortOrder = "date DESC LIMIT " + limit + " OFFSET " + offset;
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, sortOrder)) {
@@ -1108,8 +1105,8 @@ public class MessageService {
                         message.setThreadId(Long.parseLong(threadId));
 
                         // Log MMS message details for debugging
-                        Log.d(TAG, "Loading paginated MMS message ID " + id + " in thread " + threadId + 
-                              " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
+                        Log.d(TAG, "Loading paginated MMS message ID " + id + " in thread " + threadId +
+                                " - type: " + getMmsBoxTypeName(type) + ", address: " + address);
 
                         // Load attachments for this MMS message
                         loadMmsAttachments(contentResolver, id, message);
@@ -1117,7 +1114,7 @@ public class MessageService {
                         // Restore translation state from cache if available
                         if (translationCache != null) {
                             boolean hasTranslation = message.restoreTranslationState(translationCache, userPreferences);
-                            
+
                             // For auto-translated incoming messages, ensure showTranslation is true
                             if (hasTranslation && message.isIncoming() && userPreferences != null && userPreferences.isAutoTranslateEnabled()) {
                                 message.setShowTranslation(true);
@@ -1142,7 +1139,7 @@ public class MessageService {
      * Sends an SMS message.
      *
      * @param address The recipient address
-     * @param body The message body
+     * @param body    The message body
      * @return True if the message was sent successfully
      */
     public boolean sendSms(String address, String body) {
@@ -1153,7 +1150,7 @@ public class MessageService {
      * Sends an SMS message.
      *
      * @param address The recipient address
-     * @param body The message body
+     * @param body    The message body
      * @return True if the message was sent successfully
      */
     public boolean sendSmsMessage(String address, String body) {
@@ -1163,8 +1160,8 @@ public class MessageService {
     /**
      * Sends an SMS message with additional parameters.
      *
-     * @param address The recipient address
-     * @param body The message body
+     * @param address  The recipient address
+     * @param body     The message body
      * @param threadId The thread ID (can be null)
      * @param callback Callback to be executed after sending (can be null)
      * @return True if the message was sent successfully
@@ -1189,7 +1186,7 @@ public class MessageService {
             if (callback != null) {
                 callback.run();
             }
-            
+
             // Broadcast message sent to refresh UI
             broadcastMessageSent();
 
@@ -1203,9 +1200,9 @@ public class MessageService {
     /**
      * Sends an MMS message.
      *
-     * @param address The recipient address
-     * @param subject The message subject
-     * @param body The message body
+     * @param address     The recipient address
+     * @param subject     The message subject
+     * @param body        The message body
      * @param attachments The attachments
      * @return True if the message was sent successfully
      */
@@ -1297,7 +1294,7 @@ public class MessageService {
                             Log.w(TAG, "Skipping attachment due to access issues: " + attachmentUri);
                             continue;
                         }
-                        
+
                         // Get the attachment details
                         String mimeType = context.getContentResolver().getType(attachmentUri);
                         if (mimeType == null) {
@@ -1361,20 +1358,20 @@ public class MessageService {
             // Store message in outbox and let system handle sending
             // The message is already in MESSAGE_BOX_OUTBOX, so the system will pick it up
             Log.d(TAG, "MMS message stored in outbox with URI: " + messageUri);
-            
+
             // Instead of just moving to sent, keep in outbox for proper sending
             // Use the transaction-based MMS sending architecture
             ContentValues outboxValues = new ContentValues();
             outboxValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_OUTBOX);
             context.getContentResolver().update(messageUri, outboxValues, null, null);
-            
+
             // Use MmsSendingHelper for proper MMS sending
             boolean sendSuccess = com.translator.messagingapp.mms.MmsSendingHelper.sendMms(
-                context, messageUri, null, address, subject);
-            
+                    context, messageUri, null, address, subject);
+
             if (sendSuccess) {
                 Log.d(TAG, "MMS send process initiated successfully");
-                
+
                 // Move to sent box only after successful sending initiation
                 ContentValues sentValues = new ContentValues();
                 sentValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
@@ -1384,12 +1381,12 @@ public class MessageService {
                 }
             } else {
                 Log.e(TAG, "Failed to initiate MMS sending");
-                
+
                 // Move to failed/draft box if sending failed
                 ContentValues failedValues = new ContentValues();
                 failedValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_FAILED);
                 context.getContentResolver().update(messageUri, failedValues, null, null);
-                
+
                 // Broadcast message sent to refresh UI even if failed (to show error state)
                 broadcastMessageSent();
                 return false;
@@ -1403,10 +1400,10 @@ public class MessageService {
 
         } catch (Exception e) {
             Log.e(TAG, "Error sending MMS message", e);
-            
+
             // Log diagnostics when MMS sending fails to help troubleshoot
             logMmsDiagnostics();
-            
+
             return false;
         }
     }
@@ -1414,8 +1411,8 @@ public class MessageService {
     /**
      * Validates prerequisites for sending MMS messages according to Android best practices.
      *
-     * @param address The recipient address
-     * @param body The message body
+     * @param address     The recipient address
+     * @param body        The message body
      * @param attachments The attachments
      * @return True if prerequisites are met
      */
@@ -1429,7 +1426,7 @@ public class MessageService {
         // Validate that we have content to send (either text or attachments)
         boolean hasText = !TextUtils.isEmpty(body);
         boolean hasAttachments = attachments != null && !attachments.isEmpty();
-        
+
         if (!hasText && !hasAttachments) {
             Log.e(TAG, "Cannot send MMS: no content (text or attachments) provided");
             return false;
@@ -1442,7 +1439,7 @@ public class MessageService {
                     Log.e(TAG, "Cannot send MMS: null attachment URI found");
                     return false;
                 }
-                
+
                 if (!validateUriAccess(attachmentUri)) {
                     Log.e(TAG, "Cannot send MMS: attachment URI access validation failed: " + attachmentUri);
                     return false;
@@ -1473,9 +1470,9 @@ public class MessageService {
      */
     private boolean isNetworkAvailableForMms() {
         try {
-            android.net.ConnectivityManager connectivityManager = 
-                (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            
+            android.net.ConnectivityManager connectivityManager =
+                    (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
             if (connectivityManager == null) {
                 Log.w(TAG, "ConnectivityManager not available");
                 return false;
@@ -1483,7 +1480,7 @@ public class MessageService {
 
             android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
             boolean isConnected = networkInfo != null && networkInfo.isConnected();
-            
+
             if (!isConnected) {
                 Log.d(TAG, "No active network connection");
                 return false;
@@ -1492,8 +1489,8 @@ public class MessageService {
             // Check if we're on a network that supports MMS (mobile data or WiFi with MMS support)
             int networkType = networkInfo.getType();
             boolean supportsMms = networkType == android.net.ConnectivityManager.TYPE_MOBILE ||
-                                 networkType == android.net.ConnectivityManager.TYPE_WIFI;
-            
+                    networkType == android.net.ConnectivityManager.TYPE_WIFI;
+
             if (!supportsMms) {
                 Log.d(TAG, "Current network type does not support MMS: " + networkInfo.getTypeName());
                 return false;
@@ -1514,8 +1511,8 @@ public class MessageService {
      */
     private boolean hasRequiredMmsPermissions() {
         String[] requiredPermissions = {
-            android.Manifest.permission.SEND_SMS,
-            android.Manifest.permission.READ_SMS
+                android.Manifest.permission.SEND_SMS,
+                android.Manifest.permission.READ_SMS
         };
 
         for (String permission : requiredPermissions) {
@@ -1536,7 +1533,7 @@ public class MessageService {
         try {
             // Get the thread ID for proper conversation linking
             String threadId = getOrCreateThreadId(address);
-            
+
             ContentValues values = new ContentValues();
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_SENT);
             values.put(Telephony.Mms.MESSAGE_TYPE, MESSAGE_TYPE_SEND_REQ);
@@ -1552,17 +1549,17 @@ public class MessageService {
             Uri sentUri = context.getContentResolver().insert(Uri.parse("content://mms/sent"), values);
             if (sentUri != null) {
                 String messageId = sentUri.getLastPathSegment();
-                
+
                 // Add recipient address to sent message
                 if (messageId != null) {
                     ContentValues addrValues = new ContentValues();
                     addrValues.put(Telephony.Mms.Addr.ADDRESS, address);
                     addrValues.put(Telephony.Mms.Addr.TYPE, TYPE_TO);
                     addrValues.put(Telephony.Mms.Addr.CHARSET, "106");
-                    
+
                     Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
                     context.getContentResolver().insert(addrUri, addrValues);
-                    
+
                     // Add text part if present
                     if (!TextUtils.isEmpty(body)) {
                         ContentValues textValues = new ContentValues();
@@ -1570,12 +1567,12 @@ public class MessageService {
                         textValues.put(Telephony.Mms.Part.CONTENT_TYPE, "text/plain");
                         textValues.put(Telephony.Mms.Part.CHARSET, "106");
                         textValues.put(Telephony.Mms.Part.TEXT, body);
-                        
+
                         Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
                         context.getContentResolver().insert(partUri, textValues);
                     }
                 }
-                
+
                 Log.d(TAG, "Sent MMS message stored: " + sentUri);
             }
         } catch (Exception e) {
@@ -1612,9 +1609,9 @@ public class MessageService {
             try (InputStream is = context.getContentResolver().openInputStream(uri)) {
                 if (is != null) {
                     // Try to read a few bytes to ensure full access
-                    byte[] testBuffer = new byte[Math.min(1024, (int)fileSize)];
+                    byte[] testBuffer = new byte[Math.min(1024, (int) fileSize)];
                     int bytesRead = is.read(testBuffer);
-                    
+
                     if (bytesRead > 0) {
                         Log.d(TAG, "Successfully validated URI access, read " + bytesRead + " bytes: " + uri);
                         return true;
@@ -1698,13 +1695,13 @@ public class MessageService {
             // Delete SMS messages
             Uri smsUri = Uri.parse("content://sms");
             String smsSelection = "thread_id = ?";
-            String[] smsSelectionArgs = new String[] { threadId };
+            String[] smsSelectionArgs = new String[]{threadId};
             int smsDeleted = context.getContentResolver().delete(smsUri, smsSelection, smsSelectionArgs);
 
             // Delete MMS messages
             Uri mmsUri = Uri.parse("content://mms");
             String mmsSelection = "thread_id = ?";
-            String[] mmsSelectionArgs = new String[] { threadId };
+            String[] mmsSelectionArgs = new String[]{threadId};
             int mmsDeleted = context.getContentResolver().delete(mmsUri, mmsSelection, mmsSelectionArgs);
 
             // Delete the thread
@@ -1734,7 +1731,7 @@ public class MessageService {
 
             Uri smsUri = Uri.parse("content://sms");
             String smsSelection = "thread_id = ? AND read = 0";
-            String[] smsSelectionArgs = new String[] { threadId };
+            String[] smsSelectionArgs = new String[]{threadId};
             int smsUpdated = context.getContentResolver().update(smsUri, smsValues, smsSelection, smsSelectionArgs);
 
             // Mark MMS messages as read
@@ -1743,7 +1740,7 @@ public class MessageService {
 
             Uri mmsUri = Uri.parse("content://mms");
             String mmsSelection = "thread_id = ? AND read = 0";
-            String[] mmsSelectionArgs = new String[] { threadId };
+            String[] mmsSelectionArgs = new String[]{threadId};
             int mmsUpdated = context.getContentResolver().update(mmsUri, mmsValues, mmsSelection, mmsSelectionArgs);
 
             Log.d(TAG, "Marked thread " + threadId + " as read: " + smsUpdated + " SMS, " + mmsUpdated + " MMS");
@@ -1812,7 +1809,7 @@ public class MessageService {
         // Get SMS messages for this address
         Uri uri = Uri.parse("content://sms");
         String selection = "address = ?";
-        String[] selectionArgs = new String[] { address };
+        String[] selectionArgs = new String[]{address};
 
         try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, "date DESC")) {
             if (cursor != null && cursor.moveToFirst()) {
@@ -1847,7 +1844,7 @@ public class MessageService {
             if (threadId != null) {
                 uri = Uri.parse("content://mms");
                 selection = "thread_id = ?";
-                selectionArgs = new String[] { threadId };
+                selectionArgs = new String[]{threadId};
 
                 try (Cursor cursor = contentResolver.query(uri, null, selection, selectionArgs, "date DESC")) {
                     if (cursor != null && cursor.moveToFirst()) {
@@ -1887,8 +1884,8 @@ public class MessageService {
      * Searches for SMS messages containing the specified query text.
      *
      * @param contentResolver The content resolver
-     * @param query The search query (normalized)
-     * @param results The list to add results to
+     * @param query           The search query (normalized)
+     * @param results         The list to add results to
      */
     private void searchSmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
         Cursor cursor = null;
@@ -1896,13 +1893,13 @@ public class MessageService {
             // Query the SMS content provider with optimized column selection and LIMIT
             Uri uri = Uri.parse("content://sms");
             String[] projection = {
-                Telephony.Sms._ID,
-                Telephony.Sms.BODY,
-                Telephony.Sms.DATE,
-                Telephony.Sms.TYPE,
-                Telephony.Sms.ADDRESS,
-                Telephony.Sms.READ,
-                Telephony.Sms.THREAD_ID
+                    Telephony.Sms._ID,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE,
+                    Telephony.Sms.TYPE,
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.READ,
+                    Telephony.Sms.THREAD_ID
             };
             String selection = "body LIKE ?";
             String[] selectionArgs = {"%" + query + "%"};
@@ -1971,23 +1968,23 @@ public class MessageService {
      * Searches for MMS messages containing the specified query text.
      *
      * @param contentResolver The content resolver
-     * @param query The search query (normalized)
-     * @param results The list to add results to
+     * @param query           The search query (normalized)
+     * @param results         The list to add results to
      */
     private void searchMmsMessages(ContentResolver contentResolver, String query, List<Message> results) {
         Cursor cursor = null;
         int resultCount = 0;
         final int MAX_MMS_RESULTS = 50; // Limit MMS results for performance
-        
+
         try {
             // Query the MMS content provider with optimized column selection
             Uri uri = Uri.parse("content://mms");
             String[] projection = {
-                Telephony.Mms._ID,
-                Telephony.Mms.DATE,
-                Telephony.Mms.MESSAGE_BOX,
-                Telephony.Mms.READ,
-                Telephony.Mms.THREAD_ID
+                    Telephony.Mms._ID,
+                    Telephony.Mms.DATE,
+                    Telephony.Mms.MESSAGE_BOX,
+                    Telephony.Mms.READ,
+                    Telephony.Mms.THREAD_ID
             };
             String sortOrder = "date DESC LIMIT 200"; // Get more than needed to filter by content
 
@@ -2005,7 +2002,7 @@ public class MessageService {
                     if (resultCount >= MAX_MMS_RESULTS) {
                         break;
                     }
-                    
+
                     int idIndex = cursor.getColumnIndex(Telephony.Mms._ID);
                     int dateIndex = cursor.getColumnIndex(Telephony.Mms.DATE);
                     int typeIndex = cursor.getColumnIndex(Telephony.Mms.MESSAGE_BOX);
@@ -2072,9 +2069,9 @@ public class MessageService {
         }
 
         Uri uri = Uri.parse("content://sms/inbox");
-        String[] projection = new String[] { "thread_id" };
+        String[] projection = new String[]{"thread_id"};
         String selection = "address = ?";
-        String[] selectionArgs = new String[] { address };
+        String[] selectionArgs = new String[]{address};
 
         try (Cursor cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null)) {
             if (cursor != null && cursor.moveToFirst()) {
@@ -2110,10 +2107,10 @@ public class MessageService {
         // Try to get from MMS
         try {
             Uri mmsUri = Uri.parse("content://mms");
-            String[] projection = new String[] { "thread_id" };
+            String[] projection = new String[]{"thread_id"};
             String selection = "thread_id IN (SELECT DISTINCT thread_id FROM pdu WHERE thread_id IN " +
                     "(SELECT DISTINCT thread_id FROM addr WHERE address = ?))";
-            String[] selectionArgs = new String[] { address };
+            String[] selectionArgs = new String[]{address};
 
             try (Cursor cursor = context.getContentResolver().query(mmsUri, projection, selection, selectionArgs, "thread_id DESC LIMIT 1")) {
                 if (cursor != null && cursor.moveToFirst()) {
@@ -2171,13 +2168,6 @@ public class MessageService {
                     String messageText = fullMessageBody.toString();
                     Log.d(TAG, "Received SMS from " + senderAddress + ": " + messageText);
 
-                    // Check if this is a P2P connection trigger
-                    if (P2PEncryptionUtils.isValidP2PTrigger(messageText)) {
-                        Log.d(TAG, "Detected P2P connection trigger from " + senderAddress);
-                        handleP2PTrigger(senderAddress, messageText);
-                        // Do not store P2P trigger messages in regular SMS database
-                        return;
-                    }
 
                     // Check if message already exists to prevent duplicates
                     boolean messageAlreadyExists = isMessageAlreadyStored(senderAddress, messageText, messageTimestamp);
@@ -2192,10 +2182,10 @@ public class MessageService {
                     if (translationManager != null) {
                         try {
                             // Create SmsMessage object for translation
-                            com.translator.messagingapp.sms.SmsMessage smsMessage = 
-                                new com.translator.messagingapp.sms.SmsMessage(senderAddress, messageText, new java.util.Date(messageTimestamp));
+                            com.translator.messagingapp.sms.SmsMessage smsMessage =
+                                    new com.translator.messagingapp.sms.SmsMessage(senderAddress, messageText, new java.util.Date(messageTimestamp));
                             smsMessage.setIncoming(true);
-                            
+
                             // Attempt auto-translation
                             Log.d(TAG, "Attempting auto-translation for incoming message from " + senderAddress);
                             String finalSenderAddress = senderAddress;
@@ -2204,14 +2194,14 @@ public class MessageService {
                                 public void onTranslationComplete(boolean success, com.translator.messagingapp.sms.SmsMessage translatedMessage) {
                                     if (success && translatedMessage != null) {
                                         Log.d(TAG, "Auto-translation completed for message from " + finalSenderAddress);
-                                        
+
                                         // Store translation in the translation cache for UI access
                                         if (translationCache != null && translatedMessage.getTranslatedText() != null) {
                                             String cacheKey = translatedMessage.getOriginalText() + "_" + translatedMessage.getTranslatedLanguage();
                                             translationCache.put(cacheKey, translatedMessage.getTranslatedText());
                                             Log.d(TAG, "Cached auto-translation for future access");
                                         }
-                                        
+
                                         // Broadcast a specific message for translation completion to notify UI
                                         try {
                                             Intent translationIntent = new Intent("com.translator.messagingapp.MESSAGE_TRANSLATED");
@@ -2237,7 +2227,7 @@ public class MessageService {
 
                     // Show notification (always show regardless of storage status)
                     showSmsNotification(senderAddress, fullMessageBody.toString());
-                    
+
                     // Broadcast message received to refresh UI (always broadcast regardless of storage status)
                     // This ensures the UI updates even when Android auto-stored the message
                     broadcastMessageReceived();
@@ -2249,8 +2239,8 @@ public class MessageService {
     /**
      * Stores an incoming SMS message in the device's SMS database.
      *
-     * @param address The sender's address
-     * @param body The message body
+     * @param address   The sender's address
+     * @param body      The message body
      * @param timestamp The message timestamp
      */
     private void storeSmsMessage(String address, String body, long timestamp) {
@@ -2277,8 +2267,8 @@ public class MessageService {
     /**
      * Stores a sent SMS message in the device's SMS database.
      *
-     * @param address The recipient's address
-     * @param body The message body
+     * @param address   The recipient's address
+     * @param body      The message body
      * @param timestamp The message timestamp
      */
     private void storeSentSmsMessage(String address, String body, long timestamp) {
@@ -2306,8 +2296,8 @@ public class MessageService {
      * Checks if an incoming SMS message is already stored in the database.
      * This prevents duplicate messages from being stored.
      *
-     * @param address The sender's address
-     * @param body The message body
+     * @param address   The sender's address
+     * @param body      The message body
      * @param timestamp The message timestamp
      * @return true if message already exists in database, false otherwise
      */
@@ -2317,23 +2307,23 @@ public class MessageService {
                     Telephony.Sms.BODY + " = ? AND " +
                     Telephony.Sms.TYPE + " = ? AND " +
                     "ABS(" + Telephony.Sms.DATE + " - ?) < ?";
-            
+
             String[] selectionArgs = {
-                address,
-                body,
-                String.valueOf(Telephony.Sms.MESSAGE_TYPE_INBOX),
-                String.valueOf(timestamp),
-                String.valueOf(10000) // 10 seconds tolerance
+                    address,
+                    body,
+                    String.valueOf(Telephony.Sms.MESSAGE_TYPE_INBOX),
+                    String.valueOf(timestamp),
+                    String.valueOf(10000) // 10 seconds tolerance
             };
-            
+
             Cursor cursor = context.getContentResolver().query(
-                Telephony.Sms.CONTENT_URI,
-                new String[]{Telephony.Sms._ID},
-                selection,
-                selectionArgs,
-                null
+                    Telephony.Sms.CONTENT_URI,
+                    new String[]{Telephony.Sms._ID},
+                    selection,
+                    selectionArgs,
+                    null
             );
-            
+
             if (cursor != null) {
                 boolean exists = cursor.getCount() > 0;
                 cursor.close();
@@ -2344,7 +2334,7 @@ public class MessageService {
             Log.e(TAG, "Error checking for duplicate message from " + address, e);
             // Return false on error to ensure message is stored (fail-safe approach)
         }
-        
+
         return false;
     }
 
@@ -2352,7 +2342,7 @@ public class MessageService {
      * Shows a notification for an incoming SMS message.
      *
      * @param address The sender's address
-     * @param body The message body
+     * @param body    The message body
      */
     private void showSmsNotification(String address, String body) {
         try {
@@ -2361,20 +2351,20 @@ public class MessageService {
                 Log.d(TAG, "Skipping SMS notification - app is not the default SMS app");
                 return;
             }
-            
+
             // Get thread ID for the notification
             String threadId = getThreadIdForAddress(address);
-            
+
             // Get contact name or use address as fallback
             String displayName = getContactNameForAddress(address);
             if (displayName == null || displayName.isEmpty()) {
                 displayName = address;
             }
-            
+
             // Create and show notification
             NotificationHelper notificationHelper = new NotificationHelper(context);
             notificationHelper.showSmsReceivedNotification(address, body, threadId, displayName);
-            
+
             Log.d(TAG, "Showed notification for SMS from " + address);
         } catch (Exception e) {
             Log.e(TAG, "Error showing SMS notification", e);
@@ -2400,7 +2390,7 @@ public class MessageService {
     public void handleIncomingMms(Intent intent) {
         try {
             Log.d(TAG, "Processing incoming MMS");
-            
+
             // Only process if this app is the default SMS app
             if (!PhoneUtils.isDefaultSmsApp(context)) {
                 Log.d(TAG, "Skipping MMS processing - app is not the default SMS app");
@@ -2408,10 +2398,10 @@ public class MessageService {
                 broadcastMessageReceived();
                 return;
             }
-            
+
             // Extract and store MMS data from the WAP push intent
             MmsProcessingResult result = extractAndStoreMmsFromIntent(intent);
-            
+
             // Show notification regardless of storage success to maintain existing behavior
             NotificationHelper notificationHelper = new NotificationHelper(context);
             if (result.success) {
@@ -2421,10 +2411,10 @@ public class MessageService {
                 notificationHelper.showMmsReceivedNotification("New MMS", "You have received a new MMS message", null);
                 Log.w(TAG, "MMS storage failed but notification shown");
             }
-            
+
             // Broadcast message received to refresh UI
             broadcastMessageReceived();
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error handling incoming MMS", e);
             // Still show notification and broadcast to maintain existing behavior
@@ -2459,20 +2449,20 @@ public class MessageService {
             }
         }
     }
-    
+
     /**
      * Helper class to return both MMS processing success status and sender information.
      */
     private static class MmsProcessingResult {
         final boolean success;
         final String senderAddress;
-        
+
         MmsProcessingResult(boolean success, String senderAddress) {
             this.success = success;
             this.senderAddress = senderAddress;
         }
     }
-    
+
     /**
      * Extracts MMS data from a WAP push intent and stores it in the system's MMS content provider.
      * This method handles the core functionality that was missing - actually saving received MMS.
@@ -2483,16 +2473,16 @@ public class MessageService {
     private MmsProcessingResult extractAndStoreMmsFromIntent(Intent intent) {
         try {
             Log.d(TAG, "Extracting MMS data from WAP push intent");
-            
+
             // Extract basic MMS information from the intent
             // WAP push intents contain the raw MMS data as a byte array
             byte[] data = intent.getByteArrayExtra("data");
             String contentType = intent.getType();
-            
+
             // For now, create a basic MMS entry with available information
             // This is a simplified implementation that focuses on getting MMS messages
             // to appear in conversation threads
-            
+
             // Extract sender information if available in intent extras
             String fromAddress = intent.getStringExtra("address");
             if (fromAddress == null) {
@@ -2508,9 +2498,9 @@ public class MessageService {
                     }
                 }
             }
-            
+
             Log.d(TAG, "MMS sender address: " + fromAddress);
-            
+
             // Create the main MMS message entry
             ContentValues mmsValues = new ContentValues();
             mmsValues.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_INBOX);
@@ -2519,23 +2509,23 @@ public class MessageService {
             mmsValues.put(Telephony.Mms.SEEN, 0); // Mark as unseen
             mmsValues.put(Telephony.Mms.CONTENT_TYPE, "application/vnd.wap.multipart.related");
             mmsValues.put(Telephony.Mms.MESSAGE_TYPE, 132); // MESSAGE_TYPE_RETRIEVE_CONF
-            
+
             // Insert the MMS message
             Uri mmsUri = context.getContentResolver().insert(Uri.parse("content://mms"), mmsValues);
             if (mmsUri == null) {
                 Log.e(TAG, "Failed to insert MMS message into content provider");
                 return new MmsProcessingResult(false, fromAddress);
             }
-            
+
             String messageId = mmsUri.getLastPathSegment();
             Log.d(TAG, "Created MMS message with ID: " + messageId);
-            
+
             // Add the sender address
             ContentValues addrValues = new ContentValues();
             addrValues.put(Telephony.Mms.Addr.ADDRESS, fromAddress);
             addrValues.put(Telephony.Mms.Addr.TYPE, 137); // PduHeaders.FROM
             addrValues.put(Telephony.Mms.Addr.CHARSET, 106); // UTF-8
-            
+
             Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
             Uri insertedAddrUri = context.getContentResolver().insert(addrUri, addrValues);
             if (insertedAddrUri != null) {
@@ -2543,7 +2533,7 @@ public class MessageService {
             } else {
                 Log.w(TAG, "Failed to add sender address for MMS");
             }
-            
+
             // Create a basic text part indicating MMS content
             // This ensures the message appears in conversation threads even if
             // we can't fully parse the MMS content
@@ -2553,7 +2543,7 @@ public class MessageService {
             textPartValues.put(Telephony.Mms.Part.CHARSET, 106); // UTF-8
             textPartValues.put(Telephony.Mms.Part.CONTENT_DISPOSITION, "inline");
             textPartValues.put(Telephony.Mms.Part.TEXT, "[MMS Message]");
-            
+
             Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
             Uri insertedPartUri = context.getContentResolver().insert(partUri, textPartValues);
             if (insertedPartUri != null) {
@@ -2561,10 +2551,10 @@ public class MessageService {
             } else {
                 Log.w(TAG, "Failed to add text part for MMS message");
             }
-            
+
             Log.d(TAG, "Successfully stored MMS message in content provider");
             return new MmsProcessingResult(true, fromAddress);
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error extracting and storing MMS from intent", e);
             return new MmsProcessingResult(false, null);
@@ -2597,7 +2587,7 @@ public class MessageService {
     /**
      * Deletes a specific message.
      *
-     * @param id The message ID
+     * @param id          The message ID
      * @param messageType The message type (SMS or MMS)
      * @return True if the message was deleted successfully
      */
@@ -2676,22 +2666,22 @@ public class MessageService {
      *
      * @param threadId The thread ID
      * @param messages The list to add messages to
-     * @param offset The number of messages to skip
-     * @param limit The maximum number of messages to load
+     * @param offset   The number of messages to skip
+     * @param limit    The maximum number of messages to load
      */
     private void loadRcsMessagesPaginated(String threadId, List<Message> messages, int offset, int limit) {
         try {
             if (rcsService != null) {
-                Log.d(TAG, "Loading paginated RCS messages for thread " + threadId + 
-                      " (offset: " + offset + ", limit: " + limit + ")");
+                Log.d(TAG, "Loading paginated RCS messages for thread " + threadId +
+                        " (offset: " + offset + ", limit: " + limit + ")");
                 List<RcsMessage> rcsMessages = rcsService.loadRcsMessages(threadId);
                 if (rcsMessages != null && !rcsMessages.isEmpty()) {
                     // Apply pagination to RCS messages
                     Collections.sort(rcsMessages, (m1, m2) -> Long.compare(m2.getDate(), m1.getDate()));
-                    
+
                     int startIndex = Math.min(offset, rcsMessages.size());
                     int endIndex = Math.min(offset + limit, rcsMessages.size());
-                    
+
                     if (startIndex < endIndex) {
                         List<RcsMessage> paginatedRcsMessages = rcsMessages.subList(startIndex, endIndex);
                         Log.d(TAG, "Found " + paginatedRcsMessages.size() + " paginated RCS messages for thread " + threadId);
@@ -2717,21 +2707,21 @@ public class MessageService {
     public String getMmsDiagnosticInfo() {
         StringBuilder diagnostics = new StringBuilder();
         diagnostics.append("=== MMS Diagnostic Information ===\n");
-        
+
         try {
             // Check MMS permissions
             diagnostics.append("MMS Permissions:\n");
             String[] mmsPermissions = {
-                android.Manifest.permission.SEND_SMS,
-                android.Manifest.permission.RECEIVE_MMS,
-                android.Manifest.permission.READ_SMS,
+                    android.Manifest.permission.SEND_SMS,
+                    android.Manifest.permission.RECEIVE_MMS,
+                    android.Manifest.permission.READ_SMS,
             };
-            
+
             for (String permission : mmsPermissions) {
                 boolean granted = context.checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED;
                 diagnostics.append("  ").append(permission).append(": ").append(granted ? "GRANTED" : "DENIED").append("\n");
             }
-            
+
             // Check network status
             diagnostics.append("\nNetwork Status:\n");
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -2747,23 +2737,23 @@ public class MessageService {
             } else {
                 diagnostics.append("  ConnectivityManager unavailable\n");
             }
-            
+
             // Check MMS capabilities
             diagnostics.append("\nMMS Configuration:\n");
             com.translator.messagingapp.mms.http.HttpUtils.logMmsConfigurationDiagnostics(context);
-            
+
             // Check if app is default SMS app
             diagnostics.append("Default SMS App: ").append(com.translator.messagingapp.util.PhoneUtils.isDefaultSmsApp(context)).append("\n");
-            
+
             // Check Android version compatibility
             diagnostics.append("Android API Level: ").append(android.os.Build.VERSION.SDK_INT).append("\n");
             diagnostics.append("MMS API Available: ").append(android.os.Build.VERSION.SDK_INT >= 21).append("\n");
-            
+
         } catch (Exception e) {
             diagnostics.append("Error during diagnostics: ").append(e.getMessage()).append("\n");
             Log.e(TAG, "Error during MMS diagnostics", e);
         }
-        
+
         diagnostics.append("=== End Diagnostics ===\n");
         return diagnostics.toString();
     }
@@ -2775,119 +2765,9 @@ public class MessageService {
     public void logMmsDiagnostics() {
         String diagnostics = getMmsDiagnosticInfo();
         Log.i(TAG, diagnostics);
-        
+
         // Also log to console for easier debugging
         System.out.println(diagnostics);
     }
 
-    /**
-     * Handles incoming P2P connection trigger SMS.
-     *
-     * @param senderAddress The phone number that sent the trigger
-     * @param triggerMessage The P2P trigger SMS content
-     */
-    private void handleP2PTrigger(String senderAddress, String triggerMessage) {
-        Log.d(TAG, "Processing P2P trigger from " + senderAddress);
-        
-        try {
-            // Extract encrypted payload from the trigger message
-            String encryptedPayload = P2PEncryptionUtils.extractEncryptedPayload(triggerMessage);
-            if (encryptedPayload == null) {
-                Log.e(TAG, "Failed to extract encrypted payload from P2P trigger");
-                return;
-            }
-
-            // Let P2PService handle the connection establishment
-            if (p2pService != null) {
-                p2pService.handleP2PTrigger(senderAddress, encryptedPayload);
-            } else {
-                Log.e(TAG, "P2PService is null, cannot handle P2P trigger");
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling P2P trigger from " + senderAddress, e);
-        }
-    }
-
-    /**
-     * Creates and sends a P2P connection offer to the specified phone number.
-     *
-     * @param targetPhoneNumber The phone number to send the P2P offer to
-     * @return true if the offer was sent successfully, false otherwise
-     */
-    public boolean sendP2PConnectionOffer(String targetPhoneNumber) {
-        Log.d(TAG, "Creating P2P connection offer for " + targetPhoneNumber);
-        
-        try {
-            if (p2pService == null) {
-                Log.e(TAG, "P2PService is null, cannot create P2P offer");
-                return false;
-            }
-
-            // Create the encrypted P2P trigger message
-            String triggerMessage = p2pService.createP2PConnectionOffer(targetPhoneNumber);
-            if (triggerMessage == null) {
-                Log.e(TAG, "Failed to create P2P connection offer");
-                return false;
-            }
-
-            // Send the trigger message via SMS
-            return sendSms(targetPhoneNumber, triggerMessage);
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending P2P connection offer to " + targetPhoneNumber, e);
-            return false;
-        }
-    }
-
-    /**
-     * Sends a message over an established P2P connection.
-     *
-     * @param phoneNumber The phone number of the P2P connection
-     * @param message The message to send
-     * @return true if sent successfully, false otherwise
-     */
-    public boolean sendP2PMessage(String phoneNumber, String message) {
-        if (p2pService == null) {
-            Log.e(TAG, "P2PService is null, cannot send P2P message");
-            return false;
-        }
-
-        return p2pService.sendP2PMessage(phoneNumber, message);
-    }
-
-    /**
-     * Checks if there's an active P2P connection with the given phone number.
-     *
-     * @param phoneNumber The phone number to check
-     * @return true if there's an active P2P connection, false otherwise
-     */
-    public boolean hasActiveP2PConnection(String phoneNumber) {
-        if (p2pService == null) {
-            return false;
-        }
-
-        return p2pService.hasActiveConnection(phoneNumber);
-    }
-
-    /**
-     * Closes the P2P connection with the specified phone number.
-     *
-     *
-     * @param phoneNumber The phone number to close the connection with
-     */
-    public void closeP2PConnection(String phoneNumber) {
-        if (p2pService != null) {
-            p2pService.closeConnection(phoneNumber);
-        }
-    }
-
-    /**
-     * Gets the P2PService instance for advanced P2P operations.
-     *
-     * @return The P2PService instance, or null if not available
-     */
-    public P2PService getP2PService() {
-        return p2pService;
-    }
 }
