@@ -28,13 +28,19 @@ The Secret Messaging feature allows LinguaSMS users to hide secret messages with
 
 ### User Interface
 
-#### Composing Secret Messages
-- New "Secret Message" checkbox in both NewMessageActivity and ConversationActivity
-- When checked, opens SecretMessageDialog with dual input fields:
+#### Composing Secret Messages (Updated - Long-Press Implementation)
+- **Long-press** the main message input field in NewMessageActivity or ConversationActivity
+- Context menu appears with "Send as Secret Message" option
+- Selecting the option opens SecretMessageDialog with dual input fields:
   - **Visible Message**: Text everyone can see
   - **Secret Message**: Hidden text only decodeable by LinguaSMS users
 - Dialog provides clear labeling and instructions
-- Checkbox unchecks automatically if secret field is empty
+- Secret message is stored internally until sending
+
+#### Previous Implementation (Removed)
+- ~~New "Secret Message" checkbox in both NewMessageActivity and ConversationActivity~~
+- ~~When checked, opens SecretMessageDialog~~
+- ~~Checkbox unchecks automatically if secret field is empty~~
 
 #### Receiving Secret Messages
 - Messages with embedded secrets appear normal in conversation
@@ -93,8 +99,8 @@ app/src/test/java/com/translator/messagingapp/
 ```
 
 ### Integration Points
-- **NewMessageActivity**: Checkbox triggers dialog, encoding integrated into sendMessage()
-- **ConversationActivity**: Checkbox triggers dialog, encoding integrated into sendMessage()  
+- **NewMessageActivity**: Long-press message input triggers context menu, encoding integrated into sendMessage()
+- **ConversationActivity**: Long-press message input triggers context menu, encoding integrated into sendMessage()  
 - **MessageRecyclerAdapter**: Automatic detection and decoding UI for received messages
 - **Message layouts**: Enhanced with secret decode button and display area
 
@@ -111,7 +117,8 @@ app/src/test/java/com/translator/messagingapp/
 
 1. **Sending Secret Messages**:
    - Compose message normally in LinguaSMS
-   - Check "Secret Message" checkbox
+   - Long-press the message input field
+   - Select "Send as Secret Message" from the context menu
    - In the dialog, enter your visible message and secret message
    - Tap OK to compose the combined message
    - Send as normal - recipient sees only visible message
