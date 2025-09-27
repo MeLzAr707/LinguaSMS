@@ -2873,6 +2873,7 @@ public class MessageService {
     /**
      * Closes the P2P connection with the specified phone number.
      *
+     *
      * @param phoneNumber The phone number to close the connection with
      */
     public void closeP2PConnection(String phoneNumber) {
