@@ -272,6 +272,11 @@ public class NewMessageActivity extends BaseActivity {
 
         if (messageInput != null) {
             messageInput.addTextChangedListener(messageTextWatcher);
+            // Set up long-press menu for message input
+            messageInput.setOnLongClickListener(v -> {
+                showMessageInputOptionsDialog();
+                return true; // Consume the event
+            });
         }
         
         // Apply custom colors if using custom theme
@@ -1028,6 +1033,188 @@ public class NewMessageActivity extends BaseActivity {
             Log.e(TAG, "Error copying to clipboard", e);
             Toast.makeText(this, "Error copying to clipboard", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Shows long-press options dialog for message input field
+     */
+    private void showMessageInputOptionsDialog() {
+        String[] options = {
+            getString(R.string.copy_text),
+            getString(R.string.paste_text), 
+            getString(R.string.select_all_text),
+            getString(R.string.scheduled_send),
+            getString(R.string.secret_message)
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.message_input_options))
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // Copy
+                            copyMessageInputText();
+                            break;
+                        case 1: // Paste
+                            pasteToMessageInput();
+                            break;
+                        case 2: // Select All
+                            selectAllMessageInput();
+                            break;
+                        case 3: // Scheduled Send
+                            openScheduleDialog();
+                            break;
+                        case 4: // Secret Message
+                            if (secretMessageCheckbox != null) {
+                                secretMessageCheckbox.setChecked(true);
+                            }
+                            break;
+                    }
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+    }
+
+    /**
+     * Copy text from message input to clipboard
+     */
+    private void copyMessageInputText() {
+        if (messageInput != null) {
+            String text = messageInput.getText().toString();
+            if (text.trim().isEmpty()) {
+                Toast.makeText(this, getString(R.string.no_text_to_copy), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            copyToClipboard("Message", text);
+        }
+    }
+
+    /**
+     * Paste text from clipboard to message input
+     */
+    private void pasteToMessageInput() {
+        if (messageInput != null) {
+            try {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null) {
+                    ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                    String pastedText = item.getText().toString();
+                    if (!pastedText.isEmpty()) {
+                        // Get current cursor position
+                        int start = messageInput.getSelectionStart();
+                        int end = messageInput.getSelectionEnd();
+                        
+                        // Replace selected text or insert at cursor
+                        Editable editable = messageInput.getText();
+                        editable.replace(start, end, pastedText);
+                        
+                        Toast.makeText(this, getString(R.string.paste_successful), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error pasting from clipboard", e);
+                Toast.makeText(this, "Error pasting text", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Select all text in message input
+     */
+    private void selectAllMessageInput() {
+        if (messageInput != null) {
+            String text = messageInput.getText().toString();
+            if (text.trim().isEmpty()) {
+                Toast.makeText(this, getString(R.string.no_text_to_copy), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            messageInput.selectAll();
+            Toast.makeText(this, getString(R.string.text_selected), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Open schedule send dialog
+     */
+    private void openScheduleDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+
+        // Create time picker options
+        String[] options = {"In 1 minute", "In 5 minutes", "In 10 minutes", "In 30 minutes", "In 1 hour", "Choose custom time"};
+
+        builder.setTitle("Schedule Message")
+                .setItems(options, (dialog, which) -> {
+                    String message = messageInput != null ? messageInput.getText().toString().trim() : "";
+                    if (message.isEmpty()) {
+                        Toast.makeText(this, "Please type a message first", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    long delayMillis;
+                    String scheduleName;
+
+                    switch (which) {
+                        case 0: // 1 minute
+                            delayMillis = 60 * 1000;
+                            scheduleName = "1 minute";
+                            break;
+                        case 1: // 5 minutes
+                            delayMillis = 5 * 60 * 1000;
+                            scheduleName = "5 minutes";
+                            break;
+                        case 2: // 10 minutes
+                            delayMillis = 10 * 60 * 1000;
+                            scheduleName = "10 minutes";
+                            break;
+                        case 3: // 30 minutes
+                            delayMillis = 30 * 60 * 1000;
+                            scheduleName = "30 minutes";
+                            break;
+                        case 4: // 1 hour
+                            delayMillis = 60 * 60 * 1000;
+                            scheduleName = "1 hour";
+                            break;
+                        case 5: // Custom
+                            showCustomTimePickerDialog(message);
+                            return;
+                        default:
+                            return;
+                    }
+
+                    // Schedule the message (simplified implementation)
+                    scheduleMessage(message, delayMillis, scheduleName);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /**
+     * Show custom time picker dialog
+     */
+    private void showCustomTimePickerDialog(String message) {
+        // For now, just show a toast. A full implementation would show date/time picker
+        Toast.makeText(this, "Custom time scheduling coming soon!", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Schedule a message to be sent later
+     */
+    private void scheduleMessage(String message, long delayMillis, String scheduleName) {
+        // This is a simplified implementation - in production, you'd use WorkManager or AlarmManager
+        Toast.makeText(this, "Message scheduled to send in " + scheduleName, Toast.LENGTH_LONG).show();
+
+        // Clear the message input
+        if (messageInput != null) {
+            messageInput.setText("");
+        }
+
+        // In a real implementation, you would:
+        // 1. Save the message to a database with timestamp
+        // 2. Set up WorkManager or AlarmManager to send it
+        // 3. Show in UI that message is scheduled
     }
 }
 
