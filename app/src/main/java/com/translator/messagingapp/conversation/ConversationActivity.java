@@ -294,6 +294,12 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     // No action needed
                 }
             });
+            
+            // Set up long-press menu for message input
+            messageInput.setOnLongClickListener(v -> {
+                showMessageInputOptionsDialog();
+                return true; // Consume the event
+            });
         }
 
         // Initialize attachment preview components
@@ -1498,6 +1504,116 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             startActivityForResult(intent, CONTACTS_PICK_REQUEST);
         } catch (android.content.ActivityNotFoundException ex) {
             Toast.makeText(this, "No contacts app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Shows long-press options dialog for message input field
+     */
+    private void showMessageInputOptionsDialog() {
+        String[] options = {
+            getString(R.string.copy_text),
+            getString(R.string.paste_text), 
+            getString(R.string.select_all_text),
+            getString(R.string.scheduled_send),
+            getString(R.string.secret_message)
+        };
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.message_input_options))
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // Copy
+                            copyMessageInputText();
+                            break;
+                        case 1: // Paste
+                            pasteToMessageInput();
+                            break;
+                        case 2: // Select All
+                            selectAllMessageInput();
+                            break;
+                        case 3: // Scheduled Send
+                            openScheduleDialog();
+                            break;
+                        case 4: // Secret Message
+                            if (secretMessageCheckbox != null) {
+                                secretMessageCheckbox.setChecked(true);
+                            }
+                            break;
+                    }
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+    }
+
+    /**
+     * Copy text from message input to clipboard
+     */
+    private void copyMessageInputText() {
+        if (messageInput != null) {
+            String text = messageInput.getText().toString();
+            if (text.trim().isEmpty()) {
+                Toast.makeText(this, getString(R.string.no_text_to_copy), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            try {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("Message", text);
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(this, getString(R.string.copied_to_clipboard), Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Log.e(TAG, "Error copying to clipboard", e);
+                Toast.makeText(this, getString(R.string.error_copying_to_clipboard), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Paste text from clipboard to message input
+     */
+    private void pasteToMessageInput() {
+        if (messageInput != null) {
+            try {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null) {
+                    ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                    String pastedText = item.getText().toString();
+                    if (!pastedText.isEmpty()) {
+                        // Get current cursor position
+                        int start = messageInput.getSelectionStart();
+                        int end = messageInput.getSelectionEnd();
+                        
+                        // Replace selected text or insert at cursor
+                        android.text.Editable editable = messageInput.getText();
+                        editable.replace(start, end, pastedText);
+                        
+                        Toast.makeText(this, getString(R.string.paste_successful), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error pasting from clipboard", e);
+                Toast.makeText(this, "Error pasting text", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Select all text in message input
+     */
+    private void selectAllMessageInput() {
+        if (messageInput != null) {
+            String text = messageInput.getText().toString();
+            if (text.trim().isEmpty()) {
+                Toast.makeText(this, getString(R.string.no_text_to_copy), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            messageInput.selectAll();
+            Toast.makeText(this, getString(R.string.text_selected), Toast.LENGTH_SHORT).show();
         }
     }
 

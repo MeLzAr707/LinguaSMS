@@ -258,5 +258,16 @@
     <string name="no_secret_found">No secret message detected</string>
     <string name="secret_message_too_long">Secret message is too long</string>
 
+    <!-- Long-press message input options -->
+    <string name="message_input_options">Message Options</string>
+    <string name="copy_text">Copy</string>
+    <string name="paste_text">Paste</string>
+    <string name="select_all_text">Select All</string>
+    <string name="scheduled_send">Scheduled Send</string>
+    <string name="no_text_to_copy">No text to copy</string>
+    <string name="clipboard_empty">Clipboard is empty</string>
+    <string name="text_selected">Text selected</string>
+    <string name="paste_successful">Text pasted</string>
+
 
 </resources>
