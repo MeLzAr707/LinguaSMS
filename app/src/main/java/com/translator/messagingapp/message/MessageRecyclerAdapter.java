@@ -29,6 +29,7 @@ import com.translator.messagingapp.mms.MmsMessage;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 import com.translator.messagingapp.util.SearchHighlightUtils;
+import com.translator.messagingapp.util.SecretMessageUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -185,6 +186,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
         TextView dateText;
         TextView senderName;
         View translateButton;
+        View secretDecodeButton;
+        TextView secretMessageText;
         LinearLayout reactionsLayout;
 
         MessageViewHolder(View itemView) {
@@ -194,6 +197,8 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             dateText = itemView.findViewById(R.id.message_date); // Fixed ID
             senderName = itemView.findViewById(R.id.sender_name);
             translateButton = itemView.findViewById(R.id.translate_button);
+            secretDecodeButton = itemView.findViewById(R.id.secret_decode_button);
+            secretMessageText = itemView.findViewById(R.id.secret_message_text);
             reactionsLayout = itemView.findViewById(R.id.reactions_container); // Fixed ID
         }
 
@@ -308,8 +313,49 @@ public class MessageRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 }
             }
 
+            // Handle secret message detection and decoding
+            handleSecretMessage(message, position);
+
             // Set up reactions
             setupReactions(message, position);
+        }
+
+        void handleSecretMessage(Message message, int position) {
+            if (secretDecodeButton != null && secretMessageText != null) {
+                String messageBody = getOriginalTextForMessage(message);
+                
+                // Check if this message contains a secret message
+                if (SecretMessageUtils.hasSecretMessage(messageBody)) {
+                    secretDecodeButton.setVisibility(View.VISIBLE);
+                    
+                    secretDecodeButton.setOnClickListener(v -> {
+                        try {
+                            String decodedSecret = SecretMessageUtils.decodeSecretMessage(messageBody);
+                            
+                            if (decodedSecret != null && !decodedSecret.isEmpty()) {
+                                // Show the decoded secret message
+                                secretMessageText.setText("Secret: " + decodedSecret);
+                                secretMessageText.setVisibility(View.VISIBLE);
+                                
+                                // Hide the decode button since it's now decoded
+                                secretDecodeButton.setVisibility(View.GONE);
+                                
+                                // Show toast for feedback
+                                android.widget.Toast.makeText(context, context.getString(com.translator.messagingapp.R.string.secret_decoded_title), android.widget.Toast.LENGTH_SHORT).show();
+                            } else {
+                                // Failed to decode
+                                android.widget.Toast.makeText(context, context.getString(com.translator.messagingapp.R.string.secret_decoding_error), android.widget.Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception e) {
+                            android.widget.Toast.makeText(context, context.getString(com.translator.messagingapp.R.string.secret_decoding_error), android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    // No secret message found, hide the button and text
+                    secretDecodeButton.setVisibility(View.GONE);
+                    secretMessageText.setVisibility(View.GONE);
+                }
+            }
         }
 
         void setupReactions(Message message, int position) {

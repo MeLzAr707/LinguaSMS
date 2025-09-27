@@ -83,7 +83,33 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/translate"
                     android:src="@drawable/ic_translate" />
+
+                <ImageButton
+                    android:id="@+id/secret_decode_button"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginLeft="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/secret_decoded_title"
+                    android:src="@android:drawable/ic_menu_view"
+                    android:visibility="gone" />
+
             </LinearLayout>
+
+            <!-- Secret message text (shown when decoded) -->
+            <TextView
+                android:id="@+id/secret_message_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/textColorSecondary"
+                android:textSize="14sp"
+                android:textStyle="italic"
+                android:background="@drawable/message_input_background"
+                android:padding="6dp"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"
+                tools:text="Secret: Hidden message!" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

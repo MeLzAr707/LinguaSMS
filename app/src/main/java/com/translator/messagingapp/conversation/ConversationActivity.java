@@ -17,6 +17,8 @@ import com.translator.messagingapp.conversation.*;
 
 import com.translator.messagingapp.translation.*;
 import com.translator.messagingapp.util.EmojiPickerDialog;
+import com.translator.messagingapp.util.SecretMessageDialog;
+import com.translator.messagingapp.util.SecretMessageUtils;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -43,6 +45,7 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -116,6 +119,10 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
     private LinearLayout attachmentContacts;
     private LinearLayout attachmentSchedule;
     private boolean isAttachmentMenuVisible = false;
+
+    // Secret message components
+    private CheckBox secretMessageCheckbox;
+    private String currentSecretMessage = "";
 
     // Data
     private String threadId;
@@ -266,6 +273,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         emptyStateTextView = findViewById(R.id.empty_state_text_view);
         translateInputButton = findViewById(R.id.translate_outgoing_button);
         attachmentButton = findViewById(R.id.attachment_button);
+        secretMessageCheckbox = findViewById(R.id.secret_message_checkbox);
 
         // Set up text change listener for message input to update send button state
         if (messageInput != null) {
@@ -365,6 +373,15 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
         // Set up attachment remove button
         if (attachmentRemoveButton != null) {
             attachmentRemoveButton.setOnClickListener(v -> clearAttachments());
+        }
+
+        // Set up secret message checkbox
+        if (secretMessageCheckbox != null) {
+            secretMessageCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    showSecretMessageDialog();
+                }
+            });
         }
 
         // Set up attachment menu listeners
@@ -689,15 +706,29 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                     Log.d(TAG, "Sending MMS message to " + address + " with " + attachmentsToSend.size() + " attachments");
                     Log.d(TAG, "Attachment URIs: " + attachmentsToSend.toString());
 
+                    // Handle secret message encoding if enabled
+                    String finalMessageText = messageText;
+                    if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                        finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
+                        Log.d(TAG, "Secret message encoded into MMS");
+                    }
+
                     // Send as MMS with attachments
-                    success = messageService.sendMmsMessage(address, null, messageText, attachmentsToSend);
+                    success = messageService.sendMmsMessage(address, null, finalMessageText, attachmentsToSend);
 
                     Log.d(TAG, "MMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 } else {
                     Log.d(TAG, "Sending SMS message to " + address + " (no attachments)");
 
+                    // Handle secret message encoding if enabled
+                    String finalMessageText = messageText;
+                    if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                        finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
+                        Log.d(TAG, "Secret message encoded into SMS");
+                    }
+
                     // Send as regular SMS
-                    success = messageService.sendSmsMessage(address, messageText);
+                    success = messageService.sendSmsMessage(address, finalMessageText);
 
                     Log.d(TAG, "SMS send result: " + (success ? "SUCCESS" : "FAILED"));
                 }
@@ -748,6 +779,48 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 });
             }
         });
+    }
+
+    /**
+     * Shows the secret message composition dialog
+     */
+    private void showSecretMessageDialog() {
+        String currentMessage = messageInput != null ? messageInput.getText().toString() : "";
+        
+        SecretMessageDialog dialog = SecretMessageDialog.newInstance(currentMessage, currentSecretMessage);
+        dialog.setSecretMessageDialogListener(new SecretMessageDialog.SecretMessageDialogListener() {
+            @Override
+            public void onSecretMessageComposed(String visibleMessage, String secretMessage) {
+                // Update the message input with the visible message
+                if (messageInput != null) {
+                    messageInput.setText(visibleMessage);
+                }
+                
+                // Store the secret message
+                currentSecretMessage = secretMessage;
+                
+                // Update checkbox state and show feedback
+                if (secretMessage.isEmpty()) {
+                    if (secretMessageCheckbox != null) {
+                        secretMessageCheckbox.setChecked(false);
+                    }
+                    currentSecretMessage = "";
+                    Toast.makeText(ConversationActivity.this, R.string.secret_message, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(ConversationActivity.this, R.string.secret_message_enabled, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        
+        try {
+            dialog.show(getSupportFragmentManager(), "SecretMessageDialog");
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing secret message dialog", e);
+            // Fallback: uncheck the checkbox
+            if (secretMessageCheckbox != null) {
+                secretMessageCheckbox.setChecked(false);
+            }
+        }
     }
 
     /**

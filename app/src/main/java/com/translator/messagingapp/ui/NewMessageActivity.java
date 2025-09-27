@@ -34,6 +34,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -48,6 +49,8 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.translator.messagingapp.util.PhoneUtils;
+import com.translator.messagingapp.util.SecretMessageDialog;
+import com.translator.messagingapp.util.SecretMessageUtils;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.content.BroadcastReceiver;
@@ -66,6 +69,7 @@ public class NewMessageActivity extends BaseActivity {
     private ImageButton translateButton;
     private ImageButton genAIButton;
     private ImageButton attachmentButton;
+    private CheckBox secretMessageCheckbox; // New field for secret message checkbox
     private final AtomicBoolean isTranslating = new AtomicBoolean(false);
     private String originalComposedText = "";
     private boolean isComposedTextTranslated = false;
@@ -89,6 +93,9 @@ public class NewMessageActivity extends BaseActivity {
     
     // Selected attachments for sending
     private List<Uri> selectedAttachments;
+    
+    // Secret message storage
+    private String currentSecretMessage = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,6 +132,7 @@ public class NewMessageActivity extends BaseActivity {
             translateButton = findViewById(R.id.translate_button);  // This is an ImageButton in XML
             genAIButton = findViewById(R.id.genai_button);  // This is an ImageButton in XML
             attachmentButton = findViewById(R.id.attachment_button);  // This is an ImageButton in XML
+            secretMessageCheckbox = findViewById(R.id.secret_message_checkbox); // Initialize secret message checkbox
             
             // Initialize attachment preview components
             attachmentPreviewContainer = findViewById(R.id.attachment_preview_container);
@@ -194,6 +202,15 @@ public class NewMessageActivity extends BaseActivity {
             if (genAIButton != null) {
                 genAIButton.setImageResource(android.R.drawable.ic_menu_help);
                 genAIButton.setContentDescription("AI Features");
+            }
+
+            // Set up secret message checkbox
+            if (secretMessageCheckbox != null) {
+                secretMessageCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (isChecked) {
+                        showSecretMessageDialog();
+                    }
+                });
             }
 
             // Set up text watchers for input validation
@@ -460,8 +477,15 @@ public class NewMessageActivity extends BaseActivity {
                 Log.d(TAG, "Sending MMS message to " + finalRecipient + " with " + attachmentsToSend.size() + " attachments");
                 Log.d(TAG, "Attachment URIs: " + attachmentsToSend.toString());
                 
+                // Handle secret message encoding if enabled
+                String finalMessageText = messageText;
+                if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                    finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
+                    Log.d(TAG, "Secret message encoded into MMS");
+                }
+                
                 // Send as MMS with attachments
-                boolean success = messageService.sendMmsMessage(finalRecipient, null, messageText, attachmentsToSend);
+                boolean success = messageService.sendMmsMessage(finalRecipient, null, finalMessageText, attachmentsToSend);
                 
                 Log.d(TAG, "MMS send initiated: " + (success ? "SUCCESS" : "FAILED"));
                 
@@ -479,8 +503,15 @@ public class NewMessageActivity extends BaseActivity {
             } else {
                 Log.d(TAG, "Sending SMS message to " + finalRecipient + " (no attachments)");
                 
+                // Handle secret message encoding if enabled
+                String finalMessageText = messageText;
+                if (secretMessageCheckbox != null && secretMessageCheckbox.isChecked() && !currentSecretMessage.isEmpty()) {
+                    finalMessageText = SecretMessageUtils.encodeSecretMessage(messageText, currentSecretMessage);
+                    Log.d(TAG, "Secret message encoded into SMS");
+                }
+                
                 // Send as regular SMS with callback
-                messageService.sendSmsMessage(recipient, messageText, null, () -> {
+                messageService.sendSmsMessage(recipient, finalMessageText, null, () -> {
                     // Success callback
                     setResult(RESULT_OK);
                     Intent intent = new Intent(NewMessageActivity.this, ConversationActivity.class);
@@ -492,6 +523,48 @@ public class NewMessageActivity extends BaseActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error sending message", e);
             Toast.makeText(this, "Error sending message: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Shows the secret message composition dialog
+     */
+    private void showSecretMessageDialog() {
+        String currentMessage = messageInput != null ? messageInput.getText().toString() : "";
+        
+        SecretMessageDialog dialog = SecretMessageDialog.newInstance(currentMessage, currentSecretMessage);
+        dialog.setSecretMessageDialogListener(new SecretMessageDialog.SecretMessageDialogListener() {
+            @Override
+            public void onSecretMessageComposed(String visibleMessage, String secretMessage) {
+                // Update the message input with the visible message
+                if (messageInput != null) {
+                    messageInput.setText(visibleMessage);
+                }
+                
+                // Store the secret message
+                currentSecretMessage = secretMessage;
+                
+                // Update checkbox state and show feedback
+                if (secretMessage.isEmpty()) {
+                    if (secretMessageCheckbox != null) {
+                        secretMessageCheckbox.setChecked(false);
+                    }
+                    currentSecretMessage = "";
+                    Toast.makeText(NewMessageActivity.this, R.string.secret_message, Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(NewMessageActivity.this, R.string.secret_message_enabled, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        
+        try {
+            dialog.show(getSupportFragmentManager(), "SecretMessageDialog");
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing secret message dialog", e);
+            // Fallback: uncheck the checkbox
+            if (secretMessageCheckbox != null) {
+                secretMessageCheckbox.setChecked(false);
+            }
         }
     }
 

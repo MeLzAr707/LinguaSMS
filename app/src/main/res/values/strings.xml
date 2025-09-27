@@ -244,5 +244,19 @@
     <string name="contacts">Contacts</string>
     <string name="schedule_send">Schedule</string>
 
+    <!-- Secret Message Feature -->
+    <string name="secret_message">Secret Message</string>
+    <string name="secret_message_enabled">Secret message mode enabled</string>
+    <string name="secret_message_dialog_title">Secret Message</string>
+    <string name="visible_message_label">Visible Message:</string>
+    <string name="secret_message_label">Secret Message:</string>
+    <string name="visible_message_hint">Enter the message everyone can see</string>
+    <string name="secret_message_hint">Enter your hidden secret message</string>
+    <string name="secret_detected">Secret message detected</string>
+    <string name="secret_decoded_title">Secret Message Decoded</string>
+    <string name="secret_decoding_error">Unable to decode secret message</string>
+    <string name="no_secret_found">No secret message detected</string>
+    <string name="secret_message_too_long">Secret message is too long</string>
+
 
 </resources>
