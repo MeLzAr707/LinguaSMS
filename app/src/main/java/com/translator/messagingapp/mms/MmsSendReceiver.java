@@ -26,9 +26,8 @@ public class MmsSendReceiver extends BroadcastReceiver {
             handleMmsSentResult(context, intent);
         } else if ("android.provider.Telephony.MMS_SENT".equals(action)) {
             handleSystemMmsSentResult(context, intent);
-        } else if ("android.intent.action.MMS_SEND_REQUEST".equals(action)) {
-            // Handle legacy MMS send requests
-            handleLegacyMmsSendRequest(context, intent);
+        } else {
+            Log.w(TAG, "Unknown action received: " + action);
         }
     }
 
@@ -77,40 +76,6 @@ public class MmsSendReceiver extends BroadcastReceiver {
             
         } catch (Exception e) {
             Log.e(TAG, "Error handling system MMS sent result", e);
-        }
-    }
-
-    /**
-     * Handles legacy MMS send requests.
-     */
-    private void handleLegacyMmsSendRequest(Context context, Intent intent) {
-        Log.d(TAG, "Received legacy MMS send request");
-
-        if (intent == null || !intent.hasExtra("mms_uri")) {
-            Log.e(TAG, "Invalid MMS send request - missing URI");
-            return;
-        }
-
-        try {
-            // Get the URI of the MMS message to send
-            String uriString = intent.getStringExtra("mms_uri");
-            Uri messageUri = Uri.parse(uriString);
-
-            // Get the recipient address
-            String recipient = intent.getStringExtra("recipient");
-
-            Log.d(TAG, "Processing legacy MMS send request for URI: " + uriString +
-                    " to recipient: " + recipient);
-
-            // Forward to the system MMS service
-            Intent systemIntent = new Intent();
-            systemIntent.setAction("android.provider.Telephony.MMS_SENT");
-            systemIntent.putExtra("message_uri", uriString);
-            context.sendBroadcast(systemIntent);
-
-            Log.d(TAG, "Legacy MMS send request forwarded to system");
-        } catch (Exception e) {
-            Log.e(TAG, "Error processing legacy MMS send request", e);
         }
     }
 }
