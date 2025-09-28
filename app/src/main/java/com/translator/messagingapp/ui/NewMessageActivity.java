@@ -1063,11 +1063,7 @@ public class NewMessageActivity extends BaseActivity {
                         case 3: // Scheduled Send
                             openScheduleDialog();
                             break;
-                        case 4: // Secret Message
-                            if (secretMessageCheckbox != null) {
-                                secretMessageCheckbox.setChecked(true);
-                            }
-                            break;
+
                     }
                 })
                 .setNegativeButton(getString(R.string.cancel), null)
