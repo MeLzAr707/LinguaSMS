@@ -1369,7 +1369,6 @@ public class MessageService {
             ContentValues partValues = new ContentValues();
             partValues.put(Telephony.Mms.Part.MSG_ID, messageId);
             partValues.put(Telephony.Mms.Part.CONTENT_TYPE, mimeType);
-            partValues.put(Telephony.Mms.Part.CONTENT_URI, attachmentUri.toString());
             
             Uri partUri = Uri.parse("content://mms/" + messageId + "/part");
             context.getContentResolver().insert(partUri, partValues);

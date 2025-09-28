@@ -41,7 +41,7 @@ public class HeadlessSmsSendService extends Service {
         String action = intent != null ? intent.getAction() : null;
         Log.d(TAG, "Service started with action: " + action);
 
-        if (Intent.ACTION_RESPOND_VIA_MESSAGE.equals(action)) {
+        if ("android.intent.action.RESPOND_VIA_MESSAGE".equals(action)) {
             handleRespondViaMessage(intent);
         } else {
             Log.w(TAG, "Unknown action received: " + action);
