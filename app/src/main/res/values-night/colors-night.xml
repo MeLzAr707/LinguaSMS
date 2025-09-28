@@ -19,6 +19,10 @@
     <color name="colorPrimaryDark">#000000</color>
     <color name="colorAccent">#162A47</color>
 
+    <!-- Override text colors for night mode to ensure visibility -->
+    <color name="textColorPrimary">#FFFFFF</color>
+    <color name="textColorSecondary">#B3FFFFFF</color> <!-- 70% white -->
+
     <!-- Note: Light theme colors are intentionally NOT overridden here -->
     <!-- This ensures that explicit light theme selection works regardless of system mode -->
     <!-- Only system theme (THEME_SYSTEM) should use night mode overrides -->
