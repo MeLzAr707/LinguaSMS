@@ -19,10 +19,9 @@
     <color name="colorPrimaryDark">#000000</color>
     <color name="colorAccent">#162A47</color>
 
-    <!-- Light Theme Colors (Inverted for Night Mode) -->
-    <color name="background_light">#121212</color>
-    <color name="textColorPrimary">#FFFFFF</color>
-    <color name="textColorSecondary">#B3FFFFFF</color>
+    <!-- Note: Light theme colors are intentionally NOT overridden here -->
+    <!-- This ensures that explicit light theme selection works regardless of system mode -->
+    <!-- Only system theme (THEME_SYSTEM) should use night mode overrides -->
 
     <!-- Dark Theme Colors (Same in Night Mode) -->
     <color name="background_dark">#121212</color>
