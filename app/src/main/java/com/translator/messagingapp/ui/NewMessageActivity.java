@@ -202,13 +202,7 @@ public class NewMessageActivity extends BaseActivity {
                 genAIButton.setContentDescription("AI Features");
             }
 
-            // Set up long-press listener for secret messages on message input
-            if (messageInput != null) {
-                messageInput.setOnLongClickListener(v -> {
-                    showSecretMessageOptions();
-                    return true;
-                });
-            }
+
 
             // Set up text watchers for input validation
             setupTextWatchers();
@@ -1062,6 +1056,9 @@ public class NewMessageActivity extends BaseActivity {
                             break;
                         case 3: // Scheduled Send
                             openScheduleDialog();
+                            break;
+                        case 4: // Secret Message
+                            showSecretMessageDialog();
                             break;
 
                     }

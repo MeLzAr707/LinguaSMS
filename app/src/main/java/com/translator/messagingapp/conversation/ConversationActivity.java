@@ -379,13 +379,7 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
             attachmentRemoveButton.setOnClickListener(v -> clearAttachments());
         }
 
-        // Set up long-press listener for secret messages on message input
-        if (messageInput != null) {
-            messageInput.setOnLongClickListener(v -> {
-                showSecretMessageOptions();
-                return true;
-            });
-        }
+
 
         // Set up attachment menu listeners
         setupAttachmentMenuListeners();
@@ -1538,6 +1532,9 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                             break;
                         case 3: // Scheduled Send
                             openScheduleDialog();
+                            break;
+                        case 4: // Secret Message
+                            showSecretMessageDialog();
                             break;
 
                     }
