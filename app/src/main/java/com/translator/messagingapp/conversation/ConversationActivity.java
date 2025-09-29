@@ -745,11 +745,13 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                                     Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        // Enhanced error messaging for better user experience
+                        // Enhanced error messaging with more specific guidance
                         String errorMessage;
                         if (hasAttachments) {
-                            errorMessage = "Failed to send MMS. Check network connection and try again.";
-                            Log.e(TAG, "MMS sending failed for recipient: " + address);
+                            // Provide more helpful MMS error message instead of generic network check
+                            errorMessage = "Failed to send MMS. Please check your mobile data connection and try again. If the issue persists, verify that MMS is enabled in your carrier settings.";
+                            Log.e(TAG, "MMS sending failed for recipient: " + address + 
+                                     ". Consider checking MMSC configuration, network type, or carrier settings.");
                         } else {
                             errorMessage = getString(R.string.error_sending_message);
                             Log.e(TAG, "SMS sending failed for recipient: " + address);
@@ -763,11 +765,21 @@ public class ConversationActivity extends BaseActivity implements MessageRecycle
                 runOnUiThread(() -> {
                     hideLoadingIndicator();
 
-                    // Enhanced error messaging based on message type
+                    // Enhanced error messaging with more detailed context
                     String errorMessage;
                     if (hasAttachments) {
-                        errorMessage = "Failed to send MMS: " + e.getMessage() +
-                                ". Check network connection, file permissions, and attachment sizes.";
+                        // Analyze the exception to provide more specific guidance
+                        String exceptionMsg = e.getMessage();
+                        if (exceptionMsg != null && exceptionMsg.toLowerCase().contains("network")) {
+                            errorMessage = "Failed to send MMS due to network issue. Please check your mobile data connection and try again.";
+                        } else if (exceptionMsg != null && exceptionMsg.toLowerCase().contains("permission")) {
+                            errorMessage = "Failed to send MMS due to permission issue. Please check app permissions for SMS/MMS.";
+                        } else if (exceptionMsg != null && exceptionMsg.toLowerCase().contains("size")) {
+                            errorMessage = "Failed to send MMS: Attachment may be too large. Try reducing file size.";
+                        } else {
+                            errorMessage = "Failed to send MMS. Please check your mobile data connection and MMS settings, then try again.";
+                        }
+                        Log.e(TAG, "MMS sending exception: " + e.getMessage() + ". Full error: ", e);
                     } else {
                         errorMessage = getString(R.string.error_sending_message) + ": " + e.getMessage();
                     }

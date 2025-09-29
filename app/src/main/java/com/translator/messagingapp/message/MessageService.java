@@ -1433,7 +1433,7 @@ public class MessageService {
     }
 
     /**
-     * Checks if network is available for MMS sending.
+     * Checks if network is available for MMS sending using improved detection methods.
      *
      * @return True if network is available
      */
@@ -1447,29 +1447,60 @@ public class MessageService {
                 return false;
             }
 
+            // Use modern NetworkCapabilities API for better detection (API 23+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                android.net.Network activeNetwork = connectivityManager.getActiveNetwork();
+                if (activeNetwork != null) {
+                    android.net.NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+                    if (capabilities != null) {
+                        // Check if network has internet capability
+                        boolean hasInternet = capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        
+                        // Check network transport types that support MMS
+                        boolean hasValidTransport = capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                                                  capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI);
+                        
+                        if (hasInternet && hasValidTransport) {
+                            String transportType = capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ? "CELLULAR" : "WIFI";
+                            Log.d(TAG, "Network available for MMS via " + transportType + " with internet capability");
+                            return true;
+                        } else {
+                            Log.d(TAG, "Network exists but insufficient capabilities for MMS (internet: " + hasInternet + ", validTransport: " + hasValidTransport + ")");
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "No active network found via NetworkCapabilities");
+                }
+            }
+
+            // Fallback to legacy NetworkInfo API with more lenient checks
             android.net.NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
             boolean isConnected = networkInfo != null && networkInfo.isConnected();
 
             if (!isConnected) {
-                Log.d(TAG, "No active network connection");
+                Log.d(TAG, "No active network connection via legacy API");
                 return false;
             }
 
-            // Check if we're on a network that supports MMS (mobile data or WiFi with MMS support)
+            // Be more lenient with network types - most modern networks can handle MMS
             int networkType = networkInfo.getType();
             boolean supportsMms = networkType == android.net.ConnectivityManager.TYPE_MOBILE ||
-                    networkType == android.net.ConnectivityManager.TYPE_WIFI;
+                    networkType == android.net.ConnectivityManager.TYPE_WIFI ||
+                    networkType == android.net.ConnectivityManager.TYPE_WIMAX ||
+                    networkType == android.net.ConnectivityManager.TYPE_ETHERNET;
 
             if (!supportsMms) {
-                Log.d(TAG, "Current network type does not support MMS: " + networkInfo.getTypeName());
-                return false;
+                Log.w(TAG, "Network type may not support MMS: " + networkInfo.getTypeName() + " (type=" + networkType + "), but allowing attempt");
+                // Still return true to avoid false negatives - let the actual HTTP request determine success
             }
 
             Log.d(TAG, "Network available for MMS: " + networkInfo.getTypeName());
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error checking network availability for MMS", e);
-            return false;
+            // In case of exception, assume network is available to prevent false negatives
+            Log.w(TAG, "Assuming network is available for MMS due to check error");
+            return true;
         }
     }
 

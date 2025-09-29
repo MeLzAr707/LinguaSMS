@@ -45,7 +45,7 @@ public class HttpUtils {
     }
 
     /**
-     * Performs an HTTP connection with the specified method.
+     * Performs an HTTP connection with the specified method, including retry logic for transient failures.
      *
      * @param context The application context
      * @param token The token for network operations
@@ -62,7 +62,7 @@ public class HttpUtils {
             return null;
         }
 
-        // Validate network connectivity before attempting connection
+        // Validate network connectivity before attempting connection with improved detection
         if (!isNetworkAvailable(context)) {
             Log.e(TAG, "MMS send failed: No network connectivity available");
             return null;
@@ -74,10 +74,46 @@ public class HttpUtils {
             return null;
         }
 
-        HttpURLConnection connection = null;
-        try {
-            Log.d(TAG, "HTTP " + method + " to: " + urlString);
+        // Attempt connection with retry logic for transient failures
+        final int MAX_RETRIES = 2;
+        final long RETRY_DELAY_MS = 1000; // 1 second
+        
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            Log.d(TAG, "HTTP " + method + " attempt " + attempt + "/" + MAX_RETRIES + " to: " + urlString);
             
+            byte[] result = attemptHttpConnection(context, urlString, pdu, contentType, method);
+            if (result != null) {
+                if (attempt > 1) {
+                    Log.i(TAG, "MMS HTTP request succeeded on retry attempt " + attempt);
+                }
+                return result;
+            }
+            
+            // If not the last attempt, wait before retrying
+            if (attempt < MAX_RETRIES) {
+                Log.w(TAG, "HTTP attempt " + attempt + " failed, retrying in " + RETRY_DELAY_MS + "ms...");
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.w(TAG, "Retry delay interrupted", e);
+                    break;
+                }
+            }
+        }
+        
+        Log.e(TAG, "All HTTP connection attempts failed for URL: " + urlString);
+        return null;
+    }
+    
+    /**
+     * Attempts a single HTTP connection without retry logic.
+     */
+    private static byte[] attemptHttpConnection(Context context, String urlString, 
+                                              byte[] pdu, String contentType, String method) {
+
+        HttpURLConnection connection = null;
+        try {            
             URL url = new URL(urlString);
             
             // Check if we need to use a proxy (handle SecurityExceptions gracefully)
@@ -848,7 +884,8 @@ public static int getMmsProxyPort(Context context) {
     }
 
     /**
-     * Checks if network connectivity is available.
+     * Checks if network connectivity is available using modern and legacy APIs.
+     * Uses multiple validation methods to reduce false negatives.
      * 
      * @param context The application context
      * @return true if network is available, false otherwise
@@ -858,22 +895,51 @@ public static int getMmsProxyPort(Context context) {
             android.net.ConnectivityManager connectivityManager = 
                 (android.net.ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             
-            if (connectivityManager != null) {
-                android.net.NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-                boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
-                
-                if (!isConnected) {
-                    Log.e(TAG, "Network check failed: No active network connection");
-                }
-                
-                return isConnected;
-            } else {
+            if (connectivityManager == null) {
                 Log.w(TAG, "ConnectivityManager not available");
+                return false;
+            }
+
+            // Use modern NetworkCapabilities API for Android N+ (API 24+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                android.net.Network activeNetwork = connectivityManager.getActiveNetwork();
+                if (activeNetwork != null) {
+                    android.net.NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+                    if (capabilities != null) {
+                        boolean hasInternet = capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        boolean isValidated = capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+                        
+                        // For MMS, we need internet capability
+                        if (hasInternet) {
+                            Log.d(TAG, "Network available via NetworkCapabilities (internet=" + hasInternet + ", validated=" + isValidated + ")");
+                            return true;
+                        } else {
+                            Log.d(TAG, "Network exists but lacks internet capability");
+                        }
+                    } else {
+                        Log.d(TAG, "Active network exists but capabilities are null");
+                    }
+                } else {
+                    Log.d(TAG, "No active network available via NetworkCapabilities");
+                }
+            }
+
+            // Fallback to legacy NetworkInfo API (deprecated but more lenient)
+            android.net.NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            boolean isConnected = activeNetworkInfo != null && activeNetworkInfo.isConnected();
+            
+            if (isConnected) {
+                Log.d(TAG, "Network available via legacy NetworkInfo API: " + activeNetworkInfo.getTypeName());
+                return true;
+            } else {
+                Log.w(TAG, "No network connection detected by any method");
                 return false;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error checking network connectivity", e);
-            return false;
+            // In case of error checking, assume network is available to avoid false negatives
+            Log.w(TAG, "Assuming network is available due to check error");
+            return true;
         }
     }
 
