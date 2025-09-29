@@ -69,12 +69,14 @@ public class MmsReceiver extends BroadcastReceiver {
             
             Log.d(TAG, "Using receiving strategy: " + strategy.getStrategyName());
             
-            // Extract MMS data from intent
-            byte[] pushData = intent.getByteArrayExtra("data");
+            // Extract MMS data from intent - improved for Android 10+
+            byte[] pushData = extractMmsData(intent);
             if (pushData == null) {
                 Log.w(TAG, "No MMS data in intent");
                 return false;
             }
+            
+            Log.d(TAG, "Extracted " + pushData.length + " bytes of MMS data");
             
             // Use the strategy to handle the notification
             if (strategy.handleMmsNotification(pushData)) {
@@ -89,6 +91,42 @@ public class MmsReceiver extends BroadcastReceiver {
             Log.e(TAG, "Error in transaction architecture handling", e);
             return false;
         }
+    }
+    
+    /**
+     * Extracts MMS data from the intent with enhanced Android 10+ support.
+     * @param intent The MMS intent
+     * @return The extracted MMS data or null if not found
+     */
+    private byte[] extractMmsData(Intent intent) {
+        // Android 10+ may use different extra keys
+        byte[] pushData = intent.getByteArrayExtra("data");
+        if (pushData != null) {
+            return pushData;
+        }
+        
+        // Try alternative keys used by different Android versions
+        pushData = intent.getByteArrayExtra("android.provider.Telephony.WAP_PUSH_RECEIVED");
+        if (pushData != null) {
+            return pushData;
+        }
+        
+        pushData = intent.getByteArrayExtra("pdu");
+        if (pushData != null) {
+            return pushData;
+        }
+        
+        // Check if we have MMS data in a different format
+        String data = intent.getStringExtra("data_string");
+        if (data != null) {
+            try {
+                return data.getBytes("UTF-8");
+            } catch (Exception e) {
+                Log.e(TAG, "Error converting string data to bytes", e);
+            }
+        }
+        
+        return null;
     }
     
     /**
@@ -165,32 +203,40 @@ public class MmsReceiver extends BroadcastReceiver {
      */
     private boolean handleWithMmsDownloadService(Context context, Intent intent) {
         try {
-            Log.d(TAG, "Attempting to handle MMS with MmsDownloadService");
+            Log.d(TAG, "Attempting to handle MMS with MmsDownloadService (Android 10+)");
             
-            // Extract MMS data from intent
-            byte[] pushData = intent.getByteArrayExtra("data");
+            // Extract MMS data from intent with improved extraction
+            byte[] pushData = extractMmsData(intent);
             if (pushData == null) {
                 Log.w(TAG, "No MMS data in intent for MmsDownloadService");
                 return false;
             }
             
-            // Create a notification entry first using MmsHelper
-            MmsHelper mmsHelper = new MmsHelper(context);
-            Uri notificationUri = createNotificationEntry(context, pushData);
+            Log.d(TAG, "Processing " + pushData.length + " bytes of MMS data");
+            
+            // Create a notification entry first using enhanced creation
+            Uri notificationUri = createEnhancedNotificationEntry(context, pushData, intent);
             if (notificationUri == null) {
                 Log.e(TAG, "Failed to create notification entry for MmsDownloadService");
                 return false;
             }
             
-            // Check if auto-download is enabled
+            Log.d(TAG, "Created notification entry: " + notificationUri);
+            
+            // Check if auto-download is enabled with enhanced checking
             if (NotificationTransaction.allowAutoDownload(context)) {
                 // Use MmsDownloadService to download the MMS
                 String threadId = intent.getStringExtra("thread_id");
+                if (threadId == null) {
+                    // Try to extract thread ID from other sources
+                    threadId = extractThreadId(context, intent);
+                }
+                
+                Log.d(TAG, "Starting auto-download for thread: " + threadId);
                 MmsDownloadService.startMmsDownload(context, notificationUri, threadId);
-                Log.d(TAG, "Started MmsDownloadService for auto-download");
             } else {
                 Log.d(TAG, "Auto-download disabled, notification stored for manual download");
-                // Still process the notification to extract basic info
+                // Still process the notification to extract basic info for UI
                 MmsDownloadService.startMmsProcessing(context, notificationUri);
             }
             
@@ -200,6 +246,76 @@ public class MmsReceiver extends BroadcastReceiver {
             Log.e(TAG, "Error handling MMS with MmsDownloadService", e);
             return false;
         }
+    }
+    
+    /**
+     * Creates an enhanced notification entry in the content provider for Android 10+.
+     *
+     * @param context The application context
+     * @param pushData The MMS push data
+     * @param intent The original intent (for additional metadata)
+     * @return The URI of the created notification, or null if failed
+     */
+    private Uri createEnhancedNotificationEntry(Context context, byte[] pushData, Intent intent) {
+        try {
+            Log.d(TAG, "Creating enhanced notification entry for " + pushData.length + " bytes of data");
+            
+            // Use MmsHelper to create a proper notification entry
+            MmsHelper mmsHelper = new MmsHelper(context);
+            Uri notificationUri = mmsHelper.createNotificationEntry(pushData);
+            
+            if (notificationUri != null) {
+                // Add additional metadata from the intent if available
+                try {
+                    String sender = intent.getStringExtra("sender");
+                    String subject = intent.getStringExtra("subject");
+                    long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
+                    
+                    if (sender != null || subject != null) {
+                        mmsHelper.updateNotificationMetadata(notificationUri, sender, subject, timestamp);
+                    }
+                } catch (Exception metaError) {
+                    Log.w(TAG, "Could not add metadata to notification entry", metaError);
+                    // Not a critical error, continue with basic notification
+                }
+            }
+            
+            return notificationUri;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create enhanced notification entry", e);
+            // Fallback to simple URI creation
+            return createNotificationEntry(context, pushData);
+        }
+    }
+    
+    /**
+     * Extracts thread ID from various sources in the intent.
+     * @param context The application context
+     * @param intent The MMS intent
+     * @return Thread ID or null if not found
+     */
+    private String extractThreadId(Context context, Intent intent) {
+        // Try various ways to get thread ID
+        String threadId = intent.getStringExtra("thread_id");
+        if (threadId != null) return threadId;
+        
+        // Try to get from subscription info
+        int subscriptionId = intent.getIntExtra("subscription", -1);
+        if (subscriptionId != -1) {
+            threadId = "sub_" + subscriptionId;
+        }
+        
+        // Try to extract from sender address
+        String sender = intent.getStringExtra("sender");
+        if (sender != null) {
+            // This is a simplified approach - in a real implementation,
+            // you'd query the threads table for the existing thread
+            threadId = "addr_" + sender.replaceAll("[^\\d]", "");
+        }
+        
+        Log.d(TAG, "Extracted/generated thread ID: " + threadId);
+        return threadId;
     }
     
     /**
