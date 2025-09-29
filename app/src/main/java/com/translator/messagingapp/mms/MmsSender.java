@@ -3,6 +3,8 @@ package com.translator.messagingapp.mms;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.app.PendingIntent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -10,6 +12,8 @@ import android.os.Bundle;
 import android.provider.Telephony;
 import android.telephony.SmsManager;
 import android.util.Log;
+
+import com.translator.messagingapp.mms.pdu.PduHeaders;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -27,6 +31,9 @@ public class MmsSender {
     
     // Unique ID for the message in our local database (not the message ID)
     private final long MESSAGE_ID = System.currentTimeMillis();
+    
+    // Address type constants (from MMS specifications)
+    private static final int TYPE_TO = 151;   // Recipient address
 
     public MmsSender(Context context) {
         this.context = context;
@@ -47,11 +54,16 @@ public class MmsSender {
     /**
      * Sends an MMS message using MmsManager with callback support.
      * NOTE: This is for Android 10 (API 29) and above.
+     * 
+     * IMPORTANT: The callback parameter is kept for API compatibility, but due to Android API
+     * changes in API 29+, actual results are delivered via PendingIntent to a BroadcastReceiver.
+     * The callback will only be used for immediate error conditions (e.g., failed to create draft).
+     * For send success/failure, implement a BroadcastReceiver for "com.translator.messagingapp.MMS_SENT".
      *
      * @param recipientNumber The phone number of the recipient.
      * @param subject The subject of the MMS.
      * @param imageUri The Uri of the local content (e.g., an image) to be sent.
-     * @param callback Optional callback for handling send results.
+     * @param callback Optional callback for handling immediate errors (not send results).
      */
     public void sendMms(String recipientNumber, String subject, Uri imageUri, SendMultimediaMessageCallback callback) {
         // 1. Get the default SMS subscription ID
@@ -72,33 +84,28 @@ public class MmsSender {
 
         // 4. Call the platform's sendMultimediaMessage to initiate sending
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { // Android 10+
+            // Create PendingIntent for send result
+            Intent sentIntent = new Intent("com.translator.messagingapp.MMS_SENT");
+            sentIntent.putExtra("message_uri", contentUri.toString());
+            sentIntent.putExtra("recipient", recipientNumber);
+            
+            PendingIntent sentPendingIntent = PendingIntent.getBroadcast(
+                context,
+                (int) System.currentTimeMillis(), // Unique request code
+                sentIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            
             smsManager.sendMultimediaMessage(
                 context,
                 contentUri, // The URI of the MMS PDU in the Telephony.Mms table
                 null,       // MMSC URL (null uses carrier settings)
                 null,       // HTTP Proxy (null uses carrier settings)
-                new SendMultimediaMessageCallback() {
-                    @Override
-                    public void onSendMmsComplete(Uri uri) {
-                        Log.d(TAG, "MMS send successful. Result URI: " + uri);
-                        // Update the message status in your local database from 'draft' to 'sent'
-                        updateMessageStatus(contentUri, Telephony.Mms.MESSAGE_BOX_SENT);
-                        if (callback != null) {
-                            callback.onSendMmsComplete(uri);
-                        }
-                    }
-                    
-                    @Override
-                    public void onSendMmsError(Uri uri, int errorCode) {
-                        Log.e(TAG, "MMS send failed. Error code: " + errorCode);
-                        // Handle failure, update local message status to 'failed'
-                        updateMessageStatus(contentUri, Telephony.Mms.MESSAGE_BOX_FAILED);
-                        if (callback != null) {
-                            callback.onSendMmsError(uri, errorCode);
-                        }
-                    }
-                }
+                sentPendingIntent
             );
+            
+            Log.d(TAG, "MMS send request submitted. Content URI: " + contentUri);
+            // Note: Results will be handled via the broadcast receiver for the PendingIntent
         } else {
             Log.e(TAG, "This implementation requires Android 10 (API 29) or higher");
             if (callback != null) {
@@ -121,7 +128,7 @@ public class MmsSender {
             values.put(Telephony.Mms.MESSAGE_BOX, Telephony.Mms.MESSAGE_BOX_DRAFTS);
             values.put(Telephony.Mms.READ, 1);
             values.put(Telephony.Mms.SEEN, 1);
-            values.put(Telephony.Mms.MESSAGE_TYPE, Telephony.Mms.MESSAGE_TYPE_SEND_REQ);
+            values.put(Telephony.Mms.MESSAGE_TYPE, PduHeaders.MESSAGE_TYPE_SEND_REQ);
             values.put(Telephony.Mms.MMS_VERSION, 0x10); // MMS 1.0
             values.put(Telephony.Mms.PRIORITY, 129); // Normal priority
             values.put(Telephony.Mms.READ_REPORT, 0); // No read report
@@ -142,7 +149,7 @@ public class MmsSender {
             Log.d(TAG, "Created MMS message with ID: " + messageId);
             
             // 2. Add the recipient address part
-            addAddressPart(contentResolver, messageId, recipient, Telephony.Mms.Addr.TYPE_TO);
+            addAddressPart(contentResolver, messageId, recipient, TYPE_TO);
             
             // 3. Add the image as a part
             String contentType = contentResolver.getType(imageUri);
