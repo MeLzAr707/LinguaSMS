@@ -412,4 +412,90 @@ public class MmsHelper {
             return false;
         }
     }
+
+    /**
+     * Creates a notification entry in the content provider.
+     *
+     * @param pushData The MMS push data
+     * @return The URI of the created notification, or null if failed
+     */
+    public Uri createNotificationEntry(byte[] pushData) {
+        if (!PhoneUtils.isDefaultSmsApp(context)) {
+            Log.w(TAG, "Cannot create notification entry: app is not default SMS app");
+            return null;
+        }
+
+        try {
+            Log.d(TAG, "Creating notification entry for " + pushData.length + " bytes of data");
+            
+            // Create basic notification entry in the MMS database
+            ContentValues values = new ContentValues();
+            values.put(COLUMN_MESSAGE_BOX, MESSAGE_BOX_INBOX);
+            values.put(COLUMN_DATE, System.currentTimeMillis() / 1000);
+            values.put(COLUMN_READ, 0);
+            values.put(COLUMN_SEEN, 0);
+            
+            // Insert the notification
+            Uri notificationUri = contentResolver.insert(MMS_CONTENT_URI, values);
+            
+            if (notificationUri != null) {
+                Log.d(TAG, "Successfully created notification entry: " + notificationUri);
+            }
+            
+            return notificationUri;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create notification entry", e);
+            return null;
+        }
+    }
+
+    /**
+     * Updates notification metadata for an MMS notification.
+     *
+     * @param notificationUri The URI of the notification
+     * @param sender The sender address
+     * @param subject The message subject
+     * @param timestamp The message timestamp
+     * @return true if successful, false otherwise
+     */
+    public boolean updateNotificationMetadata(Uri notificationUri, String sender, String subject, long timestamp) {
+        if (!PhoneUtils.isDefaultSmsApp(context)) {
+            Log.w(TAG, "Cannot update notification metadata: app is not default SMS app");
+            return false;
+        }
+
+        if (notificationUri == null) {
+            Log.w(TAG, "Cannot update notification metadata: URI is null");
+            return false;
+        }
+
+        try {
+            ContentValues values = new ContentValues();
+            
+            // Update subject if provided
+            if (subject != null && !subject.trim().isEmpty()) {
+                values.put(COLUMN_SUBJECT, subject.trim());
+            }
+            
+            // Update timestamp if provided
+            if (timestamp > 0) {
+                values.put(COLUMN_DATE, timestamp / 1000); // Convert to seconds
+            }
+            
+            // Only update if we have values to set
+            if (values.size() > 0) {
+                int rowsUpdated = contentResolver.update(notificationUri, values, null, null);
+                Log.d(TAG, "Updated " + rowsUpdated + " notification rows with metadata");
+                return rowsUpdated > 0;
+            }
+            
+            Log.d(TAG, "No metadata to update for notification");
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating notification metadata", e);
+            return false;
+        }
+    }
 }

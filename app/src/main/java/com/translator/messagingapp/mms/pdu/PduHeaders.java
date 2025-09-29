@@ -67,6 +67,12 @@ public class PduHeaders {
     public static final int MESSAGE_CLASS_INFORMATIONAL = 0x82;
     public static final int MESSAGE_CLASS_AUTO = 0x83;
 
+    // Content class values
+    public static final int CONTENT_CLASS_TEXT = 0x00;
+    public static final int CONTENT_CLASS_IMAGE = 0x01;
+    public static final int CONTENT_CLASS_AUDIO = 0x02;
+    public static final int CONTENT_CLASS_VIDEO = 0x03;
+
     // Sender visibility values
     public static final int SENDER_VISIBILITY_HIDE = 0x80;
     public static final int SENDER_VISIBILITY_SHOW = 0x81;
