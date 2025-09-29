@@ -15,6 +15,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.translator.messagingapp.R;
+import com.translator.messagingapp.mms.MmsHelper;
 import com.translator.messagingapp.notification.NotificationHelper;
 import com.translator.messagingapp.ui.MainActivity;
 import com.translator.messagingapp.util.PhoneUtils;
@@ -229,7 +230,7 @@ public class MmsDownloadService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("MMS Download Service")
                 .setContentText(text)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
