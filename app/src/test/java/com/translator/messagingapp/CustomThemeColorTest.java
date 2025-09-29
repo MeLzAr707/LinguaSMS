@@ -118,8 +118,9 @@ public class CustomThemeColorTest {
         userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
         assertFalse(userPreferences.isUsingCustomTheme());
 
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
-        assertFalse(userPreferences.isUsingCustomTheme());
+        // Test other themes don't report as custom theme
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertFalse("Light theme should not report as custom", userPreferences.isUsingCustomTheme());
     }
 
     @Test

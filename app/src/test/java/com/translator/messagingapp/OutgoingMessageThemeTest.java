@@ -93,7 +93,7 @@ public class OutgoingMessageThemeTest {
             UserPreferences.THEME_LIGHT,
             UserPreferences.THEME_DARK,
             UserPreferences.THEME_BLACK_GLASS,
-            UserPreferences.THEME_SYSTEM
+            UserPreferences.THEME_CUSTOM
         };
 
         for (int theme : allThemes) {

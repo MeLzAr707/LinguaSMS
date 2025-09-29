@@ -73,13 +73,12 @@ public class SettingsAutoSaveTest {
         int lightTheme = UserPreferences.THEME_LIGHT;
         int darkTheme = UserPreferences.THEME_DARK;
         int blackGlassTheme = UserPreferences.THEME_BLACK_GLASS;
-        int systemTheme = UserPreferences.THEME_SYSTEM;
         int customTheme = UserPreferences.THEME_CUSTOM;
 
         // Basic verification that constants are defined and different
         assert lightTheme != darkTheme;
         assert darkTheme != blackGlassTheme;
-        assert blackGlassTheme != systemTheme;
-        assert systemTheme != customTheme;
+        assert blackGlassTheme != customTheme;
+        // THEME_SYSTEM removed as app now always overrides system settings
     }
 }

@@ -209,9 +209,6 @@ public class SettingsActivity extends BaseActivity {
             case UserPreferences.THEME_BLACK_GLASS:
                 radioButtonId = R.id.radio_black_glass;
                 break;
-            case UserPreferences.THEME_SYSTEM:
-                radioButtonId = R.id.radio_system;
-                break;
             case UserPreferences.THEME_CUSTOM:
                 radioButtonId = R.id.radio_custom;
                 break;
@@ -312,8 +309,6 @@ public class SettingsActivity extends BaseActivity {
             newThemeId = UserPreferences.THEME_DARK;
         } else if (checkedId == R.id.radio_black_glass) {
             newThemeId = UserPreferences.THEME_BLACK_GLASS;
-        } else if (checkedId == R.id.radio_system) {
-            newThemeId = UserPreferences.THEME_SYSTEM;
         } else if (checkedId == R.id.radio_custom) {
             newThemeId = UserPreferences.THEME_CUSTOM;
         } else {
@@ -352,8 +347,6 @@ public class SettingsActivity extends BaseActivity {
             newThemeId = UserPreferences.THEME_DARK;
         } else if (checkedId == R.id.radio_black_glass) {
             newThemeId = UserPreferences.THEME_BLACK_GLASS;
-        } else if (checkedId == R.id.radio_system) {
-            newThemeId = UserPreferences.THEME_SYSTEM;
         } else if (checkedId == R.id.radio_custom) {
             newThemeId = UserPreferences.THEME_CUSTOM;
         } else {
