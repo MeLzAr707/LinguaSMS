@@ -2919,7 +2919,7 @@ public class MessageService {
                         byte[] bytes = org.apache.commons.io.IOUtils.toByteArray(is);
                         String mimeType = resolver.getType(attachmentUri);
                         String fileName = getFileNameFromUri(attachmentUri);
-                        message.addMedia(bytes, mimeType, fileName, fileName);
+                        message.addMedia(bytes, mimeType);
                         is.close();
                         Log.d(TAG, "Added attachment: " + fileName + " (" + mimeType + ")");
                     }
@@ -2958,34 +2958,148 @@ public class MessageService {
         try {
             Log.d(TAG, "Processing MMS message using Klinker library: " + messageUri);
             
-            // Extract MMS data using the Klinker library's utilities
-            com.klinker.android.send_message.Message mms = 
-                com.klinker.android.send_message.Utils.getMmsMessage(context, messageUri);
-            
-            if (mms == null) {
-                Log.w(TAG, "Failed to extract MMS data from URI: " + messageUri);
-                return;
-            }
-            
-            // Extract sender
-            String sender = mms.getFromAddress();
-            
-            // Extract subject and body
-            String subject = mms.getSubject();
-            String body = mms.getText();
-            
-            // Extract attachments
-            List<byte[]> attachments = mms.getMedia();
-            List<String> mimeTypes = mms.getMimeTypes();
-            
-            Log.d(TAG, "MMS from: " + sender + ", subject: " + subject + 
-                  ", attachments: " + (attachments != null ? attachments.size() : 0));
-            
-            // Process the message for display
-            processIncomingMmsMessage(sender, subject, body, attachments, mimeTypes, messageUri);
+            // Since Klinker's Utils.getMmsMessage doesn't exist, we'll process the MMS
+            // using the standard Android API to extract the message data
+            processReceivedMmsFromUri(messageUri);
             
         } catch (Exception e) {
             Log.e(TAG, "Error processing MMS message", e);
+        }
+    }
+    
+    /**
+     * Process received MMS from URI using standard Android API.
+     * This extracts MMS data directly from the Android message database.
+     */
+    private void processReceivedMmsFromUri(Uri messageUri) {
+        try {
+            ContentResolver resolver = context.getContentResolver();
+            
+            // Query the MMS message
+            String[] projection = {
+                Telephony.Mms._ID,
+                Telephony.Mms.SUBJECT,
+                Telephony.Mms.DATE,
+                Telephony.Mms.MESSAGE_BOX
+            };
+            
+            Cursor mmsCursor = resolver.query(messageUri, projection, null, null, null);
+            if (mmsCursor != null && mmsCursor.moveToFirst()) {
+                String messageId = mmsCursor.getString(mmsCursor.getColumnIndexOrThrow(Telephony.Mms._ID));
+                String subject = mmsCursor.getString(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.SUBJECT));
+                long date = mmsCursor.getLong(mmsCursor.getColumnIndexOrThrow(Telephony.Mms.DATE));
+                
+                mmsCursor.close();
+                
+                // Get sender address
+                String sender = getMmsSenderAddress(messageId);
+                
+                // Get message text and attachments
+                String body = getMmsMessageText(messageId);
+                List<byte[]> attachments = new ArrayList<>();
+                List<String> mimeTypes = new ArrayList<>();
+                
+                // Load MMS attachments
+                loadMmsAttachmentsFromParts(messageId, attachments, mimeTypes);
+                
+                Log.d(TAG, "MMS from: " + sender + ", subject: " + subject + 
+                      ", attachments: " + attachments.size());
+                
+                // Process the message for display
+                processIncomingMmsMessage(sender, subject, body, attachments, mimeTypes, messageUri);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing received MMS from URI", e);
+        }
+    }
+    
+    /**
+     * Get sender address for MMS message
+     */
+    private String getMmsSenderAddress(String messageId) {
+        try {
+            String[] projection = {Telephony.Mms.Addr.ADDRESS};
+            String selection = Telephony.Mms.Addr.MSG_ID + "=? AND " + Telephony.Mms.Addr.TYPE + "=?";
+            String[] selectionArgs = {messageId, String.valueOf(137)}; // PduHeaders.FROM = 137
+            
+            Cursor cursor = context.getContentResolver().query(
+                Telephony.Mms.Addr.CONTENT_URI, projection, selection, selectionArgs, null);
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String address = cursor.getString(0);
+                cursor.close();
+                return address;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error getting MMS sender address", e);
+        }
+        return "Unknown";
+    }
+    
+    /**
+     * Get text content from MMS message parts
+     */
+    private String getMmsMessageText(String messageId) {
+        try {
+            String[] projection = {Telephony.Mms.Part._DATA, Telephony.Mms.Part.TEXT};
+            String selection = Telephony.Mms.Part.MSG_ID + "=? AND " + Telephony.Mms.Part.CONTENT_TYPE + "=?";
+            String[] selectionArgs = {messageId, "text/plain"};
+            
+            Cursor cursor = context.getContentResolver().query(
+                Telephony.Mms.Part.CONTENT_URI, projection, selection, selectionArgs, null);
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String text = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Mms.Part.TEXT));
+                cursor.close();
+                return text != null ? text : "";
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error getting MMS text content", e);
+        }
+        return "";
+    }
+    
+    /**
+     * Load MMS attachments from message parts
+     */
+    private void loadMmsAttachmentsFromParts(String messageId, List<byte[]> attachments, List<String> mimeTypes) {
+        try {
+            String[] projection = {
+                Telephony.Mms.Part.CONTENT_TYPE,
+                Telephony.Mms.Part._DATA
+            };
+            String selection = Telephony.Mms.Part.MSG_ID + "=? AND " + 
+                             Telephony.Mms.Part.CONTENT_TYPE + " NOT IN ('text/plain', 'application/smil')";
+            String[] selectionArgs = {messageId};
+            
+            Cursor cursor = context.getContentResolver().query(
+                Telephony.Mms.Part.CONTENT_URI, projection, selection, selectionArgs, null);
+            
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String contentType = cursor.getString(0);
+                    String dataPath = cursor.getString(1);
+                    
+                    if (contentType != null && dataPath != null) {
+                        try {
+                            Uri partUri = Uri.parse("content://mms/part/" + dataPath);
+                            InputStream is = context.getContentResolver().openInputStream(partUri);
+                            if (is != null) {
+                                byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
+                                attachments.add(data);
+                                mimeTypes.add(contentType);
+                                is.close();
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error loading MMS attachment", e);
+                        }
+                    }
+                }
+                cursor.close();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error loading MMS attachments", e);
         }
     }
     
