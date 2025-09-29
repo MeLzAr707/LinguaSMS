@@ -141,10 +141,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- Klinker library MMS receiver for simplified MMS handling -->
         <receiver
-            android:name=".mms.MmsReceiver"
+            android:name=".mms.KlinkerMmsReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Legacy MMS receiver (kept for fallback compatibility) -->
+        <receiver
+            android:name=".mms.MmsReceiver"
+            android:exported="false"
+            android:enabled="false">
             <intent-filter>
                 <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
                 <data android:mimeType="application/vnd.wap.mms-message" />

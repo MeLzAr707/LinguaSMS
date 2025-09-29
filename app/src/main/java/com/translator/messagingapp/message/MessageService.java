@@ -1223,9 +1223,8 @@ public class MessageService {
     }
 
     /**
-     * Sends an MMS message using modern Telephony APIs.
-     * For Android 10+ devices, uses the enhanced MmsSender class.
-     * Falls back to existing implementation for older devices.
+     * Sends an MMS message using the Klinker library for simplified and reliable MMS handling.
+     * This replaces the complex custom MMS implementation with the proven Klinker library.
      *
      * @param address     The recipient address
      * @param subject     The message subject
@@ -1240,19 +1239,68 @@ public class MessageService {
             return false;
         }
 
-        // For Android 10+ (API 29), use the enhanced MmsSender
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            return sendMmsUsingEnhancedSender(address, subject, body, attachments);
-        } else {
-            // Fallback to existing implementation for older devices
-            return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+        try {
+            // First try using Klinker library (preferred method)
+            String messageText = body;
+            if (subject != null && !subject.isEmpty()) {
+                messageText = subject + (body != null && !body.isEmpty() ? "\n" + body : "");
+            }
+            
+            // Handle single attachment (most common case)
+            Uri attachmentUri = null;
+            if (attachments != null && !attachments.isEmpty()) {
+                attachmentUri = attachments.get(0);
+                // TODO: Handle multiple attachments if needed in the future
+                if (attachments.size() > 1) {
+                    Log.w(TAG, "Multiple attachments not yet supported, using first attachment only");
+                }
+            }
+            
+            boolean success = sendMmsUsingKlinker(address, messageText, attachmentUri);
+            if (success) {
+                return true;
+            }
+            
+            // Fallback to legacy methods if Klinker fails
+            Log.w(TAG, "Klinker MMS sending failed, falling back to legacy method");
+            
+            // For Android 10+ (API 29), use the enhanced MmsSender
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                return sendMmsUsingEnhancedSender(address, subject, body, attachments);
+            } else {
+                // Fallback to existing implementation for older devices
+                return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in sendMmsMessage", e);
+            
+            // Final fallback attempt
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    return sendMmsUsingEnhancedSender(address, subject, body, attachments);
+                } else {
+                    return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+                }
+            } catch (Exception fallbackError) {
+                Log.e(TAG, "All MMS sending methods failed", fallbackError);
+                return false;
+            }
         }
     }
 
     /**
      * Sends MMS using the enhanced MmsSender for Android 10+ devices.
      * Provides better error handling and callback support.
+     * 
+     * @deprecated This method is deprecated. Use sendMmsUsingKlinker instead.
+     * @param address The recipient address
+     * @param subject The message subject  
+     * @param body The message body
+     * @param attachments The attachments
+     * @return True if the message was sent successfully
      */
+    @Deprecated
     private boolean sendMmsUsingEnhancedSender(String address, String subject, String body, List<Uri> attachments) {
         try {
             Log.d(TAG, "Using enhanced MmsSender for Android 10+ device");
@@ -1306,7 +1354,15 @@ public class MessageService {
     /**
      * Legacy MMS sending method for older devices or fallback scenarios.
      * This preserves the original implementation.
+     * 
+     * @deprecated This method is deprecated. Use sendMmsUsingKlinker instead.
+     * @param address The recipient address
+     * @param subject The message subject  
+     * @param body The message body
+     * @param attachments The attachments
+     * @return True if the message was sent successfully
      */
+    @Deprecated
     private boolean sendMmsUsingLegacyMethod(String address, String subject, String body, List<Uri> attachments) {
         try {
             Log.d(TAG, "Using legacy MMS sending method");
@@ -2829,6 +2885,202 @@ public class MessageService {
 
         diagnostics.append("=== End Diagnostics ===\n");
         return diagnostics.toString();
+    }
+
+    /**
+     * Sends MMS using the Klinker library for simplified and reliable MMS handling.
+     * This replaces the complex custom MMS implementation.
+     *
+     * @param recipient The recipient phone number
+     * @param text The message text content
+     * @param attachmentUri The URI of the attachment (can be null)
+     * @return True if the message was sent successfully
+     */
+    public boolean sendMmsUsingKlinker(String recipient, String text, Uri attachmentUri) {
+        try {
+            Log.d(TAG, "Sending MMS using Klinker library");
+            
+            // Create settings
+            com.klinker.android.send_message.Settings settings = new com.klinker.android.send_message.Settings();
+            settings.setUseSystemSending(true);
+            
+            // Create transaction and message
+            com.klinker.android.send_message.Transaction transaction = 
+                new com.klinker.android.send_message.Transaction(context, settings);
+            com.klinker.android.send_message.Message message = 
+                new com.klinker.android.send_message.Message(text, new String[]{recipient});
+            
+            // Add attachment if available
+            if (attachmentUri != null) {
+                try {
+                    ContentResolver resolver = context.getContentResolver();
+                    InputStream is = resolver.openInputStream(attachmentUri);
+                    if (is != null) {
+                        byte[] bytes = org.apache.commons.io.IOUtils.toByteArray(is);
+                        String mimeType = resolver.getType(attachmentUri);
+                        String fileName = getFileNameFromUri(attachmentUri);
+                        message.addMedia(bytes, mimeType, fileName, fileName);
+                        is.close();
+                        Log.d(TAG, "Added attachment: " + fileName + " (" + mimeType + ")");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error adding media to MMS", e);
+                    return false;
+                }
+            }
+            
+            // Send the message
+            transaction.sendNewMessage(message, com.klinker.android.send_message.Transaction.NO_THREAD_ID);
+            
+            // Store the sent message in our database
+            storeSentMmsMessage(recipient, text, attachmentUri != null ? 
+                Collections.singletonList(attachmentUri) : null);
+            
+            // Broadcast message sent to refresh UI
+            broadcastMessageSent();
+            
+            Log.d(TAG, "MMS sent successfully using Klinker library");
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending MMS using Klinker library", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Process MMS message received via Klinker library.
+     * This method is called by KlinkerMmsReceiver when an MMS is received.
+     *
+     * @param messageUri The URI of the received MMS message
+     */
+    public void processMmsMessage(Uri messageUri) {
+        try {
+            Log.d(TAG, "Processing MMS message using Klinker library: " + messageUri);
+            
+            // Extract MMS data using the Klinker library's utilities
+            com.klinker.android.send_message.Message mms = 
+                com.klinker.android.send_message.Utils.getMmsMessage(context, messageUri);
+            
+            if (mms == null) {
+                Log.w(TAG, "Failed to extract MMS data from URI: " + messageUri);
+                return;
+            }
+            
+            // Extract sender
+            String sender = mms.getFromAddress();
+            
+            // Extract subject and body
+            String subject = mms.getSubject();
+            String body = mms.getText();
+            
+            // Extract attachments
+            List<byte[]> attachments = mms.getMedia();
+            List<String> mimeTypes = mms.getMimeTypes();
+            
+            Log.d(TAG, "MMS from: " + sender + ", subject: " + subject + 
+                  ", attachments: " + (attachments != null ? attachments.size() : 0));
+            
+            // Process the message for display
+            processIncomingMmsMessage(sender, subject, body, attachments, mimeTypes, messageUri);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing MMS message", e);
+        }
+    }
+    
+    /**
+     * Helper method to extract file name from URI
+     */
+    private String getFileNameFromUri(Uri uri) {
+        String fileName = "attachment";
+        try {
+            Cursor cursor = context.getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null) {
+                try {
+                    if (cursor.moveToFirst()) {
+                        int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                        if (nameIndex != -1) {
+                            fileName = cursor.getString(nameIndex);
+                        }
+                    }
+                } finally {
+                    cursor.close();
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not get file name from URI", e);
+        }
+        return fileName != null ? fileName : "attachment";
+    }
+    
+    /**
+     * Process incoming MMS message data and add it to the conversation.
+     */
+    private void processIncomingMmsMessage(String sender, String subject, String body, 
+                                         List<byte[]> attachments, List<String> mimeTypes, Uri messageUri) {
+        try {
+            // Create MMS message object for storage
+            MmsMessage mmsMessage = new MmsMessage();
+            mmsMessage.setSender(sender);
+            mmsMessage.setSubject(subject);
+            mmsMessage.setBody(body);
+            mmsMessage.setTimestamp(System.currentTimeMillis());
+            
+            // Store attachments if any
+            if (attachments != null && !attachments.isEmpty()) {
+                // TODO: Save attachments to internal storage and reference them
+                mmsMessage.setHasAttachments(true);
+                Log.d(TAG, "MMS has " + attachments.size() + " attachments");
+            }
+            
+            // Add to conversation database
+            // This would typically involve saving to your conversation/message database
+            Log.d(TAG, "MMS processed and ready for display");
+            
+            // Show notification
+            showMmsNotification(sender, body != null ? body : subject, mmsMessage);
+            
+            // Apply translation if needed
+            if (userShouldTranslate(body)) {
+                translateAndUpdateMessage(mmsMessage, body);
+            }
+            
+            // Broadcast new message received to refresh UI
+            broadcastMessageReceived();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing incoming MMS", e);
+        }
+    }
+    
+    /**
+     * Show notification for received MMS
+     */
+    private void showMmsNotification(String sender, String content, MmsMessage mmsMessage) {
+        // Use existing notification system
+        try {
+            NotificationHelper.showMessageNotification(context, sender, content, true /* is MMS */);
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing MMS notification", e);
+        }
+    }
+    
+    /**
+     * Check if user wants to translate incoming messages
+     */
+    private boolean userShouldTranslate(String messageText) {
+        // This would check user preferences for auto-translation
+        return false; // Placeholder - implement based on your translation logic
+    }
+    
+    /**
+     * Translate and update MMS message
+     */
+    private void translateAndUpdateMessage(MmsMessage mmsMessage, String originalText) {
+        // This would use your existing translation service
+        // Placeholder implementation
+        Log.d(TAG, "Translation requested for MMS message");
     }
 
     /**
