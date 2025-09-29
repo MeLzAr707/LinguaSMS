@@ -339,7 +339,7 @@ public class MmsHelper {
             }
 
             MmsMessage message = new MmsMessage(id, subject, date * 1000, messageBox);
-            message.setThreadId(threadId);
+            message.setThreadId(Long.parseLong(threadId));
             
             // Set read status
             int readIndex = cursor.getColumnIndex(COLUMN_READ);

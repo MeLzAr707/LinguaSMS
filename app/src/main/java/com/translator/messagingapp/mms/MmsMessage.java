@@ -88,6 +88,15 @@ public class MmsMessage extends Message {
     }
 
     /**
+     * Sets the attachments for this MMS message using Attachment objects.
+     *
+     * @param attachments The list of Attachment objects
+     */
+    public void setAttachments(List<Attachment> attachments) {
+        this.attachments = attachments != null ? attachments : new ArrayList<>();
+    }
+
+    /**
      * Gets all attachment URIs for this MMS message.
      * This overrides the method in the parent class.
      *
