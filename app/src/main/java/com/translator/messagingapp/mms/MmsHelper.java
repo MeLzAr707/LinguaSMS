@@ -113,7 +113,7 @@ public class MmsHelper {
 
             // Load attachments for the message
             List<MmsMessage.Attachment> attachments = loadMmsAttachments(mmsUri);
-            mmsMessage.setAttachments(attachments);
+            mmsMessage.setAttachmentObjects(attachments);
 
             Log.d(TAG, "Successfully processed MMS with " + attachments.size() + " attachments");
             return true;

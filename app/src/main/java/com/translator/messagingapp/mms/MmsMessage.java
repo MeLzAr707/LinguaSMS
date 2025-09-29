@@ -92,8 +92,28 @@ public class MmsMessage extends Message {
      *
      * @param attachments The list of Attachment objects
      */
-    public void setAttachments(List<Attachment> attachments) {
+    public void setAttachmentObjects(List<Attachment> attachments) {
         this.attachments = attachments != null ? attachments : new ArrayList<>();
+    }
+
+    /**
+     * Sets the attachments for this MMS message using URI objects.
+     * This overrides the method in the parent class.
+     *
+     * @param attachments The list of attachment URIs
+     */
+    @Override
+    public void setAttachments(List<Uri> attachments) {
+        this.attachments = new ArrayList<>();
+        if (attachments != null) {
+            for (Uri uri : attachments) {
+                if (uri != null) {
+                    // Create Attachment objects from URIs with minimal information
+                    Attachment attachment = new Attachment(uri, null, null, 0);
+                    this.attachments.add(attachment);
+                }
+            }
+        }
     }
 
     /**
