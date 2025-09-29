@@ -14,6 +14,8 @@ import com.translator.messagingapp.mms.NotificationTransaction;
 import com.translator.messagingapp.mms.Transaction;
 import com.translator.messagingapp.mms.TransactionService;
 import com.translator.messagingapp.mms.compat.MmsCompatibilityManager;
+import com.translator.messagingapp.mms.MmsDownloadService;
+import com.translator.messagingapp.mms.MmsHelper;
 
 /**
  * Broadcast receiver for handling incoming MMS messages.
@@ -54,6 +56,13 @@ public class MmsReceiver extends BroadcastReceiver {
      */
     private boolean handleWithTransactionArchitecture(Context context, Intent intent) {
         try {
+            // First try using the new MmsDownloadService for API 29+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (handleWithMmsDownloadService(context, intent)) {
+                    return true;
+                }
+            }
+            
             // Get the appropriate receiving strategy for this Android version
             MmsCompatibilityManager.MmsReceivingStrategy strategy = 
                     MmsCompatibilityManager.getReceivingStrategy(context);
@@ -144,6 +153,52 @@ public class MmsReceiver extends BroadcastReceiver {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in MessageService fallback handling", e);
+        }
+    }
+    
+    /**
+     * Handles MMS using the new MmsDownloadService (API 29+).
+     *
+     * @param context The application context
+     * @param intent The incoming MMS intent
+     * @return True if handled successfully
+     */
+    private boolean handleWithMmsDownloadService(Context context, Intent intent) {
+        try {
+            Log.d(TAG, "Attempting to handle MMS with MmsDownloadService");
+            
+            // Extract MMS data from intent
+            byte[] pushData = intent.getByteArrayExtra("data");
+            if (pushData == null) {
+                Log.w(TAG, "No MMS data in intent for MmsDownloadService");
+                return false;
+            }
+            
+            // Create a notification entry first using MmsHelper
+            MmsHelper mmsHelper = new MmsHelper(context);
+            Uri notificationUri = createNotificationEntry(context, pushData);
+            if (notificationUri == null) {
+                Log.e(TAG, "Failed to create notification entry for MmsDownloadService");
+                return false;
+            }
+            
+            // Check if auto-download is enabled
+            if (NotificationTransaction.allowAutoDownload(context)) {
+                // Use MmsDownloadService to download the MMS
+                String threadId = intent.getStringExtra("thread_id");
+                MmsDownloadService.startMmsDownload(context, notificationUri, threadId);
+                Log.d(TAG, "Started MmsDownloadService for auto-download");
+            } else {
+                Log.d(TAG, "Auto-download disabled, notification stored for manual download");
+                // Still process the notification to extract basic info
+                MmsDownloadService.startMmsProcessing(context, notificationUri);
+            }
+            
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling MMS with MmsDownloadService", e);
+            return false;
         }
     }
     

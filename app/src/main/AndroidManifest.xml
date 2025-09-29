@@ -206,6 +206,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- MMS Download Service for API 29+ -->
+        <service
+            android:name=".mms.MmsDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Content Providers -->
         <provider
             android:name=".sms.SmsProvider"
