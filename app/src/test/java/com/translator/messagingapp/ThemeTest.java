@@ -37,7 +37,8 @@ public class ThemeTest {
         assertEquals(0, UserPreferences.THEME_LIGHT);
         assertEquals(1, UserPreferences.THEME_DARK);
         assertEquals(2, UserPreferences.THEME_BLACK_GLASS);
-        assertEquals(3, UserPreferences.THEME_SYSTEM);
+        assertEquals(3, UserPreferences.THEME_CUSTOM);
+        // THEME_SYSTEM removed to ensure app always overrides system dark/light mode
     }
 
     @Test
@@ -57,8 +58,8 @@ public class ThemeTest {
         userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
         assertEquals(UserPreferences.THEME_BLACK_GLASS, userPreferences.getThemeId());
 
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
-        assertEquals(UserPreferences.THEME_SYSTEM, userPreferences.getThemeId());
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertEquals(UserPreferences.THEME_CUSTOM, userPreferences.getThemeId());
     }
 
     @Test
@@ -80,10 +81,10 @@ public class ThemeTest {
         assertTrue("Black Glass theme should be detected as dark", 
                   userPreferences.isDarkThemeActive(context));
         
-        // System theme detection depends on device setting
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
-        boolean isSystemDark = userPreferences.isDarkThemeActive(context);
-        assertNotNull("System theme detection should return a valid boolean", isSystemDark);
+        // Custom theme should be detected as light
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertFalse("Custom theme should be detected as light", 
+                   userPreferences.isDarkThemeActive(context));
     }
 
     @Test
@@ -126,12 +127,13 @@ public class ThemeTest {
     }
 
     @Test
-    public void testSystemThemeVsLightThemeDistinction() {
-        // Test that THEME_SYSTEM and THEME_LIGHT behave differently
+    public void testThemeOverrideSystemSettings() {
+        // Test that all app themes override system settings
         
-        // Set to system theme
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
-        boolean systemThemeResult = userPreferences.isDarkThemeActive(context);
+        // Set to custom theme
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertFalse("Custom theme should always be light and override system", 
+                   userPreferences.isDarkThemeActive(context));
         
         // Set to light theme
         userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
@@ -141,11 +143,10 @@ public class ThemeTest {
         assertFalse("Light theme should always return false for isDarkThemeActive", 
                    lightThemeResult);
         
-        // System theme result depends on system configuration
-        // but we can verify they might be different
-        // (This test documents the intended difference in behavior)
-        assertTrue("System and light themes should have distinct behavior options",
-                  !lightThemeResult || systemThemeResult == lightThemeResult);
+        // Set to dark theme
+        userPreferences.setThemeId(UserPreferences.THEME_DARK);
+        assertTrue("Dark theme should always be dark regardless of system settings",
+                  userPreferences.isDarkThemeActive(context));
     }
 
     @Test

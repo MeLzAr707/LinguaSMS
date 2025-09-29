@@ -92,10 +92,6 @@ public class BaseActivity extends AppCompatActivity {
                     case UserPreferences.THEME_CUSTOM:
                         setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
                         break;
-                    case UserPreferences.THEME_SYSTEM:
-                        // Use system theme that adapts to system dark/light mode
-                        setTheme(R.style.AppTheme_System_NoActionBar);
-                        break;
                     case UserPreferences.THEME_LIGHT:
                     default:
                         setTheme(R.style.AppTheme_NoActionBar);
@@ -114,10 +110,6 @@ public class BaseActivity extends AppCompatActivity {
                         break;
                     case UserPreferences.THEME_CUSTOM:
                         setTheme(R.style.AppTheme_Custom); // Safe base theme for custom
-                        break;
-                    case UserPreferences.THEME_SYSTEM:
-                        // Use system theme that adapts to system dark/light mode
-                        setTheme(R.style.AppTheme_System);
                         break;
                     case UserPreferences.THEME_LIGHT:
                     default:

@@ -17,11 +17,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Test that reproduces and validates the fix for issue #542:
- * "Theme options should override Android system dark/light mode except for 'System Default'"
+ * Test that validates the fix for theme override issue:
+ * "Override Android dark/light mode and fix theme text color legibility"
  * 
- * This test ensures that manual theme selections always override system settings,
- * and only THEME_SYSTEM follows the system configuration.
+ * This test ensures that ALL theme selections override system settings,
+ * with no theme following system configuration.
  */
 @RunWith(AndroidJUnit4.class)
 public class ThemeOverrideIssueTest {
@@ -60,21 +60,27 @@ public class ThemeOverrideIssueTest {
     }
     
     /**
-     * Test scenario from issue #542:
-     * "Only when 'System Default' is selected in the app should the theme adapt 
-     * based on the Android system's dark/light mode"
+     * Test that no themes follow system settings - all themes override system behavior
      */
     @Test
-    public void testSystemDefaultFollowsSystemSetting() {
-        // Set to system theme
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
-        
-        // For system theme, the result should depend on actual system configuration
+    public void testAllThemesOverrideSystemSettings() {
+        // Test that all themes behave consistently regardless of system configuration
         boolean systemDarkMode = isSystemInDarkMode();
-        boolean appDarkMode = userPreferences.isDarkThemeActive(context);
         
-        assertEquals("System theme should match system dark mode setting", 
-                    systemDarkMode, appDarkMode);
+        // Light theme should always be light
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertFalse("Light theme should always be light regardless of system setting", 
+                   userPreferences.isDarkThemeActive(context));
+        
+        // Dark theme should always be dark  
+        userPreferences.setThemeId(UserPreferences.THEME_DARK);
+        assertTrue("Dark theme should always be dark regardless of system setting",
+                  userPreferences.isDarkThemeActive(context));
+                  
+        // Custom theme should always be light
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertFalse("Custom theme should always be light regardless of system setting",
+                   userPreferences.isDarkThemeActive(context));
     }
     
     /**
@@ -147,12 +153,11 @@ public class ThemeOverrideIssueTest {
     }
     
     /**
-     * Test that reproduces the specific issue scenario:
-     * User selects a theme manually, then changes system setting,
-     * and verifies app theme doesn't change unless using THEME_SYSTEM
+     * Test that demonstrates all themes now override system settings:
+     * User selects themes manually, and they always override system setting
      */
     @Test
-    public void testIssue542Scenario() {
+    public void testThemeOverrideScenario() {
         // Step 1: User selects light theme in app
         userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
         assertFalse("App should use light theme when user selects it", 

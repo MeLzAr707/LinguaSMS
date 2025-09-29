@@ -23,7 +23,7 @@
     <string name="no_conversations">No conversations yet</string>
 
     <!-- Conversation -->
-    <string name="type_message">Type a message</string>
+    <string name="type_message">Type a Message</string>
     <string name="send">Send</string>
     <string name="translating">Translating…</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>

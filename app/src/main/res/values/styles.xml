@@ -185,22 +185,6 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <!-- System theme - follows Android system dark/light mode -->
-    <style name="AppTheme_System" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="android:textColorSecondary">@color/textColorSecondary</item>
-        <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
-    </style>
-
-    <!-- System theme NoActionBar variant -->
-    <style name="AppTheme_System_NoActionBar" parent="AppTheme_System">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
-
 </resources>
 
 

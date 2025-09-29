@@ -194,7 +194,7 @@
                 android:layout_width="@dimen/compact_button_size"
                 android:layout_height="@dimen/compact_button_size"
                 android:layout_marginStart="16dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/send_button_background"
                 android:contentDescription="@string/accessibility_send_button"
                 android:src="@android:drawable/ic_menu_send"
                 app:tint="?attr/colorPrimary" />
