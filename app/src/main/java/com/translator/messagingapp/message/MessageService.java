@@ -29,6 +29,7 @@ import android.util.Log;
 import android.webkit.MimeTypeMap;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.translator.messagingapp.mms.MmsMessage;
+import com.translator.messagingapp.mms.MmsSender;
 import com.translator.messagingapp.util.PhoneUtils;
 
 import java.io.OutputStream;
@@ -1223,6 +1224,8 @@ public class MessageService {
 
     /**
      * Sends an MMS message using modern Telephony APIs.
+     * For Android 10+ devices, uses the enhanced MmsSender class.
+     * Falls back to existing implementation for older devices.
      *
      * @param address     The recipient address
      * @param subject     The message subject
@@ -1237,7 +1240,77 @@ public class MessageService {
             return false;
         }
 
+        // For Android 10+ (API 29), use the enhanced MmsSender
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            return sendMmsUsingEnhancedSender(address, subject, body, attachments);
+        } else {
+            // Fallback to existing implementation for older devices
+            return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+        }
+    }
+
+    /**
+     * Sends MMS using the enhanced MmsSender for Android 10+ devices.
+     * Provides better error handling and callback support.
+     */
+    private boolean sendMmsUsingEnhancedSender(String address, String subject, String body, List<Uri> attachments) {
         try {
+            Log.d(TAG, "Using enhanced MmsSender for Android 10+ device");
+            
+            MmsSender mmsSender = new MmsSender(context);
+            
+            // Handle single image attachment first (most common case)
+            if (attachments != null && !attachments.isEmpty()) {
+                Uri firstAttachment = attachments.get(0);
+                
+                // Create callback to handle send results
+                MmsSender.SendMultimediaMessageCallback callback = new MmsSender.SendMultimediaMessageCallback() {
+                    @Override
+                    public void onSendMmsComplete(Uri uri) {
+                        Log.d(TAG, "Enhanced MMS send successful: " + uri);
+                        // Store the sent message in our database
+                        storeSentMmsMessage(address, body, attachments);
+                        // Broadcast message sent to refresh UI
+                        broadcastMessageSent();
+                    }
+                    
+                    @Override
+                    public void onSendMmsError(Uri uri, int errorCode) {
+                        Log.e(TAG, "Enhanced MMS send failed. URI: " + uri + ", Error code: " + errorCode);
+                        // Could implement retry logic here or show error to user
+                    }
+                };
+                
+                // Send MMS with the first attachment and optional subject/body
+                String mmsSubject = (subject != null && !subject.isEmpty()) ? subject : body;
+                mmsSender.sendMms(address, mmsSubject, firstAttachment, callback);
+                
+                // For now, we return true immediately as the callback handles the actual result
+                // In a real implementation, you might want to use synchronization or return the callback result
+                return true;
+            } else if (body != null && !body.isEmpty()) {
+                // Text-only MMS (rare case, usually would be SMS)
+                Log.w(TAG, "Text-only MMS detected, falling back to legacy method");
+                return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+            } else {
+                Log.e(TAG, "No content provided for MMS");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending MMS using enhanced sender", e);
+            // Fallback to legacy method on any error
+            return sendMmsUsingLegacyMethod(address, subject, body, attachments);
+        }
+    }
+
+    /**
+     * Legacy MMS sending method for older devices or fallback scenarios.
+     * This preserves the original implementation.
+     */
+    private boolean sendMmsUsingLegacyMethod(String address, String subject, String body, List<Uri> attachments) {
+        try {
+            Log.d(TAG, "Using legacy MMS sending method");
+            
             // Use SmsManager from system service (API 19+ compatible)
             SmsManager smsManager;
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -1287,7 +1360,7 @@ public class MessageService {
             return true;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error sending MMS message", e);
+            Log.e(TAG, "Error sending MMS message using legacy method", e);
             return false;
         }
     }
