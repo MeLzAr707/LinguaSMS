@@ -14,7 +14,6 @@ import com.translator.messagingapp.message.MessageService;
 public class KlinkerMmsReceiver extends com.klinker.android.send_message.MmsReceivedReceiver {
     private static final String TAG = "KlinkerMmsReceiver";
 
-    @Override
     public boolean isAddressBlocked(Context context, String address) {
         // Implement your blocking logic here
         // For now, we don't block any addresses

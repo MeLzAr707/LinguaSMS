@@ -211,6 +211,37 @@ public class MmsMessage extends Message {
     }
 
     /**
+     * Sets the sender of this MMS message.
+     *
+     * @param sender The sender address
+     */
+    public void setSender(String sender) {
+        setAddress(sender);
+    }
+
+    /**
+     * Sets the timestamp of this MMS message.
+     *
+     * @param timestamp The timestamp in milliseconds
+     */
+    public void setTimestamp(long timestamp) {
+        setDate(timestamp);
+    }
+
+    /**
+     * Sets whether this MMS message has attachments.
+     *
+     * @param hasAttachments True if the message has attachments
+     */
+    public void setHasAttachments(boolean hasAttachments) {
+        // This is a convenience method that doesn't store a separate flag
+        // The hasAttachments() method determines this based on actual attachments list
+        if (!hasAttachments && attachments != null) {
+            attachments.clear();
+        }
+    }
+
+    /**
      * Represents an attachment in an MMS message.
      */
     public static class Attachment {

@@ -3023,8 +3023,9 @@ public class MessageService {
             String selection = Telephony.Mms.Addr.MSG_ID + "=? AND " + Telephony.Mms.Addr.TYPE + "=?";
             String[] selectionArgs = {messageId, String.valueOf(137)}; // PduHeaders.FROM = 137
             
+            Uri addrUri = Uri.parse("content://mms/" + messageId + "/addr");
             Cursor cursor = context.getContentResolver().query(
-                Telephony.Mms.Addr.CONTENT_URI, projection, selection, selectionArgs, null);
+                addrUri, projection, selection, selectionArgs, null);
             
             if (cursor != null && cursor.moveToFirst()) {
                 String address = cursor.getString(0);
@@ -3174,7 +3175,8 @@ public class MessageService {
     private void showMmsNotification(String sender, String content, MmsMessage mmsMessage) {
         // Use existing notification system
         try {
-            NotificationHelper.showMessageNotification(context, sender, content, true /* is MMS */);
+            NotificationHelper notificationHelper = new NotificationHelper(context);
+            notificationHelper.showMmsReceivedNotification(sender, content, sender);
         } catch (Exception e) {
             Log.e(TAG, "Error showing MMS notification", e);
         }
