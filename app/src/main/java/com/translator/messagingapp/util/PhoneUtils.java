@@ -386,6 +386,38 @@ public class PhoneUtils {
             })
             .show();
     }
+
+    /**
+     * Checks if a phone number is blocked.
+     * This is a placeholder implementation for Simple-SMS-Messenger integration.
+     * 
+     * @param context The application context
+     * @param phoneNumber The phone number to check (should be normalized)
+     * @return True if the number is blocked, false otherwise
+     */
+    public static boolean isNumberBlocked(Context context, String phoneNumber) {
+        // Placeholder implementation - always returns false
+        // In a full implementation, this would check a blocked numbers database
+        // or use Android's BlockedNumberContract (API 24+)
+        
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Future implementation could check:
+            // 1. Local blocked numbers database
+            // 2. Android's BlockedNumberContract.isBlocked() (API 24+)
+            // 3. User preferences for blocked patterns
+            
+            Log.d(TAG, "Checking if number is blocked: " + phoneNumber + " (always returns false in current implementation)");
+            return false;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking blocked number status for: " + phoneNumber, e);
+            return false; // Default to not blocked on error
+        }
+    }
 }
 
 
