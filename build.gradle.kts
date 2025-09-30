@@ -99,7 +99,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-base:18.2.0")
     implementation("de.hdodenhof:circleimageview:3.1.0")
     implementation("androidx.work:work-runtime:2.8.1")
-
+// https://mvnrepository.com/artifact/com.klinkerapps/android-smsmms
+    implementation("com.klinkerapps:android-smsmms:5.2.6")
     // Network libraries
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
 
