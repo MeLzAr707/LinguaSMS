@@ -58,7 +58,7 @@ public class MainActivityThemeIntegrationTest {
             UserPreferences.THEME_LIGHT,
             UserPreferences.THEME_DARK,
             UserPreferences.THEME_BLACK_GLASS,
-            UserPreferences.THEME_SYSTEM
+            UserPreferences.THEME_CUSTOM
         };
 
         for (int theme : allThemes) {
@@ -72,12 +72,8 @@ public class MainActivityThemeIntegrationTest {
                     assertTrue("Dark themes should be detected", userPreferences.isDarkThemeEnabled());
                     break;
                 case UserPreferences.THEME_LIGHT:
-                    assertFalse("Light theme should not be detected as dark", userPreferences.isDarkThemeEnabled());
-                    break;
-                case UserPreferences.THEME_SYSTEM:
-                    // System theme depends on device setting, just verify it doesn't crash
-                    boolean isDark = userPreferences.isDarkThemeActive(context);
-                    assertNotNull("System theme should return a valid dark mode state", isDark);
+                case UserPreferences.THEME_CUSTOM:
+                    assertFalse("Light themes should not be detected as dark", userPreferences.isDarkThemeEnabled());
                     break;
             }
         }

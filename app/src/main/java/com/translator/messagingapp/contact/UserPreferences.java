@@ -28,8 +28,7 @@ public class UserPreferences {
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
     public static final int THEME_BLACK_GLASS = 2;
-    public static final int THEME_SYSTEM = 3;
-    public static final int THEME_CUSTOM = 4;
+    public static final int THEME_CUSTOM = 3;
     
     // Translation mode constants
     public static final int TRANSLATION_MODE_ONLINE = 0;
@@ -137,15 +136,10 @@ public class UserPreferences {
 
         if (themeId == THEME_DARK || themeId == THEME_BLACK_GLASS) {
             return true;
-        } else if (themeId == THEME_SYSTEM) {
-            // Check system night mode
-            int nightModeFlags = context.getResources().getConfiguration().uiMode &
-                    Configuration.UI_MODE_NIGHT_MASK;
-            return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
         }
 
-        // For THEME_LIGHT and any other theme (including THEME_CUSTOM), 
-        // always return false to ensure light theme override
+        // For all other themes (THEME_LIGHT and THEME_CUSTOM), 
+        // always return false to ensure they override system settings
         return false;
     }
 

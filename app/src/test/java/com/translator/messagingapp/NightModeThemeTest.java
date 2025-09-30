@@ -34,18 +34,17 @@ public class NightModeThemeTest {
     }
     
     @Test
-    public void testSystemThemeRespectsNightMode() {
-        // Set theme to system theme
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
+    public void testCustomThemeOverridesNightMode() {
+        // Set theme to custom theme (which replaced system theme)
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
         
         // Verify that the theme ID is set correctly
-        assertEquals("System theme should be set", 
-                    UserPreferences.THEME_SYSTEM, userPreferences.getThemeId());
+        assertEquals("Custom theme should be set", 
+                    UserPreferences.THEME_CUSTOM, userPreferences.getThemeId());
         
-        // Test that when system is in dark mode, isDarkThemeActive returns true
-        // Note: This simulates what would happen when Android system is in dark mode
+        // Test that custom theme always returns false (light theme) regardless of system mode
         boolean isDarkThemeActive = userPreferences.isDarkThemeActive(context);
-        assertNotNull("Dark theme detection should return a valid result", isDarkThemeActive);
+        assertFalse("Custom theme should always be light and override system", isDarkThemeActive);
     }
     
     @Test
@@ -92,27 +91,31 @@ public class NightModeThemeTest {
     }
     
     /**
-     * Test that validates the fix for issue #535:
-     * When Android system is in dark mode and app uses THEME_SYSTEM,
-     * the app should use dark theme with appropriate text colors.
+     * Test that validates that all themes override system dark mode settings:
+     * All app themes now ignore Android system dark/light mode and use their own settings.
      */
     @Test
-    public void testSystemDarkModeTextVisibility() {
-        // Set to system theme
-        userPreferences.setThemeId(UserPreferences.THEME_SYSTEM);
+    public void testAllThemesOverrideSystemDarkMode() {
+        // Test that light theme always uses light colors regardless of system mode
+        userPreferences.setThemeId(UserPreferences.THEME_LIGHT);
+        assertFalse("Light theme should always be light regardless of system mode",
+                   userPreferences.isDarkThemeActive(context));
         
-        // This test verifies that the system theme respects night mode configuration
-        // The fix in values-night/styles.xml ensures that when Android is in dark mode,
-        // the app uses Theme.MaterialComponents.NoActionBar (dark theme) instead of
-        // Theme.MaterialComponents.Light.NoActionBar which would cause text visibility issues
+        // Test that dark theme always uses dark colors regardless of system mode  
+        userPreferences.setThemeId(UserPreferences.THEME_DARK);
+        assertTrue("Dark theme should always be dark regardless of system mode",
+                  userPreferences.isDarkThemeActive(context));
+                  
+        // Test that custom theme always uses light colors regardless of system mode
+        userPreferences.setThemeId(UserPreferences.THEME_CUSTOM);
+        assertFalse("Custom theme should always be light regardless of system mode",
+                   userPreferences.isDarkThemeActive(context));
         
-        // Verify theme is set to system
-        assertEquals("Should use system theme", 
-                    UserPreferences.THEME_SYSTEM, userPreferences.getThemeId());
-        
-        // The key fix: When system is in night mode, values-night/styles.xml will be used
-        // and it should now use a dark theme parent instead of light theme parent
-        // This ensures text colors are appropriate for dark backgrounds
+        // Test that black glass theme always uses dark colors regardless of system mode
+        userPreferences.setThemeId(UserPreferences.THEME_BLACK_GLASS);
+        assertTrue("Black glass theme should always be dark regardless of system mode",
+                  userPreferences.isDarkThemeActive(context));
+    }
         
         // Check that dark theme detection works correctly for system theme
         boolean isDark = userPreferences.isDarkThemeActive(context);

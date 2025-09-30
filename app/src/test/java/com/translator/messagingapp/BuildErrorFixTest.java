@@ -76,8 +76,8 @@ public class BuildErrorFixTest {
         assertEquals("THEME_LIGHT should be 0", 0, UserPreferences.THEME_LIGHT);
         assertEquals("THEME_DARK should be 1", 1, UserPreferences.THEME_DARK);
         assertEquals("THEME_BLACK_GLASS should be 2", 2, UserPreferences.THEME_BLACK_GLASS);
-        assertEquals("THEME_SYSTEM should be 3", 3, UserPreferences.THEME_SYSTEM);
-        assertEquals("THEME_CUSTOM should be 4", 4, UserPreferences.THEME_CUSTOM);
+        assertEquals("THEME_CUSTOM should be 3", 3, UserPreferences.THEME_CUSTOM);
+        // THEME_SYSTEM has been removed to ensure app always overrides system settings
     }
 
     @Test

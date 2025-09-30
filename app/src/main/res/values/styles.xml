@@ -8,6 +8,11 @@
         <item name="android:textColor">@color/textColorPrimary</item>
         <item name="android:textColorSecondary">@color/textColorSecondary</item>
         <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
+        <!-- Material Design color attributes -->
+        <item name="colorSurface">@color/background_light</item>
+        <item name="colorSurfaceVariant">@color/background_light</item>
+        <item name="colorOnSurface">@color/textColorPrimary</item>
+        <item name="colorOnSurfaceVariant">@color/textColorSecondary</item>
     </style>
 
     <!-- No Action Bar theme -->
@@ -28,6 +33,11 @@
         <item name="alertDialogTheme">@style/DarkAlertDialog</item>
         <item name="bottomSheetDialogTheme">@style/DarkBottomSheetDialog</item>
         <item name="cardViewStyle">@style/DarkCardView</item>
+        <!-- Material Design color attributes for dark theme -->
+        <item name="colorSurface">@color/background_dark</item>
+        <item name="colorSurfaceVariant">@color/background_dark</item>
+        <item name="colorOnSurface">@color/textColorPrimary_dark</item>
+        <item name="colorOnSurfaceVariant">@color/textColorSecondary_dark</item>
     </style>
 
     <!-- Black Glass theme with Deep Dark Blue accents -->
@@ -43,6 +53,11 @@
         <item name="bottomSheetDialogTheme">@style/BlackGlassBottomSheetDialog</item>
         <item name="cardViewStyle">@style/BlackGlassCardView</item>
         <item name="toolbarStyle">@style/BlackGlassToolbar</item>
+        <!-- Material Design color attributes for black glass theme -->
+        <item name="colorSurface">@color/darkBackground</item>
+        <item name="colorSurfaceVariant">@color/deep_dark_blue_lighter</item>
+        <item name="colorOnSurface">@color/textColorPrimary_dark</item>
+        <item name="colorOnSurfaceVariant">@color/textColorSecondary_dark</item>
         <!-- Removed translucent flags that cause layout overlap - now handled programmatically -->
     </style>
 
@@ -181,22 +196,6 @@
 
     <!-- Dark theme NoActionBar variant -->
     <style name="AppTheme_Dark_NoActionBar" parent="AppTheme_Dark">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
-
-    <!-- System theme - follows Android system dark/light mode -->
-    <style name="AppTheme_System" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:textColor">@color/textColorPrimary</item>
-        <item name="android:textColorSecondary">@color/textColorSecondary</item>
-        <item name="buttonStyle">@style/Widget.AppCompat.Button.Colored</item>
-    </style>
-
-    <!-- System theme NoActionBar variant -->
-    <style name="AppTheme_System_NoActionBar" parent="AppTheme_System">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>

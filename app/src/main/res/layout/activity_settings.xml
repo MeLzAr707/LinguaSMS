@@ -186,12 +186,6 @@
                     android:text="@string/theme_black_glass" />
 
                 <RadioButton
-                    android:id="@+id/radio_system"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/theme_system" />
-
-                <RadioButton
                     android:id="@+id/radio_custom"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
