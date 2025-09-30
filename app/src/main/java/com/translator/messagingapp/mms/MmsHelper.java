@@ -161,6 +161,40 @@ public class MmsHelper {
     }
 
     /**
+     * Gets MMS message from URI.
+     * Enhanced method for Simple-SMS-Messenger integration.
+     * This is an alias for queryMmsMessage with additional error handling.
+     * 
+     * @param mmsUri The URI of the MMS message
+     * @return MmsMessage object or null if not found
+     */
+    public MmsMessage getMmsFromUri(Uri mmsUri) {
+        try {
+            MmsMessage mms = queryMmsMessage(mmsUri);
+            if (mms != null) {
+                // Load attachments for the message
+                List<MmsMessage.Attachment> attachments = loadMmsAttachments(mmsUri);
+                mms.setAttachmentObjects(attachments);
+                
+                // Load text content if not already loaded
+                if (TextUtils.isEmpty(mms.getBody())) {
+                    String messageId = mmsUri.getLastPathSegment();
+                    if (messageId != null) {
+                        String textContent = loadMmsTextContent(messageId);
+                        if (!TextUtils.isEmpty(textContent)) {
+                            mms.setBody(textContent);
+                        }
+                    }
+                }
+            }
+            return mms;
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting MMS from URI: " + mmsUri, e);
+            return null;
+        }
+    }
+
+    /**
      * Loads all attachments for an MMS message.
      * 
      * @param mmsUri The URI of the MMS message
@@ -210,6 +244,86 @@ public class MmsHelper {
 
         Log.d(TAG, "Loaded " + attachments.size() + " attachments for MMS " + messageId);
         return attachments;
+    }
+
+    /**
+     * Loads text content from MMS message parts.
+     * Enhanced method for Simple-SMS-Messenger integration.
+     * 
+     * @param messageId The MMS message ID
+     * @return The text content or null if none found
+     */
+    private String loadMmsTextContent(String messageId) {
+        if (messageId == null) {
+            return null;
+        }
+
+        String selection = "mid = ? AND ct = ?";
+        String[] selectionArgs = {messageId, "text/plain"};
+        String[] projection = {"text", "_data"};
+
+        try (Cursor cursor = contentResolver.query(
+                PART_CONTENT_URI, 
+                projection, 
+                selection, 
+                selectionArgs, 
+                null)) {
+                
+            if (cursor != null && cursor.moveToFirst()) {
+                // Try to get text from the TEXT column first
+                int textIndex = cursor.getColumnIndex("text");
+                if (textIndex >= 0) {
+                    String text = cursor.getString(textIndex);
+                    if (!TextUtils.isEmpty(text)) {
+                        return text;
+                    }
+                }
+                
+                // If text column is empty, try to read from data file
+                int dataIndex = cursor.getColumnIndex("_data");
+                if (dataIndex >= 0) {
+                    String dataPath = cursor.getString(dataIndex);
+                    if (!TextUtils.isEmpty(dataPath)) {
+                        try {
+                            Uri partUri = Uri.parse("content://mms/part/" + dataPath);
+                            return readTextFromUri(partUri);
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error reading text from data path: " + dataPath, e);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading MMS text content for message " + messageId, e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Reads text content from a content URI.
+     * 
+     * @param uri The content URI to read from
+     * @return The text content or null if unable to read
+     */
+    private String readTextFromUri(Uri uri) {
+        try {
+            java.io.InputStream inputStream = contentResolver.openInputStream(uri);
+            if (inputStream != null) {
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(inputStream));
+                StringBuilder text = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    text.append(line).append("\n");
+                }
+                reader.close();
+                return text.toString().trim();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading text from URI: " + uri, e);
+        }
+        return null;
     }
 
     /**

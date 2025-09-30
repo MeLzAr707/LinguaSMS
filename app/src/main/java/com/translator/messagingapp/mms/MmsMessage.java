@@ -242,6 +242,44 @@ public class MmsMessage extends Message {
     }
 
     /**
+     * Gets the sender address of this MMS message.
+     * 
+     * @return The sender address/phone number
+     */
+    public String getSender() {
+        return getAddress();
+    }
+    
+    /**
+     * Gets the thread ID for this MMS message.
+     * 
+     * @return The thread ID as a string
+     */
+    public String getThreadId() {
+        return String.valueOf(getThread());
+    }
+    
+    /**
+     * Gets the URI of the first image attachment, if any.
+     * This is used for notification previews.
+     * 
+     * @return The URI of the first image attachment, or null if none found
+     */
+    public Uri getFirstImageAttachmentUri() {
+        if (attachments == null || attachments.isEmpty()) {
+            return null;
+        }
+        
+        for (Attachment attachment : attachments) {
+            if (attachment != null && attachment.isImage() && attachment.getUri() != null) {
+                return attachment.getUri();
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Represents an attachment in an MMS message.
      */
     public static class Attachment {
